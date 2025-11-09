@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mech Autobattler</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background-attachment: fixed;
+            color: #eee;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #00ff88;
+        }
+
+        h1 {
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            margin-bottom: 8px;
+            font-size: 20px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 16px;
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .stat {
+            font-size: 11px;
+        }
+
+        .stat strong {
+            color: #00ff88;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Battle Screen - MOBILE OPTIMIZED */
+        .battle-area {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .combatant {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #444;
+        }
+
+        .combatant h2 {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .combatant.player {
+            border-color: #00ff88;
+        }
+
+        .combatant.monster {
+            border-color: #ff4444;
+        }
+
+        .mech-display {
+            text-align: center;
+        }
+
+        .mech-display h3 {
+            font-size: 14px;
+        }
+
+        .mech-visual {
+            font-size: 40px;
+            margin: 8px 0;
+        }
+
+        .health-bar {
+            background: #333;
+            height: 24px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 8px 0;
+            border: 1px solid #555;
+        }
+
+        .health-fill {
+            background: linear-gradient(90deg, #ff4444, #ff8844);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .health-fill.player {
+            background: linear-gradient(90deg, #00ff88, #00ccff);
+        }
+
+        .combat-log {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            height: 250px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            padding: 6px;
+            margin: 3px 0;
+            border-left: 3px solid #444;
+            padding-left: 8px;
+            animation: slideIn 0.3s ease;
+            line-height: 1.4;
+        }
+
+        .log-entry.player {
+            border-left-color: #00ff88;
+        }
+
+        .log-entry.monster {
+            border-left-color: #ff4444;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Salvage Screen - MOBILE OPTIMIZED */
+        .salvage-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 15px 0;
+        }
+
+        .salvage-card, .mech-card {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .salvage-card:active, .mech-card:active {
+            border-color: #00ff88;
+            transform: scale(0.98);
+            box-shadow: 0 3px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .component-name {
+            color: #00ff88;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .component-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin: 10px 0;
+            font-size: 11px;
+        }
+
+        .stat-item {
+            padding: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        /* Loadout Screen - MOBILE OPTIMIZED */
+        .loadout-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .mech-panel {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #00ff88;
+        }
+
+        .mech-panel h3 {
+            font-size: 14px;
+        }
+
+        .mech-slots {
+            margin-top: 15px;
+        }
+
+        .slot {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 2px dashed #444;
+            min-height: 55px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .slot.filled {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+        }
+
+        .slot:active {
+            background: rgba(0, 255, 136, 0.2);
+        }
+
+        .slot-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .inventory-panel {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .inventory-panel h3 {
+            font-size: 16px;
+        }
+
+        .inventory-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .inventory-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 6px;
+            border: 2px solid #444;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .inventory-item:active {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.15);
+            transform: scale(0.98);
+        }
+
+        .inventory-item.selected {
+            border-color: #00ccff;
+            background: rgba(0, 204, 255, 0.2);
+        }
+
+        /* Buttons - MOBILE OPTIMIZED */
+        .btn {
+            background: linear-gradient(135deg, #00ff88, #00ccff);
+            color: #000;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 8px 0;
+            width: 100%;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 3px 15px rgba(0, 255, 136, 0.5);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #666, #888);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4444, #ff8844);
+        }
+
+        /* Resource bars */
+        .resource-bars {
+            margin: 12px 0;
+        }
+
+        .resource-bar {
+            margin: 10px 0;
+        }
+
+        .resource-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+
+        .resource-fill-container {
+            background: #333;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #555;
+        }
+
+        .resource-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .resource-fill.tier {
+            background: linear-gradient(90deg, #ff4444, #ff8844);
+        }
+
+        .resource-fill.weight {
+            background: linear-gradient(90deg, #00ccff, #0088ff);
+        }
+
+        .tier-indicator {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .tier-1 { background: #888; }
+        .tier-2 { background: #00ff88; color: #000; }
+        .tier-3 { background: #00ccff; color: #000; }
+        .tier-4 { background: #ff00ff; color: #fff; }
+        .tier-5 { background: #ffaa00; color: #000; }
+
+        /* Debug Panel - MOBILE OPTIMIZED */
+        .debug-panel {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 12px;
+            border-radius: 6px;
+            border: 2px solid #ff00ff;
+            font-size: 10px;
+            max-width: 250px;
+            z-index: 1000;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .debug-toggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff00ff;
+            color: #000;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 999;
+            font-size: 11px;
+            font-weight: bold;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Scrollbar styling - MOBILE */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00ccff;
+        }
+
+        .warning {
+            color: #ff8844;
+            font-weight: bold;
+        }
+
+        .success {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        /* Tablet and larger screens */
+        @media (min-width: 768px) {
+            .container {
+                max-width: 1400px;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+
+            .stats-bar {
+                display: flex;
+                gap: 30px;
+            }
+
+            .stat {
+                font-size: 14px;
+            }
+
+            .battle-area {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+
+            .salvage-options {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+
+            .loadout-container {
+                display: grid;
+                grid-template-columns: 400px 1fr;
+                gap: 20px;
+            }
+
+            .inventory-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+
+            .btn {
+                width: auto;
+            }
+
+            .btn:hover {
+                transform: scale(1.05);
+            }
+
+            .salvage-card:hover, .mech-card:hover {
+                border-color: #00ff88;
+                transform: translateY(-5px);
+            }
+
+            .inventory-item:hover {
+                border-color: #00ff88;
+                background: rgba(0, 255, 136, 0.1);
+            }
+
+            .slot:hover {
+                background: rgba(0, 255, 136, 0.15);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚔️ MECH AUTOBATTLER ⚔️</h1>
+            <div class="stats-bar">
+                <div class="stat"><strong>Round:</strong> <span id="round-num">1</span></div>
+                <div class="stat"><strong>Victories:</strong> <span id="victories">0</span></div>
+                <div class="stat"><strong>Current Mech:</strong> <span id="current-mech-name">None</span></div>
+                <div class="stat"><strong>Inventory:</strong> <span id="inventory-count">0</span> components</div>
+            </div>
+        </header>
+
+        <!-- Battle Screen -->
+        <div id="battle-screen" class="screen">
+            <div class="battle-area">
+                <div class="combatant player">
+                    <h2>🤖 YOUR MECH</h2>
+                    <div class="mech-display">
+                        <div class="mech-visual" id="player-visual">🤖</div>
+                        <h3 id="player-name">Loading...</h3>
+                        <div class="health-bar">
+                            <div class="health-fill player" id="player-health">
+                                <span id="player-health-text">100/100</span>
+                            </div>
+                        </div>
+                        <div id="player-stats" style="font-size: 12px; margin-top: 10px;"></div>
+                    </div>
+                </div>
+
+                <div class="combatant monster">
+                    <h2>👾 ENEMY</h2>
+                    <div class="mech-display">
+                        <div class="mech-visual" id="monster-visual">👾</div>
+                        <h3 id="monster-name">Loading...</h3>
+                        <div class="health-bar">
+                            <div class="health-fill" id="monster-health">
+                                <span id="monster-health-text">100/100</span>
+                            </div>
+                        </div>
+                        <div id="monster-stats" style="font-size: 12px; margin-top: 10px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="combat-log" id="combat-log"></div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" id="start-battle-btn">START BATTLE</button>
+            </div>
+        </div>
+
+        <!-- Salvage Screen -->
+        <div id="salvage-screen" class="screen">
+            <h2>🔧 SALVAGE SELECTION</h2>
+            <p style="margin: 15px 0;">Choose one component to salvage from the battlefield:</p>
+            <div class="salvage-options" id="salvage-options"></div>
+        </div>
+
+        <!-- Mech Selection Screen -->
+        <div id="mech-select-screen" class="screen">
+            <h2>🤖 NEW MECH AVAILABLE</h2>
+            <p style="margin: 15px 0;">Choose a new mech. You can salvage ONE component from your current mech:</p>
+            <div id="current-mech-salvage" style="margin: 20px 0;"></div>
+            <h3 style="margin-top: 30px;">Choose Your New Mech:</h3>
+            <div class="salvage-options" id="mech-options"></div>
+        </div>
+
+        <!-- Loadout Screen -->
+        <div id="loadout-screen" class="screen active">
+            <h2>⚙️ LOADOUT MANAGEMENT</h2>
+            <div class="loadout-container">
+                <div class="mech-panel">
+                    <h3 id="loadout-mech-name">Select a Mech</h3>
+                    <div class="mech-visual" style="text-align: center; font-size: 64px; margin: 20px 0;" id="loadout-mech-visual">🤖</div>
+
+                    <div class="resource-bars">
+                        <div class="resource-bar">
+                            <div class="resource-label">
+                                <span>Tier Points:</span>
+                                <span id="tier-usage">0/0</span>
+                            </div>
+                            <div class="resource-fill-container">
+                                <div class="resource-fill tier" id="tier-bar"></div>
+                            </div>
+                        </div>
+                        <div class="resource-bar">
+                            <div class="resource-label">
+                                <span>Weight:</span>
+                                <span id="weight-usage">0/0</span>
+                            </div>
+                            <div class="resource-fill-container">
+                                <div class="resource-fill weight" id="weight-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mech-slots" id="mech-slots"></div>
+
+                    <button class="btn" id="ready-battle-btn" style="width: 100%; margin-top: 20px;">READY FOR BATTLE</button>
+                </div>
+
+                <div class="inventory-panel">
+                    <h3>📦 Inventory</h3>
+                    <div class="inventory-grid" id="inventory-grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="debug-toggle" id="debug-toggle">DEBUG</button>
+    <div class="debug-panel" id="debug-panel" style="display: none;"></div>
+
+    <script>
+        // ============================================================================
+        // GAME DATA STRUCTURES
+        // ============================================================================
+
+        const SLOT_TYPES = {
+            HEAD: 'head',
+            TORSO: 'torso',
+            LEFT_ARM: 'leftArm',
+            RIGHT_ARM: 'rightArm',
+            LEFT_SHOULDER: 'leftShoulder',
+            RIGHT_SHOULDER: 'rightShoulder',
+            LEGS: 'legs'
+        };
+
+        const COMPONENT_TYPES = {
+            WEAPON: 'weapon',
+            ARMOR: 'armor',
+            SYSTEM: 'system'
+        };
+
+        const MECH_CLASSES = {
+            LIGHT: 'Light',
+            MEDIUM: 'Medium',
+            HEAVY: 'Heavy'
+        };
+
+        // Mech Templates
+        const MECH_TEMPLATES = {
+            SCOUT: {
+                name: 'Scout',
+                class: MECH_CLASSES.LIGHT,
+                tierCapacity: 50,
+                weightCapacity: 100,
+                baseHP: 80,
+                baseArmor: 5,
+                visual: '🏃',
+                slots: {
+                    [SLOT_TYPES.HEAD]: { capacity: 1 },
+                    [SLOT_TYPES.TORSO]: { capacity: 2 },
+                    [SLOT_TYPES.LEFT_ARM]: { capacity: 2 },
+                    [SLOT_TYPES.RIGHT_ARM]: { capacity: 2 },
+                    [SLOT_TYPES.LEFT_SHOULDER]: { capacity: 1 },
+                    [SLOT_TYPES.RIGHT_SHOULDER]: { capacity: 1 },
+                    [SLOT_TYPES.LEGS]: { capacity: 2 }
+                }
+            },
+            WARRIOR: {
+                name: 'Warrior',
+                class: MECH_CLASSES.MEDIUM,
+                tierCapacity: 75,
+                weightCapacity: 150,
+                baseHP: 120,
+                baseArmor: 10,
+                visual: '🤖',
+                slots: {
+                    [SLOT_TYPES.HEAD]: { capacity: 2 },
+                    [SLOT_TYPES.TORSO]: { capacity: 3 },
+                    [SLOT_TYPES.LEFT_ARM]: { capacity: 3 },
+                    [SLOT_TYPES.RIGHT_ARM]: { capacity: 3 },
+                    [SLOT_TYPES.LEFT_SHOULDER]: { capacity: 2 },
+                    [SLOT_TYPES.RIGHT_SHOULDER]: { capacity: 2 },
+                    [SLOT_TYPES.LEGS]: { capacity: 2 }
+                }
+            },
+            TITAN: {
+                name: 'Titan',
+                class: MECH_CLASSES.HEAVY,
+                tierCapacity: 100,
+                weightCapacity: 200,
+                baseHP: 180,
+                baseArmor: 15,
+                visual: '🏋️',
+                slots: {
+                    [SLOT_TYPES.HEAD]: { capacity: 2 },
+                    [SLOT_TYPES.TORSO]: { capacity: 4 },
+                    [SLOT_TYPES.LEFT_ARM]: { capacity: 4 },
+                    [SLOT_TYPES.RIGHT_ARM]: { capacity: 4 },
+                    [SLOT_TYPES.LEFT_SHOULDER]: { capacity: 3 },
+                    [SLOT_TYPES.RIGHT_SHOULDER]: { capacity: 3 },
+                    [SLOT_TYPES.LEGS]: { capacity: 3 }
+                }
+            }
+        };
+
+        // Component Templates
+        const COMPONENT_TEMPLATES = [
+            // Weapons - Arms
+            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, weight: 15, size: 2 },
+            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, weight: 20, size: 2 },
+            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: 0, tier: 4, weight: 30, size: 3 },
+            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, weight: 10, size: 1 },
+            { name: 'Flamethrower', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 20, armor: 0, tier: 2, weight: 15, size: 2 },
+
+            // Weapons - Shoulders
+            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: 0, tier: 3, weight: 25, size: 2 },
+            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: 0, tier: 4, weight: 35, size: 3 },
+
+            // Armor - Torso
+            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, weight: 15, size: 1 },
+            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, weight: 30, size: 2 },
+            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, weight: 40, size: 3 },
+
+            // Systems - Head
+            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, weight: 10, size: 1 },
+            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, weight: 15, size: 2 },
+
+            // Systems - Legs
+            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, weight: 20, size: 1 },
+            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, weight: 35, size: 2 },
+
+            // Hybrid components
+            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, weight: 25, size: 2 },
+            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, weight: 30, size: 2 }
+        ];
+
+        // ============================================================================
+        // GAME STATE
+        // ============================================================================
+
+        class GameState {
+            constructor() {
+                this.round = 1;
+                this.victories = 0;
+                this.currentMech = null;
+                this.inventory = [];
+                this.currentMonster = null;
+                this.battleInProgress = false;
+            }
+
+            save() {
+                localStorage.setItem('mechAutobattler', JSON.stringify({
+                    round: this.round,
+                    victories: this.victories,
+                    currentMech: this.currentMech,
+                    inventory: this.inventory
+                }));
+            }
+
+            load() {
+                const saved = localStorage.getItem('mechAutobattler');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    this.round = data.round || 1;
+                    this.victories = data.victories || 0;
+                    this.currentMech = data.currentMech;
+                    this.inventory = data.inventory || [];
+                    return true;
+                }
+                return false;
+            }
+
+            reset() {
+                this.round = 1;
+                this.victories = 0;
+                this.currentMech = null;
+                this.inventory = [];
+                this.save();
+            }
+        }
+
+        const game = new GameState();
+
+        // ============================================================================
+        // COMPONENT & MECH MANAGEMENT
+        // ============================================================================
+
+        function createMech(template, tier = 1) {
+            return {
+                ...JSON.parse(JSON.stringify(template)),
+                tier: tier,
+                loadout: {},
+                currentHP: template.baseHP,
+                maxHP: template.baseHP
+            };
+        }
+
+        function createComponent(template, tier = 1) {
+            const comp = { ...template };
+            comp.tier = tier;
+            comp.id = Math.random().toString(36).substr(2, 9);
+
+            // Scale stats with tier
+            const tierMultiplier = 1 + ((tier - 1) * 0.3);
+            comp.damage = Math.floor(comp.damage * tierMultiplier);
+            comp.armor = Math.floor(comp.armor * tierMultiplier);
+
+            return comp;
+        }
+
+        function generateRandomComponents(count, minTier, maxTier) {
+            const components = [];
+            for (let i = 0; i < count; i++) {
+                const template = COMPONENT_TEMPLATES[Math.floor(Math.random() * COMPONENT_TEMPLATES.length)];
+                const tier = Math.floor(Math.random() * (maxTier - minTier + 1)) + minTier;
+                components.push(createComponent(template, tier));
+            }
+            return components;
+        }
+
+        function generateRandomMechs(count, tier) {
+            const mechs = [];
+            const templates = Object.values(MECH_TEMPLATES);
+            for (let i = 0; i < count; i++) {
+                const template = templates[Math.floor(Math.random() * templates.length)];
+                mechs.push(createMech(template, tier));
+            }
+            return mechs;
+        }
+
+        function calculateMechStats(mech) {
+            let totalDamage = 0;
+            let totalArmor = mech.baseArmor;
+            let totalTier = 0;
+            let totalWeight = 0;
+
+            Object.values(mech.loadout).forEach(component => {
+                if (component) {
+                    totalDamage += component.damage;
+                    totalArmor += component.armor;
+                    totalTier += component.tier;
+                    totalWeight += component.weight;
+                }
+            });
+
+            return {
+                damage: totalDamage,
+                armor: totalArmor,
+                tierUsed: totalTier,
+                weightUsed: totalWeight,
+                speed: Math.max(1, 100 - Math.floor(totalWeight / 2))
+            };
+        }
+
+        function canAttachComponent(mech, component, slotName) {
+            if (component.slot !== slotName) return false;
+
+            const slot = mech.slots[slotName];
+            if (component.size > slot.capacity) return false;
+
+            // Calculate if adding this would exceed limits
+            const currentStats = calculateMechStats(mech);
+            const newTier = currentStats.tierUsed + component.tier;
+            const newWeight = currentStats.weightUsed + component.weight;
+
+            // If slot is filled, subtract the old component's contribution
+            if (mech.loadout[slotName]) {
+                const oldComp = mech.loadout[slotName];
+                newTier -= oldComp.tier;
+                newWeight -= oldComp.weight;
+            }
+
+            if (newTier > mech.tierCapacity) return false;
+            if (newWeight > mech.weightCapacity) return false;
+
+            return true;
+        }
+
+        function attachComponent(mech, component, slotName) {
+            if (!canAttachComponent(mech, component, slotName)) {
+                return false;
+            }
+
+            // Remove from old slot if it's already attached
+            Object.keys(mech.loadout).forEach(key => {
+                if (mech.loadout[key]?.id === component.id) {
+                    delete mech.loadout[key];
+                }
+            });
+
+            // Remove old component from slot and return it to inventory
+            if (mech.loadout[slotName]) {
+                const oldComp = mech.loadout[slotName];
+                game.inventory.push(oldComp);
+            }
+
+            // Attach new component
+            mech.loadout[slotName] = component;
+
+            // Remove from inventory
+            const invIndex = game.inventory.findIndex(c => c.id === component.id);
+            if (invIndex !== -1) {
+                game.inventory.splice(invIndex, 1);
+            }
+
+            game.save();
+            return true;
+        }
+
+        function detachComponent(mech, slotName) {
+            if (mech.loadout[slotName]) {
+                const component = mech.loadout[slotName];
+                game.inventory.push(component);
+                delete mech.loadout[slotName];
+                game.save();
+                return true;
+            }
+            return false;
+        }
+
+        // ============================================================================
+        // MONSTER GENERATION
+        // ============================================================================
+
+        function generateMonster(round) {
+            const difficultyMultiplier = 1 + ((round - 1) * 0.2);
+
+            const monsterTypes = [
+                { name: 'Scrap Bot', visual: '🤖', hp: 60, damage: 15, armor: 5 },
+                { name: 'War Drone', visual: '👾', hp: 80, damage: 20, armor: 8 },
+                { name: 'Battle Mech', visual: '🦾', hp: 100, damage: 25, armor: 10 },
+                { name: 'Tank Unit', visual: '🚛', hp: 120, damage: 18, armor: 15 },
+                { name: 'Hunter Killer', visual: '💀', hp: 70, damage: 35, armor: 5 }
+            ];
+
+            const baseMonster = monsterTypes[Math.floor(Math.random() * monsterTypes.length)];
+
+            return {
+                name: `${baseMonster.name} Mk.${Math.ceil(round / 2)}`,
+                visual: baseMonster.visual,
+                maxHP: Math.floor(baseMonster.hp * difficultyMultiplier),
+                currentHP: Math.floor(baseMonster.hp * difficultyMultiplier),
+                damage: Math.floor(baseMonster.damage * difficultyMultiplier),
+                armor: Math.floor(baseMonster.armor * difficultyMultiplier),
+                speed: 50 + Math.floor(Math.random() * 30)
+            };
+        }
+
+        // ============================================================================
+        // BATTLE SYSTEM
+        // ============================================================================
+
+        class BattleSystem {
+            constructor(playerMech, monster) {
+                this.playerMech = JSON.parse(JSON.stringify(playerMech));
+                this.monster = JSON.parse(JSON.stringify(monster));
+                this.log = [];
+                this.turn = 0;
+            }
+
+            addLog(message, actor = 'system') {
+                this.log.push({ message, actor, turn: this.turn });
+            }
+
+            calculateDamage(attacker, defender) {
+                const baseDamage = attacker.damage;
+                const damageReduction = Math.min(defender.armor * 0.5, baseDamage * 0.7);
+                const finalDamage = Math.max(1, Math.floor(baseDamage - damageReduction));
+                return finalDamage;
+            }
+
+            executeTurn() {
+                this.turn++;
+
+                const playerStats = calculateMechStats(this.playerMech);
+                const playerDamage = playerStats.damage;
+                const playerArmor = playerStats.armor;
+                const playerSpeed = playerStats.speed;
+
+                // Determine turn order
+                let firstAttacker, firstDefender, firstName, secondName;
+                if (playerSpeed >= this.monster.speed) {
+                    firstAttacker = { damage: playerDamage, armor: playerArmor };
+                    firstDefender = this.monster;
+                    firstName = 'player';
+                    secondName = 'monster';
+                } else {
+                    firstAttacker = this.monster;
+                    firstDefender = { damage: playerDamage, armor: playerArmor, currentHP: this.playerMech.currentHP };
+                    firstName = 'monster';
+                    secondName = 'player';
+                }
+
+                // First attack
+                if (firstName === 'player') {
+                    const damage = this.calculateDamage(firstAttacker, this.monster);
+                    this.monster.currentHP -= damage;
+                    this.addLog(`Your mech deals ${damage} damage! (${this.monster.currentHP}/${this.monster.maxHP} HP)`, 'player');
+
+                    if (this.monster.currentHP <= 0) {
+                        this.addLog('💥 ENEMY DESTROYED! VICTORY! 💥', 'player');
+                        return 'victory';
+                    }
+                } else {
+                    const damage = this.calculateDamage(this.monster, { armor: playerArmor });
+                    this.playerMech.currentHP -= damage;
+                    this.addLog(`${this.monster.name} deals ${damage} damage! (${this.playerMech.currentHP}/${this.playerMech.maxHP} HP)`, 'monster');
+
+                    if (this.playerMech.currentHP <= 0) {
+                        this.addLog('💀 YOUR MECH IS DESTROYED! DEFEAT! 💀', 'monster');
+                        return 'defeat';
+                    }
+                }
+
+                // Second attack
+                if (secondName === 'player') {
+                    const damage = this.calculateDamage({ damage: playerDamage }, this.monster);
+                    this.monster.currentHP -= damage;
+                    this.addLog(`Your mech deals ${damage} damage! (${this.monster.currentHP}/${this.monster.maxHP} HP)`, 'player');
+
+                    if (this.monster.currentHP <= 0) {
+                        this.addLog('💥 ENEMY DESTROYED! VICTORY! 💥', 'player');
+                        return 'victory';
+                    }
+                } else {
+                    const damage = this.calculateDamage(this.monster, { armor: playerArmor });
+                    this.playerMech.currentHP -= damage;
+                    this.addLog(`${this.monster.name} deals ${damage} damage! (${this.playerMech.currentHP}/${this.playerMech.maxHP} HP)`, 'monster');
+
+                    if (this.playerMech.currentHP <= 0) {
+                        this.addLog('💀 YOUR MECH IS DESTROYED! DEFEAT! 💀', 'monster');
+                        return 'defeat';
+                    }
+                }
+
+                return 'continue';
+            }
+
+            getState() {
+                return {
+                    playerMech: this.playerMech,
+                    monster: this.monster,
+                    log: this.log
+                };
+            }
+        }
+
+        // ============================================================================
+        // UI MANAGEMENT
+        // ============================================================================
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function updateHeader() {
+            document.getElementById('round-num').textContent = game.round;
+            document.getElementById('victories').textContent = game.victories;
+            document.getElementById('current-mech-name').textContent =
+                game.currentMech ? `${game.currentMech.name} (T${game.currentMech.tier})` : 'None';
+            document.getElementById('inventory-count').textContent = game.inventory.length;
+        }
+
+        function renderLoadoutScreen() {
+            if (!game.currentMech) {
+                document.getElementById('loadout-mech-name').textContent = 'No Mech Selected';
+                document.getElementById('mech-slots').innerHTML = '<p class="warning">Please select a mech to continue.</p>';
+                return;
+            }
+
+            const mech = game.currentMech;
+            const stats = calculateMechStats(mech);
+
+            document.getElementById('loadout-mech-name').textContent =
+                `${mech.name} (${mech.class}) - Tier ${mech.tier}`;
+            document.getElementById('loadout-mech-visual').textContent = mech.visual;
+
+            // Update resource bars
+            const tierPercent = (stats.tierUsed / mech.tierCapacity) * 100;
+            const weightPercent = (stats.weightUsed / mech.weightCapacity) * 100;
+
+            document.getElementById('tier-usage').textContent =
+                `${stats.tierUsed}/${mech.tierCapacity}`;
+            document.getElementById('tier-bar').style.width = `${Math.min(100, tierPercent)}%`;
+
+            document.getElementById('weight-usage').textContent =
+                `${stats.weightUsed}/${mech.weightCapacity}`;
+            document.getElementById('weight-bar').style.width = `${Math.min(100, weightPercent)}%`;
+
+            // Render slots
+            const slotsHTML = Object.entries(SLOT_TYPES).map(([key, slotName]) => {
+                const slot = mech.slots[slotName];
+                const component = mech.loadout[slotName];
+                const slotLabel = key.replace(/_/g, ' ');
+
+                if (component) {
+                    return `
+                        <div class="slot filled" onclick="handleSlotClick('${slotName}')">
+                            <div class="slot-header">
+                                <span>${slotLabel}</span>
+                                <span class="tier-indicator tier-${component.tier}">T${component.tier}</span>
+                            </div>
+                            <div class="component-name">${component.name}</div>
+                            <div style="font-size: 11px; margin-top: 5px;">
+                                ⚔️${component.damage} 🛡️${component.armor} ⚖️${component.weight} 📏${component.size}/${slot.capacity}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="slot" onclick="handleSlotClick('${slotName}')">
+                            <div class="slot-header">
+                                <span>${slotLabel}</span>
+                                <span style="color: #666;">Empty (Cap: ${slot.capacity})</span>
+                            </div>
+                            <div style="font-size: 11px; color: #666;">Click to attach component</div>
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            document.getElementById('mech-slots').innerHTML = slotsHTML;
+
+            // Render inventory
+            renderInventory();
+        }
+
+        let selectedInventoryItem = null;
+
+        function renderInventory() {
+            const inventoryGrid = document.getElementById('inventory-grid');
+
+            if (game.inventory.length === 0) {
+                inventoryGrid.innerHTML = '<p style="color: #666;">No components in inventory. Win battles to collect salvage!</p>';
+                return;
+            }
+
+            inventoryGrid.innerHTML = game.inventory.map(comp => `
+                <div class="inventory-item ${selectedInventoryItem?.id === comp.id ? 'selected' : ''}"
+                     onclick="selectInventoryItem('${comp.id}')">
+                    <div class="component-name" style="font-size: 14px;">
+                        ${comp.name}
+                        <span class="tier-indicator tier-${comp.tier}">T${comp.tier}</span>
+                    </div>
+                    <div class="component-stats">
+                        <div class="stat-item">⚔️ ${comp.damage}</div>
+                        <div class="stat-item">🛡️ ${comp.armor}</div>
+                        <div class="stat-item">⚖️ ${comp.weight}</div>
+                        <div class="stat-item">📏 ${comp.size}</div>
+                    </div>
+                    <div style="font-size: 10px; color: #888; margin-top: 5px;">
+                        Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectInventoryItem(componentId) {
+            const component = game.inventory.find(c => c.id === componentId);
+            if (component) {
+                selectedInventoryItem = component;
+                renderInventory();
+            }
+        }
+
+        function handleSlotClick(slotName) {
+            if (!game.currentMech) return;
+
+            const currentComponent = game.currentMech.loadout[slotName];
+
+            // If slot is filled, detach
+            if (currentComponent) {
+                if (confirm(`Detach ${currentComponent.name}?`)) {
+                    detachComponent(game.currentMech, slotName);
+                    selectedInventoryItem = null;
+                    renderLoadoutScreen();
+                }
+                return;
+            }
+
+            // If slot is empty and we have a selected item, try to attach
+            if (selectedInventoryItem) {
+                if (canAttachComponent(game.currentMech, selectedInventoryItem, slotName)) {
+                    attachComponent(game.currentMech, selectedInventoryItem, slotName);
+                    selectedInventoryItem = null;
+                    renderLoadoutScreen();
+                } else {
+                    alert('Cannot attach this component here. Check slot type, size, tier points, and weight limits.');
+                }
+            } else {
+                alert('Please select a component from inventory first.');
+            }
+        }
+
+        function renderBattleScreen() {
+            if (!game.currentMech) {
+                alert('No mech selected!');
+                return;
+            }
+
+            // Reset mech HP
+            game.currentMech.currentHP = game.currentMech.maxHP;
+
+            // Generate monster
+            game.currentMonster = generateMonster(game.round);
+
+            const stats = calculateMechStats(game.currentMech);
+
+            // Update player display
+            document.getElementById('player-visual').textContent = game.currentMech.visual;
+            document.getElementById('player-name').textContent = game.currentMech.name;
+            document.getElementById('player-stats').innerHTML =
+                `⚔️ Damage: ${stats.damage} | 🛡️ Armor: ${stats.armor} | ⚡ Speed: ${stats.speed}`;
+            updateHealthBar('player', game.currentMech.currentHP, game.currentMech.maxHP);
+
+            // Update monster display
+            document.getElementById('monster-visual').textContent = game.currentMonster.visual;
+            document.getElementById('monster-name').textContent = game.currentMonster.name;
+            document.getElementById('monster-stats').innerHTML =
+                `⚔️ Damage: ${game.currentMonster.damage} | 🛡️ Armor: ${game.currentMonster.armor} | ⚡ Speed: ${game.currentMonster.speed}`;
+            updateHealthBar('monster', game.currentMonster.currentHP, game.currentMonster.maxHP);
+
+            // Clear combat log
+            document.getElementById('combat-log').innerHTML = '';
+
+            showScreen('battle-screen');
+        }
+
+        function updateHealthBar(actor, current, max) {
+            const percent = (current / max) * 100;
+            const fill = document.getElementById(`${actor}-health`);
+            const text = document.getElementById(`${actor}-health-text`);
+
+            fill.style.width = `${Math.max(0, percent)}%`;
+            text.textContent = `${Math.max(0, current)}/${max}`;
+        }
+
+        function addCombatLog(message, actor) {
+            const log = document.getElementById('combat-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${actor}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        async function startBattle() {
+            if (!game.currentMech || !game.currentMonster) return;
+
+            document.getElementById('start-battle-btn').disabled = true;
+
+            const battle = new BattleSystem(game.currentMech, game.currentMonster);
+
+            addCombatLog('⚔️ BATTLE START! ⚔️', 'system');
+
+            let result = 'continue';
+
+            while (result === 'continue') {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                result = battle.executeTurn();
+                const state = battle.getState();
+
+                // Update displays
+                updateHealthBar('player', state.playerMech.currentHP, state.playerMech.maxHP);
+                updateHealthBar('monster', state.monster.currentHP, state.monster.maxHP);
+
+                // Add latest log entries
+                if (battle.log.length > 0) {
+                    const latestLog = battle.log[battle.log.length - 1];
+                    addCombatLog(latestLog.message, latestLog.actor);
+
+                    if (battle.log.length > 1 && battle.log[battle.log.length - 2].turn === battle.turn) {
+                        const secondLog = battle.log[battle.log.length - 2];
+                        addCombatLog(secondLog.message, secondLog.actor);
+                    }
+                }
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            if (result === 'victory') {
+                game.victories++;
+                game.round++;
+                game.save();
+
+                // Check if round 5, 10, 15, etc.
+                if ((game.round - 1) % 5 === 0 && game.round > 1) {
+                    showMechSelectionScreen();
+                } else {
+                    showSalvageScreen();
+                }
+            } else {
+                // Defeat - game over
+                addCombatLog('', 'system');
+                addCombatLog('GAME OVER! Starting new game...', 'system');
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                game.reset();
+                initializeGame();
+            }
+
+            document.getElementById('start-battle-btn').disabled = false;
+            updateHeader();
+        }
+
+        function showSalvageScreen() {
+            const tierLevel = Math.floor(game.round / 5) + 1;
+            const salvageOptions = generateRandomComponents(3, tierLevel, tierLevel + 1);
+
+            const optionsHTML = salvageOptions.map((comp, index) => `
+                <div class="salvage-card" onclick="selectSalvage(${index})">
+                    <div class="component-name">
+                        ${comp.name}
+                        <span class="tier-indicator tier-${comp.tier}">Tier ${comp.tier}</span>
+                    </div>
+                    <div style="margin: 10px 0; color: #888;">${comp.type.toUpperCase()}</div>
+                    <div class="component-stats">
+                        <div class="stat-item">⚔️ Damage: ${comp.damage}</div>
+                        <div class="stat-item">🛡️ Armor: ${comp.armor}</div>
+                        <div class="stat-item">⚖️ Weight: ${comp.weight}</div>
+                        <div class="stat-item">📏 Size: ${comp.size}</div>
+                        <div class="stat-item" style="grid-column: 1 / -1;">
+                            📍 Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('salvage-options').innerHTML = optionsHTML;
+
+            // Store options temporarily
+            window.currentSalvageOptions = salvageOptions;
+
+            showScreen('salvage-screen');
+        }
+
+        function selectSalvage(index) {
+            const component = window.currentSalvageOptions[index];
+            game.inventory.push(component);
+            game.save();
+            updateHeader();
+            renderLoadoutScreen();
+            showScreen('loadout-screen');
+        }
+
+        function showMechSelectionScreen() {
+            const currentRound = game.round - 1;
+            const tierLevel = Math.floor(currentRound / 5) + 1;
+            const mechOptions = generateRandomMechs(3, tierLevel);
+
+            // Show current mech components for salvage
+            const currentComponents = Object.values(game.currentMech.loadout).filter(c => c);
+
+            if (currentComponents.length > 0) {
+                const salvageHTML = `
+                    <div style="background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px; border: 2px solid #ff8844;">
+                        <h3>Salvage ONE component from your current mech:</h3>
+                        <div class="salvage-options" style="margin-top: 15px;">
+                            ${currentComponents.map((comp, index) => `
+                                <div class="salvage-card" onclick="selectMechSalvage(${index})">
+                                    <div class="component-name">
+                                        ${comp.name}
+                                        <span class="tier-indicator tier-${comp.tier}">T${comp.tier}</span>
+                                    </div>
+                                    <div class="component-stats">
+                                        <div class="stat-item">⚔️ ${comp.damage}</div>
+                                        <div class="stat-item">🛡️ ${comp.armor}</div>
+                                        <div class="stat-item">⚖️ ${comp.weight}</div>
+                                        <div class="stat-item">📏 ${comp.size}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                document.getElementById('current-mech-salvage').innerHTML = salvageHTML;
+                window.currentMechComponents = currentComponents;
+            } else {
+                document.getElementById('current-mech-salvage').innerHTML =
+                    '<p class="warning">Your current mech has no components to salvage.</p>';
+                window.currentMechComponents = [];
+            }
+
+            // Show new mech options
+            const mechHTML = mechOptions.map((mech, index) => `
+                <div class="mech-card" onclick="selectNewMech(${index})">
+                    <div style="font-size: 48px; text-align: center;">${mech.visual}</div>
+                    <div class="component-name">${mech.name}</div>
+                    <div style="margin: 10px 0; color: #888;">
+                        ${mech.class} Class - Tier ${mech.tier}
+                    </div>
+                    <div class="component-stats">
+                        <div class="stat-item">❤️ HP: ${mech.maxHP}</div>
+                        <div class="stat-item">🛡️ Armor: ${mech.baseArmor}</div>
+                        <div class="stat-item">⭐ Tier Cap: ${mech.tierCapacity}</div>
+                        <div class="stat-item">⚖️ Weight Cap: ${mech.weightCapacity}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('mech-options').innerHTML = mechHTML;
+            window.currentMechOptions = mechOptions;
+            window.mechSalvageSelected = false;
+
+            showScreen('mech-select-screen');
+        }
+
+        function selectMechSalvage(index) {
+            const component = window.currentMechComponents[index];
+            window.selectedMechSalvage = component;
+            window.mechSalvageSelected = true;
+
+            // Highlight selected
+            document.querySelectorAll('#current-mech-salvage .salvage-card').forEach((card, i) => {
+                card.style.borderColor = i === index ? '#00ff88' : '#444';
+            });
+        }
+
+        function selectNewMech(index) {
+            if (window.currentMechComponents.length > 0 && !window.mechSalvageSelected) {
+                alert('Please select one component to salvage from your current mech first!');
+                return;
+            }
+
+            const newMech = window.currentMechOptions[index];
+
+            // Add salvaged component to inventory
+            if (window.selectedMechSalvage) {
+                game.inventory.push(window.selectedMechSalvage);
+            }
+
+            // Set new mech
+            game.currentMech = newMech;
+            game.save();
+
+            updateHeader();
+            renderLoadoutScreen();
+            showScreen('loadout-screen');
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        function initializeGame() {
+            // Try to load saved game
+            if (!game.load()) {
+                // New game - choose starting mech
+                const startingMechs = [
+                    createMech(MECH_TEMPLATES.SCOUT, 1),
+                    createMech(MECH_TEMPLATES.WARRIOR, 1),
+                    createMech(MECH_TEMPLATES.TITAN, 1)
+                ];
+
+                // Add some starter components
+                game.inventory = generateRandomComponents(6, 1, 2);
+
+                const choice = confirm('Welcome to Mech Autobattler!\n\nChoose your starting mech:\n\nOK = Scout (Fast, Light)\nCancel = Warrior (Balanced)\n\n(Heavy Titan also available)');
+
+                if (choice) {
+                    game.currentMech = startingMechs[0];
+                } else {
+                    const choice2 = confirm('Warrior (Balanced) or Titan (Heavy)?\n\nOK = Warrior\nCancel = Titan');
+                    game.currentMech = choice2 ? startingMechs[1] : startingMechs[2];
+                }
+
+                game.save();
+            }
+
+            updateHeader();
+            renderLoadoutScreen();
+        }
+
+        // ============================================================================
+        // EVENT LISTENERS
+        // ============================================================================
+
+        document.getElementById('ready-battle-btn').addEventListener('click', () => {
+            if (!game.currentMech) {
+                alert('No mech selected!');
+                return;
+            }
+            renderBattleScreen();
+        });
+
+        document.getElementById('start-battle-btn').addEventListener('click', startBattle);
+
+        // Debug panel
+        document.getElementById('debug-toggle').addEventListener('click', () => {
+            const panel = document.getElementById('debug-panel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+
+        function updateDebugPanel() {
+            const panel = document.getElementById('debug-panel');
+            const stats = game.currentMech ? calculateMechStats(game.currentMech) : null;
+
+            panel.innerHTML = `
+                <h4 style="color: #ff00ff;">DEBUG INFO</h4>
+                <div style="margin: 10px 0;">
+                    <strong>Round:</strong> ${game.round}<br>
+                    <strong>Victories:</strong> ${game.victories}<br>
+                    <strong>Inventory:</strong> ${game.inventory.length} items<br>
+                    ${stats ? `
+                        <strong>Mech Stats:</strong><br>
+                        - Damage: ${stats.damage}<br>
+                        - Armor: ${stats.armor}<br>
+                        - Speed: ${stats.speed}<br>
+                        - Tier: ${stats.tierUsed}/${game.currentMech.tierCapacity}<br>
+                        - Weight: ${stats.weightUsed}/${game.currentMech.weightCapacity}
+                    ` : '<em>No mech selected</em>'}
+                </div>
+                <button class="btn btn-danger" onclick="if(confirm('Reset game?')) { game.reset(); initializeGame(); }" style="width: 100%; padding: 8px; font-size: 12px;">
+                    RESET GAME
+                </button>
+            `;
+        }
+
+        // Update debug panel every second
+        setInterval(updateDebugPanel, 1000);
+
+        // ============================================================================
+        // START GAME
+        // ============================================================================
+
+        initializeGame();
+    </script>
+</body>
+</html>

@@ -591,13 +591,11 @@
             <div class="salvage-options" id="salvage-options"></div>
         </div>
 
-        <!-- Mech Selection Screen -->
-        <div id="mech-select-screen" class="screen">
-            <h2>🤖 NEW MECH AVAILABLE</h2>
-            <p style="margin: 15px 0;">Choose a new mech. You can salvage ONE component from your current mech:</p>
-            <div id="current-mech-salvage" style="margin: 20px 0;"></div>
-            <h3 style="margin-top: 30px;">Choose Your New Mech:</h3>
-            <div class="salvage-options" id="mech-options"></div>
+        <!-- Trait Selection Screen -->
+        <div id="trait-select-screen" class="screen">
+            <h2>⭐ MECH UPGRADE AVAILABLE ⭐</h2>
+            <p style="margin: 15px 0;">Your mech has proven itself in battle! Choose a permanent trait upgrade:</p>
+            <div class="salvage-options" id="trait-options"></div>
         </div>
 
         <!-- Loadout Screen -->
@@ -672,6 +670,115 @@
             HEAVY: 'Heavy'
         };
 
+        const DAMAGE_TYPES = {
+            ENERGY: 'energy',
+            KINETIC: 'kinetic',
+            EXPLOSIVE: 'explosive',
+            NONE: 'none'
+        };
+
+        const ABILITIES = {
+            // Damage abilities
+            CRITICAL_STRIKE: { name: 'Critical Strike', desc: '25% crit chance (2x dmg)', tier: 2 },
+            VAMPIRIC: { name: 'Vampiric', desc: 'Heal 25% of damage dealt', tier: 4 },
+            ARMOR_PIERCING: { name: 'Armor Piercing', desc: 'Ignore 50% enemy armor', tier: 3 },
+            BURN: { name: 'Plasma Burn', desc: 'Deal 5 dmg/turn for 3 turns', tier: 2 },
+            BLEED: { name: 'Hemorrhage', desc: 'Crits cause 15 bleed over 5 turns', tier: 3 },
+
+            // Defense abilities
+            SHIELD_GEN: { name: 'Energy Shield', desc: 'Start with 50 shield HP', tier: 3 },
+            REGENERATION: { name: 'Regeneration', desc: 'Heal 5 HP per turn', tier: 3 },
+            REACTIVE: { name: 'Reactive Armor', desc: 'Reflect 25% damage taken', tier: 3 },
+            DODGE: { name: 'Dodge Matrix', desc: '20% chance to avoid damage', tier: 3 },
+
+            // Speed abilities
+            LIGHTWEIGHT: { name: 'Lightweight Frame', desc: 'Weight doesn\'t affect speed', tier: 2 },
+            OVERDRIVE: { name: 'Overdrive', desc: '+50 speed, -20% armor', tier: 3 },
+            QUICK_DEPLOY: { name: 'Quick Deploy', desc: 'Always attack first on turn 1', tier: 2 },
+
+            // Special abilities
+            EFFICIENT: { name: 'Efficient Design', desc: 'Component costs -1 tier', tier: 3 },
+            BERSERKER: { name: 'Berserker', desc: '+1% dmg per 1% HP missing', tier: 3 },
+            EXECUTIONER: { name: 'Executioner', desc: '+100% dmg vs enemies <30% HP', tier: 3 },
+            DOUBLE_STRIKE: { name: 'Multi-Strike', desc: 'Attack twice at 60% dmg each', tier: 4 },
+            OVERCHARGE: { name: 'Overcharge', desc: '+100% dmg, take 10% max HP/attack', tier: 5 }
+        };
+
+        const MECH_TRAITS = {
+            BERSERKER: {
+                name: 'BERSERKER',
+                desc: 'Gain +3% damage per 1% HP missing',
+                tier: 4,
+                icon: '💢'
+            },
+            CRITICAL_CORE: {
+                name: 'CRITICAL CORE',
+                desc: 'All attacks have +30% crit chance, crits deal 3x damage',
+                tier: 3,
+                icon: '💥'
+            },
+            FORTRESS: {
+                name: 'FORTRESS',
+                desc: 'Armor increased by 100%, speed reduced by 50%',
+                tier: 4,
+                icon: '🛡️'
+            },
+            REGENERATOR: {
+                name: 'REGENERATOR',
+                desc: 'Regenerate 8% max HP per turn',
+                tier: 4,
+                icon: '💚'
+            },
+            VAMPIRE: {
+                name: 'VAMPIRE',
+                desc: 'Heal for 40% of damage dealt, -30% armor',
+                tier: 5,
+                icon: '🩸'
+            },
+            LIGHTNING_FAST: {
+                name: 'LIGHTNING FAST',
+                desc: 'Weight doesn\'t affect speed, +50 base speed',
+                tier: 4,
+                icon: '⚡'
+            },
+            EFFICIENT: {
+                name: 'EFFICIENT',
+                desc: 'All components cost -2 tier points (min 1)',
+                tier: 5,
+                icon: '⚙️'
+            },
+            SALVAGER: {
+                name: 'SALVAGER',
+                desc: 'Choose 2 salvage items instead of 1',
+                tier: 4,
+                icon: '🔧'
+            },
+            ENERGY_MASTER: {
+                name: 'ENERGY MASTER',
+                desc: 'All Energy damage +100%, Energy components cost -1 tier',
+                tier: 4,
+                icon: '⚛️'
+            },
+            KINETIC_MASTER: {
+                name: 'KINETIC MASTER',
+                desc: 'All Kinetic damage +100%, ignore 50% armor',
+                tier: 4,
+                icon: '🎯'
+            },
+            EXPLOSIVE_MASTER: {
+                name: 'EXPLOSIVE MASTER',
+                desc: 'All Explosive damage +100%, apply burn effect',
+                tier: 4,
+                icon: '💣'
+            },
+            OVERCHARGED: {
+                name: 'OVERCHARGED',
+                desc: '+100% damage, lose 8% max HP per turn',
+                tier: 5,
+                icon: '🔥'
+            }
+        };
+
         // Mech Templates
         const MECH_TEMPLATES = {
             SCOUT: {
@@ -732,33 +839,43 @@
 
         // Component Templates
         const COMPONENT_TEMPLATES = [
-            // Weapons - Arms
-            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, weight: 15, size: 2 },
-            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, weight: 20, size: 2 },
-            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: 0, tier: 4, weight: 30, size: 3 },
-            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, weight: 10, size: 1 },
-            { name: 'Flamethrower', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 20, armor: 0, tier: 2, weight: 15, size: 2 },
+            // ENERGY WEAPONS
+            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, weight: 15, size: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['CRITICAL_STRIKE'] },
+            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, weight: 20, size: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['BURN'] },
+            { name: 'Ion Beam', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 22, armor: 0, tier: 3, weight: 18, size: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['ARMOR_PIERCING'] },
 
-            // Weapons - Shoulders
-            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: 0, tier: 3, weight: 25, size: 2 },
-            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: 0, tier: 4, weight: 35, size: 3 },
+            // KINETIC WEAPONS
+            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: 0, tier: 4, weight: 30, size: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'] },
+            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, weight: 10, size: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [] },
+            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: 0, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'] },
 
-            // Armor - Torso
-            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, weight: 15, size: 1 },
-            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, weight: 30, size: 2 },
-            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, weight: 40, size: 3 },
+            // EXPLOSIVE WEAPONS
+            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: 0, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'] },
+            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: 0, tier: 4, weight: 35, size: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'] },
+            { name: 'Grenade Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 30, armor: 0, tier: 2, weight: 20, size: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: [] },
 
-            // Systems - Head
-            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, weight: 10, size: 1 },
-            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, weight: 15, size: 2 },
+            // ARMOR
+            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, weight: 15, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, weight: 30, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, weight: 40, size: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'] },
+            { name: 'Reactive Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, weight: 35, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'] },
 
-            // Systems - Legs
-            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, weight: 20, size: 1 },
-            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, weight: 35, size: 2 },
+            // SYSTEMS - Head
+            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, weight: 10, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: ['CRITICAL_STRIKE'] },
+            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, weight: 15, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['EXECUTIONER'] },
 
-            // Hybrid components
-            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, weight: 25, size: 2 },
-            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, weight: 30, size: 2 }
+            // SYSTEMS - Legs
+            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, weight: 20, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: ['LIGHTWEIGHT'] },
+            { name: 'Overdrive Boosters', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 8, armor: 0, tier: 3, weight: 15, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERDRIVE'] },
+            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, weight: 35, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+
+            // SYSTEMS - Special
+            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'] },
+            { name: 'Repair Nanobots', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 15, tier: 3, weight: 20, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['REGENERATION'] },
+            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, weight: 30, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['EFFICIENT'] },
+            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: 0, tier: 4, weight: 25, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'] },
+            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: 0, tier: 3, weight: 10, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'] },
+            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: 0, tier: 5, weight: 20, size: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'] }
         ];
 
         // ============================================================================
@@ -818,7 +935,8 @@
                 tier: tier,
                 loadout: {},
                 currentHP: template.baseHP,
-                maxHP: template.baseHP
+                maxHP: template.baseHP,
+                traits: []  // Array of acquired traits
             };
         }
 
@@ -826,6 +944,10 @@
             const comp = { ...template };
             comp.tier = tier;
             comp.id = Math.random().toString(36).substr(2, 9);
+
+            // Ensure abilities and damageType are copied properly
+            comp.abilities = template.abilities ? [...template.abilities] : [];
+            comp.damageType = template.damageType || DAMAGE_TYPES.NONE;
 
             // Scale stats with tier
             const tierMultiplier = 1 + ((tier - 1) * 0.3);
@@ -861,14 +983,35 @@
             let totalTier = 0;
             let totalWeight = 0;
 
+            const traits = mech.traits || [];
+
             Object.values(mech.loadout).forEach(component => {
                 if (component) {
                     totalDamage += component.damage;
                     totalArmor += component.armor;
-                    totalTier += component.tier;
+
+                    // Apply EFFICIENT trait/ability - reduce tier cost
+                    let compTier = component.tier;
+                    if (traits.some(t => t.name === 'EFFICIENT')) {
+                        compTier = Math.max(1, compTier - 2);
+                    } else if (component.abilities && component.abilities.includes('EFFICIENT')) {
+                        compTier = Math.max(1, compTier - 1);
+                    }
+
+                    totalTier += compTier;
                     totalWeight += component.weight;
                 }
             });
+
+            // Apply FORTRESS trait - double armor
+            if (traits.some(t => t.name === 'FORTRESS')) {
+                totalArmor *= 2;
+            }
+
+            // Apply VAMPIRE trait - reduce armor
+            if (traits.some(t => t.name === 'VAMPIRE')) {
+                totalArmor = Math.floor(totalArmor * 0.7);
+            }
 
             return {
                 damage: totalDamage,
@@ -983,80 +1126,284 @@
                 this.monster = JSON.parse(JSON.stringify(monster));
                 this.log = [];
                 this.turn = 0;
+
+                // Initialize battle state
+                this.playerShield = 0;
+                this.playerDots = []; // {type, damage, duration}
+                this.monsterDots = [];
+
+                // Collect all player abilities
+                this.playerAbilities = this.collectAbilities(this.playerMech);
+                this.playerTraits = this.playerMech.traits || [];
+
+                // Apply start-of-battle abilities
+                this.applyStartOfBattleAbilities();
+            }
+
+            collectAbilities(mech) {
+                const abilities = [];
+                Object.values(mech.loadout || {}).forEach(comp => {
+                    if (comp && comp.abilities) {
+                        comp.abilities.forEach(abilityKey => {
+                            if (ABILITIES[abilityKey]) {
+                                abilities.push(abilityKey);
+                            }
+                        });
+                    }
+                });
+                return abilities;
+            }
+
+            applyStartOfBattleAbilities() {
+                // Shield Generator
+                if (this.playerAbilities.includes('SHIELD_GEN')) {
+                    this.playerShield = 50;
+                    this.addLog('🛡️ Energy Shield activated! (50 shield)', 'player');
+                }
             }
 
             addLog(message, actor = 'system') {
                 this.log.push({ message, actor, turn: this.turn });
             }
 
-            calculateDamage(attacker, defender) {
-                const baseDamage = attacker.damage;
-                const damageReduction = Math.min(defender.armor * 0.5, baseDamage * 0.7);
-                const finalDamage = Math.max(1, Math.floor(baseDamage - damageReduction));
-                return finalDamage;
+            hasAbility(abilityKey) {
+                return this.playerAbilities.includes(abilityKey);
+            }
+
+            hasTrait(traitName) {
+                return this.playerTraits.some(t => t.name === traitName);
+            }
+
+            calculateDamage(isPlayer, targetArmor) {
+                const stats = calculateMechStats(this.playerMech);
+                let baseDamage = isPlayer ? stats.damage : this.monster.damage;
+                const currentArmor = targetArmor;
+
+                if (isPlayer) {
+                    // Apply trait bonuses
+                    if (this.hasTrait('BERSERKER')) {
+                        const hpLostPercent = ((this.playerMech.maxHP - this.playerMech.currentHP) / this.playerMech.maxHP) * 100;
+                        const bonus = Math.floor(baseDamage * (hpLostPercent * 0.03));
+                        if (bonus > 0) {
+                            baseDamage += bonus;
+                            this.addLog(`💢 Berserker bonus: +${bonus} dmg`, 'player');
+                        }
+                    }
+
+                    if (this.hasTrait('OVERCHARGED')) {
+                        baseDamage *= 2;
+                    }
+
+                    // Apply ability bonuses
+                    if (this.hasAbility('BERSERKER')) {
+                        const hpLostPercent = ((this.playerMech.maxHP - this.playerMech.currentHP) / this.playerMech.maxHP) * 100;
+                        const bonus = Math.floor(baseDamage * (hpLostPercent * 0.01));
+                        baseDamage += bonus;
+                    }
+
+                    if (this.hasAbility('OVERCHARGE')) {
+                        baseDamage *= 2;
+                        const selfDamage = Math.floor(this.playerMech.maxHP * 0.1);
+                        this.playerMech.currentHP -= selfDamage;
+                        this.addLog(`⚡ Overcharge! +100% dmg, -${selfDamage} HP`, 'player');
+                    }
+                }
+
+                // Critical strike
+                let isCrit = false;
+                if (isPlayer && (this.hasAbility('CRITICAL_STRIKE') || this.hasTrait('CRITICAL_CORE'))) {
+                    const critChance = this.hasTrait('CRITICAL_CORE') ? 0.30 : 0.25;
+                    const critMultiplier = this.hasTrait('CRITICAL_CORE') ? 3 : 2;
+
+                    if (Math.random() < critChance) {
+                        baseDamage *= critMultiplier;
+                        isCrit = true;
+                    }
+                }
+
+                // Armor reduction
+                let armorToUse = currentArmor;
+                if (isPlayer && this.hasAbility('ARMOR_PIERCING')) {
+                    armorToUse *= 0.5;
+                }
+
+                const damageReduction = Math.min(armorToUse * 0.5, baseDamage * 0.7);
+                let finalDamage = Math.max(1, Math.floor(baseDamage - damageReduction));
+
+                // Executioner
+                if (isPlayer && this.hasAbility('EXECUTIONER') && this.monster.currentHP < this.monster.maxHP * 0.3) {
+                    finalDamage *= 2;
+                    this.addLog(`🎯 Executioner! Double damage on low HP target!`, 'player');
+                }
+
+                return { damage: finalDamage, isCrit };
+            }
+
+            applyDoTs(target, isPlayer) {
+                const dots = isPlayer ? this.playerDots : this.monsterDots;
+                let totalDotDamage = 0;
+
+                for (let i = dots.length - 1; i >= 0; i--) {
+                    const dot = dots[i];
+                    if (target === 'player') {
+                        this.playerMech.currentHP -= dot.damage;
+                    } else {
+                        this.monster.currentHP -= dot.damage;
+                    }
+                    totalDotDamage += dot.damage;
+
+                    dot.duration--;
+                    if (dot.duration <= 0) {
+                        dots.splice(i, 1);
+                    }
+                }
+
+                if (totalDotDamage > 0) {
+                    const actor = target === 'player' ? 'monster' : 'player';
+                    this.addLog(`🔥 DoT damage: ${totalDotDamage}`, actor);
+                }
+            }
+
+            applyRegeneration() {
+                // Regeneration ability
+                if (this.hasAbility('REGENERATION')) {
+                    const heal = 5;
+                    this.playerMech.currentHP = Math.min(this.playerMech.maxHP, this.playerMech.currentHP + heal);
+                    this.addLog(`💚 Regenerated ${heal} HP`, 'player');
+                }
+
+                // Regenerator trait
+                if (this.hasTrait('REGENERATOR')) {
+                    const heal = Math.floor(this.playerMech.maxHP * 0.08);
+                    this.playerMech.currentHP = Math.min(this.playerMech.maxHP, this.playerMech.currentHP + heal);
+                    this.addLog(`💚 Regenerator: +${heal} HP`, 'player');
+                }
+            }
+
+            performAttack(isPlayer) {
+                const targetArmor = isPlayer ? this.monster.armor : calculateMechStats(this.playerMech).armor;
+                const { damage, isCrit } = this.calculateDamage(isPlayer, targetArmor);
+
+                let actualDamage = damage;
+
+                if (isPlayer) {
+                    // Apply to monster
+                    this.monster.currentHP -= actualDamage;
+                    const critText = isCrit ? ' 💥 CRIT!' : '';
+                    this.addLog(`⚔️ Your mech deals ${actualDamage} damage!${critText} (${Math.max(0, this.monster.currentHP)}/${this.monster.maxHP} HP)`, 'player');
+
+                    // Vampiric healing
+                    if (this.hasAbility('VAMPIRIC') || this.hasTrait('VAMPIRE')) {
+                        const healPercent = this.hasTrait('VAMPIRE') ? 0.4 : 0.25;
+                        const heal = Math.floor(actualDamage * healPercent);
+                        this.playerMech.currentHP = Math.min(this.playerMech.maxHP, this.playerMech.currentHP + heal);
+                        this.addLog(`🩸 Vampiric: healed ${heal} HP`, 'player');
+                    }
+
+                    // Apply DoTs
+                    if (this.hasAbility('BURN')) {
+                        this.monsterDots.push({ type: 'burn', damage: 5, duration: 3 });
+                        this.addLog(`🔥 Applied Burn effect!`, 'player');
+                    }
+
+                    if (isCrit && this.hasAbility('BLEED')) {
+                        this.monsterDots.push({ type: 'bleed', damage: 3, duration: 5 });
+                        this.addLog(`🩸 Critical Bleed applied!`, 'player');
+                    }
+                } else {
+                    // Monster attacks player - check shield first
+                    if (this.playerShield > 0) {
+                        if (this.playerShield >= actualDamage) {
+                            this.playerShield -= actualDamage;
+                            this.addLog(`🛡️ Shield absorbed ${actualDamage} damage! (${this.playerShield} shield left)`, 'monster');
+                            actualDamage = 0;
+                        } else {
+                            const overflow = actualDamage - this.playerShield;
+                            this.addLog(`🛡️ Shield absorbed ${this.playerShield} damage, ${overflow} passed through!`, 'monster');
+                            this.playerShield = 0;
+                            actualDamage = overflow;
+                        }
+                    }
+
+                    // Apply remaining damage to HP
+                    if (actualDamage > 0) {
+                        this.playerMech.currentHP -= actualDamage;
+                        this.addLog(`💥 ${this.monster.name} deals ${actualDamage} damage! (${Math.max(0, this.playerMech.currentHP)}/${this.playerMech.maxHP} HP)`, 'monster');
+
+                        // Reactive armor
+                        if (this.hasAbility('REACTIVE')) {
+                            const reflected = Math.floor(actualDamage * 0.25);
+                            this.monster.currentHP -= reflected;
+                            this.addLog(`⚡ Reactive Armor: ${reflected} damage reflected!`, 'player');
+                        }
+                    }
+                }
+
+                return actualDamage;
             }
 
             executeTurn() {
                 this.turn++;
 
+                // Apply Overcharged trait damage
+                if (this.hasTrait('OVERCHARGED')) {
+                    const damage = Math.floor(this.playerMech.maxHP * 0.08);
+                    this.playerMech.currentHP -= damage;
+                    this.addLog(`🔥 Overcharged: -${damage} HP`, 'player');
+                }
+
+                // Apply regeneration
+                this.applyRegeneration();
+
+                // Apply DoTs
+                this.applyDoTs('player', true);
+                this.applyDoTs('monster', false);
+
+                // Check for deaths from DoTs
+                if (this.playerMech.currentHP <= 0) {
+                    this.addLog('💀 YOUR MECH IS DESTROYED! DEFEAT! 💀', 'monster');
+                    return 'defeat';
+                }
+                if (this.monster.currentHP <= 0) {
+                    this.addLog('💥 ENEMY DESTROYED! VICTORY! 💥', 'player');
+                    return 'victory';
+                }
+
                 const playerStats = calculateMechStats(this.playerMech);
-                const playerDamage = playerStats.damage;
-                const playerArmor = playerStats.armor;
-                const playerSpeed = playerStats.speed;
+                let playerSpeed = playerStats.speed;
+
+                // Apply speed traits
+                if (this.hasTrait('LIGHTNING_FAST')) {
+                    playerSpeed = 100 + 50;
+                }
+                if (this.hasTrait('FORTRESS')) {
+                    playerSpeed = Math.floor(playerSpeed * 0.5);
+                }
 
                 // Determine turn order
-                let firstAttacker, firstDefender, firstName, secondName;
-                if (playerSpeed >= this.monster.speed) {
-                    firstAttacker = { damage: playerDamage, armor: playerArmor };
-                    firstDefender = this.monster;
-                    firstName = 'player';
-                    secondName = 'monster';
-                } else {
-                    firstAttacker = this.monster;
-                    firstDefender = { damage: playerDamage, armor: playerArmor, currentHP: this.playerMech.currentHP };
-                    firstName = 'monster';
-                    secondName = 'player';
-                }
+                const playerGoesFirst = playerSpeed >= this.monster.speed;
 
-                // First attack
-                if (firstName === 'player') {
-                    const damage = this.calculateDamage(firstAttacker, this.monster);
-                    this.monster.currentHP -= damage;
-                    this.addLog(`Your mech deals ${damage} damage! (${this.monster.currentHP}/${this.monster.maxHP} HP)`, 'player');
-
+                if (playerGoesFirst) {
+                    this.performAttack(true);
                     if (this.monster.currentHP <= 0) {
                         this.addLog('💥 ENEMY DESTROYED! VICTORY! 💥', 'player');
                         return 'victory';
                     }
-                } else {
-                    const damage = this.calculateDamage(this.monster, { armor: playerArmor });
-                    this.playerMech.currentHP -= damage;
-                    this.addLog(`${this.monster.name} deals ${damage} damage! (${this.playerMech.currentHP}/${this.playerMech.maxHP} HP)`, 'monster');
-
+                    this.performAttack(false);
                     if (this.playerMech.currentHP <= 0) {
                         this.addLog('💀 YOUR MECH IS DESTROYED! DEFEAT! 💀', 'monster');
                         return 'defeat';
                     }
-                }
-
-                // Second attack
-                if (secondName === 'player') {
-                    const damage = this.calculateDamage({ damage: playerDamage }, this.monster);
-                    this.monster.currentHP -= damage;
-                    this.addLog(`Your mech deals ${damage} damage! (${this.monster.currentHP}/${this.monster.maxHP} HP)`, 'player');
-
+                } else {
+                    this.performAttack(false);
+                    if (this.playerMech.currentHP <= 0) {
+                        this.addLog('💀 YOUR MECH IS DESTROYED! DEFEAT! 💀', 'monster');
+                        return 'defeat';
+                    }
+                    this.performAttack(true);
                     if (this.monster.currentHP <= 0) {
                         this.addLog('💥 ENEMY DESTROYED! VICTORY! 💥', 'player');
                         return 'victory';
-                    }
-                } else {
-                    const damage = this.calculateDamage(this.monster, { armor: playerArmor });
-                    this.playerMech.currentHP -= damage;
-                    this.addLog(`${this.monster.name} deals ${damage} damage! (${this.playerMech.currentHP}/${this.playerMech.maxHP} HP)`, 'monster');
-
-                    if (this.playerMech.currentHP <= 0) {
-                        this.addLog('💀 YOUR MECH IS DESTROYED! DEFEAT! 💀', 'monster');
-                        return 'defeat';
                     }
                 }
 
@@ -1067,7 +1414,8 @@
                 return {
                     playerMech: this.playerMech,
                     monster: this.monster,
-                    log: this.log
+                    log: this.log,
+                    playerShield: this.playerShield
                 };
             }
         }
@@ -1099,8 +1447,10 @@
             const mech = game.currentMech;
             const stats = calculateMechStats(mech);
 
+            // Display mech name with traits
+            const traitIcons = (mech.traits || []).map(t => t.icon).join(' ');
             document.getElementById('loadout-mech-name').textContent =
-                `${mech.name} (${mech.class}) - Tier ${mech.tier}`;
+                `${mech.name} (${mech.class}) - Tier ${mech.tier} ${traitIcons}`;
             document.getElementById('loadout-mech-visual').textContent = mech.visual;
 
             // Update resource bars
@@ -1122,16 +1472,26 @@
                 const slotLabel = key.replace(/_/g, ' ');
 
                 if (component) {
+                    const damageTypeIcon = component.damageType === DAMAGE_TYPES.ENERGY ? '⚛️' :
+                                           component.damageType === DAMAGE_TYPES.KINETIC ? '🎯' :
+                                           component.damageType === DAMAGE_TYPES.EXPLOSIVE ? '💣' : '';
+                    const abilities = component.abilities || [];
+                    const abilityText = abilities.map(abilityKey => {
+                        const ability = ABILITIES[abilityKey];
+                        return ability ? `<div style="font-size: 9px; color: #00ff88; margin-top: 2px;">✨ ${ability.name}</div>` : '';
+                    }).join('');
+
                     return `
                         <div class="slot filled" onclick="handleSlotClick('${slotName}')">
                             <div class="slot-header">
                                 <span>${slotLabel}</span>
                                 <span class="tier-indicator tier-${component.tier}">T${component.tier}</span>
                             </div>
-                            <div class="component-name">${component.name}</div>
+                            <div class="component-name">${damageTypeIcon} ${component.name}</div>
                             <div style="font-size: 11px; margin-top: 5px;">
                                 ⚔️${component.damage} 🛡️${component.armor} ⚖️${component.weight} 📏${component.size}/${slot.capacity}
                             </div>
+                            ${abilityText}
                         </div>
                     `;
                 } else {
@@ -1163,24 +1523,36 @@
                 return;
             }
 
-            inventoryGrid.innerHTML = game.inventory.map(comp => `
-                <div class="inventory-item ${selectedInventoryItem?.id === comp.id ? 'selected' : ''}"
-                     onclick="selectInventoryItem('${comp.id}')">
-                    <div class="component-name" style="font-size: 14px;">
-                        ${comp.name}
-                        <span class="tier-indicator tier-${comp.tier}">T${comp.tier}</span>
+            inventoryGrid.innerHTML = game.inventory.map(comp => {
+                const damageTypeIcon = comp.damageType === DAMAGE_TYPES.ENERGY ? '⚛️' :
+                                       comp.damageType === DAMAGE_TYPES.KINETIC ? '🎯' :
+                                       comp.damageType === DAMAGE_TYPES.EXPLOSIVE ? '💣' : '';
+                const abilities = comp.abilities || [];
+                const abilityText = abilities.map(abilityKey => {
+                    const ability = ABILITIES[abilityKey];
+                    return ability ? `<div style="font-size: 10px; color: #00ff88; margin-top: 3px;">✨ ${ability.name}</div>` : '';
+                }).join('');
+
+                return `
+                    <div class="inventory-item ${selectedInventoryItem?.id === comp.id ? 'selected' : ''}"
+                         onclick="selectInventoryItem('${comp.id}')">
+                        <div class="component-name" style="font-size: 14px;">
+                            ${damageTypeIcon} ${comp.name}
+                            <span class="tier-indicator tier-${comp.tier}">T${comp.tier}</span>
+                        </div>
+                        <div class="component-stats">
+                            <div class="stat-item">⚔️ ${comp.damage}</div>
+                            <div class="stat-item">🛡️ ${comp.armor}</div>
+                            <div class="stat-item">⚖️ ${comp.weight}</div>
+                            <div class="stat-item">📏 ${comp.size}</div>
+                        </div>
+                        <div style="font-size: 10px; color: #888; margin-top: 5px;">
+                            Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
+                        </div>
+                        ${abilityText}
                     </div>
-                    <div class="component-stats">
-                        <div class="stat-item">⚔️ ${comp.damage}</div>
-                        <div class="stat-item">🛡️ ${comp.armor}</div>
-                        <div class="stat-item">⚖️ ${comp.weight}</div>
-                        <div class="stat-item">📏 ${comp.size}</div>
-                    </div>
-                    <div style="font-size: 10px; color: #888; margin-top: 5px;">
-                        Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function selectInventoryItem(componentId) {
@@ -1312,9 +1684,9 @@
                 game.round++;
                 game.save();
 
-                // Check if round 5, 10, 15, etc.
+                // Check if round 5, 10, 15, etc. - Show trait selection
                 if ((game.round - 1) % 5 === 0 && game.round > 1) {
-                    showMechSelectionScreen();
+                    showTraitSelectionScreen();
                 } else {
                     showSalvageScreen();
                 }
@@ -1335,131 +1707,139 @@
             const tierLevel = Math.floor(game.round / 5) + 1;
             const salvageOptions = generateRandomComponents(3, tierLevel, tierLevel + 1);
 
-            const optionsHTML = salvageOptions.map((comp, index) => `
-                <div class="salvage-card" onclick="selectSalvage(${index})">
-                    <div class="component-name">
-                        ${comp.name}
-                        <span class="tier-indicator tier-${comp.tier}">Tier ${comp.tier}</span>
-                    </div>
-                    <div style="margin: 10px 0; color: #888;">${comp.type.toUpperCase()}</div>
-                    <div class="component-stats">
-                        <div class="stat-item">⚔️ Damage: ${comp.damage}</div>
-                        <div class="stat-item">🛡️ Armor: ${comp.armor}</div>
-                        <div class="stat-item">⚖️ Weight: ${comp.weight}</div>
-                        <div class="stat-item">📏 Size: ${comp.size}</div>
-                        <div class="stat-item" style="grid-column: 1 / -1;">
-                            📍 Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
+            // Check if player has SALVAGER trait
+            const hasSalvager = game.currentMech && game.currentMech.traits &&
+                                game.currentMech.traits.some(t => t.name === 'SALVAGER');
+
+            const titleText = hasSalvager ?
+                'Choose TWO components to salvage (SALVAGER trait active!):' :
+                'Choose one component to salvage from the battlefield:';
+
+            document.querySelector('#salvage-screen p').textContent = titleText;
+
+            const optionsHTML = salvageOptions.map((comp, index) => {
+                const damageTypeIcon = comp.damageType === DAMAGE_TYPES.ENERGY ? '⚛️' :
+                                       comp.damageType === DAMAGE_TYPES.KINETIC ? '🎯' :
+                                       comp.damageType === DAMAGE_TYPES.EXPLOSIVE ? '💣' : '';
+                const abilities = comp.abilities || [];
+                const abilityText = abilities.map(abilityKey => {
+                    const ability = ABILITIES[abilityKey];
+                    return ability ? `<div style="font-size: 10px; color: #00ff88; margin-top: 3px;">✨ ${ability.name}</div>` : '';
+                }).join('');
+
+                return `
+                    <div class="salvage-card" onclick="selectSalvage(${index})">
+                        <div class="component-name">
+                            ${damageTypeIcon} ${comp.name}
+                            <span class="tier-indicator tier-${comp.tier}">Tier ${comp.tier}</span>
                         </div>
+                        <div style="margin: 10px 0; color: #888;">${comp.type.toUpperCase()}</div>
+                        <div class="component-stats">
+                            <div class="stat-item">⚔️ Damage: ${comp.damage}</div>
+                            <div class="stat-item">🛡️ Armor: ${comp.armor}</div>
+                            <div class="stat-item">⚖️ Weight: ${comp.weight}</div>
+                            <div class="stat-item">📏 Size: ${comp.size}</div>
+                            <div class="stat-item" style="grid-column: 1 / -1;">
+                                📍 Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
+                            </div>
+                        </div>
+                        ${abilityText}
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             document.getElementById('salvage-options').innerHTML = optionsHTML;
 
             // Store options temporarily
             window.currentSalvageOptions = salvageOptions;
+            window.salvageSelections = [];
+            window.salvageLimit = hasSalvager ? 2 : 1;
 
             showScreen('salvage-screen');
         }
 
         function selectSalvage(index) {
             const component = window.currentSalvageOptions[index];
-            game.inventory.push(component);
-            game.save();
-            updateHeader();
-            renderLoadoutScreen();
-            showScreen('loadout-screen');
-        }
+            window.salvageSelections = window.salvageSelections || [];
 
-        function showMechSelectionScreen() {
-            const currentRound = game.round - 1;
-            const tierLevel = Math.floor(currentRound / 5) + 1;
-            const mechOptions = generateRandomMechs(3, tierLevel);
-
-            // Show current mech components for salvage
-            const currentComponents = Object.values(game.currentMech.loadout).filter(c => c);
-
-            if (currentComponents.length > 0) {
-                const salvageHTML = `
-                    <div style="background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px; border: 2px solid #ff8844;">
-                        <h3>Salvage ONE component from your current mech:</h3>
-                        <div class="salvage-options" style="margin-top: 15px;">
-                            ${currentComponents.map((comp, index) => `
-                                <div class="salvage-card" onclick="selectMechSalvage(${index})">
-                                    <div class="component-name">
-                                        ${comp.name}
-                                        <span class="tier-indicator tier-${comp.tier}">T${comp.tier}</span>
-                                    </div>
-                                    <div class="component-stats">
-                                        <div class="stat-item">⚔️ ${comp.damage}</div>
-                                        <div class="stat-item">🛡️ ${comp.armor}</div>
-                                        <div class="stat-item">⚖️ ${comp.weight}</div>
-                                        <div class="stat-item">📏 ${comp.size}</div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-                document.getElementById('current-mech-salvage').innerHTML = salvageHTML;
-                window.currentMechComponents = currentComponents;
+            if (window.salvageSelections.includes(index)) {
+                // Already selected, deselect
+                window.salvageSelections = window.salvageSelections.filter(i => i !== index);
             } else {
-                document.getElementById('current-mech-salvage').innerHTML =
-                    '<p class="warning">Your current mech has no components to salvage.</p>';
-                window.currentMechComponents = [];
+                window.salvageSelections.push(index);
             }
 
-            // Show new mech options
-            const mechHTML = mechOptions.map((mech, index) => `
-                <div class="mech-card" onclick="selectNewMech(${index})">
-                    <div style="font-size: 48px; text-align: center;">${mech.visual}</div>
-                    <div class="component-name">${mech.name}</div>
-                    <div style="margin: 10px 0; color: #888;">
-                        ${mech.class} Class - Tier ${mech.tier}
+            // Visual feedback - highlight selected
+            document.querySelectorAll('#salvage-options .salvage-card').forEach((card, i) => {
+                if (window.salvageSelections.includes(i)) {
+                    card.style.borderColor = '#00ff88';
+                    card.style.transform = 'scale(0.95)';
+                } else {
+                    card.style.borderColor = '#444';
+                    card.style.transform = 'scale(1)';
+                }
+            });
+
+            // If reached limit, auto-confirm
+            if (window.salvageSelections.length >= window.salvageLimit) {
+                setTimeout(() => {
+                    window.salvageSelections.forEach(idx => {
+                        game.inventory.push(window.currentSalvageOptions[idx]);
+                    });
+                    game.save();
+                    updateHeader();
+                    renderLoadoutScreen();
+                    showScreen('loadout-screen');
+                }, 300);
+            }
+        }
+
+        function showTraitSelectionScreen() {
+            // Generate 3 random trait options
+            const allTraits = Object.values(MECH_TRAITS);
+            const availableTraits = allTraits.filter(trait =>
+                !game.currentMech.traits.some(t => t.name === trait.name)
+            );
+
+            const traitOptions = [];
+            for (let i = 0; i < 3 && availableTraits.length > 0; i++) {
+                const randomIndex = Math.floor(Math.random() * availableTraits.length);
+                traitOptions.push(availableTraits.splice(randomIndex, 1)[0]);
+            }
+
+            const traitsHTML = traitOptions.map((trait, index) => `
+                <div class="mech-card" onclick="selectTrait(${index})" style="border-color: #ffaa00;">
+                    <div style="font-size: 48px; text-align: center; margin: 15px 0;">${trait.icon}</div>
+                    <div class="component-name" style="color: #ffaa00;">
+                        ${trait.name}
+                        <span class="tier-indicator tier-${trait.tier}">T${trait.tier}</span>
                     </div>
-                    <div class="component-stats">
-                        <div class="stat-item">❤️ HP: ${mech.maxHP}</div>
-                        <div class="stat-item">🛡️ Armor: ${mech.baseArmor}</div>
-                        <div class="stat-item">⭐ Tier Cap: ${mech.tierCapacity}</div>
-                        <div class="stat-item">⚖️ Weight Cap: ${mech.weightCapacity}</div>
+                    <div style="margin: 15px 0; color: #ccc; font-size: 13px; line-height: 1.5;">
+                        ${trait.desc}
+                    </div>
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(255,170,0,0.2); border-radius: 5px; font-size: 11px;">
+                        This trait is permanent and will transform your playstyle!
                     </div>
                 </div>
             `).join('');
 
-            document.getElementById('mech-options').innerHTML = mechHTML;
-            window.currentMechOptions = mechOptions;
-            window.mechSalvageSelected = false;
+            document.getElementById('trait-options').innerHTML = traitsHTML;
+            window.currentTraitOptions = traitOptions;
 
-            showScreen('mech-select-screen');
+            showScreen('trait-select-screen');
         }
 
-        function selectMechSalvage(index) {
-            const component = window.currentMechComponents[index];
-            window.selectedMechSalvage = component;
-            window.mechSalvageSelected = true;
+        function selectTrait(index) {
+            const trait = window.currentTraitOptions[index];
 
-            // Highlight selected
-            document.querySelectorAll('#current-mech-salvage .salvage-card').forEach((card, i) => {
-                card.style.borderColor = i === index ? '#00ff88' : '#444';
-            });
-        }
-
-        function selectNewMech(index) {
-            if (window.currentMechComponents.length > 0 && !window.mechSalvageSelected) {
-                alert('Please select one component to salvage from your current mech first!');
-                return;
+            if (!game.currentMech.traits) {
+                game.currentMech.traits = [];
             }
 
-            const newMech = window.currentMechOptions[index];
-
-            // Add salvaged component to inventory
-            if (window.selectedMechSalvage) {
-                game.inventory.push(window.selectedMechSalvage);
-            }
-
-            // Set new mech
-            game.currentMech = newMech;
+            game.currentMech.traits.push(trait);
             game.save();
+
+            alert(`${trait.icon} Trait Acquired: ${trait.name}!\n\n${trait.desc}`);
 
             updateHeader();
             renderLoadoutScreen();

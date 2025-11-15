@@ -101,6 +101,78 @@
             border-color: #ff4444;
         }
 
+        .abilities-display {
+            margin-top: 12px;
+            padding: 8px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .abilities-display h4 {
+            font-size: 11px;
+            color: #00ff88;
+            margin-bottom: 6px;
+        }
+
+        .ability-tag {
+            display: inline-block;
+            padding: 3px 6px;
+            margin: 2px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            border-radius: 3px;
+            font-size: 9px;
+            color: #00ff88;
+        }
+
+        .trait-tag {
+            display: inline-block;
+            padding: 3px 6px;
+            margin: 2px;
+            background: rgba(255, 170, 0, 0.2);
+            border: 1px solid #ffaa00;
+            border-radius: 3px;
+            font-size: 9px;
+            color: #ffaa00;
+        }
+
+        .status-effects {
+            margin-top: 8px;
+            padding: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            font-size: 10px;
+            min-height: 24px;
+        }
+
+        .status-effect {
+            display: inline-block;
+            padding: 2px 5px;
+            margin: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            font-size: 9px;
+        }
+
+        .status-shield {
+            background: rgba(0, 204, 255, 0.3);
+            border: 1px solid #00ccff;
+            color: #00ccff;
+        }
+
+        .status-burn {
+            background: rgba(255, 136, 0, 0.3);
+            border: 1px solid #ff8800;
+            color: #ff8800;
+        }
+
+        .status-bleed {
+            background: rgba(255, 0, 100, 0.3);
+            border: 1px solid #ff0064;
+            color: #ff0064;
+        }
+
         .mech-display {
             text-align: center;
         }
@@ -163,6 +235,11 @@
 
         .log-entry.monster {
             border-left-color: #ff4444;
+        }
+
+        .log-entry.system {
+            border-left-color: #00ccff;
+            color: #00ccff;
         }
 
         @keyframes slideIn {
@@ -558,7 +635,11 @@
                                 <span id="player-health-text">100/100</span>
                             </div>
                         </div>
+                        <div class="status-effects" id="player-status-effects">
+                            <span style="color: #666; font-size: 9px;">No active effects</span>
+                        </div>
                         <div id="player-stats" style="font-size: 12px; margin-top: 10px;"></div>
+                        <div class="abilities-display" id="player-abilities-display" style="display: none;"></div>
                     </div>
                 </div>
 
@@ -571,6 +652,9 @@
                             <div class="health-fill" id="monster-health">
                                 <span id="monster-health-text">100/100</span>
                             </div>
+                        </div>
+                        <div class="status-effects" id="monster-status-effects">
+                            <span style="color: #666; font-size: 9px;">No active effects</span>
                         </div>
                         <div id="monster-stats" style="font-size: 12px; margin-top: 10px;"></div>
                     </div>
@@ -1158,7 +1242,7 @@
                 // Shield Generator
                 if (this.playerAbilities.includes('SHIELD_GEN')) {
                     this.playerShield = 50;
-                    this.addLog('🛡️ Energy Shield activated! (50 shield)', 'player');
+                    this.addLog('🛡️ ENERGY SHIELD: Activated with 50 shield HP', 'player');
                 }
             }
 
@@ -1186,7 +1270,7 @@
                         const bonus = Math.floor(baseDamage * (hpLostPercent * 0.03));
                         if (bonus > 0) {
                             baseDamage += bonus;
-                            this.addLog(`💢 Berserker bonus: +${bonus} dmg`, 'player');
+                            this.addLog(`💢 BERSERKER TRAIT: +${bonus} damage (+3% per 1% HP lost)`, 'player');
                         }
                     }
 
@@ -1198,14 +1282,17 @@
                     if (this.hasAbility('BERSERKER')) {
                         const hpLostPercent = ((this.playerMech.maxHP - this.playerMech.currentHP) / this.playerMech.maxHP) * 100;
                         const bonus = Math.floor(baseDamage * (hpLostPercent * 0.01));
-                        baseDamage += bonus;
+                        if (bonus > 0) {
+                            baseDamage += bonus;
+                            this.addLog(`💢 Berserker Chip: +${bonus} damage (+1% per 1% HP lost)`, 'player');
+                        }
                     }
 
                     if (this.hasAbility('OVERCHARGE')) {
                         baseDamage *= 2;
                         const selfDamage = Math.floor(this.playerMech.maxHP * 0.1);
                         this.playerMech.currentHP -= selfDamage;
-                        this.addLog(`⚡ Overcharge! +100% dmg, -${selfDamage} HP`, 'player');
+                        this.addLog(`⚡ OVERCHARGE: Double damage! Cost: ${selfDamage} HP`, 'player');
                     }
                 }
 
@@ -1225,6 +1312,7 @@
                 let armorToUse = currentArmor;
                 if (isPlayer && this.hasAbility('ARMOR_PIERCING')) {
                     armorToUse *= 0.5;
+                    this.addLog(`🎯 ARMOR PIERCING: Ignoring 50% of enemy armor`, 'player');
                 }
 
                 const damageReduction = Math.min(armorToUse * 0.5, baseDamage * 0.7);
@@ -1233,7 +1321,7 @@
                 // Executioner
                 if (isPlayer && this.hasAbility('EXECUTIONER') && this.monster.currentHP < this.monster.maxHP * 0.3) {
                     finalDamage *= 2;
-                    this.addLog(`🎯 Executioner! Double damage on low HP target!`, 'player');
+                    this.addLog(`🎯 EXECUTIONER: Target below 30% HP - DOUBLE DAMAGE!`, 'player');
                 }
 
                 return { damage: finalDamage, isCrit };
@@ -1269,14 +1357,14 @@
                 if (this.hasAbility('REGENERATION')) {
                     const heal = 5;
                     this.playerMech.currentHP = Math.min(this.playerMech.maxHP, this.playerMech.currentHP + heal);
-                    this.addLog(`💚 Regenerated ${heal} HP`, 'player');
+                    this.addLog(`💚 REGENERATION: Healed ${heal} HP`, 'player');
                 }
 
                 // Regenerator trait
                 if (this.hasTrait('REGENERATOR')) {
                     const heal = Math.floor(this.playerMech.maxHP * 0.08);
                     this.playerMech.currentHP = Math.min(this.playerMech.maxHP, this.playerMech.currentHP + heal);
-                    this.addLog(`💚 Regenerator: +${heal} HP`, 'player');
+                    this.addLog(`💚 REGENERATOR TRAIT: Restored ${heal} HP (8% of max HP)`, 'player');
                 }
             }
 
@@ -1289,26 +1377,27 @@
                 if (isPlayer) {
                     // Apply to monster
                     this.monster.currentHP -= actualDamage;
-                    const critText = isCrit ? ' 💥 CRIT!' : '';
-                    this.addLog(`⚔️ Your mech deals ${actualDamage} damage!${critText} (${Math.max(0, this.monster.currentHP)}/${this.monster.maxHP} HP)`, 'player');
+                    const critText = isCrit ? ' 💥 CRITICAL HIT!' : '';
+                    this.addLog(`⚔️ Your mech deals ${actualDamage} damage!${critText} (Enemy: ${Math.max(0, this.monster.currentHP)}/${this.monster.maxHP} HP)`, 'player');
 
                     // Vampiric healing
                     if (this.hasAbility('VAMPIRIC') || this.hasTrait('VAMPIRE')) {
                         const healPercent = this.hasTrait('VAMPIRE') ? 0.4 : 0.25;
                         const heal = Math.floor(actualDamage * healPercent);
                         this.playerMech.currentHP = Math.min(this.playerMech.maxHP, this.playerMech.currentHP + heal);
-                        this.addLog(`🩸 Vampiric: healed ${heal} HP`, 'player');
+                        const source = this.hasTrait('VAMPIRE') ? '🩸 VAMPIRE TRAIT' : '🩸 Vampiric';
+                        this.addLog(`${source}: Healed ${heal} HP from damage dealt`, 'player');
                     }
 
                     // Apply DoTs
                     if (this.hasAbility('BURN')) {
                         this.monsterDots.push({ type: 'burn', damage: 5, duration: 3 });
-                        this.addLog(`🔥 Applied Burn effect!`, 'player');
+                        this.addLog(`🔥 PLASMA BURN: Inflicted burn (5 dmg/turn for 3 turns)`, 'player');
                     }
 
                     if (isCrit && this.hasAbility('BLEED')) {
                         this.monsterDots.push({ type: 'bleed', damage: 3, duration: 5 });
-                        this.addLog(`🩸 Critical Bleed applied!`, 'player');
+                        this.addLog(`🩸 HEMORRHAGE: Critical hit causes bleeding (3 dmg/turn for 5 turns)`, 'player');
                     }
                 } else {
                     // Monster attacks player - check shield first
@@ -1334,7 +1423,7 @@
                         if (this.hasAbility('REACTIVE')) {
                             const reflected = Math.floor(actualDamage * 0.25);
                             this.monster.currentHP -= reflected;
-                            this.addLog(`⚡ Reactive Armor: ${reflected} damage reflected!`, 'player');
+                            this.addLog(`⚡ REACTIVE ARMOR: Reflected ${reflected} damage (25% of damage taken)`, 'player');
                         }
                     }
                 }
@@ -1349,7 +1438,7 @@
                 if (this.hasTrait('OVERCHARGED')) {
                     const damage = Math.floor(this.playerMech.maxHP * 0.08);
                     this.playerMech.currentHP -= damage;
-                    this.addLog(`🔥 Overcharged: -${damage} HP`, 'player');
+                    this.addLog(`🔥 OVERCHARGED TRAIT: Losing ${damage} HP (8% max HP per turn)`, 'player');
                 }
 
                 // Apply regeneration
@@ -1620,10 +1709,97 @@
                 `⚔️ Damage: ${game.currentMonster.damage} | 🛡️ Armor: ${game.currentMonster.armor} | ⚡ Speed: ${game.currentMonster.speed}`;
             updateHealthBar('monster', game.currentMonster.currentHP, game.currentMonster.maxHP);
 
+            // Display active abilities and traits
+            displayActiveAbilities();
+
+            // Clear status effects
+            document.getElementById('player-status-effects').innerHTML = '<span style="color: #666; font-size: 9px;">No active effects</span>';
+            document.getElementById('monster-status-effects').innerHTML = '<span style="color: #666; font-size: 9px;">No active effects</span>';
+
             // Clear combat log
             document.getElementById('combat-log').innerHTML = '';
 
             showScreen('battle-screen');
+        }
+
+        function displayActiveAbilities() {
+            const abilitiesDiv = document.getElementById('player-abilities-display');
+
+            // Collect all abilities
+            const abilities = [];
+            Object.values(game.currentMech.loadout || {}).forEach(comp => {
+                if (comp && comp.abilities) {
+                    comp.abilities.forEach(abilityKey => {
+                        if (ABILITIES[abilityKey] && !abilities.includes(abilityKey)) {
+                            abilities.push(abilityKey);
+                        }
+                    });
+                }
+            });
+
+            // Collect traits
+            const traits = game.currentMech.traits || [];
+
+            if (abilities.length === 0 && traits.length === 0) {
+                abilitiesDiv.style.display = 'none';
+                return;
+            }
+
+            let html = '<h4>⚡ ACTIVE EFFECTS</h4>';
+
+            if (traits.length > 0) {
+                html += '<div style="margin-bottom: 5px;">';
+                traits.forEach(trait => {
+                    html += `<span class="trait-tag" title="${trait.desc}">${trait.icon} ${trait.name}</span>`;
+                });
+                html += '</div>';
+            }
+
+            if (abilities.length > 0) {
+                html += '<div>';
+                abilities.forEach(abilityKey => {
+                    const ability = ABILITIES[abilityKey];
+                    html += `<span class="ability-tag" title="${ability.desc}">✨ ${ability.name}</span>`;
+                });
+                html += '</div>';
+            }
+
+            abilitiesDiv.innerHTML = html;
+            abilitiesDiv.style.display = 'block';
+        }
+
+        function updateStatusEffects(playerShield, playerDots, monsterDots) {
+            // Update player status effects
+            const playerStatusDiv = document.getElementById('player-status-effects');
+            let playerEffects = [];
+
+            if (playerShield > 0) {
+                playerEffects.push(`<span class="status-effect status-shield">🛡️ Shield: ${playerShield}</span>`);
+            }
+
+            if (playerEffects.length === 0) {
+                playerStatusDiv.innerHTML = '<span style="color: #666; font-size: 9px;">No active effects</span>';
+            } else {
+                playerStatusDiv.innerHTML = playerEffects.join('');
+            }
+
+            // Update monster status effects
+            const monsterStatusDiv = document.getElementById('monster-status-effects');
+            let monsterEffects = [];
+
+            monsterDots.forEach(dot => {
+                if (dot.type === 'burn') {
+                    monsterEffects.push(`<span class="status-effect status-burn">🔥 Burn: ${dot.damage}x${dot.duration}</span>`);
+                } else if (dot.type === 'bleed') {
+                    monsterEffects.push(`<span class="status-effect status-bleed">🩸 Bleed: ${dot.damage}x${dot.duration}</span>`);
+                }
+            });
+
+            if (monsterEffects.length === 0) {
+                monsterStatusDiv.innerHTML = '<span style="color: #666; font-size: 9px;">No active effects</span>';
+            } else {
+                monsterStatusDiv.innerHTML = monsterEffects.join('');
+            }
         }
 
         function updateHealthBar(actor, current, max) {
@@ -1653,6 +1829,9 @@
 
             addCombatLog('⚔️ BATTLE START! ⚔️', 'system');
 
+            // Show initial status effects (e.g., shield)
+            updateStatusEffects(battle.playerShield, battle.playerDots, battle.monsterDots);
+
             let result = 'continue';
 
             while (result === 'continue') {
@@ -1664,6 +1843,9 @@
                 // Update displays
                 updateHealthBar('player', state.playerMech.currentHP, state.playerMech.maxHP);
                 updateHealthBar('monster', state.monster.currentHP, state.monster.maxHP);
+
+                // Update status effects display
+                updateStatusEffects(state.playerShield, battle.playerDots, battle.monsterDots);
 
                 // Add latest log entries
                 if (battle.log.length > 0) {
@@ -1906,7 +2088,7 @@
             panel.innerHTML = `
                 <h4 style="color: #ff00ff;">DEBUG INFO</h4>
                 <div style="margin-bottom: 10px; padding: 5px; background: rgba(255,0,255,0.2); border-radius: 4px; font-size: 10px;">
-                    <strong>Version:</strong> 2.0.0
+                    <strong>Version:</strong> 2.1.0
                 </div>
                 <div style="margin: 10px 0;">
                     <strong>Round:</strong> ${game.round}<br>

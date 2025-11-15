@@ -919,7 +919,7 @@
                 this.victories = 0;
                 this.currentMech = null;
                 this.inventory = [];
-                this.save();
+                localStorage.removeItem('mechAutobattler'); // Clear saved game
             }
         }
 
@@ -1905,6 +1905,9 @@
 
             panel.innerHTML = `
                 <h4 style="color: #ff00ff;">DEBUG INFO</h4>
+                <div style="margin-bottom: 10px; padding: 5px; background: rgba(255,0,255,0.2); border-radius: 4px; font-size: 10px;">
+                    <strong>Version:</strong> 2.0.0
+                </div>
                 <div style="margin: 10px 0;">
                     <strong>Round:</strong> ${game.round}<br>
                     <strong>Victories:</strong> ${game.victories}<br>

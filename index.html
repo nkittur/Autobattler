@@ -682,6 +682,16 @@
             <div class="salvage-options" id="trait-options"></div>
         </div>
 
+        <!-- Relic Selection Screen -->
+        <div id="relic-select-screen" class="screen">
+            <h2>✨ RELIC DISCOVERED ✨</h2>
+            <p style="margin: 15px 0;" id="relic-screen-desc">Choose a powerful relic to add to your collection:</p>
+            <div style="margin-bottom: 15px; padding: 10px; background: rgba(255, 170, 0, 0.1); border: 2px solid #ffaa00; border-radius: 8px; font-size: 13px;">
+                <strong>💡 TIP:</strong> Relics are <strong>PERMANENT</strong> and <strong>STACK</strong> with each other! Build synergies for exponential power.
+            </div>
+            <div class="salvage-options" id="relic-options"></div>
+        </div>
+
         <!-- Loadout Screen -->
         <div id="loadout-screen" class="screen active">
             <h2>⚙️ LOADOUT MANAGEMENT</h2>
@@ -1465,8 +1475,18 @@
             applyStartOfBattleAbilities() {
                 // Shield Generator
                 if (this.playerAbilities.includes('SHIELD_GEN')) {
-                    this.playerShield = 50;
-                    this.addLog('🛡️ ENERGY SHIELD: Activated with 50 shield HP', 'player');
+                    let shieldAmount = 50;
+
+                    // Perfect Aegis relic - 3x shields
+                    if (game.relics && game.relics.includes('PERFECT_AEGIS')) {
+                        const aegisCount = game.relics.filter(r => r === 'PERFECT_AEGIS').length;
+                        const multiplier = Math.pow(3, aegisCount);
+                        shieldAmount = Math.floor(shieldAmount * multiplier);
+                        this.addLog(`🛡️ PERFECT AEGIS: Shield multiplied ${multiplier}x!`, 'player');
+                    }
+
+                    this.playerShield = shieldAmount;
+                    this.addLog(`🛡️ ENERGY SHIELD: Activated with ${shieldAmount} shield HP`, 'player');
                 }
             }
 
@@ -1512,6 +1532,13 @@
                 }
 
                 if (isPlayer) {
+                    // Last Stand relic - +200% damage if <30% HP, +50 armor
+                    const hpPercent = (this.playerMech.currentHP / this.playerMech.maxHP) * 100;
+                    if (game.relics && game.relics.includes('LAST_STAND') && hpPercent < 30) {
+                        baseDamage *= 3; // +200% = 3x total
+                        this.addLog(`⏱️ LAST STAND: Below 30% HP - +200% damage!`, 'player');
+                    }
+
                     // Apply trait bonuses
                     if (this.hasTrait('BERSERKER')) {
                         const hpLostPercent = ((this.playerMech.maxHP - this.playerMech.currentHP) / this.playerMech.maxHP) * 100;
@@ -1542,16 +1569,71 @@
                         this.playerMech.currentHP -= selfDamage;
                         this.addLog(`⚡ OVERCHARGE: Double damage! Cost: ${selfDamage} HP`, 'player');
                     }
+
+                    // Apply damage type scaling relics
+                    const loadoutComponents = Object.values(this.playerMech.loadout).filter(c => c);
+                    const damageTypes = loadoutComponents.map(c => c.damageType);
+
+                    // Count Energy damage and apply Energy Conduit
+                    const energyCount = damageTypes.filter(t => t === DAMAGE_TYPES.ENERGY).length;
+                    if (energyCount > 0 && game.relics) {
+                        const conduitCount = game.relics.filter(r => r === 'ENERGY_CONDUIT').length;
+                        if (conduitCount > 0) {
+                            const multiplier = 1 + (0.5 * conduitCount);
+                            const oldDmg = baseDamage;
+                            baseDamage = Math.floor(baseDamage * multiplier);
+                            this.addLog(`🔋 ENERGY CONDUIT x${conduitCount}: ${oldDmg} → ${baseDamage} damage`, 'player');
+                        }
+                    }
+
+                    // Count Kinetic damage and apply Kinetic Amplifier
+                    const kineticCount = damageTypes.filter(t => t === DAMAGE_TYPES.KINETIC).length;
+                    if (kineticCount > 0 && game.relics) {
+                        const amplifierCount = game.relics.filter(r => r === 'KINETIC_AMPLIFIER').length;
+                        if (amplifierCount > 0) {
+                            const multiplier = 1 + (0.5 * amplifierCount);
+                            const oldDmg = baseDamage;
+                            baseDamage = Math.floor(baseDamage * multiplier);
+                            this.addLog(`🎯 KINETIC AMPLIFIER x${amplifierCount}: ${oldDmg} → ${baseDamage} damage`, 'player');
+                        }
+                    }
+
+                    // Count Explosive damage and apply Explosive Catalyst
+                    const explosiveCount = damageTypes.filter(t => t === DAMAGE_TYPES.EXPLOSIVE).length;
+                    if (explosiveCount > 0 && game.relics) {
+                        const catalystCount = game.relics.filter(r => r === 'EXPLOSIVE_CATALYST').length;
+                        if (catalystCount > 0) {
+                            const multiplier = 1 + (0.5 * catalystCount);
+                            const oldDmg = baseDamage;
+                            baseDamage = Math.floor(baseDamage * multiplier);
+                            this.addLog(`💣 EXPLOSIVE CATALYST x${catalystCount}: ${oldDmg} → ${baseDamage} damage`, 'player');
+                        }
+                    }
+
+                    // Glass Cannon Core - 2x all damage (stacks multiplicatively)
+                    if (game.relics && game.relics.includes('GLASS_CANNON_CORE')) {
+                        const glassCount = game.relics.filter(r => r === 'GLASS_CANNON_CORE').length;
+                        const multiplier = Math.pow(2, glassCount);
+                        baseDamage = Math.floor(baseDamage * multiplier);
+                        this.addLog(`💎 GLASS CANNON CORE: ${multiplier}x damage multiplier!`, 'player');
+                    }
                 }
 
                 // Critical strike
                 let isCrit = false;
-                if (isPlayer && (this.hasAbility('CRITICAL_STRIKE') || this.hasTrait('CRITICAL_CORE'))) {
-                    const critChance = this.hasTrait('CRITICAL_CORE') ? 0.30 : 0.25;
-                    const critMultiplier = this.hasTrait('CRITICAL_CORE') ? 3 : 2;
+                if (isPlayer && (this.hasAbility('CRITICAL_STRIKE') || this.hasTrait('CRITICAL_CORE') || (game.relics && game.relics.includes('CRITICAL_MASS')))) {
+                    let critChance = this.hasTrait('CRITICAL_CORE') ? 0.30 : (this.hasAbility('CRITICAL_STRIKE') ? 0.25 : 0);
+                    let critMultiplier = this.hasTrait('CRITICAL_CORE') ? 3 : 2;
+
+                    // Critical Mass relic - +10% crit chance, +50% crit damage
+                    if (game.relics && game.relics.includes('CRITICAL_MASS')) {
+                        const massCount = game.relics.filter(r => r === 'CRITICAL_MASS').length;
+                        critChance += 0.10 * massCount;
+                        critMultiplier += 0.5 * massCount;
+                    }
 
                     if (Math.random() < critChance) {
-                        baseDamage *= critMultiplier;
+                        baseDamage = Math.floor(baseDamage * critMultiplier);
                         isCrit = true;
                     }
                 } else if (!isPlayer && this.monster.special === 'CRITICAL') {
@@ -1567,6 +1649,25 @@
                 if (isPlayer && this.hasAbility('ARMOR_PIERCING')) {
                     armorToUse *= 0.5;
                     this.addLog(`🎯 ARMOR PIERCING: Ignoring 50% of enemy armor`, 'player');
+                }
+
+                // Kinetic Amplifier - ignore 25% armor per copy
+                if (isPlayer && game.relics) {
+                    const amplifierCount = game.relics.filter(r => r === 'KINETIC_AMPLIFIER').length;
+                    if (amplifierCount > 0) {
+                        const ignorePercent = 0.25 * amplifierCount;
+                        armorToUse = Math.floor(armorToUse * (1 - ignorePercent));
+                        this.addLog(`🎯 KINETIC AMPLIFIER: Ignoring ${Math.floor(ignorePercent * 100)}% enemy armor`, 'player');
+                    }
+                }
+
+                // Add Last Stand +50 armor if <30% HP
+                let effectiveArmorBonus = 0;
+                if (isPlayer && game.relics && game.relics.includes('LAST_STAND')) {
+                    const hpPercent = (this.playerMech.currentHP / this.playerMech.maxHP) * 100;
+                    if (hpPercent < 30) {
+                        effectiveArmorBonus += 50;
+                    }
                 }
 
                 const damageReduction = Math.min(armorToUse * 0.5, baseDamage * 0.7);
@@ -1663,24 +1764,86 @@
                         }
                     }
 
-                    // Vampiric healing
-                    if (this.hasAbility('VAMPIRIC') || this.hasTrait('VAMPIRE')) {
-                        const healPercent = this.hasTrait('VAMPIRE') ? 0.4 : 0.25;
-                        const heal = Math.floor(actualDamage * healPercent);
-                        this.playerMech.currentHP = Math.min(this.playerMech.maxHP, this.playerMech.currentHP + heal);
-                        const source = this.hasTrait('VAMPIRE') ? '🩸 VAMPIRE TRAIT' : '🩸 Vampiric';
-                        this.addLog(`${source}: Healed ${heal} HP from damage dealt`, 'player');
+                    // Vampiric healing - now stacks from multiple sources!
+                    let totalHealPercent = 0;
+                    let healSources = [];
+
+                    if (this.hasAbility('VAMPIRIC')) {
+                        totalHealPercent += 0.25;
+                        healSources.push('Vampiric');
+                    }
+                    if (this.hasTrait('VAMPIRE')) {
+                        totalHealPercent += 0.4;
+                        healSources.push('VAMPIRE TRAIT');
+                    }
+                    if (game.relics && game.relics.includes('VAMPIRIC_ASCENSION')) {
+                        const vampCount = game.relics.filter(r => r === 'VAMPIRIC_ASCENSION').length;
+                        totalHealPercent += 0.25 * vampCount;
+                        healSources.push(`VAMPIRIC ASCENSION x${vampCount}`);
+                    }
+                    if (game.relics && game.relics.includes('BLOOD_PACT')) {
+                        const pactCount = game.relics.filter(r => r === 'BLOOD_PACT').length;
+                        totalHealPercent += 0.5 * pactCount;
+                        healSources.push(`BLOOD PACT x${pactCount}`);
                     }
 
-                    // Apply DoTs
+                    if (totalHealPercent > 0) {
+                        const heal = Math.floor(actualDamage * totalHealPercent);
+                        this.playerMech.currentHP = Math.min(this.playerMech.maxHP, this.playerMech.currentHP + heal);
+                        this.addLog(`🩸 ${healSources.join(' + ')}: Healed ${heal} HP (${Math.floor(totalHealPercent * 100)}% of damage)`, 'player');
+                    }
+
+                    // Apply DoTs with Contagion and ALL_IN support
                     if (this.hasAbility('BURN')) {
-                        this.monsterDots.push({ type: 'burn', damage: 5, duration: 3 });
-                        this.addLog(`🔥 PLASMA BURN: Inflicted burn (5 dmg/turn for 3 turns)`, 'player');
+                        let burnDamage = 5;
+                        let burnDuration = 3;
+                        let triggers = 1;
+
+                        // ALL_IN relic - abilities trigger twice
+                        if (game.relics && game.relics.includes('ALL_IN')) {
+                            triggers = 2;
+                        }
+
+                        // Contagion relic - 2x DoT damage and duration
+                        if (game.relics && game.relics.includes('CONTAGION')) {
+                            const contagionCount = game.relics.filter(r => r === 'CONTAGION').length;
+                            const multiplier = Math.pow(2, contagionCount);
+                            burnDamage = Math.floor(burnDamage * multiplier);
+                            burnDuration = Math.floor(burnDuration * multiplier);
+                        }
+
+                        for (let i = 0; i < triggers; i++) {
+                            this.monsterDots.push({ type: 'burn', damage: burnDamage, duration: burnDuration });
+                        }
+
+                        const triggerText = triggers > 1 ? ` x${triggers} (ALL-IN!)` : '';
+                        this.addLog(`🔥 PLASMA BURN${triggerText}: ${burnDamage} dmg/turn for ${burnDuration} turns`, 'player');
                     }
 
                     if (isCrit && this.hasAbility('BLEED')) {
-                        this.monsterDots.push({ type: 'bleed', damage: 3, duration: 5 });
-                        this.addLog(`🩸 HEMORRHAGE: Critical hit causes bleeding (3 dmg/turn for 5 turns)`, 'player');
+                        let bleedDamage = 3;
+                        let bleedDuration = 5;
+                        let triggers = 1;
+
+                        // ALL_IN relic
+                        if (game.relics && game.relics.includes('ALL_IN')) {
+                            triggers = 2;
+                        }
+
+                        // Contagion relic
+                        if (game.relics && game.relics.includes('CONTAGION')) {
+                            const contagionCount = game.relics.filter(r => r === 'CONTAGION').length;
+                            const multiplier = Math.pow(2, contagionCount);
+                            bleedDamage = Math.floor(bleedDamage * multiplier);
+                            bleedDuration = Math.floor(bleedDuration * multiplier);
+                        }
+
+                        for (let i = 0; i < triggers; i++) {
+                            this.monsterDots.push({ type: 'bleed', damage: bleedDamage, duration: bleedDuration });
+                        }
+
+                        const triggerText = triggers > 1 ? ` x${triggers} (ALL-IN!)` : '';
+                        this.addLog(`🩸 HEMORRHAGE${triggerText}: ${bleedDamage} dmg/turn for ${bleedDuration} turns`, 'player');
                     }
                 } else {
                     // Monster attacks player
@@ -2180,13 +2343,34 @@
 
             if (result === 'victory') {
                 game.victories++;
+
+                // Apply Hunter's Mark relic - permanent damage per kill
+                if (game.relics && game.relics.includes('HUNTERS_MARK')) {
+                    const markCount = game.relics.filter(r => r === 'HUNTERS_MARK').length;
+                    const bonusDmg = 3 * markCount;
+                    game.permanentDamageBonus += bonusDmg;
+                    addCombatLog(`💀 HUNTER'S MARK: +${bonusDmg} permanent damage (Total: +${game.permanentDamageBonus})`, 'player');
+                }
+
                 game.round++;
                 game.save();
 
-                // Check if round 5, 10, 15, etc. - Show trait selection
-                if ((game.round - 1) % 5 === 0 && game.round > 1) {
+                const previousRound = game.round - 1;
+                const isBossRound = previousRound % 5 === 0 && previousRound > 0;
+                const isRelicRound = previousRound % 3 === 0 && previousRound > 0 && !isBossRound;
+
+                // Boss rounds: Trait + Relic (boss reward)
+                if (isBossRound) {
+                    // Store that we need to show relic after trait
+                    window.showRelicAfterTrait = true;
                     showTraitSelectionScreen();
-                } else {
+                }
+                // Relic rounds (every 3, but not bosses): Relic only
+                else if (isRelicRound) {
+                    showRelicSelectionScreen(false);
+                }
+                // Normal rounds: Salvage
+                else {
                     showSalvageScreen();
                 }
             } else {
@@ -2206,12 +2390,18 @@
             const tierLevel = Math.floor(game.round / 5) + 1;
             const salvageOptions = generateRandomComponents(3, tierLevel, tierLevel + 1);
 
-            // Check if player has SALVAGER trait
-            const hasSalvager = game.currentMech && game.currentMech.traits &&
-                                game.currentMech.traits.some(t => t.name === 'SALVAGER');
+            // Check if player has SALVAGER trait or SCAVENGER relic
+            const hasSalvagerTrait = game.currentMech && game.currentMech.traits &&
+                                     game.currentMech.traits.some(t => t.name === 'SALVAGER');
+            const hasScavengerRelic = game.relics && game.relics.includes('SCAVENGER');
+            const hasSalvager = hasSalvagerTrait || hasScavengerRelic;
 
             const titleText = hasSalvager ?
-                'Choose TWO components to salvage (SALVAGER trait active!):' :
+                (hasScavengerRelic && hasSalvagerTrait ?
+                    'Choose TWO components to salvage (SCAVENGER relic + SALVAGER trait active!):' :
+                    hasScavengerRelic ?
+                        'Choose TWO components to salvage (SCAVENGER relic active!):' :
+                        'Choose TWO components to salvage (SALVAGER trait active!):') :
                 'Choose one component to salvage from the battlefield:';
 
             document.querySelector('#salvage-screen p').textContent = titleText;
@@ -2288,10 +2478,16 @@
                     // Check if inventory is full
                     const selectedComponents = window.salvageSelections.map(idx => window.currentSalvageOptions[idx]);
 
-                    if (game.inventory.length + selectedComponents.length > game.maxInventorySize) {
+                    // Calculate actual max inventory (including SCAVENGER relic bonus)
+                    let actualMaxInventory = game.maxInventorySize;
+                    if (game.relics && game.relics.includes('SCAVENGER')) {
+                        actualMaxInventory += 3;
+                    }
+
+                    if (game.inventory.length + selectedComponents.length > actualMaxInventory) {
                         // Inventory would overflow - need to drop items
-                        const overflow = (game.inventory.length + selectedComponents.length) - game.maxInventorySize;
-                        showInventoryManagementScreen(selectedComponents, overflow);
+                        const overflow = (game.inventory.length + selectedComponents.length) - actualMaxInventory;
+                        showInventoryManagementScreen(selectedComponents, overflow, actualMaxInventory);
                     } else {
                         // Inventory has space
                         selectedComponents.forEach(comp => game.inventory.push(comp));
@@ -2304,8 +2500,9 @@
             }
         }
 
-        function showInventoryManagementScreen(newComponents, mustDrop) {
-            const message = `⚠️ INVENTORY FULL! (${game.inventory.length + newComponents.length}/${game.maxInventorySize})\n\nYou must DROP ${mustDrop} component(s) to make room for your salvage.`;
+        function showInventoryManagementScreen(newComponents, mustDrop, maxInventory = null) {
+            const actualMax = maxInventory || game.maxInventorySize;
+            const message = `⚠️ INVENTORY FULL! (${game.inventory.length + newComponents.length}/${actualMax})\n\nYou must DROP ${mustDrop} component(s) to make room for your salvage.`;
 
             if (!confirm(message + '\n\nOK = Choose what to drop\nCancel = Skip salvage')) {
                 // Skip salvage
@@ -2382,6 +2579,105 @@
             game.save();
 
             alert(`${trait.icon} Trait Acquired: ${trait.name}!\n\n${trait.desc}`);
+
+            // Check if we should show relic selection (after boss)
+            if (window.showRelicAfterTrait) {
+                window.showRelicAfterTrait = false;
+                showRelicSelectionScreen(true); // true = boss reward
+            } else {
+                updateHeader();
+                renderLoadoutScreen();
+                showScreen('loadout-screen');
+            }
+        }
+
+        function showRelicSelectionScreen(isBossReward = false) {
+            // Generate 3 random relic options
+            const allRelics = Object.entries(RELICS);
+            const availableRelics = allRelics.filter(([key, relic]) =>
+                // Allow duplicates for stacking (except unique ones like Scavenger)
+                key !== 'SCAVENGER' || !game.relics.includes(key)
+            );
+
+            const relicOptions = [];
+            for (let i = 0; i < 3 && availableRelics.length > 0; i++) {
+                const randomIndex = Math.floor(Math.random() * availableRelics.length);
+                const [key, relic] = availableRelics[randomIndex];
+                relicOptions.push({ key, ...relic });
+
+                // Remove only if it's a unique relic
+                if (key === 'SCAVENGER' || key === 'GLASS_CANNON_CORE') {
+                    availableRelics.splice(randomIndex, 1);
+                } else {
+                    // For stackable relics, just pick a different one next time
+                    availableRelics.splice(randomIndex, 1);
+                }
+            }
+
+            // Update description based on context
+            const descText = isBossReward ?
+                '🏆 BOSS DEFEATED! Choose a powerful relic as your reward:' :
+                'You\'ve survived 3 more rounds! Choose a relic to enhance your build:';
+            document.getElementById('relic-screen-desc').textContent = descText;
+
+            const relicsHTML = relicOptions.map((relic, index) => {
+                const count = game.relics.filter(r => r === relic.key).length;
+                const stackText = count > 0 ? `<div style="color: #ffaa00; font-size: 11px; margin-top: 5px;">⭐ You have ${count} copy! Effects stack!</div>` : '';
+
+                return `
+                    <div class="mech-card" onclick="selectRelic(${index})" style="border-color: #00ccff;">
+                        <div style="font-size: 48px; text-align: center; margin: 15px 0;">${relic.icon}</div>
+                        <div class="component-name" style="color: #00ccff;">
+                            ${relic.name}
+                        </div>
+                        <div style="margin: 15px 0; color: #ccc; font-size: 13px; line-height: 1.5;">
+                            ${relic.desc}
+                        </div>
+                        ${stackText}
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(0,204,255,0.2); border-radius: 5px; font-size: 10px; color: #00ccff;">
+                            ${relic.category === 'damage' ? '⚔️ SCALING' :
+                              relic.category === 'conversion' ? '⚡ CONVERSION' :
+                              relic.category === 'investment' ? '📈 INVESTMENT' :
+                              relic.category === 'gameChanger' ? '💎 GAME CHANGER' : '🎲 BUILD-AROUND'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('relic-options').innerHTML = relicsHTML;
+            window.currentRelicOptions = relicOptions;
+
+            showScreen('relic-select-screen');
+        }
+
+        function selectRelic(index) {
+            const relic = window.currentRelicOptions[index];
+
+            if (!game.relics) {
+                game.relics = [];
+            }
+
+            game.relics.push(relic.key);
+
+            // Apply immediate effects
+            if (relic.key === 'SCAVENGER') {
+                // Increase max inventory
+                updateHeader();
+            } else if (relic.key === 'GLASS_CANNON_CORE') {
+                // Reduce max HP by 50%
+                game.currentMech.maxHP = Math.floor(game.currentMech.maxHP * 0.5);
+                game.currentMech.currentHP = Math.min(game.currentMech.currentHP, game.currentMech.maxHP);
+            } else if (relic.key === 'BLOOD_PACT') {
+                // Reduce max HP by 20%
+                game.currentMech.maxHP = Math.floor(game.currentMech.maxHP * 0.8);
+                game.currentMech.currentHP = Math.min(game.currentMech.currentHP, game.currentMech.maxHP);
+            }
+
+            game.save();
+
+            const count = game.relics.filter(r => r === relic.key).length;
+            const stackMsg = count > 1 ? `\n\n✨ You now have ${count} copies! Effects stack!` : '';
+            alert(`${relic.icon} Relic Acquired: ${relic.name}!\n\n${relic.desc}${stackMsg}`);
 
             updateHeader();
             renderLoadoutScreen();
@@ -2512,7 +2808,7 @@
             panel.innerHTML = `
                 <h4 style="color: #ff00ff;">DEBUG INFO</h4>
                 <div style="margin-bottom: 10px; padding: 5px; background: rgba(255,0,255,0.2); border-radius: 4px; font-size: 10px;">
-                    <strong>Version:</strong> 3.1.0-WIP - RELICS & SIMPLIFICATION
+                    <strong>Version:</strong> 3.1.0 - RELICS UPDATE
                 </div>
                 <div style="margin: 10px 0;">
                     <strong>Round:</strong> ${game.round}<br>

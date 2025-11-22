@@ -778,6 +778,40 @@
             NONE: 'none'
         };
 
+        // Rarity system with drop rates and visual styling
+        const RARITY = {
+            COMMON: {
+                name: 'Common',
+                color: '#888888',
+                weight: 50,
+                statMultiplier: 1.0
+            },
+            UNCOMMON: {
+                name: 'Uncommon',
+                color: '#00ff00',
+                weight: 30,
+                statMultiplier: 1.2
+            },
+            RARE: {
+                name: 'Rare',
+                color: '#4da6ff',
+                weight: 15,
+                statMultiplier: 1.4
+            },
+            EPIC: {
+                name: 'Epic',
+                color: '#a335ee',
+                weight: 4,
+                statMultiplier: 1.6
+            },
+            LEGENDARY: {
+                name: 'Legendary',
+                color: '#ff8000',
+                weight: 1,
+                statMultiplier: 2.0
+            }
+        };
+
         const ABILITIES = {
             // Damage abilities
             CRITICAL_STRIKE: { name: 'Critical Strike', desc: '25% crit chance (2x dmg)', tier: 2 },
@@ -880,32 +914,36 @@
             }
         };
 
-        // Relics - Permanent upgrades that stack
+        // Relics - Permanent upgrades that stack (with rarity)
         const RELICS = {
             // Damage Type Scaling
             ENERGY_CONDUIT: {
                 name: 'Energy Conduit',
                 desc: 'Energy damage +50% (stacks!)',
                 icon: '🔋',
-                category: 'damage'
+                category: 'damage',
+                rarity: 'UNCOMMON'
             },
             KINETIC_AMPLIFIER: {
                 name: 'Kinetic Amplifier',
                 desc: 'Kinetic damage +50%, ignore 25% armor',
                 icon: '🎯',
-                category: 'damage'
+                category: 'damage',
+                rarity: 'UNCOMMON'
             },
             EXPLOSIVE_CATALYST: {
                 name: 'Explosive Catalyst',
                 desc: 'Explosive damage +50%, burns spread faster',
                 icon: '💣',
-                category: 'damage'
+                category: 'damage',
+                rarity: 'UNCOMMON'
             },
             CRITICAL_MASS: {
                 name: 'Critical Mass',
                 desc: 'Critical chance +10%, crits +50% damage',
                 icon: '💥',
-                category: 'damage'
+                category: 'damage',
+                rarity: 'RARE'
             },
 
             // Conversion Mechanics
@@ -913,13 +951,15 @@
                 name: 'Momentum Drive',
                 desc: 'Each tier point spent = +2 damage',
                 icon: '⚡',
-                category: 'conversion'
+                category: 'conversion',
+                rarity: 'RARE'
             },
             BLOOD_PACT: {
                 name: 'Blood Pact',
                 desc: 'Max HP -20%, heal 50% of damage dealt',
                 icon: '🩸',
-                category: 'conversion'
+                category: 'conversion',
+                rarity: 'EPIC'
             },
 
             // Investment/Snowball
@@ -927,7 +967,8 @@
                 name: "Hunter's Mark",
                 desc: 'Each kill grants +3 permanent damage',
                 icon: '💀',
-                category: 'investment'
+                category: 'investment',
+                rarity: 'EPIC'
             },
 
             // Game Changers
@@ -935,31 +976,36 @@
                 name: 'Perfect Aegis',
                 desc: 'Shields are 3x more effective',
                 icon: '🛡️',
-                category: 'gameChanger'
+                category: 'gameChanger',
+                rarity: 'RARE'
             },
             CONTAGION: {
                 name: 'Contagion',
                 desc: 'DoTs deal 2x damage and last 2x longer',
                 icon: '🔥',
-                category: 'gameChanger'
+                category: 'gameChanger',
+                rarity: 'EPIC'
             },
             GLASS_CANNON_CORE: {
                 name: 'Glass Cannon Core',
                 desc: 'All damage 2x, max HP -50%',
                 icon: '💎',
-                category: 'gameChanger'
+                category: 'gameChanger',
+                rarity: 'LEGENDARY'
             },
             FORTRESS_PROTOCOL: {
                 name: 'Fortress Protocol',
                 desc: 'Armor doubled, immune to one-shots',
                 icon: '🏰',
-                category: 'gameChanger'
+                category: 'gameChanger',
+                rarity: 'RARE'
             },
             VAMPIRIC_ASCENSION: {
                 name: 'Vampiric Ascension',
                 desc: 'Lifesteal from all damage (25%)',
                 icon: '🧛',
-                category: 'gameChanger'
+                category: 'gameChanger',
+                rarity: 'RARE'
             },
 
             // Build-Arounds
@@ -967,19 +1013,22 @@
                 name: 'All-In',
                 desc: 'Abilities trigger twice, cost double tier',
                 icon: '🎲',
-                category: 'buildAround'
+                category: 'buildAround',
+                rarity: 'LEGENDARY'
             },
             LAST_STAND: {
                 name: 'Last Stand',
                 desc: 'Below 30% HP: +200% damage, +50 armor',
                 icon: '⏱️',
-                category: 'buildAround'
+                category: 'buildAround',
+                rarity: 'EPIC'
             },
             SCAVENGER: {
                 name: 'Scavenger',
                 desc: '+3 inventory slots, always salvage 2',
                 icon: '🔧',
-                category: 'buildAround'
+                category: 'buildAround',
+                rarity: 'UNCOMMON'
             }
         };
 
@@ -1014,45 +1063,45 @@
             }
         };
 
-        // Component Templates (simplified - no weight/size/conflicts)
+        // Component Templates (with rarity system)
         const COMPONENT_TEMPLATES = [
             // ENERGY WEAPONS
-            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['CRITICAL_STRIKE'] },
-            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['BURN'] },
-            { name: 'Ion Beam', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 22, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['ARMOR_PIERCING'] },
+            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['CRITICAL_STRIKE'], rarity: 'UNCOMMON' },
+            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['BURN'], rarity: 'UNCOMMON' },
+            { name: 'Ion Beam', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 22, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['ARMOR_PIERCING'], rarity: 'UNCOMMON' },
 
             // KINETIC WEAPONS
-            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: -10, tier: 4, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'] },
-            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [] },
-            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: -5, tier: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'] },
+            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: -10, tier: 4, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'], rarity: 'RARE' },
+            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [], rarity: 'COMMON' },
+            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: -5, tier: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'], rarity: 'UNCOMMON' },
 
             // EXPLOSIVE WEAPONS
-            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: -3, tier: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'] },
-            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: -8, tier: 4, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'] },
-            { name: 'Grenade Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 30, armor: 0, tier: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: [] },
+            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: -3, tier: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'], rarity: 'UNCOMMON' },
+            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: -8, tier: 4, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'], rarity: 'RARE' },
+            { name: 'Grenade Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 30, armor: 0, tier: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: [], rarity: 'COMMON' },
 
             // ARMOR
-            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, damageType: DAMAGE_TYPES.NONE, abilities: [] },
-            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
-            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'] },
-            { name: 'Reactive Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'] },
+            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON' },
+            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON' },
+            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'], rarity: 'RARE' },
+            { name: 'Reactive Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'], rarity: 'UNCOMMON' },
 
             // SYSTEMS - Head
-            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['CRITICAL_STRIKE'] },
-            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EXECUTIONER'] },
+            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['CRITICAL_STRIKE'], rarity: 'UNCOMMON' },
+            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EXECUTIONER'], rarity: 'RARE' },
 
             // SYSTEMS - Legs
-            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
-            { name: 'Overdrive Boosters', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 8, armor: -5, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [] },
-            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON' },
+            { name: 'Overdrive Boosters', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 8, armor: -5, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'UNCOMMON' },
+            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'UNCOMMON' },
 
             // SYSTEMS - Special
-            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'] },
-            { name: 'Repair Nanobots', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REGENERATION'] },
-            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EFFICIENT'] },
-            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: -10, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'] },
-            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: -15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'] },
-            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: -20, tier: 5, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'] }
+            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'], rarity: 'RARE' },
+            { name: 'Repair Nanobots', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REGENERATION'], rarity: 'RARE' },
+            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EFFICIENT'], rarity: 'RARE' },
+            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: -10, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'], rarity: 'EPIC' },
+            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: -15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'], rarity: 'RARE' },
+            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: -20, tier: 5, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'], rarity: 'EPIC' }
         ];
 
         // ============================================================================
@@ -1138,7 +1187,26 @@
             };
         }
 
-        function createComponent(template, tier = 1) {
+        // Helper function to select random rarity based on weights
+        function selectWeightedRarity() {
+            const rarities = Object.keys(RARITY);
+            const totalWeight = rarities.reduce((sum, key) => sum + RARITY[key].weight, 0);
+            let random = Math.random() * totalWeight;
+
+            for (const key of rarities) {
+                random -= RARITY[key].weight;
+                if (random <= 0) {
+                    return key;
+                }
+            }
+            return 'COMMON'; // fallback
+        }
+
+        function createComponent(template, tier = 1, forcedRarity = null) {
+            // Determine rarity - use forced if provided, otherwise weighted random
+            const rarityKey = forcedRarity || selectWeightedRarity();
+            const rarityData = RARITY[rarityKey];
+
             const comp = {
                 name: template.name,
                 type: template.type,
@@ -1148,6 +1216,7 @@
                 tier: tier,
                 damageType: template.damageType || DAMAGE_TYPES.NONE,
                 abilities: template.abilities ? [...template.abilities] : [],
+                rarity: rarityKey,
                 id: Math.random().toString(36).substr(2, 9)
             };
 
@@ -1155,6 +1224,10 @@
             const tierMultiplier = 1 + ((tier - 1) * 0.3);
             comp.damage = Math.floor(comp.damage * tierMultiplier);
             comp.armor = Math.floor(comp.armor * tierMultiplier);
+
+            // Apply rarity multiplier on top of tier scaling
+            comp.damage = Math.floor(comp.damage * rarityData.statMultiplier);
+            comp.armor = Math.floor(comp.armor * rarityData.statMultiplier);
 
             return comp;
         }
@@ -2047,11 +2120,15 @@
                         ` : '';
                     }).join('');
 
+                    // Rarity styling
+                    const rarityData = RARITY[component.rarity] || RARITY.COMMON;
+
                     return `
-                        <div class="slot filled" onclick="handleSlotClick('${slotName}')">
+                        <div class="slot filled" onclick="handleSlotClick('${slotName}')" style="border-left: 3px solid ${rarityData.color};">
                             <div class="slot-header">
                                 <span>${slotLabel}</span>
                                 <span class="tier-indicator tier-${component.tier}">T${component.tier}</span>
+                                <span style="background: ${rarityData.color}; color: #000; padding: 1px 4px; border-radius: 2px; font-size: 8px; font-weight: bold; margin-left: 4px;">${rarityData.name[0]}</span>
                             </div>
                             <div class="component-name">${damageTypeIcon} ${component.name}</div>
                             <div style="font-size: 11px; margin-top: 5px;">
@@ -2104,11 +2181,16 @@
                     ` : '';
                 }).join('');
 
+                // Rarity styling
+                const rarityData = RARITY[comp.rarity] || RARITY.COMMON;
+                const rarityBadge = `<span style="background: ${rarityData.color}; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 5px;">${rarityData.name.toUpperCase()}</span>`;
+
                 return `
                     <div class="inventory-item ${selectedInventoryItem?.id === comp.id ? 'selected' : ''}"
-                         onclick="selectInventoryItem('${comp.id}')">
+                         onclick="selectInventoryItem('${comp.id}')" style="border-left: 3px solid ${rarityData.color};">
                         <div class="component-name" style="font-size: 14px;">
                             ${damageTypeIcon} ${comp.name}
+                            ${rarityBadge}
                             <span class="tier-indicator tier-${comp.tier}">T${comp.tier}</span>
                         </div>
                         <div class="component-stats">
@@ -2421,10 +2503,15 @@
                     ` : '';
                 }).join('');
 
+                // Rarity styling
+                const rarityData = RARITY[comp.rarity] || RARITY.COMMON;
+                const rarityBadge = `<span style="background: ${rarityData.color}; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 5px;">${rarityData.name.toUpperCase()}</span>`;
+
                 return `
-                    <div class="salvage-card" onclick="selectSalvage(${index})">
+                    <div class="salvage-card" onclick="selectSalvage(${index})" style="border: 2px solid ${rarityData.color}; box-shadow: 0 0 10px ${rarityData.color}50;">
                         <div class="component-name">
                             ${damageTypeIcon} ${comp.name}
+                            ${rarityBadge}
                             <span class="tier-indicator tier-${comp.tier}">Tier ${comp.tier}</span>
                         </div>
                         <div style="margin: 10px 0; color: #888;">${comp.type.toUpperCase()}</div>
@@ -2592,27 +2679,52 @@
         }
 
         function showRelicSelectionScreen(isBossReward = false) {
-            // Generate 3 random relic options
+            // Generate 3 random relic options using weighted rarity selection
             const allRelics = Object.entries(RELICS);
             const availableRelics = allRelics.filter(([key, relic]) =>
                 // Allow duplicates for stacking (except unique ones like Scavenger)
                 key !== 'SCAVENGER' || !game.relics.includes(key)
             );
 
+            // Select relics using weighted rarity
             const relicOptions = [];
-            for (let i = 0; i < 3 && availableRelics.length > 0; i++) {
-                const randomIndex = Math.floor(Math.random() * availableRelics.length);
-                const [key, relic] = availableRelics[randomIndex];
-                relicOptions.push({ key, ...relic });
+            const attempts = [];
 
-                // Remove only if it's a unique relic
-                if (key === 'SCAVENGER' || key === 'GLASS_CANNON_CORE') {
-                    availableRelics.splice(randomIndex, 1);
+            for (let i = 0; i < 3 && availableRelics.length > 0; i++) {
+                // Select a rarity using weighted random
+                const targetRarity = selectWeightedRarity();
+
+                // Find relics of this rarity
+                const relicsOfRarity = availableRelics.filter(([key, relic]) => relic.rarity === targetRarity);
+
+                let selectedRelic;
+                if (relicsOfRarity.length > 0) {
+                    // Pick random from this rarity
+                    const randomIndex = Math.floor(Math.random() * relicsOfRarity.length);
+                    const [key, relic] = relicsOfRarity[randomIndex];
+                    selectedRelic = { key, ...relic };
                 } else {
-                    // For stackable relics, just pick a different one next time
-                    availableRelics.splice(randomIndex, 1);
+                    // Fallback to any available relic if no relics of target rarity
+                    const randomIndex = Math.floor(Math.random() * availableRelics.length);
+                    const [key, relic] = availableRelics[randomIndex];
+                    selectedRelic = { key, ...relic };
+                }
+
+                relicOptions.push(selectedRelic);
+
+                // Remove selected relic from pool temporarily for this selection
+                const indexToRemove = availableRelics.findIndex(([k, r]) => k === selectedRelic.key);
+                const removedRelic = availableRelics.splice(indexToRemove, 1)[0];
+
+                // Only permanently remove if it's a unique relic
+                if (selectedRelic.key !== 'SCAVENGER' && selectedRelic.key !== 'GLASS_CANNON_CORE') {
+                    // For stackable relics, add it back for next iteration
+                    attempts.push(removedRelic);
                 }
             }
+
+            // Restore non-unique relics to pool
+            availableRelics.push(...attempts);
 
             // Update description based on context
             const descText = isBossReward ?
@@ -2624,12 +2736,17 @@
                 const count = game.relics.filter(r => r === relic.key).length;
                 const stackText = count > 0 ? `<div style="color: #ffaa00; font-size: 11px; margin-top: 5px;">⭐ You have ${count} copy! Effects stack!</div>` : '';
 
+                // Rarity styling
+                const rarityData = RARITY[relic.rarity] || RARITY.COMMON;
+                const rarityBadge = `<span style="background: ${rarityData.color}; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-top: 8px; display: inline-block;">${rarityData.name.toUpperCase()}</span>`;
+
                 return `
-                    <div class="mech-card" onclick="selectRelic(${index})" style="border-color: #00ccff;">
+                    <div class="mech-card" onclick="selectRelic(${index})" style="border: 3px solid ${rarityData.color}; box-shadow: 0 0 15px ${rarityData.color}60;">
                         <div style="font-size: 48px; text-align: center; margin: 15px 0;">${relic.icon}</div>
-                        <div class="component-name" style="color: #00ccff;">
+                        <div class="component-name" style="color: ${rarityData.color};">
                             ${relic.name}
                         </div>
+                        ${rarityBadge}
                         <div style="margin: 15px 0; color: #ccc; font-size: 13px; line-height: 1.5;">
                             ${relic.desc}
                         </div>
@@ -2808,7 +2925,7 @@
             panel.innerHTML = `
                 <h4 style="color: #ff00ff;">DEBUG INFO</h4>
                 <div style="margin-bottom: 10px; padding: 5px; background: rgba(255,0,255,0.2); border-radius: 4px; font-size: 10px;">
-                    <strong>Version:</strong> 3.1.0 - RELICS UPDATE
+                    <strong>Version:</strong> 3.2.0 - RARITY SYSTEM
                 </div>
                 <div style="margin: 10px 0;">
                     <strong>Round:</strong> ${game.round}<br>

@@ -618,7 +618,7 @@
                 <div class="stat"><strong>Round:</strong> <span id="round-num">1</span></div>
                 <div class="stat"><strong>Victories:</strong> <span id="victories">0</span></div>
                 <div class="stat"><strong>Current Mech:</strong> <span id="current-mech-name">None</span></div>
-                <div class="stat"><strong>Inventory:</strong> <span id="inventory-count">0</span> components</div>
+                <div class="stat"><strong>Inventory:</strong> <span id="inventory-count">0/10</span></div>
             </div>
         </header>
 
@@ -875,7 +875,7 @@
             SCOUT: {
                 name: 'Scout',
                 class: MECH_CLASSES.LIGHT,
-                tierCapacity: 50,
+                tierCapacity: 25,
                 weightCapacity: 100,
                 baseHP: 80,
                 baseArmor: 5,
@@ -893,7 +893,7 @@
             WARRIOR: {
                 name: 'Warrior',
                 class: MECH_CLASSES.MEDIUM,
-                tierCapacity: 75,
+                tierCapacity: 38,
                 weightCapacity: 150,
                 baseHP: 120,
                 baseArmor: 10,
@@ -911,7 +911,7 @@
             TITAN: {
                 name: 'Titan',
                 class: MECH_CLASSES.HEAVY,
-                tierCapacity: 100,
+                tierCapacity: 50,
                 weightCapacity: 200,
                 baseHP: 180,
                 baseArmor: 15,
@@ -936,13 +936,13 @@
             { name: 'Ion Beam', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 22, armor: 0, tier: 3, weight: 18, size: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['ARMOR_PIERCING'] },
 
             // KINETIC WEAPONS
-            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: 0, tier: 4, weight: 30, size: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'] },
+            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: -10, tier: 4, weight: 30, size: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'] },
             { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, weight: 10, size: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [] },
-            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: 0, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'] },
+            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: -5, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'] },
 
             // EXPLOSIVE WEAPONS
-            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: 0, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'] },
-            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: 0, tier: 4, weight: 35, size: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'] },
+            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: -3, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'] },
+            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: -8, tier: 4, weight: 35, size: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'] },
             { name: 'Grenade Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 30, armor: 0, tier: 2, weight: 20, size: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: [] },
 
             // ARMOR
@@ -961,12 +961,12 @@
             { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, weight: 35, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
 
             // SYSTEMS - Special
-            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'] },
+            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'], conflicts: ['VAMPIRIC'] },
             { name: 'Repair Nanobots', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 15, tier: 3, weight: 20, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['REGENERATION'] },
             { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, weight: 30, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['EFFICIENT'] },
-            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: 0, tier: 4, weight: 25, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'] },
-            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: 0, tier: 3, weight: 10, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'] },
-            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: 0, tier: 5, weight: 20, size: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'] }
+            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: -10, tier: 4, weight: 25, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'], conflicts: ['SHIELD_GEN'] },
+            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: -15, tier: 3, weight: 10, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'] },
+            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: -20, tier: 5, weight: 20, size: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'] }
         ];
 
         // ============================================================================
@@ -981,6 +981,8 @@
                 this.inventory = [];
                 this.currentMonster = null;
                 this.battleInProgress = false;
+                this.maxInventorySize = 10;
+                this.loadoutLockRounds = 0; // Rounds remaining until can change loadout
             }
 
             save() {
@@ -988,7 +990,8 @@
                     round: this.round,
                     victories: this.victories,
                     currentMech: this.currentMech,
-                    inventory: this.inventory
+                    inventory: this.inventory,
+                    loadoutLockRounds: this.loadoutLockRounds
                 }));
             }
 
@@ -1000,6 +1003,7 @@
                     this.victories = data.victories || 0;
                     this.currentMech = data.currentMech;
                     this.inventory = data.inventory || [];
+                    this.loadoutLockRounds = data.loadoutLockRounds || 0;
                     return true;
                 }
                 return false;
@@ -1090,6 +1094,17 @@
                     }
 
                     totalTier += compTier;
+
+                    // Add ability tier costs
+                    if (component.abilities) {
+                        component.abilities.forEach(abilityKey => {
+                            const ability = ABILITIES[abilityKey];
+                            if (ability && abilityKey !== 'EFFICIENT') {
+                                totalTier += ability.tier;
+                            }
+                        });
+                    }
+
                     totalWeight += component.weight;
                 }
             });
@@ -1119,15 +1134,58 @@
             const slot = mech.slots[slotName];
             if (component.size > slot.capacity) return false;
 
+            // Check for ability conflicts
+            if (component.conflicts) {
+                for (const existingComponent of Object.values(mech.loadout)) {
+                    if (existingComponent && existingComponent.abilities) {
+                        for (const conflictAbility of component.conflicts) {
+                            if (existingComponent.abilities.includes(conflictAbility)) {
+                                return false; // Conflict detected
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check reverse conflicts (if existing components conflict with new one)
+            for (const existingComponent of Object.values(mech.loadout)) {
+                if (existingComponent && existingComponent.conflicts && component.abilities) {
+                    for (const conflictAbility of existingComponent.conflicts) {
+                        if (component.abilities.includes(conflictAbility)) {
+                            return false; // Conflict detected
+                        }
+                    }
+                }
+            }
+
             // Calculate if adding this would exceed limits
             const currentStats = calculateMechStats(mech);
-            const newTier = currentStats.tierUsed + component.tier;
-            const newWeight = currentStats.weightUsed + component.weight;
+            let newTier = currentStats.tierUsed + component.tier;
+            let newWeight = currentStats.weightUsed + component.weight;
+
+            // Add ability tier costs for new component
+            if (component.abilities) {
+                component.abilities.forEach(abilityKey => {
+                    const ability = ABILITIES[abilityKey];
+                    if (ability && abilityKey !== 'EFFICIENT') {
+                        newTier += ability.tier;
+                    }
+                });
+            }
 
             // If slot is filled, subtract the old component's contribution
             if (mech.loadout[slotName]) {
                 const oldComp = mech.loadout[slotName];
-                newTier -= oldComp.tier;
+                let oldTier = oldComp.tier;
+                if (oldComp.abilities) {
+                    oldComp.abilities.forEach(abilityKey => {
+                        const ability = ABILITIES[abilityKey];
+                        if (ability && abilityKey !== 'EFFICIENT') {
+                            oldTier += ability.tier;
+                        }
+                    });
+                }
+                newTier -= oldTier;
                 newWeight -= oldComp.weight;
             }
 
@@ -1185,26 +1243,87 @@
 
         function generateMonster(round) {
             const difficultyMultiplier = 1 + ((round - 1) * 0.2);
+            const isBoss = round % 5 === 0;
 
-            const monsterTypes = [
-                { name: 'Scrap Bot', visual: '🤖', hp: 60, damage: 15, armor: 5 },
-                { name: 'War Drone', visual: '👾', hp: 80, damage: 20, armor: 8 },
-                { name: 'Battle Mech', visual: '🦾', hp: 100, damage: 25, armor: 10 },
-                { name: 'Tank Unit', visual: '🚛', hp: 120, damage: 18, armor: 15 },
-                { name: 'Hunter Killer', visual: '💀', hp: 70, damage: 35, armor: 5 }
-            ];
+            if (isBoss) {
+                // Boss fight every 5 rounds
+                const bossTypes = [
+                    {
+                        name: 'FORTRESS TITAN',
+                        visual: '🏰',
+                        hp: 200,
+                        damage: 20,
+                        armor: 40,
+                        special: 'ARMORED',
+                        desc: 'Massive armor - Energy weapons recommended!'
+                    },
+                    {
+                        name: 'PLASMA STORM',
+                        visual: '⚡',
+                        hp: 120,
+                        damage: 45,
+                        armor: 5,
+                        special: 'SHIELD_IGNORE',
+                        desc: 'Ignores shields and armor!'
+                    },
+                    {
+                        name: 'BERSERKER PRIME',
+                        visual: '😈',
+                        hp: 150,
+                        damage: 25,
+                        armor: 10,
+                        special: 'RAGE',
+                        desc: 'Gains damage as HP drops!'
+                    },
+                    {
+                        name: 'MIRROR WRAITH',
+                        visual: '👻',
+                        hp: 100,
+                        damage: 30,
+                        armor: 10,
+                        special: 'REFLECT',
+                        desc: 'Reflects 50% of damage taken!'
+                    }
+                ];
 
-            const baseMonster = monsterTypes[Math.floor(Math.random() * monsterTypes.length)];
+                const boss = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+                return {
+                    name: boss.name,
+                    visual: boss.visual,
+                    maxHP: Math.floor(boss.hp * difficultyMultiplier),
+                    currentHP: Math.floor(boss.hp * difficultyMultiplier),
+                    damage: Math.floor(boss.damage * difficultyMultiplier),
+                    armor: Math.floor(boss.armor * difficultyMultiplier),
+                    speed: 50 + Math.floor(Math.random() * 30),
+                    special: boss.special,
+                    isBoss: true,
+                    description: boss.desc
+                };
+            } else {
+                // Regular enemies with variety
+                const monsterTypes = [
+                    { name: 'Scrap Bot', visual: '🤖', hp: 60, damage: 15, armor: 5, special: null },
+                    { name: 'War Drone', visual: '👾', hp: 80, damage: 20, armor: 8, special: 'FAST' },
+                    { name: 'Battle Mech', visual: '🦾', hp: 100, damage: 25, armor: 10, special: null },
+                    { name: 'Tank Unit', visual: '🚛', hp: 120, damage: 18, armor: 15, special: 'ARMORED' },
+                    { name: 'Hunter Killer', visual: '💀', hp: 70, damage: 35, armor: 5, special: 'CRITICAL' },
+                    { name: 'Shield Bot', visual: '🛡️', hp: 90, damage: 18, armor: 8, special: 'SHIELD' }
+                ];
 
-            return {
-                name: `${baseMonster.name} Mk.${Math.ceil(round / 2)}`,
-                visual: baseMonster.visual,
-                maxHP: Math.floor(baseMonster.hp * difficultyMultiplier),
-                currentHP: Math.floor(baseMonster.hp * difficultyMultiplier),
-                damage: Math.floor(baseMonster.damage * difficultyMultiplier),
-                armor: Math.floor(baseMonster.armor * difficultyMultiplier),
-                speed: 50 + Math.floor(Math.random() * 30)
-            };
+                const baseMonster = monsterTypes[Math.floor(Math.random() * monsterTypes.length)];
+
+                return {
+                    name: `${baseMonster.name} Mk.${Math.ceil(round / 2)}`,
+                    visual: baseMonster.visual,
+                    maxHP: Math.floor(baseMonster.hp * difficultyMultiplier),
+                    currentHP: Math.floor(baseMonster.hp * difficultyMultiplier),
+                    damage: Math.floor(baseMonster.damage * difficultyMultiplier),
+                    armor: Math.floor(baseMonster.armor * difficultyMultiplier),
+                    speed: 50 + Math.floor(Math.random() * 30),
+                    special: baseMonster.special,
+                    isBoss: false
+                };
+            }
         }
 
         // ============================================================================
@@ -1220,6 +1339,7 @@
 
                 // Initialize battle state
                 this.playerShield = 0;
+                this.monsterShield = 0;
                 this.playerDots = []; // {type, damage, duration}
                 this.monsterDots = [];
 
@@ -1229,6 +1349,9 @@
 
                 // Apply start-of-battle abilities
                 this.applyStartOfBattleAbilities();
+
+                // Apply monster special abilities
+                this.applyMonsterSpecialInit();
             }
 
             collectAbilities(mech) {
@@ -1253,6 +1376,17 @@
                 }
             }
 
+            applyMonsterSpecialInit() {
+                if (this.monster.special === 'SHIELD') {
+                    this.monsterShield = 40;
+                    this.addLog('🛡️ Enemy activated energy shield! (40 shield)', 'monster');
+                }
+
+                if (this.monster.isBoss && this.monster.description) {
+                    this.addLog(`⚠️ BOSS: ${this.monster.description}`, 'system');
+                }
+            }
+
             addLog(message, actor = 'system') {
                 this.log.push({ message, actor, turn: this.turn });
             }
@@ -1269,6 +1403,19 @@
                 const stats = calculateMechStats(this.playerMech);
                 let baseDamage = isPlayer ? stats.damage : this.monster.damage;
                 const currentArmor = targetArmor;
+
+                // Enemy special abilities
+                if (!isPlayer) {
+                    // RAGE - gains damage as HP drops (like Berserker)
+                    if (this.monster.special === 'RAGE') {
+                        const hpLostPercent = ((this.monster.maxHP - this.monster.currentHP) / this.monster.maxHP) * 100;
+                        const bonus = Math.floor(baseDamage * (hpLostPercent * 0.02));
+                        if (bonus > 0) {
+                            baseDamage += bonus;
+                            this.addLog(`😈 RAGE: Enemy gains +${bonus} damage from low HP!`, 'monster');
+                        }
+                    }
+                }
 
                 if (isPlayer) {
                     // Apply trait bonuses
@@ -1311,6 +1458,12 @@
 
                     if (Math.random() < critChance) {
                         baseDamage *= critMultiplier;
+                        isCrit = true;
+                    }
+                } else if (!isPlayer && this.monster.special === 'CRITICAL') {
+                    // Enemy crit ability
+                    if (Math.random() < 0.30) {
+                        baseDamage *= 2;
                         isCrit = true;
                     }
                 }
@@ -1376,16 +1529,45 @@
             }
 
             performAttack(isPlayer) {
-                const targetArmor = isPlayer ? this.monster.armor : calculateMechStats(this.playerMech).armor;
+                let targetArmor = isPlayer ? this.monster.armor : calculateMechStats(this.playerMech).armor;
+
+                // ARMORED enemy - double effective armor
+                if (!isPlayer && this.monster.special === 'ARMORED') {
+                    targetArmor *= 2;
+                }
+
                 const { damage, isCrit } = this.calculateDamage(isPlayer, targetArmor);
 
                 let actualDamage = damage;
 
                 if (isPlayer) {
-                    // Apply to monster
-                    this.monster.currentHP -= actualDamage;
-                    const critText = isCrit ? ' 💥 CRITICAL HIT!' : '';
-                    this.addLog(`⚔️ Your mech deals ${actualDamage} damage!${critText} (Enemy: ${Math.max(0, this.monster.currentHP)}/${this.monster.maxHP} HP)`, 'player');
+                    // Player attacking monster - check monster shield first
+                    if (this.monsterShield > 0) {
+                        if (this.monsterShield >= actualDamage) {
+                            this.monsterShield -= actualDamage;
+                            this.addLog(`🛡️ Enemy shield absorbed ${actualDamage} damage! (${this.monsterShield} shield left)`, 'player');
+                            actualDamage = 0;
+                        } else {
+                            const overflow = actualDamage - this.monsterShield;
+                            this.addLog(`🛡️ Enemy shield absorbed ${this.monsterShield} damage, ${overflow} passed through!`, 'player');
+                            this.monsterShield = 0;
+                            actualDamage = overflow;
+                        }
+                    }
+
+                    // Apply remaining damage to monster HP
+                    if (actualDamage > 0) {
+                        this.monster.currentHP -= actualDamage;
+                        const critText = isCrit ? ' 💥 CRITICAL HIT!' : '';
+                        this.addLog(`⚔️ Your mech deals ${actualDamage} damage!${critText} (Enemy: ${Math.max(0, this.monster.currentHP)}/${this.monster.maxHP} HP)`, 'player');
+
+                        // REFLECT - Monster reflects damage back
+                        if (this.monster.special === 'REFLECT') {
+                            const reflected = Math.floor(actualDamage * 0.5);
+                            this.playerMech.currentHP -= reflected;
+                            this.addLog(`👻 MIRROR WRAITH: Reflected ${reflected} damage back!`, 'monster');
+                        }
+                    }
 
                     // Vampiric healing
                     if (this.hasAbility('VAMPIRIC') || this.hasTrait('VAMPIRE')) {
@@ -1407,8 +1589,11 @@
                         this.addLog(`🩸 HEMORRHAGE: Critical hit causes bleeding (3 dmg/turn for 5 turns)`, 'player');
                     }
                 } else {
-                    // Monster attacks player - check shield first
-                    if (this.playerShield > 0) {
+                    // Monster attacks player
+                    const ignoresShield = this.monster.special === 'SHIELD_IGNORE';
+
+                    // Check shield first (unless SHIELD_IGNORE)
+                    if (!ignoresShield && this.playerShield > 0) {
                         if (this.playerShield >= actualDamage) {
                             this.playerShield -= actualDamage;
                             this.addLog(`🛡️ Shield absorbed ${actualDamage} damage! (${this.playerShield} shield left)`, 'monster');
@@ -1419,12 +1604,15 @@
                             this.playerShield = 0;
                             actualDamage = overflow;
                         }
+                    } else if (ignoresShield && this.playerShield > 0) {
+                        this.addLog(`⚡ PLASMA STORM: Shields and armor ignored!`, 'monster');
                     }
 
                     // Apply remaining damage to HP
                     if (actualDamage > 0) {
+                        const critText = isCrit ? ' 💥 CRIT!' : '';
                         this.playerMech.currentHP -= actualDamage;
-                        this.addLog(`💥 ${this.monster.name} deals ${actualDamage} damage! (${Math.max(0, this.playerMech.currentHP)}/${this.playerMech.maxHP} HP)`, 'monster');
+                        this.addLog(`💥 ${this.monster.name} deals ${actualDamage} damage!${critText} (${Math.max(0, this.playerMech.currentHP)}/${this.playerMech.maxHP} HP)`, 'monster');
 
                         // Reactive armor
                         if (this.hasAbility('REACTIVE')) {
@@ -1530,7 +1718,23 @@
             document.getElementById('victories').textContent = game.victories;
             document.getElementById('current-mech-name').textContent =
                 game.currentMech ? `${game.currentMech.name} (T${game.currentMech.tier})` : 'None';
-            document.getElementById('inventory-count').textContent = game.inventory.length;
+
+            const invCount = game.inventory.length;
+            const invMax = game.maxInventorySize;
+            const invText = `${invCount}/${invMax}`;
+            const invElement = document.getElementById('inventory-count');
+            invElement.textContent = invText;
+
+            // Color code inventory status
+            if (invCount >= invMax) {
+                invElement.style.color = '#ff4444';
+                invElement.style.fontWeight = 'bold';
+            } else if (invCount >= invMax - 2) {
+                invElement.style.color = '#ffaa00';
+            } else {
+                invElement.style.color = '';
+                invElement.style.fontWeight = '';
+            }
         }
 
         function renderLoadoutScreen() {
@@ -1987,14 +2191,54 @@
             // If reached limit, auto-confirm
             if (window.salvageSelections.length >= window.salvageLimit) {
                 setTimeout(() => {
-                    window.salvageSelections.forEach(idx => {
-                        game.inventory.push(window.currentSalvageOptions[idx]);
-                    });
-                    game.save();
-                    updateHeader();
-                    renderLoadoutScreen();
-                    showScreen('loadout-screen');
+                    // Check if inventory is full
+                    const selectedComponents = window.salvageSelections.map(idx => window.currentSalvageOptions[idx]);
+
+                    if (game.inventory.length + selectedComponents.length > game.maxInventorySize) {
+                        // Inventory would overflow - need to drop items
+                        const overflow = (game.inventory.length + selectedComponents.length) - game.maxInventorySize;
+                        showInventoryManagementScreen(selectedComponents, overflow);
+                    } else {
+                        // Inventory has space
+                        selectedComponents.forEach(comp => game.inventory.push(comp));
+                        game.save();
+                        updateHeader();
+                        renderLoadoutScreen();
+                        showScreen('loadout-screen');
+                    }
                 }, 300);
+            }
+        }
+
+        function showInventoryManagementScreen(newComponents, mustDrop) {
+            const message = `⚠️ INVENTORY FULL! (${game.inventory.length + newComponents.length}/${game.maxInventorySize})\n\nYou must DROP ${mustDrop} component(s) to make room for your salvage.`;
+
+            if (!confirm(message + '\n\nOK = Choose what to drop\nCancel = Skip salvage')) {
+                // Skip salvage
+                updateHeader();
+                renderLoadoutScreen();
+                showScreen('loadout-screen');
+                return;
+            }
+
+            // Show inventory management UI
+            window.pendingNewComponents = newComponents;
+            window.mustDropCount = mustDrop;
+            window.selectedForDrop = [];
+
+            alert('Select ' + mustDrop + ' component(s) from your inventory to drop, then proceed to loadout screen.');
+
+            // Add new components to temporary holding
+            game.inventory.push(...newComponents);
+            game.save();
+            updateHeader();
+            renderLoadoutScreen();
+            showScreen('loadout-screen');
+
+            // Add drop mode UI hint
+            const inventoryPanel = document.querySelector('.inventory-panel h3');
+            if (inventoryPanel) {
+                inventoryPanel.innerHTML = `📦 Inventory <span style="color: #ff4444; font-size: 12px;">(MUST DROP ${mustDrop} ITEMS - Click to drop)</span>`;
             }
         }
 
@@ -2174,7 +2418,7 @@
             panel.innerHTML = `
                 <h4 style="color: #ff00ff;">DEBUG INFO</h4>
                 <div style="margin-bottom: 10px; padding: 5px; background: rgba(255,0,255,0.2); border-radius: 4px; font-size: 10px;">
-                    <strong>Version:</strong> 2.2.0
+                    <strong>Version:</strong> 3.0.0 - TENSION UPDATE
                 </div>
                 <div style="margin: 10px 0;">
                     <strong>Round:</strong> ${game.round}<br>

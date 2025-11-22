@@ -253,6 +253,17 @@
             }
         }
 
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.05);
+            }
+        }
+
         /* Salvage Screen - MOBILE OPTIMIZED */
         .salvage-options {
             display: flex;
@@ -692,6 +703,17 @@
             <div class="salvage-options" id="relic-options"></div>
         </div>
 
+        <!-- Item Selection Modal -->
+        <div id="item-select-modal" class="screen">
+            <h2 id="item-select-title">📦 SELECT COMPONENT</h2>
+            <p style="margin: 15px 0;" id="item-select-desc">Choose a component to equip:</p>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="btn btn-secondary" onclick="closeItemSelectModal()">← Back to Loadout</button>
+                <button class="btn btn-danger" onclick="unequipSlot()" id="unequip-btn">🗑️ Unequip Current</button>
+            </div>
+            <div class="salvage-options" id="item-select-options"></div>
+        </div>
+
         <!-- Loadout Screen -->
         <div id="loadout-screen" class="screen active">
             <h2>⚙️ LOADOUT MANAGEMENT</h2>
@@ -728,6 +750,9 @@
 
                 <div class="inventory-panel">
                     <h3>📦 Inventory</h3>
+                    <div style="margin-bottom: 10px; padding: 8px; background: rgba(0, 204, 255, 0.1); border: 2px solid #00ccff; border-radius: 6px; font-size: 11px; color: #00ccff;">
+                        💡 <strong>TIP:</strong> Click on a <strong>SLOT</strong> to equip items!
+                    </div>
                     <button class="btn btn-secondary" id="toggle-abilities-guide" style="width: 100%; margin-bottom: 10px; padding: 8px; font-size: 12px;">
                         📖 ABILITIES GUIDE
                     </button>
@@ -1217,7 +1242,8 @@
                 damageType: template.damageType || DAMAGE_TYPES.NONE,
                 abilities: template.abilities ? [...template.abilities] : [],
                 rarity: rarityKey,
-                id: Math.random().toString(36).substr(2, 9)
+                id: Math.random().toString(36).substr(2, 9),
+                seenInSlots: [] // Track which slots this item has been shown in
             };
 
             // Scale stats with tier
@@ -2156,8 +2182,6 @@
             renderInventory();
         }
 
-        let selectedInventoryItem = null;
-
         function renderInventory() {
             const inventoryGrid = document.getElementById('inventory-grid');
 
@@ -2186,8 +2210,7 @@
                 const rarityBadge = `<span style="background: ${rarityData.color}; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 5px;">${rarityData.name.toUpperCase()}</span>`;
 
                 return `
-                    <div class="inventory-item ${selectedInventoryItem?.id === comp.id ? 'selected' : ''}"
-                         onclick="selectInventoryItem('${comp.id}')" style="border-left: 3px solid ${rarityData.color};">
+                    <div class="inventory-item" style="border-left: 3px solid ${rarityData.color};">
                         <div class="component-name" style="font-size: 14px; color: ${rarityData.color};">
                             ${damageTypeIcon} ${comp.name}
                             ${rarityBadge}
@@ -2206,41 +2229,152 @@
             }).join('');
         }
 
-        function selectInventoryItem(componentId) {
-            const component = game.inventory.find(c => c.id === componentId);
-            if (component) {
-                selectedInventoryItem = component;
-                renderInventory();
-            }
-        }
+        // Global variable to track current slot being equipped
+        let currentEquippingSlot = null;
 
         function handleSlotClick(slotName) {
             if (!game.currentMech) return;
 
+            // Show item selection modal for this slot
+            showItemSelectionModal(slotName);
+        }
+
+        function showItemSelectionModal(slotName) {
+            currentEquippingSlot = slotName;
             const currentComponent = game.currentMech.loadout[slotName];
 
-            // If slot is filled, detach
+            // Update modal title
+            const slotLabel = slotName.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
+            document.getElementById('item-select-title').textContent = `📦 SELECT COMPONENT FOR ${slotLabel}`;
+
+            // Show/hide unequip button
+            const unequipBtn = document.getElementById('unequip-btn');
             if (currentComponent) {
-                if (confirm(`Detach ${currentComponent.name}?`)) {
-                    detachComponent(game.currentMech, slotName);
-                    selectedInventoryItem = null;
-                    renderLoadoutScreen();
-                }
+                unequipBtn.style.display = 'inline-block';
+                unequipBtn.textContent = `🗑️ Unequip ${currentComponent.name}`;
+            } else {
+                unequipBtn.style.display = 'none';
+            }
+
+            // Get all compatible components from inventory
+            const compatibleItems = game.inventory.filter(comp => comp.slot === slotName);
+
+            // Sort by rarity (legendary first) then by tier
+            const rarityOrder = { LEGENDARY: 0, EPIC: 1, RARE: 2, UNCOMMON: 3, COMMON: 4 };
+            compatibleItems.sort((a, b) => {
+                const rarityDiff = rarityOrder[a.rarity] - rarityOrder[b.rarity];
+                if (rarityDiff !== 0) return rarityDiff;
+                return b.tier - a.tier; // Higher tier first
+            });
+
+            // Render item options
+            renderItemSelectionOptions(compatibleItems, slotName, currentComponent);
+
+            showScreen('item-select-modal');
+        }
+
+        function renderItemSelectionOptions(items, slotName, currentComponent) {
+            const optionsContainer = document.getElementById('item-select-options');
+
+            if (items.length === 0) {
+                optionsContainer.innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No compatible components in inventory for this slot.</p>';
                 return;
             }
 
-            // If slot is empty and we have a selected item, try to attach
-            if (selectedInventoryItem) {
-                if (canAttachComponent(game.currentMech, selectedInventoryItem, slotName)) {
-                    attachComponent(game.currentMech, selectedInventoryItem, slotName);
-                    selectedInventoryItem = null;
-                    renderLoadoutScreen();
-                } else {
-                    alert('Cannot attach this component here. Check slot type, size, tier points, and weight limits.');
+            const itemsHTML = items.map(comp => {
+                const damageTypeIcon = comp.damageType === DAMAGE_TYPES.ENERGY ? '⚛️' :
+                                       comp.damageType === DAMAGE_TYPES.KINETIC ? '🎯' :
+                                       comp.damageType === DAMAGE_TYPES.EXPLOSIVE ? '💣' : '';
+                const abilities = comp.abilities || [];
+                const abilityText = abilities.map(abilityKey => {
+                    const ability = ABILITIES[abilityKey];
+                    return ability ? `
+                        <div style="font-size: 10px; color: #00ff88; margin-top: 5px; padding: 4px; background: rgba(0, 255, 136, 0.1); border-radius: 3px; border-left: 2px solid #00ff88;">
+                            <strong>✨ ${ability.name}</strong><br>
+                            <span style="color: #ccc; font-size: 9px;">${ability.desc}</span>
+                        </div>
+                    ` : '';
+                }).join('');
+
+                // Rarity styling
+                const rarityData = RARITY[comp.rarity] || RARITY.COMMON;
+                const rarityBadge = `<span style="background: ${rarityData.color}; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 5px;">${rarityData.name.toUpperCase()}</span>`;
+
+                // Check if this item is NEW for this slot
+                if (!comp.seenInSlots) comp.seenInSlots = [];
+                const isNew = !comp.seenInSlots.includes(slotName);
+                const newBadge = isNew ? `<span style="background: #ff00ff; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 5px; animation: pulse 1s infinite;">NEW!</span>` : '';
+
+                // Mark as seen
+                if (isNew) {
+                    comp.seenInSlots.push(slotName);
                 }
-            } else {
-                alert('Please select a component from inventory first.');
+
+                // Check if can equip (tier budget)
+                const canEquip = canAttachComponent(game.currentMech, comp, slotName);
+                const disabledStyle = !canEquip ? 'opacity: 0.5; filter: grayscale(50%);' : '';
+                const cannotEquipWarning = !canEquip ? '<div style="color: #ff4444; font-size: 10px; margin-top: 5px;">⚠️ Not enough tier budget</div>' : '';
+
+                // Check if currently equipped
+                const isEquipped = currentComponent && currentComponent.id === comp.id;
+                const equippedBadge = isEquipped ? '<div style="color: #00ff88; font-size: 11px; margin-top: 5px;">✓ Currently Equipped</div>' : '';
+
+                return `
+                    <div class="salvage-card" onclick="selectItemForSlot('${comp.id}')" style="border: 2px solid ${rarityData.color}; box-shadow: 0 0 10px ${rarityData.color}50; ${disabledStyle} cursor: ${canEquip ? 'pointer' : 'not-allowed'};">
+                        <div class="component-name" style="color: ${rarityData.color};">
+                            ${damageTypeIcon} ${comp.name}
+                            ${rarityBadge}
+                            ${newBadge}
+                            <span class="tier-indicator tier-${comp.tier}">Tier ${comp.tier}</span>
+                        </div>
+                        <div style="margin: 10px 0; color: #888;">${comp.type.toUpperCase()}</div>
+                        <div class="component-stats">
+                            <div class="stat-item">⚔️ Damage: ${comp.damage}</div>
+                            <div class="stat-item">🛡️ Armor: ${comp.armor}</div>
+                        </div>
+                        ${abilityText}
+                        ${equippedBadge}
+                        ${cannotEquipWarning}
+                    </div>
+                `;
+            }).join('');
+
+            optionsContainer.innerHTML = itemsHTML;
+        }
+
+        function selectItemForSlot(componentId) {
+            if (!currentEquippingSlot) return;
+
+            const component = game.inventory.find(c => c.id === componentId);
+            if (!component) return;
+
+            // Check if can attach
+            if (!canAttachComponent(game.currentMech, component, currentEquippingSlot)) {
+                return; // Silently ignore if can't attach (visual feedback already shown)
             }
+
+            // Attach the component
+            attachComponent(game.currentMech, component, currentEquippingSlot);
+
+            // Close modal and refresh loadout
+            closeItemSelectModal();
+        }
+
+        function unequipSlot() {
+            if (!currentEquippingSlot) return;
+
+            const currentComponent = game.currentMech.loadout[currentEquippingSlot];
+            if (currentComponent) {
+                detachComponent(game.currentMech, currentEquippingSlot);
+            }
+
+            closeItemSelectModal();
+        }
+
+        function closeItemSelectModal() {
+            currentEquippingSlot = null;
+            renderLoadoutScreen();
+            showScreen('loadout-screen');
         }
 
         function renderBattleScreen() {
@@ -2925,7 +3059,7 @@
             panel.innerHTML = `
                 <h4 style="color: #ff00ff;">DEBUG INFO</h4>
                 <div style="margin-bottom: 10px; padding: 5px; background: rgba(255,0,255,0.2); border-radius: 4px; font-size: 10px;">
-                    <strong>Version:</strong> 3.2.0 - RARITY SYSTEM
+                    <strong>Version:</strong> 3.3.0 - INVENTORY OVERHAUL
                 </div>
                 <div style="margin: 10px 0;">
                     <strong>Round:</strong> ${game.round}<br>

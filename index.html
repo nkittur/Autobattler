@@ -2130,7 +2130,7 @@
                                 <span class="tier-indicator tier-${component.tier}">T${component.tier}</span>
                                 <span style="background: ${rarityData.color}; color: #000; padding: 1px 4px; border-radius: 2px; font-size: 8px; font-weight: bold; margin-left: 4px;">${rarityData.name[0]}</span>
                             </div>
-                            <div class="component-name">${damageTypeIcon} ${component.name}</div>
+                            <div class="component-name" style="color: ${rarityData.color};">${damageTypeIcon} ${component.name}</div>
                             <div style="font-size: 11px; margin-top: 5px;">
                                 ⚔️${component.damage} 🛡️${component.armor}
                             </div>
@@ -2188,7 +2188,7 @@
                 return `
                     <div class="inventory-item ${selectedInventoryItem?.id === comp.id ? 'selected' : ''}"
                          onclick="selectInventoryItem('${comp.id}')" style="border-left: 3px solid ${rarityData.color};">
-                        <div class="component-name" style="font-size: 14px;">
+                        <div class="component-name" style="font-size: 14px; color: ${rarityData.color};">
                             ${damageTypeIcon} ${comp.name}
                             ${rarityBadge}
                             <span class="tier-indicator tier-${comp.tier}">T${comp.tier}</span>
@@ -2509,7 +2509,7 @@
 
                 return `
                     <div class="salvage-card" onclick="selectSalvage(${index})" style="border: 2px solid ${rarityData.color}; box-shadow: 0 0 10px ${rarityData.color}50;">
-                        <div class="component-name">
+                        <div class="component-name" style="color: ${rarityData.color};">
                             ${damageTypeIcon} ${comp.name}
                             ${rarityBadge}
                             <span class="tier-indicator tier-${comp.tier}">Tier ${comp.tier}</span>

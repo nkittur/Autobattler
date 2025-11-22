@@ -870,103 +870,179 @@
             }
         };
 
+        // Relics - Permanent upgrades that stack
+        const RELICS = {
+            // Damage Type Scaling
+            ENERGY_CONDUIT: {
+                name: 'Energy Conduit',
+                desc: 'Energy damage +50% (stacks!)',
+                icon: '🔋',
+                category: 'damage'
+            },
+            KINETIC_AMPLIFIER: {
+                name: 'Kinetic Amplifier',
+                desc: 'Kinetic damage +50%, ignore 25% armor',
+                icon: '🎯',
+                category: 'damage'
+            },
+            EXPLOSIVE_CATALYST: {
+                name: 'Explosive Catalyst',
+                desc: 'Explosive damage +50%, burns spread faster',
+                icon: '💣',
+                category: 'damage'
+            },
+            CRITICAL_MASS: {
+                name: 'Critical Mass',
+                desc: 'Critical chance +10%, crits +50% damage',
+                icon: '💥',
+                category: 'damage'
+            },
+
+            // Conversion Mechanics
+            MOMENTUM_DRIVE: {
+                name: 'Momentum Drive',
+                desc: 'Each tier point spent = +2 damage',
+                icon: '⚡',
+                category: 'conversion'
+            },
+            BLOOD_PACT: {
+                name: 'Blood Pact',
+                desc: 'Max HP -20%, heal 50% of damage dealt',
+                icon: '🩸',
+                category: 'conversion'
+            },
+
+            // Investment/Snowball
+            HUNTERS_MARK: {
+                name: "Hunter's Mark",
+                desc: 'Each kill grants +3 permanent damage',
+                icon: '💀',
+                category: 'investment'
+            },
+
+            // Game Changers
+            PERFECT_AEGIS: {
+                name: 'Perfect Aegis',
+                desc: 'Shields are 3x more effective',
+                icon: '🛡️',
+                category: 'gameChanger'
+            },
+            CONTAGION: {
+                name: 'Contagion',
+                desc: 'DoTs deal 2x damage and last 2x longer',
+                icon: '🔥',
+                category: 'gameChanger'
+            },
+            GLASS_CANNON_CORE: {
+                name: 'Glass Cannon Core',
+                desc: 'All damage 2x, max HP -50%',
+                icon: '💎',
+                category: 'gameChanger'
+            },
+            FORTRESS_PROTOCOL: {
+                name: 'Fortress Protocol',
+                desc: 'Armor doubled, immune to one-shots',
+                icon: '🏰',
+                category: 'gameChanger'
+            },
+            VAMPIRIC_ASCENSION: {
+                name: 'Vampiric Ascension',
+                desc: 'Lifesteal from all damage (25%)',
+                icon: '🧛',
+                category: 'gameChanger'
+            },
+
+            // Build-Arounds
+            ALL_IN: {
+                name: 'All-In',
+                desc: 'Abilities trigger twice, cost double tier',
+                icon: '🎲',
+                category: 'buildAround'
+            },
+            LAST_STAND: {
+                name: 'Last Stand',
+                desc: 'Below 30% HP: +200% damage, +50 armor',
+                icon: '⏱️',
+                category: 'buildAround'
+            },
+            SCAVENGER: {
+                name: 'Scavenger',
+                desc: '+3 inventory slots, always salvage 2',
+                icon: '🔧',
+                category: 'buildAround'
+            }
+        };
+
         // Mech Templates
         const MECH_TEMPLATES = {
             SCOUT: {
                 name: 'Scout',
                 class: MECH_CLASSES.LIGHT,
                 tierCapacity: 25,
-                weightCapacity: 100,
                 baseHP: 80,
                 baseArmor: 5,
                 visual: '🏃',
-                slots: {
-                    [SLOT_TYPES.HEAD]: { capacity: 1 },
-                    [SLOT_TYPES.TORSO]: { capacity: 2 },
-                    [SLOT_TYPES.LEFT_ARM]: { capacity: 2 },
-                    [SLOT_TYPES.RIGHT_ARM]: { capacity: 2 },
-                    [SLOT_TYPES.LEFT_SHOULDER]: { capacity: 1 },
-                    [SLOT_TYPES.RIGHT_SHOULDER]: { capacity: 1 },
-                    [SLOT_TYPES.LEGS]: { capacity: 2 }
-                }
+                slots: [SLOT_TYPES.HEAD, SLOT_TYPES.TORSO, SLOT_TYPES.LEFT_ARM, SLOT_TYPES.RIGHT_ARM, SLOT_TYPES.LEFT_SHOULDER, SLOT_TYPES.RIGHT_SHOULDER, SLOT_TYPES.LEGS]
             },
             WARRIOR: {
                 name: 'Warrior',
                 class: MECH_CLASSES.MEDIUM,
                 tierCapacity: 38,
-                weightCapacity: 150,
                 baseHP: 120,
                 baseArmor: 10,
                 visual: '🤖',
-                slots: {
-                    [SLOT_TYPES.HEAD]: { capacity: 2 },
-                    [SLOT_TYPES.TORSO]: { capacity: 3 },
-                    [SLOT_TYPES.LEFT_ARM]: { capacity: 3 },
-                    [SLOT_TYPES.RIGHT_ARM]: { capacity: 3 },
-                    [SLOT_TYPES.LEFT_SHOULDER]: { capacity: 2 },
-                    [SLOT_TYPES.RIGHT_SHOULDER]: { capacity: 2 },
-                    [SLOT_TYPES.LEGS]: { capacity: 2 }
-                }
+                slots: [SLOT_TYPES.HEAD, SLOT_TYPES.TORSO, SLOT_TYPES.LEFT_ARM, SLOT_TYPES.RIGHT_ARM, SLOT_TYPES.LEFT_SHOULDER, SLOT_TYPES.RIGHT_SHOULDER, SLOT_TYPES.LEGS]
             },
             TITAN: {
                 name: 'Titan',
                 class: MECH_CLASSES.HEAVY,
                 tierCapacity: 50,
-                weightCapacity: 200,
                 baseHP: 180,
                 baseArmor: 15,
                 visual: '🏋️',
-                slots: {
-                    [SLOT_TYPES.HEAD]: { capacity: 2 },
-                    [SLOT_TYPES.TORSO]: { capacity: 4 },
-                    [SLOT_TYPES.LEFT_ARM]: { capacity: 4 },
-                    [SLOT_TYPES.RIGHT_ARM]: { capacity: 4 },
-                    [SLOT_TYPES.LEFT_SHOULDER]: { capacity: 3 },
-                    [SLOT_TYPES.RIGHT_SHOULDER]: { capacity: 3 },
-                    [SLOT_TYPES.LEGS]: { capacity: 3 }
-                }
+                slots: [SLOT_TYPES.HEAD, SLOT_TYPES.TORSO, SLOT_TYPES.LEFT_ARM, SLOT_TYPES.RIGHT_ARM, SLOT_TYPES.LEFT_SHOULDER, SLOT_TYPES.RIGHT_SHOULDER, SLOT_TYPES.LEGS]
             }
         };
 
-        // Component Templates
+        // Component Templates (simplified - no weight/size/conflicts)
         const COMPONENT_TEMPLATES = [
             // ENERGY WEAPONS
-            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, weight: 15, size: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['CRITICAL_STRIKE'] },
-            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, weight: 20, size: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['BURN'] },
-            { name: 'Ion Beam', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 22, armor: 0, tier: 3, weight: 18, size: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['ARMOR_PIERCING'] },
+            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['CRITICAL_STRIKE'] },
+            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['BURN'] },
+            { name: 'Ion Beam', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 22, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['ARMOR_PIERCING'] },
 
             // KINETIC WEAPONS
-            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: -10, tier: 4, weight: 30, size: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'] },
-            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, weight: 10, size: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [] },
-            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: -5, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'] },
+            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: -10, tier: 4, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'] },
+            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [] },
+            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: -5, tier: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'] },
 
             // EXPLOSIVE WEAPONS
-            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: -3, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'] },
-            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: -8, tier: 4, weight: 35, size: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'] },
-            { name: 'Grenade Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 30, armor: 0, tier: 2, weight: 20, size: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: [] },
+            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: -3, tier: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'] },
+            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: -8, tier: 4, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'] },
+            { name: 'Grenade Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 30, armor: 0, tier: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: [] },
 
             // ARMOR
-            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, weight: 15, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: [] },
-            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, weight: 30, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
-            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, weight: 40, size: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'] },
-            { name: 'Reactive Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, weight: 35, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'] },
+            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'] },
+            { name: 'Reactive Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'] },
 
             // SYSTEMS - Head
-            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, weight: 10, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: ['CRITICAL_STRIKE'] },
-            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, weight: 15, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['EXECUTIONER'] },
+            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['CRITICAL_STRIKE'] },
+            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EXECUTIONER'] },
 
             // SYSTEMS - Legs
-            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, weight: 20, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: ['LIGHTWEIGHT'] },
-            { name: 'Overdrive Boosters', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 8, armor: 0, tier: 3, weight: 15, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERDRIVE'] },
-            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, weight: 35, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+            { name: 'Overdrive Boosters', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 8, armor: -5, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [] },
+            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [] },
 
             // SYSTEMS - Special
-            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, weight: 25, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'], conflicts: ['VAMPIRIC'] },
-            { name: 'Repair Nanobots', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 15, tier: 3, weight: 20, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['REGENERATION'] },
-            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, weight: 30, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['EFFICIENT'] },
-            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: -10, tier: 4, weight: 25, size: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'], conflicts: ['SHIELD_GEN'] },
-            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: -15, tier: 3, weight: 10, size: 1, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'] },
-            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: -20, tier: 5, weight: 20, size: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'] }
+            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'] },
+            { name: 'Repair Nanobots', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REGENERATION'] },
+            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EFFICIENT'] },
+            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: -10, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'] },
+            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: -15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'] },
+            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: -20, tier: 5, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'] }
         ];
 
         // ============================================================================
@@ -982,7 +1058,9 @@
                 this.currentMonster = null;
                 this.battleInProgress = false;
                 this.maxInventorySize = 10;
-                this.loadoutLockRounds = 0; // Rounds remaining until can change loadout
+                this.relics = []; // Array of acquired relic keys
+                this.permanentDamageBonus = 0; // From Hunter's Mark
+                this.componentBattleCount = {}; // Track battles per component ID for Evolution Chamber
             }
 
             save() {
@@ -991,7 +1069,9 @@
                     victories: this.victories,
                     currentMech: this.currentMech,
                     inventory: this.inventory,
-                    loadoutLockRounds: this.loadoutLockRounds
+                    relics: this.relics,
+                    permanentDamageBonus: this.permanentDamageBonus,
+                    componentBattleCount: this.componentBattleCount
                 }));
             }
 
@@ -1003,7 +1083,9 @@
                     this.victories = data.victories || 0;
                     this.currentMech = data.currentMech;
                     this.inventory = data.inventory || [];
-                    this.loadoutLockRounds = data.loadoutLockRounds || 0;
+                    this.relics = data.relics || [];
+                    this.permanentDamageBonus = data.permanentDamageBonus || 0;
+                    this.componentBattleCount = data.componentBattleCount || {};
                     return true;
                 }
                 return false;
@@ -1025,10 +1107,21 @@
         // ============================================================================
 
         function createMech(template, tier = 1) {
+            const loadout = {};
+            template.slots.forEach(slot => {
+                loadout[slot] = null;
+            });
+
             return {
-                ...JSON.parse(JSON.stringify(template)),
+                name: template.name,
+                class: template.class,
+                tierCapacity: template.tierCapacity,
+                baseHP: template.baseHP,
+                baseArmor: template.baseArmor,
+                visual: template.visual,
+                slots: template.slots,
                 tier: tier,
-                loadout: {},
+                loadout: loadout,
                 currentHP: template.baseHP,
                 maxHP: template.baseHP,
                 traits: []  // Array of acquired traits
@@ -1036,13 +1129,17 @@
         }
 
         function createComponent(template, tier = 1) {
-            const comp = { ...template };
-            comp.tier = tier;
-            comp.id = Math.random().toString(36).substr(2, 9);
-
-            // Ensure abilities and damageType are copied properly
-            comp.abilities = template.abilities ? [...template.abilities] : [];
-            comp.damageType = template.damageType || DAMAGE_TYPES.NONE;
+            const comp = {
+                name: template.name,
+                type: template.type,
+                slot: template.slot,
+                damage: template.damage,
+                armor: template.armor,
+                tier: tier,
+                damageType: template.damageType || DAMAGE_TYPES.NONE,
+                abilities: template.abilities ? [...template.abilities] : [],
+                id: Math.random().toString(36).substr(2, 9)
+            };
 
             // Scale stats with tier
             const tierMultiplier = 1 + ((tier - 1) * 0.3);
@@ -1076,7 +1173,6 @@
             let totalDamage = 0;
             let totalArmor = mech.baseArmor;
             let totalTier = 0;
-            let totalWeight = 0;
 
             const traits = mech.traits || [];
 
@@ -1093,6 +1189,16 @@
                         compTier = Math.max(1, compTier - 1);
                     }
 
+                    // Apply ALL_IN relic - abilities cost double tier
+                    if (game.relics && game.relics.includes('ALL_IN') && component.abilities) {
+                        component.abilities.forEach(abilityKey => {
+                            const ability = ABILITIES[abilityKey];
+                            if (ability && abilityKey !== 'EFFICIENT') {
+                                compTier += ability.tier; // Adds double (once here, once below)
+                            }
+                        });
+                    }
+
                     totalTier += compTier;
 
                     // Add ability tier costs
@@ -1104,8 +1210,6 @@
                             }
                         });
                     }
-
-                    totalWeight += component.weight;
                 }
             });
 
@@ -1119,49 +1223,35 @@
                 totalArmor = Math.floor(totalArmor * 0.7);
             }
 
+            // Apply FORTRESS_PROTOCOL relic - double armor
+            if (game.relics && game.relics.includes('FORTRESS_PROTOCOL')) {
+                totalArmor *= 2;
+            }
+
+            // Apply MOMENTUM_DRIVE relic - tier → damage
+            if (game.relics && game.relics.includes('MOMENTUM_DRIVE')) {
+                totalDamage += totalTier * 2;
+            }
+
+            // Add permanent damage bonus from Hunter's Mark
+            if (game.permanentDamageBonus) {
+                totalDamage += game.permanentDamageBonus;
+            }
+
             return {
                 damage: totalDamage,
                 armor: totalArmor,
-                tierUsed: totalTier,
-                weightUsed: totalWeight,
-                speed: Math.max(1, 100 - Math.floor(totalWeight / 2))
+                tierUsed: totalTier
             };
         }
 
         function canAttachComponent(mech, component, slotName) {
+            // Check slot type matches
             if (component.slot !== slotName) return false;
 
-            const slot = mech.slots[slotName];
-            if (component.size > slot.capacity) return false;
-
-            // Check for ability conflicts
-            if (component.conflicts) {
-                for (const existingComponent of Object.values(mech.loadout)) {
-                    if (existingComponent && existingComponent.abilities) {
-                        for (const conflictAbility of component.conflicts) {
-                            if (existingComponent.abilities.includes(conflictAbility)) {
-                                return false; // Conflict detected
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Check reverse conflicts (if existing components conflict with new one)
-            for (const existingComponent of Object.values(mech.loadout)) {
-                if (existingComponent && existingComponent.conflicts && component.abilities) {
-                    for (const conflictAbility of existingComponent.conflicts) {
-                        if (component.abilities.includes(conflictAbility)) {
-                            return false; // Conflict detected
-                        }
-                    }
-                }
-            }
-
-            // Calculate if adding this would exceed limits
+            // Calculate if adding this would exceed tier limit
             const currentStats = calculateMechStats(mech);
             let newTier = currentStats.tierUsed + component.tier;
-            let newWeight = currentStats.weightUsed + component.weight;
 
             // Add ability tier costs for new component
             if (component.abilities) {
@@ -1186,11 +1276,15 @@
                     });
                 }
                 newTier -= oldTier;
-                newWeight -= oldComp.weight;
             }
 
-            if (newTier > mech.tierCapacity) return false;
-            if (newWeight > mech.weightCapacity) return false;
+            // Apply SCAVENGER relic - +3 inventory slots
+            let tierCap = mech.tierCapacity;
+            if (game.relics && game.relics.includes('SCAVENGER')) {
+                tierCap += 10; // Extra tier budget
+            }
+
+            if (newTier > tierCap) return false;
 
             return true;
         }
@@ -1720,7 +1814,11 @@
                 game.currentMech ? `${game.currentMech.name} (T${game.currentMech.tier})` : 'None';
 
             const invCount = game.inventory.length;
-            const invMax = game.maxInventorySize;
+            // Apply SCAVENGER relic +3 inventory
+            let invMax = game.maxInventorySize;
+            if (game.relics && game.relics.includes('SCAVENGER')) {
+                invMax += 3;
+            }
             const invText = `${invCount}/${invMax}`;
             const invElement = document.getElementById('inventory-count');
             invElement.textContent = invText;
@@ -1794,7 +1892,7 @@
                             </div>
                             <div class="component-name">${damageTypeIcon} ${component.name}</div>
                             <div style="font-size: 11px; margin-top: 5px;">
-                                ⚔️${component.damage} 🛡️${component.armor} ⚖️${component.weight} 📏${component.size}/${slot.capacity}
+                                ⚔️${component.damage} 🛡️${component.armor}
                             </div>
                             ${abilityText}
                         </div>
@@ -1804,7 +1902,7 @@
                         <div class="slot" onclick="handleSlotClick('${slotName}')">
                             <div class="slot-header">
                                 <span>${slotLabel}</span>
-                                <span style="color: #666;">Empty (Cap: ${slot.capacity})</span>
+                                <span style="color: #666;">Empty</span>
                             </div>
                             <div style="font-size: 11px; color: #666;">Click to attach component</div>
                         </div>
@@ -1851,10 +1949,8 @@
                             <span class="tier-indicator tier-${comp.tier}">T${comp.tier}</span>
                         </div>
                         <div class="component-stats">
-                            <div class="stat-item">⚔️ ${comp.damage}</div>
-                            <div class="stat-item">🛡️ ${comp.armor}</div>
-                            <div class="stat-item">⚖️ ${comp.weight}</div>
-                            <div class="stat-item">📏 ${comp.size}</div>
+                            <div class="stat-item">⚔️ DMG: ${comp.damage}</div>
+                            <div class="stat-item">🛡️ ARM: ${comp.armor}</div>
                         </div>
                         <div style="font-size: 10px; color: #888; margin-top: 5px;">
                             Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
@@ -2145,8 +2241,6 @@
                         <div class="component-stats">
                             <div class="stat-item">⚔️ Damage: ${comp.damage}</div>
                             <div class="stat-item">🛡️ Armor: ${comp.armor}</div>
-                            <div class="stat-item">⚖️ Weight: ${comp.weight}</div>
-                            <div class="stat-item">📏 Size: ${comp.size}</div>
                             <div class="stat-item" style="grid-column: 1 / -1;">
                                 📍 Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
                             </div>
@@ -2418,7 +2512,7 @@
             panel.innerHTML = `
                 <h4 style="color: #ff00ff;">DEBUG INFO</h4>
                 <div style="margin-bottom: 10px; padding: 5px; background: rgba(255,0,255,0.2); border-radius: 4px; font-size: 10px;">
-                    <strong>Version:</strong> 3.0.0 - TENSION UPDATE
+                    <strong>Version:</strong> 3.1.0-WIP - RELICS & SIMPLIFICATION
                 </div>
                 <div style="margin: 10px 0;">
                     <strong>Round:</strong> ${game.round}<br>

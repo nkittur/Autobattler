@@ -324,33 +324,34 @@
 
         // Auto-fire test
         let shotCount = 0;
+        let battleOver = false;
         setInterval(() => {
             if (physics.playerMech.currentHP > 0 && physics.enemyMech.currentHP > 0) {
-                // Player shoots
-                physics.fireProjectile(physics.playerMech, physics.enemyMech, testPlayer.damage);
                 shotCount++;
+                log(`Round ${shotCount}: Player fires!`);
+                physics.fireProjectile(physics.playerMech, physics.enemyMech, testPlayer.damage);
 
                 // Enemy shoots back
                 setTimeout(() => {
                     if (physics.enemyMech.currentHP > 0) {
+                        log(`Round ${shotCount}: Enemy fires!`);
                         physics.fireProjectile(physics.enemyMech, physics.playerMech, testEnemy.damage);
                     }
                 }, 500);
-            } else {
-                if (shotCount > 0) {
-                    log('=== BATTLE OVER ===');
-                    if (physics.enemyMech.currentHP <= 0) {
-                        log('PLAYER WINS!');
-                    } else {
-                        log('ENEMY WINS!');
-                    }
-                    shotCount = 0; // Prevent multiple logs
+            } else if (!battleOver) {
+                battleOver = true;
+                log('=== BATTLE OVER ===');
+                if (physics.enemyMech.currentHP <= 0) {
+                    log('🎉 PLAYER WINS!');
+                } else {
+                    log('💀 PLAYER DEFEATED!');
                 }
+                log(`Final: Player ${Math.floor(physics.playerMech.currentHP)}HP, Enemy ${Math.floor(physics.enemyMech.currentHP)}HP`);
             }
-        }, 2000);
+        }, 1500);
 
-        log('Auto-fire started - shots every 2 seconds');
-        log('Watch the canvas!');
+        log('Auto-fire started - shots every 1.5 seconds');
+        log('Watch the canvas and logs!');
     </script>
 </body>
 </html>

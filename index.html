@@ -1719,6 +1719,7 @@
 
                 // Initialize
                 this.createTerrain();
+                this.setupCollisionDetection(); // Set up collision handling once
                 this.setupRenderLoop();
             }
 
@@ -1959,8 +1960,7 @@
                 Matter.World.add(this.world, projectile);
                 this.projectiles.push(projectile);
 
-                // Check for impacts - collision will call battle system
-                this.setupProjectileCollision(projectile, toMech);
+                // Collisions handled by global setupCollisionDetection()
 
                 return projectile; // Return for battle system to attach metadata
             }
@@ -1976,45 +1976,60 @@
                 this.particles.push(beam);
             }
 
-            setupProjectileCollision(projectile, targetMech) {
+            setupCollisionDetection() {
                 const Events = Matter.Events;
 
                 Events.on(this.engine, 'collisionStart', (event) => {
                     event.pairs.forEach(pair => {
                         const { bodyA, bodyB } = pair;
 
-                        // Check if projectile hit target
-                        if ((bodyA === projectile || bodyB === projectile)) {
-                            const other = bodyA === projectile ? bodyB : bodyA;
+                        // Check if either body is a projectile
+                        const projectile = this.projectiles.find(p => p === bodyA || p === bodyB);
+                        if (!projectile) return;
 
-                            // Hit enemy mech
-                            if (other.label && other.label.includes(targetMech === this.enemyMech ? 'enemy' : 'player')) {
-                                // Apply physics effects (knockback, ragdoll)
-                                this.applyPhysicalImpact(targetMech, projectile.damage, projectile.type);
+                        const other = bodyA === projectile ? bodyB : bodyA;
 
-                                // Apply gameplay damage through battle system
-                                if (projectile.battleSystem) {
-                                    projectile.battleSystem.applyDamageToMech(targetMech, projectile.damage, projectile.type);
-                                }
+                        // Hit player mech
+                        if (this.playerMech && other.label && other.label.includes('player')) {
+                            debugLog(`💥 Player hit by projectile: ${projectile.damage} damage`);
+                            this.applyPhysicalImpact(this.playerMech, projectile.damage, projectile.type);
 
-                                this.createImpactEffect(other.position.x, other.position.y, projectile.type);
-                                Matter.World.remove(this.world, projectile);
-                                this.projectiles = this.projectiles.filter(p => p !== projectile);
+                            if (projectile.battleSystem) {
+                                projectile.battleSystem.applyDamageToMech(this.playerMech, projectile.damage, projectile.type);
                             }
-                            // Hit terrain
-                            else if (other.label === 'terrain') {
-                                if (projectile.type === 'EXPLOSIVE') {
-                                    this.createExplosion(other.position.x, other.position.y, 80);
-                                    Matter.World.remove(this.world, other);
-                                    this.terrain = this.terrain.filter(t => t !== other);
-                                }
-                                this.createImpactEffect(other.position.x, other.position.y, projectile.type);
-                                Matter.World.remove(this.world, projectile);
-                                this.projectiles = this.projectiles.filter(p => p !== projectile);
+
+                            this.createImpactEffect(other.position.x, other.position.y, projectile.type);
+                            Matter.World.remove(this.world, projectile);
+                            this.projectiles = this.projectiles.filter(p => p !== projectile);
+                        }
+                        // Hit enemy mech
+                        else if (this.enemyMech && other.label && other.label.includes('enemy')) {
+                            debugLog(`💥 Enemy hit by projectile: ${projectile.damage} damage`);
+                            this.applyPhysicalImpact(this.enemyMech, projectile.damage, projectile.type);
+
+                            if (projectile.battleSystem) {
+                                projectile.battleSystem.applyDamageToMech(this.enemyMech, projectile.damage, projectile.type);
                             }
+
+                            this.createImpactEffect(other.position.x, other.position.y, projectile.type);
+                            Matter.World.remove(this.world, projectile);
+                            this.projectiles = this.projectiles.filter(p => p !== projectile);
+                        }
+                        // Hit terrain
+                        else if (other.label === 'terrain') {
+                            if (projectile.type === 'EXPLOSIVE') {
+                                this.createExplosion(other.position.x, other.position.y, 80);
+                                Matter.World.remove(this.world, other);
+                                this.terrain = this.terrain.filter(t => t !== other);
+                            }
+                            this.createImpactEffect(other.position.x, other.position.y, projectile.type);
+                            Matter.World.remove(this.world, projectile);
+                            this.projectiles = this.projectiles.filter(p => p !== projectile);
                         }
                     });
                 });
+
+                debugLog('✅ Global collision detection initialized');
             }
 
             applyPhysicalImpact(mech, damage, type) {

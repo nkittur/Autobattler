@@ -619,7 +619,57 @@
                 background: rgba(0, 255, 136, 0.15);
             }
         }
+
+        /* Physics Canvas Styles */
+        #physics-canvas {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            aspect-ratio: 16 / 9;
+            background: linear-gradient(180deg, #1a1a3e 0%, #0d0d1f 100%);
+            border: 3px solid #00ff88;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), inset 0 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        #physics-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #physics-controls button {
+            padding: 6px 12px;
+            font-size: 11px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s;
+        }
+
+        #physics-controls button:hover {
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        #physics-controls button.active {
+            background: rgba(0, 255, 136, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.7);
+        }
     </style>
+
+    <!-- Matter.js Physics Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -635,6 +685,16 @@
 
         <!-- Battle Screen -->
         <div id="battle-screen" class="screen">
+            <!-- Physics Combat Visualization -->
+            <div id="physics-controls">
+                <button id="toggle-physics" class="active">🎮 Physics View</button>
+                <button id="speed-1x" class="active">1x Speed</button>
+                <button id="speed-2x">2x Speed</button>
+                <button id="speed-4x">4x Speed</button>
+                <button id="toggle-effects" class="active">✨ Effects</button>
+            </div>
+            <canvas id="physics-canvas" width="800" height="450"></canvas>
+
             <div class="battle-area">
                 <div class="combatant player">
                     <h2>🤖 YOUR MECH</h2>
@@ -1187,6 +1247,26 @@
         const game = new GameState();
 
         // ============================================================================
+        // PHYSICS ENGINE INITIALIZATION
+        // ============================================================================
+
+        let physicsEngine = null;
+        let combatVisualizer = null;
+        let physicsEnabled = true;
+
+        // Initialize physics after DOM is ready
+        function initializePhysics() {
+            try {
+                physicsEngine = new PhysicsEngine('physics-canvas');
+                combatVisualizer = new CombatVisualizer(physicsEngine);
+                console.log('Physics engine initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize physics:', error);
+                physicsEnabled = false;
+            }
+        }
+
+        // ============================================================================
         // COMPONENT & MECH MANAGEMENT
         // ============================================================================
 
@@ -1526,6 +1606,748 @@
                     special: baseMonster.special,
                     isBoss: false
                 };
+            }
+        }
+
+        // ============================================================================
+        // PHYSICS COMBAT VISUALIZATION SYSTEM
+        // ============================================================================
+
+        class PhysicsEngine {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+
+                // Matter.js aliases
+                const Engine = Matter.Engine;
+                const Render = Matter.Render;
+                const World = Matter.World;
+                const Bodies = Matter.Bodies;
+                const Body = Matter.Body;
+                const Composite = Matter.Composite;
+                const Constraint = Matter.Constraint;
+                const Events = Matter.Events;
+
+                // Create engine with custom gravity
+                this.engine = Engine.create();
+                this.engine.gravity.y = 1.2; // Increased gravity for better feel
+                this.world = this.engine.world;
+
+                // Canvas dimensions (pixelated low-res)
+                this.width = 800;
+                this.height = 450;
+
+                // Render scale
+                this.scale = 1;
+
+                // Animation settings
+                this.running = false;
+                this.effectsEnabled = true;
+                this.timeScale = 1;
+
+                // Entities
+                this.playerMech = null;
+                this.enemyMech = null;
+                this.terrain = [];
+                this.projectiles = [];
+                this.particles = [];
+
+                // Camera shake
+                this.cameraShake = { x: 0, y: 0, intensity: 0 };
+
+                // Colors
+                this.colors = {
+                    player: '#00ff88',
+                    enemy: '#ff4444',
+                    terrain: '#4a4a6a',
+                    explosion: '#ff6600',
+                    energy: '#00ccff',
+                    kinetic: '#ffaa00',
+                    background: '#0d0d1f',
+                    sky: '#1a1a3e'
+                };
+
+                // Initialize
+                this.createTerrain();
+                this.setupRenderLoop();
+            }
+
+            createTerrain() {
+                const Bodies = Matter.Bodies;
+                const groundHeight = 40;
+                const platformY = this.height - groundHeight;
+
+                // Main ground
+                const ground = Bodies.rectangle(this.width / 2, this.height - groundHeight / 2, this.width, groundHeight, {
+                    isStatic: true,
+                    friction: 0.8,
+                    render: { fillStyle: this.colors.terrain }
+                });
+                Matter.World.add(this.world, ground);
+
+                // Destructible terrain blocks
+                const blockSize = 20;
+                const numBlocks = 15;
+
+                for (let i = 0; i < numBlocks; i++) {
+                    const x = 150 + i * (blockSize + 2) + Math.random() * 50;
+                    const y = platformY - blockSize - Math.random() * 100;
+
+                    // Random block configurations
+                    const isLarge = Math.random() > 0.7;
+                    const size = isLarge ? blockSize * 1.5 : blockSize;
+
+                    const block = Bodies.rectangle(x, y, size, size, {
+                        friction: 0.6,
+                        restitution: 0.3,
+                        density: 0.001,
+                        label: 'terrain',
+                        render: { fillStyle: this.colors.terrain }
+                    });
+
+                    Matter.World.add(this.world, block);
+                    this.terrain.push(block);
+                }
+            }
+
+            createMech(type, x, y, isPlayer) {
+                const Bodies = Matter.Bodies;
+                const Constraint = Matter.Constraint;
+                const Composite = Matter.Composite;
+                const Body = Matter.Body;
+
+                // Size based on mech class
+                let scale = 1;
+                if (type === 'Light') scale = 0.8;
+                if (type === 'Heavy') scale = 1.3;
+
+                const baseSize = 30;
+                const size = baseSize * scale;
+
+                // Create body parts
+                const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
+                    density: 0.002,
+                    friction: 0.8,
+                    restitution: 0.1,
+                    label: isPlayer ? 'player_torso' : 'enemy_torso'
+                });
+
+                const head = Bodies.circle(x, y - size, size * 0.5, {
+                    density: 0.001,
+                    friction: 0.5,
+                    label: isPlayer ? 'player_head' : 'enemy_head'
+                });
+
+                const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
+                    density: 0.001,
+                    friction: 0.5,
+                    label: isPlayer ? 'player_arm' : 'enemy_arm'
+                });
+
+                const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
+                    density: 0.001,
+                    friction: 0.5,
+                    label: isPlayer ? 'player_arm' : 'enemy_arm'
+                });
+
+                const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
+                    density: 0.002,
+                    friction: 0.9,
+                    label: isPlayer ? 'player_leg' : 'enemy_leg'
+                });
+
+                const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
+                    density: 0.002,
+                    friction: 0.9,
+                    label: isPlayer ? 'player_leg' : 'enemy_leg'
+                });
+
+                // Create composite mech
+                const mech = Composite.create({ label: isPlayer ? 'player_mech' : 'enemy_mech' });
+
+                // Add parts
+                Composite.add(mech, [torso, head, leftArm, rightArm, leftLeg, rightLeg]);
+
+                // Constraints (joints) - can be broken for ragdoll
+                const constraints = [
+                    // Head to torso
+                    Constraint.create({
+                        bodyA: head,
+                        bodyB: torso,
+                        pointA: { x: 0, y: size * 0.3 },
+                        pointB: { x: 0, y: -size * 0.7 },
+                        stiffness: 0.7,
+                        length: 0,
+                        label: 'neck'
+                    }),
+                    // Left arm
+                    Constraint.create({
+                        bodyA: leftArm,
+                        bodyB: torso,
+                        pointA: { x: 0, y: -size * 0.4 },
+                        pointB: { x: -size * 0.5, y: -size * 0.3 },
+                        stiffness: 0.5,
+                        length: 0,
+                        label: 'left_shoulder'
+                    }),
+                    // Right arm
+                    Constraint.create({
+                        bodyA: rightArm,
+                        bodyB: torso,
+                        pointA: { x: 0, y: -size * 0.4 },
+                        pointB: { x: size * 0.5, y: -size * 0.3 },
+                        stiffness: 0.5,
+                        length: 0,
+                        label: 'right_shoulder'
+                    }),
+                    // Left leg
+                    Constraint.create({
+                        bodyA: leftLeg,
+                        bodyB: torso,
+                        pointA: { x: 0, y: -size * 0.4 },
+                        pointB: { x: -size * 0.2, y: size * 0.7 },
+                        stiffness: 0.6,
+                        length: 0,
+                        label: 'left_hip'
+                    }),
+                    // Right leg
+                    Constraint.create({
+                        bodyA: rightLeg,
+                        bodyB: torso,
+                        pointA: { x: 0, y: -size * 0.4 },
+                        pointB: { x: size * 0.2, y: size * 0.7 },
+                        stiffness: 0.6,
+                        length: 0,
+                        label: 'right_hip'
+                    })
+                ];
+
+                Composite.add(mech, constraints);
+
+                // Add to world
+                Matter.World.add(this.world, mech);
+
+                return {
+                    composite: mech,
+                    torso: torso,
+                    head: head,
+                    leftArm: leftArm,
+                    rightArm: rightArm,
+                    leftLeg: leftLeg,
+                    rightLeg: rightLeg,
+                    constraints: constraints,
+                    color: isPlayer ? this.colors.player : this.colors.enemy,
+                    scale: scale,
+                    isRagdoll: false
+                };
+            }
+
+            fireProjectile(fromMech, toMech, weaponType, damage) {
+                const Bodies = Matter.Bodies;
+                const Body = Matter.Body;
+
+                const startX = fromMech.torso.position.x;
+                const startY = fromMech.torso.position.y;
+                const targetX = toMech.torso.position.x;
+                const targetY = toMech.torso.position.y;
+
+                let projectile;
+
+                if (weaponType === 'EXPLOSIVE') {
+                    // Ballistic trajectory rocket
+                    const angle = Math.atan2(targetY - startY, targetX - startX);
+                    const power = 15 + Math.random() * 5;
+                    const arcBoost = -8; // Upward boost for arc
+
+                    projectile = Bodies.circle(startX, startY, 8, {
+                        density: 0.001,
+                        restitution: 0.3,
+                        friction: 0.1,
+                        label: 'rocket'
+                    });
+
+                    Body.setVelocity(projectile, {
+                        x: Math.cos(angle) * power,
+                        y: Math.sin(angle) * power + arcBoost
+                    });
+
+                    projectile.render.fillStyle = this.colors.explosion;
+                    projectile.damage = damage;
+                    projectile.type = 'EXPLOSIVE';
+                    projectile.trail = [];
+
+                } else if (weaponType === 'KINETIC') {
+                    // Fast bullet
+                    const angle = Math.atan2(targetY - startY, targetX - startX);
+                    const speed = 25;
+
+                    projectile = Bodies.circle(startX, startY, 4, {
+                        density: 0.0005,
+                        restitution: 0.8,
+                        friction: 0.05,
+                        label: 'bullet'
+                    });
+
+                    Body.setVelocity(projectile, {
+                        x: Math.cos(angle) * speed,
+                        y: Math.sin(angle) * speed
+                    });
+
+                    projectile.render.fillStyle = this.colors.kinetic;
+                    projectile.damage = damage;
+                    projectile.type = 'KINETIC';
+
+                } else if (weaponType === 'ENERGY') {
+                    // Energy beam (instant raycast)
+                    this.createEnergyBeam(startX, startY, targetX, targetY, damage);
+                    this.applyDamageToMech(toMech, damage, 'ENERGY');
+                    return;
+                }
+
+                Matter.World.add(this.world, projectile);
+                this.projectiles.push(projectile);
+
+                // Check for impacts
+                this.setupProjectileCollision(projectile, toMech);
+            }
+
+            createEnergyBeam(x1, y1, x2, y2, damage) {
+                const beam = {
+                    x1, y1, x2, y2,
+                    life: 30, // frames
+                    width: 4,
+                    color: this.colors.energy,
+                    damage: damage
+                };
+                this.particles.push(beam);
+            }
+
+            setupProjectileCollision(projectile, targetMech) {
+                const Events = Matter.Events;
+
+                Events.on(this.engine, 'collisionStart', (event) => {
+                    event.pairs.forEach(pair => {
+                        const { bodyA, bodyB } = pair;
+
+                        // Check if projectile hit target
+                        if ((bodyA === projectile || bodyB === projectile)) {
+                            const other = bodyA === projectile ? bodyB : bodyA;
+
+                            // Hit enemy mech
+                            if (other.label && other.label.includes(targetMech === this.enemyMech ? 'enemy' : 'player')) {
+                                this.applyDamageToMech(targetMech, projectile.damage, projectile.type);
+                                this.createImpactEffect(other.position.x, other.position.y, projectile.type);
+                                Matter.World.remove(this.world, projectile);
+                                this.projectiles = this.projectiles.filter(p => p !== projectile);
+                            }
+                            // Hit terrain
+                            else if (other.label === 'terrain') {
+                                if (projectile.type === 'EXPLOSIVE') {
+                                    this.createExplosion(other.position.x, other.position.y, 80);
+                                    Matter.World.remove(this.world, other);
+                                    this.terrain = this.terrain.filter(t => t !== other);
+                                }
+                                this.createImpactEffect(other.position.x, other.position.y, projectile.type);
+                                Matter.World.remove(this.world, projectile);
+                                this.projectiles = this.projectiles.filter(p => p !== projectile);
+                            }
+                        }
+                    });
+                });
+            }
+
+            applyDamageToMech(mech, damage, type) {
+                const Body = Matter.Body;
+
+                // Apply knockback force
+                const force = type === 'EXPLOSIVE' ? 0.015 :
+                             type === 'KINETIC' ? 0.008 : 0.003;
+
+                const direction = mech === this.playerMech ? -1 : 1;
+
+                Body.applyForce(mech.torso, mech.torso.position, {
+                    x: direction * force * (1 + Math.random() * 0.5),
+                    y: -force * 0.3
+                });
+
+                // Heavy damage triggers ragdoll
+                if (damage > 50 && !mech.isRagdoll) {
+                    this.enableRagdoll(mech);
+                }
+
+                // Camera shake
+                this.addCameraShake(damage / 20);
+            }
+
+            enableRagdoll(mech) {
+                const Composite = Matter.Composite;
+
+                // Remove some constraints for ragdoll effect
+                mech.constraints.forEach(constraint => {
+                    constraint.stiffness *= 0.3; // Make joints looser
+                });
+
+                mech.isRagdoll = true;
+
+                // Auto-recover after time
+                setTimeout(() => {
+                    mech.constraints.forEach(constraint => {
+                        constraint.stiffness /= 0.3; // Restore stiffness
+                    });
+                    mech.isRagdoll = false;
+                }, 2000);
+            }
+
+            createExplosion(x, y, radius) {
+                const Body = Matter.Body;
+                const Query = Matter.Query;
+
+                // Create explosion particles
+                for (let i = 0; i < 20; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 3 + Math.random() * 5;
+
+                    this.particles.push({
+                        x, y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 30 + Math.random() * 30,
+                        maxLife: 60,
+                        size: 3 + Math.random() * 5,
+                        color: Math.random() > 0.5 ? this.colors.explosion : '#ffaa00',
+                        type: 'explosion'
+                    });
+                }
+
+                // Apply force to nearby bodies
+                const nearbyBodies = Query.region(Matter.Composite.allBodies(this.world), {
+                    min: { x: x - radius, y: y - radius },
+                    max: { x: x + radius, y: y + radius }
+                });
+
+                nearbyBodies.forEach(body => {
+                    if (!body.isStatic) {
+                        const dist = Math.hypot(body.position.x - x, body.position.y - y);
+                        const forceMag = Math.max(0, (radius - dist) / radius) * 0.02;
+                        const angle = Math.atan2(body.position.y - y, body.position.x - x);
+
+                        Body.applyForce(body, body.position, {
+                            x: Math.cos(angle) * forceMag,
+                            y: Math.sin(angle) * forceMag
+                        });
+                    }
+                });
+
+                this.addCameraShake(8);
+            }
+
+            createImpactEffect(x, y, type) {
+                const color = type === 'EXPLOSIVE' ? this.colors.explosion :
+                             type === 'KINETIC' ? this.colors.kinetic :
+                             this.colors.energy;
+
+                for (let i = 0; i < 10; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 3;
+
+                    this.particles.push({
+                        x, y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        life: 20 + Math.random() * 20,
+                        maxLife: 40,
+                        size: 2 + Math.random() * 3,
+                        color: color,
+                        type: 'impact'
+                    });
+                }
+
+                this.addCameraShake(2);
+            }
+
+            addCameraShake(intensity) {
+                this.cameraShake.intensity += intensity;
+            }
+
+            updateCameraShake() {
+                if (this.cameraShake.intensity > 0) {
+                    this.cameraShake.x = (Math.random() - 0.5) * this.cameraShake.intensity;
+                    this.cameraShake.y = (Math.random() - 0.5) * this.cameraShake.intensity;
+                    this.cameraShake.intensity *= 0.9; // Decay
+
+                    if (this.cameraShake.intensity < 0.1) {
+                        this.cameraShake.intensity = 0;
+                        this.cameraShake.x = 0;
+                        this.cameraShake.y = 0;
+                    }
+                }
+            }
+
+            setupRenderLoop() {
+                const Engine = Matter.Engine;
+
+                const animate = () => {
+                    if (this.running) {
+                        // Update physics
+                        Engine.update(this.engine, 1000 / 60 * this.timeScale);
+
+                        // Update particles
+                        this.updateParticles();
+
+                        // Update camera shake
+                        this.updateCameraShake();
+
+                        // Render
+                        this.render();
+                    }
+
+                    requestAnimationFrame(animate);
+                };
+
+                animate();
+            }
+
+            updateParticles() {
+                this.particles = this.particles.filter(p => {
+                    p.life--;
+
+                    if (p.type === 'explosion' || p.type === 'impact') {
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.2; // Gravity
+                    }
+
+                    return p.life > 0;
+                });
+            }
+
+            render() {
+                const ctx = this.ctx;
+
+                // Clear
+                ctx.fillStyle = this.colors.background;
+                ctx.fillRect(0, 0, this.width, this.height);
+
+                // Sky gradient
+                const gradient = ctx.createLinearGradient(0, 0, 0, this.height);
+                gradient.addColorStop(0, this.colors.sky);
+                gradient.addColorStop(1, this.colors.background);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, this.width, this.height * 0.7);
+
+                // Apply camera shake
+                ctx.save();
+                ctx.translate(this.cameraShake.x, this.cameraShake.y);
+
+                // Render terrain
+                this.renderBodies(Matter.Composite.allBodies(this.world), ctx);
+
+                // Render particles
+                if (this.effectsEnabled) {
+                    this.renderParticles(ctx);
+                }
+
+                // Render mechs with custom rendering
+                if (this.playerMech) this.renderMech(this.playerMech, ctx);
+                if (this.enemyMech) this.renderMech(this.enemyMech, ctx);
+
+                ctx.restore();
+            }
+
+            renderBodies(bodies, ctx) {
+                bodies.forEach(body => {
+                    if (body.label && (body.label.includes('player') || body.label.includes('enemy'))) {
+                        return; // Skip mech parts, we render them separately
+                    }
+
+                    const vertices = body.vertices;
+                    ctx.beginPath();
+                    ctx.moveTo(vertices[0].x, vertices[0].y);
+
+                    for (let i = 1; i < vertices.length; i++) {
+                        ctx.lineTo(vertices[i].x, vertices[i].y);
+                    }
+
+                    ctx.closePath();
+                    ctx.fillStyle = body.render.fillStyle || this.colors.terrain;
+                    ctx.fill();
+
+                    // Pixel-art outline
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+            }
+
+            renderMech(mech, ctx) {
+                const parts = [mech.torso, mech.head, mech.leftArm, mech.rightArm, mech.leftLeg, mech.rightLeg];
+
+                ctx.fillStyle = mech.color;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+
+                parts.forEach(part => {
+                    const vertices = part.vertices;
+                    ctx.beginPath();
+                    ctx.moveTo(vertices[0].x, vertices[0].y);
+
+                    for (let i = 1; i < vertices.length; i++) {
+                        ctx.lineTo(vertices[i].x, vertices[i].y);
+                    }
+
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                });
+
+                // Render constraints (joints)
+                mech.constraints.forEach(constraint => {
+                    const posA = constraint.bodyA.position;
+                    const posB = constraint.bodyB.position;
+
+                    ctx.strokeStyle = mech.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(posA.x, posA.y);
+                    ctx.lineTo(posB.x, posB.y);
+                    ctx.stroke();
+                });
+            }
+
+            renderParticles(ctx) {
+                this.particles.forEach(p => {
+                    if (p.type === 'explosion' || p.type === 'impact') {
+                        const alpha = p.life / p.maxLife;
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = alpha;
+                        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+                        ctx.globalAlpha = 1;
+                    } else if (p.x1 !== undefined) {
+                        // Energy beam
+                        const alpha = p.life / 30;
+                        ctx.strokeStyle = p.color;
+                        ctx.globalAlpha = alpha;
+                        ctx.lineWidth = p.width;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x1, p.y1);
+                        ctx.lineTo(p.x2, p.y2);
+                        ctx.stroke();
+
+                        // Glow effect
+                        ctx.shadowBlur = 20;
+                        ctx.shadowColor = p.color;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                        ctx.globalAlpha = 1;
+                    }
+                });
+            }
+
+            start() {
+                this.running = true;
+            }
+
+            stop() {
+                this.running = false;
+            }
+
+            reset() {
+                const World = Matter.World;
+                const Composite = Matter.Composite;
+
+                // Clear all bodies except ground
+                World.clear(this.world, false);
+                this.terrain = [];
+                this.projectiles = [];
+                this.particles = [];
+                this.playerMech = null;
+                this.enemyMech = null;
+
+                // Recreate terrain
+                this.createTerrain();
+            }
+
+            setTimeScale(scale) {
+                this.timeScale = scale;
+                this.engine.timing.timeScale = scale;
+            }
+        }
+
+        // ============================================================================
+        // COMBAT VISUALIZER - Bridge between BattleSystem and PhysicsEngine
+        // ============================================================================
+
+        class CombatVisualizer {
+            constructor(physicsEngine) {
+                this.physics = physicsEngine;
+                this.animationQueue = [];
+                this.isProcessing = false;
+            }
+
+            initializeBattle(playerMech, enemyMech) {
+                this.physics.reset();
+
+                // Create player mech (left side)
+                this.physics.playerMech = this.physics.createMech(
+                    playerMech.class,
+                    200,
+                    300,
+                    true
+                );
+
+                // Create enemy mech (right side)
+                this.physics.enemyMech = this.physics.createMech(
+                    enemyMech.class || 'Medium',
+                    600,
+                    300,
+                    false
+                );
+
+                this.physics.start();
+            }
+
+            async animateAttack(isPlayer, damage, damageType) {
+                const attacker = isPlayer ? this.physics.playerMech : this.physics.enemyMech;
+                const target = isPlayer ? this.physics.enemyMech : this.physics.playerMech;
+
+                if (!attacker || !target) return;
+
+                // Determine weapon type from damage type or use default
+                const weaponType = damageType || (Math.random() > 0.5 ? 'KINETIC' : 'EXPLOSIVE');
+
+                // Fire projectile
+                this.physics.fireProjectile(attacker, target, weaponType, damage);
+
+                // Wait for animation
+                await this.wait(800);
+            }
+
+            async animateDamage(isPlayer, damage) {
+                const target = isPlayer ? this.physics.playerMech : this.physics.enemyMech;
+
+                // Visual feedback already handled by physics engine
+                await this.wait(300);
+            }
+
+            async animateDeath(isPlayer) {
+                const target = isPlayer ? this.physics.playerMech : this.physics.enemyMech;
+
+                if (target) {
+                    this.physics.enableRagdoll(target);
+
+                    // Explosion effect
+                    this.physics.createExplosion(
+                        target.torso.position.x,
+                        target.torso.position.y,
+                        100
+                    );
+                }
+
+                await this.wait(1500);
+            }
+
+            wait(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms / this.physics.timeScale));
             }
         }
 
@@ -2523,6 +3345,11 @@
 
             const battle = new BattleSystem(game.currentMech, game.currentMonster);
 
+            // Initialize physics visualization
+            if (physicsEnabled && combatVisualizer) {
+                combatVisualizer.initializeBattle(game.currentMech, game.currentMonster);
+            }
+
             addCombatLog('⚔️ BATTLE START! ⚔️', 'system');
 
             // Show initial status effects (e.g., shield)
@@ -2533,8 +3360,37 @@
             while (result === 'continue') {
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
+                const prevLogLength = battle.log.length;
                 result = battle.executeTurn();
                 const state = battle.getState();
+
+                // Trigger physics animations for attacks
+                if (physicsEnabled && combatVisualizer) {
+                    // Check new log entries for attacks
+                    for (let i = prevLogLength; i < battle.log.length; i++) {
+                        const logEntry = battle.log[i];
+                        const msg = logEntry.message;
+                        const actor = logEntry.actor;
+
+                        // Detect attacks and trigger animations
+                        if (msg.includes('deals') && msg.includes('damage')) {
+                            const isPlayer = actor === 'player';
+                            const damageMatch = msg.match(/(\d+) damage/);
+                            const damage = damageMatch ? parseInt(damageMatch[1]) : 30;
+
+                            // Determine weapon type from log messages
+                            let weaponType = 'KINETIC'; // default
+                            if (msg.includes('BURN') || msg.includes('PLASMA') || msg.includes('EXPLOSIVE')) {
+                                weaponType = 'EXPLOSIVE';
+                            } else if (msg.includes('LASER') || msg.includes('ENERGY') || msg.includes('ION')) {
+                                weaponType = 'ENERGY';
+                            }
+
+                            // Trigger attack animation
+                            combatVisualizer.animateAttack(isPlayer, damage, weaponType);
+                        }
+                    }
+                }
 
                 // Update displays
                 updateHealthBar('player', state.playerMech.currentHP, state.playerMech.maxHP);
@@ -2552,6 +3408,15 @@
                         const secondLog = battle.log[battle.log.length - 2];
                         addCombatLog(secondLog.message, secondLog.actor);
                     }
+                }
+            }
+
+            // Trigger death animation
+            if (physicsEnabled && combatVisualizer) {
+                if (result === 'victory') {
+                    await combatVisualizer.animateDeath(false); // Enemy dies
+                } else {
+                    await combatVisualizer.animateDeath(true); // Player dies
                 }
             }
 
@@ -2940,6 +3805,9 @@
         // ============================================================================
 
         function initializeGame() {
+            // Initialize physics engine
+            initializePhysics();
+
             // Try to load saved game
             if (!game.load()) {
                 // New game - choose starting mech
@@ -2981,6 +3849,41 @@
         });
 
         document.getElementById('start-battle-btn').addEventListener('click', startBattle);
+
+        // Physics controls
+        document.getElementById('toggle-physics').addEventListener('click', function() {
+            physicsEnabled = !physicsEnabled;
+            this.classList.toggle('active');
+            if (physicsEngine) {
+                const canvas = document.getElementById('physics-canvas');
+                canvas.style.display = physicsEnabled ? 'block' : 'none';
+            }
+        });
+
+        document.getElementById('speed-1x').addEventListener('click', function() {
+            if (physicsEngine) physicsEngine.setTimeScale(1);
+            document.querySelectorAll('#physics-controls button[id^="speed-"]').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+        });
+
+        document.getElementById('speed-2x').addEventListener('click', function() {
+            if (physicsEngine) physicsEngine.setTimeScale(2);
+            document.querySelectorAll('#physics-controls button[id^="speed-"]').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+        });
+
+        document.getElementById('speed-4x').addEventListener('click', function() {
+            if (physicsEngine) physicsEngine.setTimeScale(4);
+            document.querySelectorAll('#physics-controls button[id^="speed-"]').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+        });
+
+        document.getElementById('toggle-effects').addEventListener('click', function() {
+            if (physicsEngine) {
+                physicsEngine.effectsEnabled = !physicsEngine.effectsEnabled;
+                this.classList.toggle('active');
+            }
+        });
 
         // Abilities guide toggle
         document.getElementById('toggle-abilities-guide').addEventListener('click', () => {

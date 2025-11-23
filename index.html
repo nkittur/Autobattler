@@ -1251,15 +1251,13 @@
         // ============================================================================
 
         let physicsEngine = null;
-        let combatVisualizer = null;
         let physicsEnabled = true;
 
         // Initialize physics after DOM is ready
         function initializePhysics() {
             try {
                 physicsEngine = new PhysicsEngine('physics-canvas');
-                combatVisualizer = new CombatVisualizer(physicsEngine);
-                console.log('Physics engine initialized successfully');
+                console.log('Physics-driven battle system initialized successfully');
             } catch (error) {
                 console.error('Failed to initialize physics:', error);
                 physicsEnabled = false;
@@ -1898,17 +1896,21 @@
                     projectile.type = 'KINETIC';
 
                 } else if (weaponType === 'ENERGY') {
-                    // Energy beam (instant raycast)
+                    // Energy beam (instant raycast) - damage handled by battle system
                     this.createEnergyBeam(startX, startY, targetX, targetY, damage);
-                    this.applyDamageToMech(toMech, damage, 'ENERGY');
-                    return;
+                    if (toMech.battleSystem) {
+                        toMech.battleSystem.applyDamageToMech(toMech, damage, 'ENERGY');
+                    }
+                    return null;
                 }
 
                 Matter.World.add(this.world, projectile);
                 this.projectiles.push(projectile);
 
-                // Check for impacts
+                // Check for impacts - collision will call battle system
                 this.setupProjectileCollision(projectile, toMech);
+
+                return projectile; // Return for battle system to attach metadata
             }
 
             createEnergyBeam(x1, y1, x2, y2, damage) {
@@ -1935,7 +1937,14 @@
 
                             // Hit enemy mech
                             if (other.label && other.label.includes(targetMech === this.enemyMech ? 'enemy' : 'player')) {
-                                this.applyDamageToMech(targetMech, projectile.damage, projectile.type);
+                                // Apply physics effects (knockback, ragdoll)
+                                this.applyPhysicalImpact(targetMech, projectile.damage, projectile.type);
+
+                                // Apply gameplay damage through battle system
+                                if (projectile.battleSystem) {
+                                    projectile.battleSystem.applyDamageToMech(targetMech, projectile.damage, projectile.type);
+                                }
+
                                 this.createImpactEffect(other.position.x, other.position.y, projectile.type);
                                 Matter.World.remove(this.world, projectile);
                                 this.projectiles = this.projectiles.filter(p => p !== projectile);
@@ -1956,7 +1965,7 @@
                 });
             }
 
-            applyDamageToMech(mech, damage, type) {
+            applyPhysicalImpact(mech, damage, type) {
                 const Body = Matter.Body;
 
                 // Apply knockback force
@@ -1969,11 +1978,6 @@
                     x: direction * force * (1 + Math.random() * 0.5),
                     y: -force * 0.3
                 });
-
-                // Heavy damage triggers ragdoll
-                if (damage > 50 && !mech.isRagdoll) {
-                    this.enableRagdoll(mech);
-                }
 
                 // Camera shake
                 this.addCameraShake(damage / 20);
@@ -2151,7 +2155,56 @@
                 if (this.playerMech) this.renderMech(this.playerMech, ctx);
                 if (this.enemyMech) this.renderMech(this.enemyMech, ctx);
 
+                // Render health bars
+                if (this.playerMech) this.renderHealthBar(this.playerMech, ctx);
+                if (this.enemyMech) this.renderHealthBar(this.enemyMech, ctx);
+
                 ctx.restore();
+            }
+
+            renderHealthBar(mech, ctx) {
+                if (!mech.currentHP || !mech.maxHP) return;
+
+                const x = mech.torso.position.x;
+                const y = mech.torso.position.y - 60;
+                const width = 80;
+                const height = 8;
+
+                // Background
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - width/2 - 1, y - 1, width + 2, height + 2);
+
+                // Health bar
+                const healthPercent = mech.currentHP / mech.maxHP;
+                const healthWidth = Math.max(0, (width * healthPercent));
+
+                // Color based on health
+                if (healthPercent > 0.6) {
+                    ctx.fillStyle = '#00ff88';
+                } else if (healthPercent > 0.3) {
+                    ctx.fillStyle = '#ffaa00';
+                } else {
+                    ctx.fillStyle = '#ff4444';
+                }
+
+                ctx.fillRect(x - width/2, y, healthWidth, height);
+
+                // Shield bar
+                if (mech.shield && mech.shield > 0) {
+                    const shieldY = y - 10;
+                    const shieldMax = 50; // Estimate
+                    const shieldPercent = Math.min(1, mech.shield / shieldMax);
+                    const shieldWidth = width * shieldPercent;
+
+                    ctx.fillStyle = '#00ccff';
+                    ctx.fillRect(x - width/2, shieldY, shieldWidth, 4);
+                }
+
+                // HP text
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${Math.max(0, Math.floor(mech.currentHP))}/${mech.maxHP}`, x, y - 5);
             }
 
             renderBodies(bodies, ctx) {
@@ -2274,80 +2327,454 @@
         }
 
         // ============================================================================
-        // COMBAT VISUALIZER - Bridge between BattleSystem and PhysicsEngine
+        // PHYSICS BATTLE SYSTEM - Real-time physics-driven combat
         // ============================================================================
 
-        class CombatVisualizer {
-            constructor(physicsEngine) {
+        class PhysicsBattleSystem {
+            constructor(playerMech, monster, physicsEngine) {
                 this.physics = physicsEngine;
-                this.animationQueue = [];
-                this.isProcessing = false;
+                this.playerMechData = JSON.parse(JSON.stringify(playerMech));
+                this.monsterData = JSON.parse(JSON.stringify(monster));
+                this.log = [];
+
+                // Battle state
+                this.isActive = false;
+                this.battleResult = null;
+
+                // Combat stats
+                this.playerStats = calculateMechStats(this.playerMechData);
+                this.playerShield = 0;
+                this.monsterShield = 0;
+                this.playerDots = [];
+                this.monsterDots = [];
+
+                // Abilities and traits
+                this.playerAbilities = this.collectAbilities(this.playerMechData);
+                this.playerTraits = this.playerMechData.traits || [];
+
+                // Weapon firing
+                this.playerFireRate = 0;
+                this.enemyFireRate = 0;
+                this.lastPlayerShot = 0;
+                this.lastEnemyShot = 0;
+
+                // DoT timers
+                this.dotInterval = null;
+                this.regenInterval = null;
+
+                // Physics mech references
+                this.playerPhysMech = null;
+                this.enemyPhysMech = null;
             }
 
-            initializeBattle(playerMech, enemyMech) {
+            collectAbilities(mech) {
+                const abilities = [];
+                Object.values(mech.loadout || {}).forEach(comp => {
+                    if (comp && comp.abilities) {
+                        comp.abilities.forEach(abilityKey => {
+                            if (ABILITIES[abilityKey]) {
+                                abilities.push(abilityKey);
+                            }
+                        });
+                    }
+                });
+                return abilities;
+            }
+
+            hasAbility(abilityKey) {
+                return this.playerAbilities.includes(abilityKey);
+            }
+
+            hasTrait(traitName) {
+                return this.playerTraits.some(t => t.name === traitName);
+            }
+
+            addLog(message, actor = 'system') {
+                this.log.push({ message, actor, timestamp: Date.now() });
+            }
+
+            async initializeBattle() {
                 this.physics.reset();
 
-                // Create player mech (left side)
-                this.physics.playerMech = this.physics.createMech(
-                    playerMech.class,
+                // Create physics mechs
+                this.playerPhysMech = this.physics.createMech(
+                    this.playerMechData.class,
                     200,
                     300,
                     true
                 );
 
-                // Create enemy mech (right side)
-                this.physics.enemyMech = this.physics.createMech(
-                    enemyMech.class || 'Medium',
+                this.enemyPhysMech = this.physics.createMech(
+                    this.monsterData.class || 'Medium',
                     600,
                     300,
                     false
                 );
 
+                // Add battle stats to physics mechs
+                this.playerPhysMech.currentHP = this.playerMechData.currentHP;
+                this.playerPhysMech.maxHP = this.playerMechData.maxHP;
+                this.playerPhysMech.stats = this.playerStats;
+                this.playerPhysMech.battleSystem = this;
+                this.playerPhysMech.isPlayer = true;
+
+                this.enemyPhysMech.currentHP = this.monsterData.currentHP;
+                this.enemyPhysMech.maxHP = this.monsterData.maxHP;
+                this.enemyPhysMech.stats = {
+                    damage: this.monsterData.damage,
+                    armor: this.monsterData.armor,
+                    speed: this.monsterData.speed || 50
+                };
+                this.enemyPhysMech.battleSystem = this;
+                this.enemyPhysMech.isPlayer = false;
+                this.enemyPhysMech.special = this.monsterData.special;
+
+                // Apply start of battle effects
+                this.applyStartOfBattleAbilities();
+                this.applyMonsterSpecialInit();
+
+                // Calculate fire rates (attacks per second based on speed)
+                this.playerFireRate = 1000 + (100 - this.playerStats.speed) * 20; // Faster mechs shoot more often
+                this.enemyFireRate = 1000 + (100 - (this.monsterData.speed || 50)) * 20;
+
+                // Start physics
                 this.physics.start();
+                this.isActive = true;
+
+                // Start combat loop
+                this.startCombatLoop();
+
+                // Start DoT ticking
+                this.startDoTLoop();
+
+                // Start regeneration
+                if (this.hasAbility('REGENERATION')) {
+                    this.startRegenLoop();
+                }
+
+                this.addLog('⚔️ BATTLE START! ⚔️', 'system');
             }
 
-            async animateAttack(isPlayer, damage, damageType) {
-                const attacker = isPlayer ? this.physics.playerMech : this.physics.enemyMech;
-                const target = isPlayer ? this.physics.enemyMech : this.physics.playerMech;
+            applyStartOfBattleAbilities() {
+                // Shield Generator
+                if (this.hasAbility('SHIELD_GEN')) {
+                    let shieldAmount = 50;
 
-                if (!attacker || !target) return;
+                    if (game.relics && game.relics.includes('PERFECT_AEGIS')) {
+                        const aegisCount = game.relics.filter(r => r === 'PERFECT_AEGIS').length;
+                        const multiplier = Math.pow(3, aegisCount);
+                        shieldAmount = Math.floor(shieldAmount * multiplier);
+                        this.addLog(`🛡️ PERFECT AEGIS: Shield multiplied ${multiplier}x!`, 'player');
+                    }
 
-                // Determine weapon type from damage type or use default
-                const weaponType = damageType || (Math.random() > 0.5 ? 'KINETIC' : 'EXPLOSIVE');
-
-                // Fire projectile
-                this.physics.fireProjectile(attacker, target, weaponType, damage);
-
-                // Wait for animation
-                await this.wait(800);
+                    this.playerShield = shieldAmount;
+                    this.playerPhysMech.shield = shieldAmount;
+                    this.addLog(`🛡️ ENERGY SHIELD: Activated with ${shieldAmount} shield HP`, 'player');
+                }
             }
 
-            async animateDamage(isPlayer, damage) {
-                const target = isPlayer ? this.physics.playerMech : this.physics.enemyMech;
+            applyMonsterSpecialInit() {
+                if (this.monsterData.special === 'SHIELD') {
+                    this.monsterShield = 40;
+                    this.enemyPhysMech.shield = 40;
+                    this.addLog('🛡️ Enemy activated energy shield! (40 shield)', 'monster');
+                }
 
-                // Visual feedback already handled by physics engine
-                await this.wait(300);
+                if (this.monsterData.isBoss && this.monsterData.description) {
+                    this.addLog(`⚠️ BOSS: ${this.monsterData.description}`, 'system');
+                }
             }
 
-            async animateDeath(isPlayer) {
-                const target = isPlayer ? this.physics.playerMech : this.physics.enemyMech;
+            startCombatLoop() {
+                const combatTick = () => {
+                    if (!this.isActive) return;
 
-                if (target) {
-                    this.physics.enableRagdoll(target);
+                    const now = Date.now();
 
-                    // Explosion effect
+                    // Player auto-fire
+                    if (now - this.lastPlayerShot > this.playerFireRate && this.playerPhysMech && this.enemyPhysMech) {
+                        this.fireWeapon(this.playerPhysMech, this.enemyPhysMech, true);
+                        this.lastPlayerShot = now;
+                    }
+
+                    // Enemy auto-fire
+                    if (now - this.lastEnemyShot > this.enemyFireRate && this.playerPhysMech && this.enemyPhysMech) {
+                        this.fireWeapon(this.enemyPhysMech, this.playerPhysMech, false);
+                        this.lastEnemyShot = now;
+                    }
+
+                    // Check win conditions
+                    this.checkBattleEnd();
+
+                    // Continue loop
+                    if (this.isActive) {
+                        setTimeout(combatTick, 16); // ~60fps
+                    }
+                };
+
+                combatTick();
+            }
+
+            startDoTLoop() {
+                this.dotInterval = setInterval(() => {
+                    if (!this.isActive) return;
+
+                    // Apply player DoTs to enemy
+                    this.playerDots = this.playerDots.filter(dot => {
+                        this.applyDirectDamage(this.enemyPhysMech, dot.damage, false, 'DOT');
+                        dot.duration--;
+                        if (dot.duration === 0) {
+                            this.addLog(`🔥 ${dot.type.toUpperCase()} expired`, 'player');
+                        }
+                        return dot.duration > 0;
+                    });
+
+                    // Apply enemy DoTs to player
+                    this.monsterDots = this.monsterDots.filter(dot => {
+                        this.applyDirectDamage(this.playerPhysMech, dot.damage, false, 'DOT');
+                        dot.duration--;
+                        return dot.duration > 0;
+                    });
+                }, 1000);
+            }
+
+            startRegenLoop() {
+                this.regenInterval = setInterval(() => {
+                    if (!this.isActive) return;
+
+                    const healAmount = 5;
+                    this.playerPhysMech.currentHP = Math.min(
+                        this.playerPhysMech.maxHP,
+                        this.playerPhysMech.currentHP + healAmount
+                    );
+                    this.addLog(`💚 REGENERATION: Healed ${healAmount} HP`, 'player');
+                }, 1000);
+            }
+
+            getDamageType(mech) {
+                // Determine damage type from equipped components
+                if (mech.isPlayer) {
+                    const components = Object.values(this.playerMechData.loadout || {});
+                    const types = components.map(c => c?.damageType).filter(Boolean);
+
+                    if (types.includes('EXPLOSIVE')) return 'EXPLOSIVE';
+                    if (types.includes('ENERGY')) return 'ENERGY';
+                    return 'KINETIC';
+                }
+                return Math.random() > 0.5 ? 'KINETIC' : 'EXPLOSIVE';
+            }
+
+            fireWeapon(fromMech, toMech, isPlayer) {
+                if (!fromMech || !toMech) return;
+
+                const weaponType = this.getDamageType(fromMech);
+                const baseDamage = isPlayer ? this.calculatePlayerDamage() : this.calculateEnemyDamage();
+
+                // Create physics projectile with damage attached
+                const projectile = this.physics.fireProjectile(fromMech, toMech, weaponType, baseDamage);
+
+                // Store combat data on projectile for collision handling
+                if (projectile) {
+                    projectile.isPlayer = isPlayer;
+                    projectile.fromMech = fromMech;
+                    projectile.toMech = toMech;
+                    projectile.battleSystem = this;
+                }
+            }
+
+            calculatePlayerDamage() {
+                let baseDamage = this.playerStats.damage;
+
+                // Apply trait bonuses
+                const hpPercent = (this.playerPhysMech.currentHP / this.playerPhysMech.maxHP) * 100;
+
+                if (hpPercent < 30 && game.relics && game.relics.includes('LAST_STAND')) {
+                    baseDamage *= 3;
+                }
+
+                if (this.hasTrait('BERSERKER')) {
+                    const hpLostPercent = ((this.playerPhysMech.maxHP - this.playerPhysMech.currentHP) / this.playerPhysMech.maxHP) * 100;
+                    const bonus = Math.floor(baseDamage * (hpLostPercent * 0.03));
+                    baseDamage += bonus;
+                }
+
+                if (this.hasTrait('OVERCHARGED')) {
+                    baseDamage *= 2;
+                }
+
+                return baseDamage;
+            }
+
+            calculateEnemyDamage() {
+                let baseDamage = this.monsterData.damage;
+
+                if (this.monsterData.special === 'RAGE') {
+                    const hpLostPercent = ((this.enemyPhysMech.maxHP - this.enemyPhysMech.currentHP) / this.enemyPhysMech.maxHP) * 100;
+                    const bonus = Math.floor(baseDamage * (hpLostPercent * 0.02));
+                    baseDamage += bonus;
+                }
+
+                return baseDamage;
+            }
+
+            applyDamageToMech(mech, damage, weaponType) {
+                const isPlayer = mech.isPlayer;
+                const targetArmor = isPlayer ? this.playerStats.armor : this.monsterData.armor;
+                let armor = targetArmor;
+
+                // ARMORED enemy - double effective armor
+                if (!isPlayer && this.monsterData.special === 'ARMORED') {
+                    armor *= 2;
+                }
+
+                // Armor reduction (max 70% reduction)
+                const armorReduction = Math.min(armor * 0.5, damage * 0.7);
+                let actualDamage = Math.max(1, Math.floor(damage - armorReduction));
+
+                // Critical strike check
+                let isCrit = false;
+                if (isPlayer && this.hasAbility('CRITICAL_STRIKE') && Math.random() < 0.25) {
+                    actualDamage *= 2;
+                    isCrit = true;
+                }
+
+                // Apply to shield first
+                const shield = isPlayer ? this.playerShield : this.monsterShield;
+                if (shield > 0) {
+                    if (shield >= actualDamage) {
+                        if (isPlayer) {
+                            this.playerShield -= actualDamage;
+                            mech.shield = this.playerShield;
+                        } else {
+                            this.monsterShield -= actualDamage;
+                            mech.shield = this.monsterShield;
+                        }
+                        this.addLog(`🛡️ Shield absorbed ${actualDamage} damage!`, isPlayer ? 'player' : 'monster');
+                        return;
+                    } else {
+                        const overflow = actualDamage - shield;
+                        this.addLog(`🛡️ Shield absorbed ${shield} damage, ${overflow} passed through!`, isPlayer ? 'player' : 'monster');
+                        if (isPlayer) {
+                            this.playerShield = 0;
+                            mech.shield = 0;
+                        } else {
+                            this.monsterShield = 0;
+                            mech.shield = 0;
+                        }
+                        actualDamage = overflow;
+                    }
+                }
+
+                // Apply to HP
+                this.applyDirectDamage(mech, actualDamage, isCrit, weaponType);
+
+                // Apply DoTs
+                if (!isPlayer && this.hasAbility('BURN')) {
+                    let burnDamage = 5;
+                    let burnDuration = 3;
+
+                    if (game.relics && game.relics.includes('CONTAGION')) {
+                        const contagionCount = game.relics.filter(r => r === 'CONTAGION').length;
+                        const multiplier = Math.pow(2, contagionCount);
+                        burnDamage = Math.floor(burnDamage * multiplier);
+                        burnDuration = Math.floor(burnDuration * multiplier);
+                    }
+
+                    this.playerDots.push({ type: 'burn', damage: burnDamage, duration: burnDuration });
+                    this.addLog(`🔥 PLASMA BURN: ${burnDamage} dmg/turn for ${burnDuration} turns`, 'player');
+                }
+
+                // Vampiric healing
+                if (!isPlayer) {
+                    let totalHealPercent = 0;
+                    if (this.hasAbility('VAMPIRIC')) totalHealPercent += 0.25;
+                    if (this.hasTrait('VAMPIRE')) totalHealPercent += 0.4;
+                    if (game.relics && game.relics.includes('VAMPIRIC_ASCENSION')) {
+                        totalHealPercent += 0.25 * game.relics.filter(r => r === 'VAMPIRIC_ASCENSION').length;
+                    }
+                    if (game.relics && game.relics.includes('BLOOD_PACT')) {
+                        totalHealPercent += 0.5 * game.relics.filter(r => r === 'BLOOD_PACT').length;
+                    }
+
+                    if (totalHealPercent > 0) {
+                        const heal = Math.floor(actualDamage * totalHealPercent);
+                        this.playerPhysMech.currentHP = Math.min(this.playerPhysMech.maxHP, this.playerPhysMech.currentHP + heal);
+                        this.addLog(`🩸 VAMPIRIC: Healed ${heal} HP (${Math.floor(totalHealPercent * 100)}%)`, 'player');
+                    }
+                }
+            }
+
+            applyDirectDamage(mech, damage, isCrit, source) {
+                mech.currentHP -= damage;
+                mech.currentHP = Math.max(0, mech.currentHP);
+
+                const critText = isCrit ? ' 💥 CRITICAL HIT!' : '';
+                const actor = mech.isPlayer ? 'monster' : 'player';
+                const target = mech.isPlayer ? 'Player' : 'Enemy';
+
+                if (source !== 'DOT') {
+                    this.addLog(`⚔️ ${damage} damage dealt!${critText} (${target}: ${Math.max(0, mech.currentHP)}/${mech.maxHP} HP)`, actor);
+                }
+
+                // Heavy damage triggers ragdoll
+                if (damage > 50 && !mech.isRagdoll) {
+                    this.physics.enableRagdoll(mech);
+                }
+            }
+
+            checkBattleEnd() {
+                if (this.playerPhysMech && this.playerPhysMech.currentHP <= 0) {
+                    this.endBattle('defeat');
+                } else if (this.enemyPhysMech && this.enemyPhysMech.currentHP <= 0) {
+                    this.endBattle('victory');
+                }
+            }
+
+            endBattle(result) {
+                if (this.battleResult) return; // Already ended
+
+                this.isActive = false;
+                this.battleResult = result;
+
+                // Clear intervals
+                if (this.dotInterval) clearInterval(this.dotInterval);
+                if (this.regenInterval) clearInterval(this.regenInterval);
+
+                // Death animation
+                if (result === 'victory' && this.enemyPhysMech) {
+                    this.physics.enableRagdoll(this.enemyPhysMech);
                     this.physics.createExplosion(
-                        target.torso.position.x,
-                        target.torso.position.y,
-                        100
+                        this.enemyPhysMech.torso.position.x,
+                        this.enemyPhysMech.torso.position.y,
+                        120
+                    );
+                } else if (result === 'defeat' && this.playerPhysMech) {
+                    this.physics.enableRagdoll(this.playerPhysMech);
+                    this.physics.createExplosion(
+                        this.playerPhysMech.torso.position.x,
+                        this.playerPhysMech.torso.position.y,
+                        120
                     );
                 }
 
-                await this.wait(1500);
+                this.addLog(result === 'victory' ? '🎉 VICTORY!' : '💀 DEFEAT!', 'system');
             }
 
-            wait(ms) {
-                return new Promise(resolve => setTimeout(resolve, ms / this.physics.timeScale));
+            getState() {
+                return {
+                    playerMech: {
+                        currentHP: this.playerPhysMech ? this.playerPhysMech.currentHP : 0,
+                        maxHP: this.playerPhysMech ? this.playerPhysMech.maxHP : 0
+                    },
+                    monster: {
+                        currentHP: this.enemyPhysMech ? this.enemyPhysMech.currentHP : 0,
+                        maxHP: this.enemyPhysMech ? this.enemyPhysMech.maxHP : 0
+                    },
+                    playerShield: this.playerShield,
+                    monsterShield: this.monsterShield,
+                    isActive: this.isActive,
+                    result: this.battleResult
+                };
             }
         }
 
@@ -3343,84 +3770,42 @@
 
             document.getElementById('start-battle-btn').disabled = true;
 
-            const battle = new BattleSystem(game.currentMech, game.currentMonster);
+            // Create physics-driven battle system
+            const battle = new PhysicsBattleSystem(game.currentMech, game.currentMonster, physicsEngine);
 
-            // Initialize physics visualization
-            if (physicsEnabled && combatVisualizer) {
-                combatVisualizer.initializeBattle(game.currentMech, game.currentMonster);
-            }
+            // Initialize battle (starts physics and auto-combat)
+            await battle.initializeBattle();
 
             addCombatLog('⚔️ BATTLE START! ⚔️', 'system');
 
-            // Show initial status effects (e.g., shield)
-            updateStatusEffects(battle.playerShield, battle.playerDots, battle.monsterDots);
+            // Track displayed logs
+            let lastLogIndex = 0;
 
-            let result = 'continue';
+            // Real-time battle loop - polls physics state
+            while (battle.isActive) {
+                await new Promise(resolve => setTimeout(resolve, 100)); // Poll at 10Hz
 
-            while (result === 'continue') {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                const prevLogLength = battle.log.length;
-                result = battle.executeTurn();
                 const state = battle.getState();
 
-                // Trigger physics animations for attacks
-                if (physicsEnabled && combatVisualizer) {
-                    // Check new log entries for attacks
-                    for (let i = prevLogLength; i < battle.log.length; i++) {
-                        const logEntry = battle.log[i];
-                        const msg = logEntry.message;
-                        const actor = logEntry.actor;
-
-                        // Detect attacks and trigger animations
-                        if (msg.includes('deals') && msg.includes('damage')) {
-                            const isPlayer = actor === 'player';
-                            const damageMatch = msg.match(/(\d+) damage/);
-                            const damage = damageMatch ? parseInt(damageMatch[1]) : 30;
-
-                            // Determine weapon type from log messages
-                            let weaponType = 'KINETIC'; // default
-                            if (msg.includes('BURN') || msg.includes('PLASMA') || msg.includes('EXPLOSIVE')) {
-                                weaponType = 'EXPLOSIVE';
-                            } else if (msg.includes('LASER') || msg.includes('ENERGY') || msg.includes('ION')) {
-                                weaponType = 'ENERGY';
-                            }
-
-                            // Trigger attack animation
-                            combatVisualizer.animateAttack(isPlayer, damage, weaponType);
-                        }
-                    }
-                }
-
-                // Update displays
+                // Update displays with real-time physics state
                 updateHealthBar('player', state.playerMech.currentHP, state.playerMech.maxHP);
                 updateHealthBar('monster', state.monster.currentHP, state.monster.maxHP);
 
-                // Update status effects display
+                // Update status effects
                 updateStatusEffects(state.playerShield, battle.playerDots, battle.monsterDots);
 
-                // Add latest log entries
-                if (battle.log.length > 0) {
-                    const latestLog = battle.log[battle.log.length - 1];
-                    addCombatLog(latestLog.message, latestLog.actor);
-
-                    if (battle.log.length > 1 && battle.log[battle.log.length - 2].turn === battle.turn) {
-                        const secondLog = battle.log[battle.log.length - 2];
-                        addCombatLog(secondLog.message, secondLog.actor);
-                    }
+                // Show new log entries
+                while (lastLogIndex < battle.log.length) {
+                    const logEntry = battle.log[lastLogIndex];
+                    addCombatLog(logEntry.message, logEntry.actor);
+                    lastLogIndex++;
                 }
             }
 
-            // Trigger death animation
-            if (physicsEnabled && combatVisualizer) {
-                if (result === 'victory') {
-                    await combatVisualizer.animateDeath(false); // Enemy dies
-                } else {
-                    await combatVisualizer.animateDeath(true); // Player dies
-                }
-            }
+            // Battle ended - get result
+            const result = battle.battleResult;
 
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
             if (result === 'victory') {
                 game.victories++;

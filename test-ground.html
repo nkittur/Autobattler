@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ground Collision Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            font-family: monospace;
+            color: #00ff88;
+        }
+        #canvas {
+            border: 3px solid #00ff88;
+            display: block;
+            margin: 20px auto;
+        }
+        #info {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #00ff88;
+            font-size: 14px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+</head>
+<body>
+    <h1 style="text-align: center;">🧪 Ground Collision Diagnostic Test</h1>
+    <div id="info">
+        <strong>This test verifies:</strong>
+        <ul>
+            <li>✓ Bodies fall due to gravity</li>
+            <li>✓ Ground properly stops them from falling through</li>
+            <li>✓ Positions stay within expected ranges</li>
+        </ul>
+        <div id="status" style="margin-top: 10px; padding: 10px; background: rgba(0,255,136,0.1);"></div>
+    </div>
+    <canvas id="canvas" width="800" height="450"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const statusDiv = document.getElementById('status');
+
+        // Create Matter.js engine
+        const engine = Matter.Engine.create();
+        engine.gravity.y = 1.2;
+        const world = engine.world;
+
+        // Create ground (static)
+        const ground = Matter.Bodies.rectangle(400, 430, 800, 40, {
+            isStatic: true,
+            label: 'ground',
+            render: { fillStyle: '#4a4a6a' }
+        });
+        Matter.World.add(world, ground);
+        console.log('Ground created at y=430');
+
+        // Create two test mechs (simple rectangles)
+        const mech1 = Matter.Bodies.rectangle(200, 300, 40, 60, {
+            density: 0.002,
+            friction: 0.8,
+            label: 'player_mech',
+            render: { fillStyle: '#00ff88' }
+        });
+
+        const mech2 = Matter.Bodies.rectangle(600, 300, 40, 60, {
+            density: 0.002,
+            friction: 0.8,
+            label: 'enemy_mech',
+            render: { fillStyle: '#ff4444' }
+        });
+
+        Matter.World.add(world, [mech1, mech2]);
+        console.log('Mechs created at y=300');
+
+        // Render and update
+        let frameCount = 0;
+        function animate() {
+            frameCount++;
+
+            // Update physics
+            Matter.Engine.update(engine, 16);
+
+            // Clear canvas
+            ctx.fillStyle = '#0d0d1f';
+            ctx.fillRect(0, 0, 800, 450);
+
+            // Draw ground
+            ctx.fillStyle = '#4a4a6a';
+            ctx.fillRect(0, 410, 800, 40);
+
+            // Draw mech 1
+            const v1 = mech1.vertices;
+            ctx.beginPath();
+            ctx.moveTo(v1[0].x, v1[0].y);
+            for (let i = 1; i < v1.length; i++) {
+                ctx.lineTo(v1[i].x, v1[i].y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#00ff88';
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw mech 2
+            const v2 = mech2.vertices;
+            ctx.beginPath();
+            ctx.moveTo(v2[0].x, v2[0].y);
+            for (let i = 1; i < v2.length; i++) {
+                ctx.lineTo(v2[i].x, v2[i].y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#ff4444';
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw positions
+            ctx.fillStyle = '#00ff88';
+            ctx.font = '12px monospace';
+            ctx.fillText(`Player: x=${Math.floor(mech1.position.x)}, y=${Math.floor(mech1.position.y)}`, 10, 20);
+            ctx.fillText(`Enemy: x=${Math.floor(mech2.position.x)}, y=${Math.floor(mech2.position.y)}`, 10, 40);
+            ctx.fillText(`Ground: y=410-450 (static)`, 10, 60);
+            ctx.fillText(`Frame: ${frameCount}`, 10, 80);
+
+            // Update status
+            if (frameCount % 60 === 0) {
+                const m1y = Math.floor(mech1.position.y);
+                const m2y = Math.floor(mech2.position.y);
+                const m1stable = Math.abs(mech1.velocity.y) < 0.1;
+                const m2stable = Math.abs(mech2.velocity.y) < 0.1;
+
+                statusDiv.innerHTML = `
+                    <strong>Frame ${frameCount}:</strong><br>
+                    Player Mech: Y=${m1y} ${m1stable ? '✓ STABLE' : '⬇ FALLING'} (vel=${mech1.velocity.y.toFixed(2)})<br>
+                    Enemy Mech: Y=${m2y} ${m2stable ? '✓ STABLE' : '⬇ FALLING'} (vel=${mech2.velocity.y.toFixed(2)})<br>
+                    ${m1y < 0 || m2y < 0 || m1y > 500 || m2y > 500 ? '<span style="color: #ff4444;">⚠️ WARNING: Mech went out of bounds!</span>' : '✅ Both mechs in bounds'}
+                `;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+        console.log('Animation started');
+    </script>
+</body>
+</html>

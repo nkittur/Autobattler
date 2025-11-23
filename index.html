@@ -2266,10 +2266,6 @@
 
             renderBodies(bodies, ctx) {
                 bodies.forEach(body => {
-                    if (body.label && (body.label.includes('player') || body.label.includes('enemy'))) {
-                        return; // Skip mech parts, we render them separately
-                    }
-
                     const vertices = body.vertices;
                     ctx.beginPath();
                     ctx.moveTo(vertices[0].x, vertices[0].y);
@@ -2279,7 +2275,16 @@
                     }
 
                     ctx.closePath();
-                    ctx.fillStyle = body.render.fillStyle || this.colors.terrain;
+
+                    // Color based on label
+                    if (body.label && body.label.includes('player')) {
+                        ctx.fillStyle = this.colors.player;
+                    } else if (body.label && body.label.includes('enemy')) {
+                        ctx.fillStyle = this.colors.enemy;
+                    } else {
+                        ctx.fillStyle = body.render.fillStyle || this.colors.terrain;
+                    }
+
                     ctx.fill();
 
                     // Pixel-art outline

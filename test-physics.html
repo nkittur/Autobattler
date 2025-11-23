@@ -177,28 +177,43 @@
 
                 const size = 30;
 
-                // Simple box mech - STATIC so they don't move around
+                // Simple box mech - Now dynamic for movement
                 const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
-                    isStatic: true, // Make static for reliable testing
+                    density: 0.002,
+                    friction: 0.8,
+                    frictionAir: 0.02, // Air resistance for controlled movement
                     label: isPlayer ? 'player_torso' : 'enemy_torso'
                 });
 
                 const head = Bodies.circle(x, y - size, size * 0.5, {
-                    isStatic: true, // Make static for reliable testing
+                    density: 0.001,
                     label: isPlayer ? 'player_head' : 'enemy_head'
                 });
 
+                // Connect head to torso
+                const neck = Constraint.create({
+                    bodyA: head,
+                    bodyB: torso,
+                    stiffness: 0.7,
+                    length: 5
+                });
+
                 Matter.World.add(this.world, [torso, head]);
+                Matter.World.add(this.world, neck);
 
                 const mech = {
                     torso: torso,
                     head: head,
                     color: isPlayer ? '#00ff88' : '#ff4444',
                     currentHP: 0,
-                    maxHP: 0
+                    maxHP: 0,
+                    moveDirection: 0, // -1 = left, 0 = still, 1 = right
+                    moveSpeed: 0.005, // Movement force (reduced for realistic movement)
+                    nextMoveChange: Date.now() + 1000, // When to change direction
+                    isPlayer: isPlayer
                 };
 
-                log(`Mech created (STATIC): torso ID=${torso.id}, head ID=${head.id}`);
+                log(`Mech created (DYNAMIC): torso ID=${torso.id}, head ID=${head.id}`);
                 return mech;
             }
 
@@ -208,12 +223,22 @@
 
                 const startX = fromMech.torso.position.x;
                 const startY = fromMech.torso.position.y;
-                const targetX = toMech.torso.position.x;
-                const targetY = toMech.torso.position.y;
 
-                const distance = Math.sqrt((targetX - startX) ** 2 + (targetY - startY) ** 2);
-                const angle = Math.atan2(targetY - startY, targetX - startX);
+                // Predictive targeting - aim where target will be
+                const targetVel = toMech.torso.velocity;
+                let targetX = toMech.torso.position.x;
+                let targetY = toMech.torso.position.y;
+
                 const speed = 20;
+                const distance = Math.sqrt((targetX - startX) ** 2 + (targetY - startY) ** 2);
+                const travelTime = distance / speed; // Approximate time to hit
+
+                // Predict where target will be
+                const predictedX = targetX + targetVel.x * travelTime * 16; // 16ms per physics tick
+                const predictedY = targetY + targetVel.y * travelTime * 16;
+
+                const finalDistance = Math.sqrt((predictedX - startX) ** 2 + (predictedY - startY) ** 2);
+                const angle = Math.atan2(predictedY - startY, predictedX - startX);
 
                 const projectile = Bodies.circle(startX, startY, 6, {
                     density: 0.001,
@@ -235,9 +260,48 @@
                 this.projectiles.push(projectile);
                 this.projectileFired++;
 
-                log(`🚀 Projectile #${this.projectileFired} fired: ${damage} dmg, distance=${Math.floor(distance)} units, angle=${Math.floor(angle * 180 / Math.PI)}°`);
+                const velMag = Math.sqrt(targetVel.x ** 2 + targetVel.y ** 2);
+                const leadDistance = Math.floor(Math.sqrt((predictedX - targetX) ** 2 + (predictedY - targetY) ** 2));
+                log(`🚀 Projectile #${this.projectileFired}: ${damage} dmg, dist=${Math.floor(finalDistance)}u, lead=${leadDistance}u (vel=${velMag.toFixed(1)})`);
 
                 return projectile;
+            }
+
+            updateMechMovement() {
+                const Body = Matter.Body;
+                const now = Date.now();
+
+                [this.playerMech, this.enemyMech].forEach(mech => {
+                    if (!mech || mech.currentHP <= 0) return;
+
+                    // Change direction periodically
+                    if (now > mech.nextMoveChange) {
+                        const rand = Math.random();
+                        if (rand < 0.3) {
+                            mech.moveDirection = -1; // Move left
+                        } else if (rand < 0.6) {
+                            mech.moveDirection = 1; // Move right
+                        } else {
+                            mech.moveDirection = 0; // Stay still
+                        }
+                        mech.nextMoveChange = now + 800 + Math.random() * 1200; // Random interval
+                    }
+
+                    // Apply movement force
+                    if (mech.moveDirection !== 0) {
+                        const pos = mech.torso.position;
+
+                        // Keep mechs on screen
+                        if ((mech.moveDirection < 0 && pos.x > 50) ||
+                            (mech.moveDirection > 0 && pos.x < this.width - 50)) {
+
+                            Body.applyForce(mech.torso, pos, {
+                                x: mech.moveDirection * mech.moveSpeed,
+                                y: 0
+                            });
+                        }
+                    }
+                });
             }
 
             start() {
@@ -253,6 +317,7 @@
             setupRenderLoop() {
                 const animate = () => {
                     if (this.running) {
+                        this.updateMechMovement(); // Update mech AI movement
                         Matter.Engine.update(this.engine, 16);
                         this.render();
                     }
@@ -308,8 +373,10 @@
                 // Debug info
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '12px monospace';
-                ctx.fillText(`Player: ${this.playerMech ? Math.floor(this.playerMech.currentHP) : 0}/${this.playerMech ? this.playerMech.maxHP : 0} HP`, 10, 20);
-                ctx.fillText(`Enemy: ${this.enemyMech ? Math.floor(this.enemyMech.currentHP) : 0}/${this.enemyMech ? this.enemyMech.maxHP : 0} HP`, 10, 40);
+                const pDir = this.playerMech ? (this.playerMech.moveDirection < 0 ? '←' : this.playerMech.moveDirection > 0 ? '→' : '•') : '•';
+                const eDir = this.enemyMech ? (this.enemyMech.moveDirection < 0 ? '←' : this.enemyMech.moveDirection > 0 ? '→' : '•') : '•';
+                ctx.fillText(`Player ${pDir}: ${this.playerMech ? Math.floor(this.playerMech.currentHP) : 0}/${this.playerMech ? this.playerMech.maxHP : 0} HP`, 10, 20);
+                ctx.fillText(`Enemy ${eDir}: ${this.enemyMech ? Math.floor(this.enemyMech.currentHP) : 0}/${this.enemyMech ? this.enemyMech.maxHP : 0} HP`, 10, 40);
                 ctx.fillText(`Projectiles: ${this.projectiles.length} active`, 10, 60);
                 ctx.fillText(`Fired: ${this.projectileFired} | Hits: ${this.projectileHit} | Missed: ${this.projectileMissed}`, 10, 80);
                 ctx.fillText(`Hit Rate: ${this.projectileFired > 0 ? Math.floor(this.projectileHit / this.projectileFired * 100) : 0}%`, 10, 100);

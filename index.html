@@ -2110,14 +2110,30 @@
                         debugLog(`${mech.isPlayer ? 'Player' : 'Enemy'} mech changing direction: ${mech.moveDirection === -1 ? 'LEFT' : mech.moveDirection === 1 ? 'RIGHT' : 'IDLE'}`);
                     }
 
+                    // Clamp horizontal velocity to prevent runaway acceleration (FIX for falling bug)
+                    const maxSpeed = 2.5; // Maximum horizontal speed
+                    if (Math.abs(mech.torso.velocity.x) > maxSpeed) {
+                        Body.setVelocity(mech.torso, {
+                            x: Math.sign(mech.torso.velocity.x) * maxSpeed,
+                            y: mech.torso.velocity.y
+                        });
+                    }
+
                     // Apply movement force
                     if (mech.moveDirection !== 0) {
                         const pos = mech.torso.position;
 
-                        // Keep mechs on screen
-                        if ((mech.moveDirection < 0 && pos.x > 100) ||
-                            (mech.moveDirection > 0 && pos.x < this.width - 100)) {
-
+                        // Strict boundary enforcement - force mechs back in bounds if they escape
+                        if (pos.x < 100 || pos.x > this.width - 100) {
+                            Body.setPosition(mech.torso, {
+                                x: Math.max(100, Math.min(this.width - 100, pos.x)),
+                                y: pos.y
+                            });
+                            Body.setVelocity(mech.torso, { x: 0, y: mech.torso.velocity.y });
+                            mech.moveDirection = 0; // Stop movement
+                        } else if ((mech.moveDirection < 0 && pos.x > 150) ||
+                                   (mech.moveDirection > 0 && pos.x < this.width - 150)) {
+                            // Apply movement force only if well within bounds
                             Body.applyForce(mech.torso, pos, {
                                 x: mech.moveDirection * mech.moveSpeed,
                                 y: 0

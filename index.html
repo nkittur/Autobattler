@@ -1247,21 +1247,73 @@
         const game = new GameState();
 
         // ============================================================================
-        // PHYSICS ENGINE INITIALIZATION
+        // PHYSICS ENGINE INITIALIZATION & DEBUG SYSTEM
         // ============================================================================
 
         let physicsEngine = null;
         let physicsEnabled = true;
+        let DEBUG_MODE = true; // Enable debug logging
+        let currentBattle = null; // Store current battle for debugging
+
+        // Debug logging helper
+        function debugLog(category, message, data = null) {
+            if (!DEBUG_MODE) return;
+            const timestamp = new Date().toISOString().split('T')[1];
+            console.log(`[${timestamp}] [${category}]`, message, data || '');
+        }
 
         // Initialize physics after DOM is ready
         function initializePhysics() {
             try {
+                debugLog('INIT', 'Initializing physics engine...');
                 physicsEngine = new PhysicsEngine('physics-canvas');
-                console.log('Physics-driven battle system initialized successfully');
+                debugLog('INIT', 'Physics engine created', {
+                    width: physicsEngine.width,
+                    height: physicsEngine.height,
+                    running: physicsEngine.running
+                });
+                console.log('✓ Physics-driven battle system initialized successfully');
             } catch (error) {
-                console.error('Failed to initialize physics:', error);
+                console.error('✗ Failed to initialize physics:', error);
+                debugLog('ERROR', 'Physics initialization failed', error);
                 physicsEnabled = false;
             }
+        }
+
+        // Debug overlay rendering
+        function renderDebugOverlay() {
+            if (!physicsEngine || !DEBUG_MODE) return;
+
+            const ctx = physicsEngine.ctx;
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+            ctx.font = '12px monospace';
+
+            let y = 20;
+            const info = [
+                `Physics Running: ${physicsEngine.running}`,
+                `Player Mech: ${physicsEngine.playerMech ? 'EXISTS' : 'NULL'}`,
+                `Enemy Mech: ${physicsEngine.enemyMech ? 'EXISTS' : 'NULL'}`,
+                `Projectiles: ${physicsEngine.projectiles.length}`,
+                `Particles: ${physicsEngine.particles.length}`
+            ];
+
+            if (physicsEngine.playerMech) {
+                info.push(`Player Pos: (${Math.floor(physicsEngine.playerMech.torso.position.x)}, ${Math.floor(physicsEngine.playerMech.torso.position.y)})`);
+                info.push(`Player HP: ${physicsEngine.playerMech.currentHP || 'undefined'}/${physicsEngine.playerMech.maxHP || 'undefined'}`);
+            }
+
+            if (physicsEngine.enemyMech) {
+                info.push(`Enemy Pos: (${Math.floor(physicsEngine.enemyMech.torso.position.x)}, ${Math.floor(physicsEngine.enemyMech.torso.position.y)})`);
+                info.push(`Enemy HP: ${physicsEngine.enemyMech.currentHP || 'undefined'}/${physicsEngine.enemyMech.maxHP || 'undefined'}`);
+            }
+
+            info.forEach(text => {
+                ctx.fillText(text, 10, y);
+                y += 15;
+            });
+
+            ctx.restore();
         }
 
         // ============================================================================
@@ -2160,6 +2212,11 @@
                 if (this.enemyMech) this.renderHealthBar(this.enemyMech, ctx);
 
                 ctx.restore();
+
+                // Render debug overlay (outside camera shake)
+                if (typeof renderDebugOverlay === 'function') {
+                    renderDebugOverlay();
+                }
             }
 
             renderHealthBar(mech, ctx) {
@@ -2394,15 +2451,36 @@
             }
 
             async initializeBattle() {
+                debugLog('BATTLE', 'Initializing battle...', {
+                    player: this.playerMechData.name,
+                    enemy: this.monsterData.name
+                });
+
                 this.physics.reset();
+                debugLog('BATTLE', 'Physics reset complete');
 
                 // Create physics mechs
+                debugLog('BATTLE', 'Creating player mech...', {
+                    class: this.playerMechData.class,
+                    position: { x: 200, y: 300 }
+                });
+
                 this.playerPhysMech = this.physics.createMech(
                     this.playerMechData.class,
                     200,
                     300,
                     true
                 );
+
+                debugLog('BATTLE', 'Player mech created', {
+                    torso: this.playerPhysMech.torso.id,
+                    parts: Object.keys(this.playerPhysMech)
+                });
+
+                debugLog('BATTLE', 'Creating enemy mech...', {
+                    class: this.monsterData.class || 'Medium',
+                    position: { x: 600, y: 300 }
+                });
 
                 this.enemyPhysMech = this.physics.createMech(
                     this.monsterData.class || 'Medium',
@@ -2411,12 +2489,24 @@
                     false
                 );
 
+                debugLog('BATTLE', 'Enemy mech created', {
+                    torso: this.enemyPhysMech.torso.id,
+                    parts: Object.keys(this.enemyPhysMech)
+                });
+
                 // Add battle stats to physics mechs
                 this.playerPhysMech.currentHP = this.playerMechData.currentHP;
                 this.playerPhysMech.maxHP = this.playerMechData.maxHP;
                 this.playerPhysMech.stats = this.playerStats;
                 this.playerPhysMech.battleSystem = this;
                 this.playerPhysMech.isPlayer = true;
+
+                debugLog('BATTLE', 'Player stats applied', {
+                    HP: `${this.playerPhysMech.currentHP}/${this.playerPhysMech.maxHP}`,
+                    damage: this.playerStats.damage,
+                    armor: this.playerStats.armor,
+                    speed: this.playerStats.speed
+                });
 
                 this.enemyPhysMech.currentHP = this.monsterData.currentHP;
                 this.enemyPhysMech.maxHP = this.monsterData.maxHP;
@@ -2429,6 +2519,12 @@
                 this.enemyPhysMech.isPlayer = false;
                 this.enemyPhysMech.special = this.monsterData.special;
 
+                debugLog('BATTLE', 'Enemy stats applied', {
+                    HP: `${this.enemyPhysMech.currentHP}/${this.enemyPhysMech.maxHP}`,
+                    damage: this.monsterData.damage,
+                    armor: this.monsterData.armor
+                });
+
                 // Apply start of battle effects
                 this.applyStartOfBattleAbilities();
                 this.applyMonsterSpecialInit();
@@ -2437,11 +2533,24 @@
                 this.playerFireRate = 1000 + (100 - this.playerStats.speed) * 20; // Faster mechs shoot more often
                 this.enemyFireRate = 1000 + (100 - (this.monsterData.speed || 50)) * 20;
 
+                debugLog('BATTLE', 'Fire rates calculated', {
+                    playerFireRate: this.playerFireRate + 'ms',
+                    enemyFireRate: this.enemyFireRate + 'ms'
+                });
+
+                // Store reference for debugging
+                this.physics.playerMech = this.playerPhysMech;
+                this.physics.enemyMech = this.enemyPhysMech;
+
                 // Start physics
+                debugLog('BATTLE', 'Starting physics engine...');
                 this.physics.start();
                 this.isActive = true;
 
+                debugLog('BATTLE', 'Physics running:', this.physics.running);
+
                 // Start combat loop
+                debugLog('BATTLE', 'Starting combat loop...');
                 this.startCombatLoop();
 
                 // Start DoT ticking
@@ -2453,6 +2562,7 @@
                 }
 
                 this.addLog('⚔️ BATTLE START! ⚔️', 'system');
+                debugLog('BATTLE', '=== BATTLE FULLY INITIALIZED ===');
             }
 
             applyStartOfBattleAbilities() {
@@ -2565,10 +2675,19 @@
             }
 
             fireWeapon(fromMech, toMech, isPlayer) {
-                if (!fromMech || !toMech) return;
+                if (!fromMech || !toMech) {
+                    debugLog('WEAPON', 'Fire weapon failed - missing mech', { fromMech: !!fromMech, toMech: !!toMech });
+                    return;
+                }
 
                 const weaponType = this.getDamageType(fromMech);
                 const baseDamage = isPlayer ? this.calculatePlayerDamage() : this.calculateEnemyDamage();
+
+                debugLog('WEAPON', `${isPlayer ? 'Player' : 'Enemy'} firing ${weaponType}`, {
+                    damage: baseDamage,
+                    from: { x: Math.floor(fromMech.torso.position.x), y: Math.floor(fromMech.torso.position.y) },
+                    to: { x: Math.floor(toMech.torso.position.x), y: Math.floor(toMech.torso.position.y) }
+                });
 
                 // Create physics projectile with damage attached
                 const projectile = this.physics.fireProjectile(fromMech, toMech, weaponType, baseDamage);
@@ -2579,6 +2698,9 @@
                     projectile.fromMech = fromMech;
                     projectile.toMech = toMech;
                     projectile.battleSystem = this;
+                    debugLog('WEAPON', 'Projectile created', { id: projectile.id });
+                } else {
+                    debugLog('WEAPON', 'Projectile was null (energy beam)');
                 }
             }
 
@@ -4370,6 +4492,62 @@
 
         // Update debug panel every second
         setInterval(updateDebugPanel, 1000);
+
+        // ============================================================================
+        // DEBUG TESTING FUNCTIONS
+        // ============================================================================
+
+        // Test battle function - can be called from console
+        async function testBattle() {
+            console.log('=== STARTING TEST BATTLE ===');
+            debugLog('TEST', 'Creating test battle...');
+
+            // Ensure we have a mech
+            if (!game.currentMech) {
+                console.log('Creating test mech...');
+                game.currentMech = createMech(MECH_TEMPLATES.WARRIOR, 1);
+
+                // Add some test components
+                const testWeapon = createComponent(COMPONENT_TEMPLATES.LASER_CANNON, 1);
+                game.currentMech.loadout.rightArm = testWeapon;
+
+                debugLog('TEST', 'Test mech created', game.currentMech);
+            }
+
+            // Create test monster
+            game.currentMonster = generateMonster(1);
+            debugLog('TEST', 'Test monster created', game.currentMonster);
+
+            // Switch to battle screen
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('battle-screen').classList.add('active');
+
+            // Render battle screen first
+            renderBattleScreen();
+
+            // Wait a bit for rendering
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Start battle
+            console.log('Starting battle...');
+            await startBattle();
+
+            console.log('=== TEST BATTLE COMPLETE ===');
+        }
+
+        // Expose debug functions to window for console access
+        window.testBattle = testBattle;
+        window.debugLog = debugLog;
+        window.physicsEngine = () => physicsEngine;
+        window.currentBattle = () => currentBattle;
+        window.game = game;
+
+        console.log('%c🔧 DEBUG MODE ENABLED', 'color: #00ff88; font-size: 16px; font-weight: bold');
+        console.log('%cAvailable debug commands:', 'color: #00ccff; font-weight: bold');
+        console.log('  testBattle()     - Start an automatic test battle');
+        console.log('  DEBUG_MODE       - Toggle debug logging');
+        console.log('  physicsEngine()  - Access physics engine');
+        console.log('  game             - Access game state');
 
         // ============================================================================
         // START GAME

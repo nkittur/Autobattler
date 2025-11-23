@@ -1889,7 +1889,12 @@
                     constraints: constraints,
                     color: isPlayer ? this.colors.player : this.colors.enemy,
                     scale: scale,
-                    isRagdoll: false
+                    isRagdoll: false,
+                    // Movement AI properties
+                    moveDirection: 0, // -1 = left, 0 = still, 1 = right
+                    moveSpeed: 0.004 * scale, // Movement force scaled by mech size
+                    nextMoveChange: Date.now() + 1000, // When to change direction
+                    isPlayer: isPlayer
                 };
             }
 
@@ -1899,8 +1904,23 @@
 
                 const startX = fromMech.torso.position.x;
                 const startY = fromMech.torso.position.y;
-                const targetX = toMech.torso.position.x;
-                const targetY = toMech.torso.position.y;
+
+                // Predictive targeting - aim where target will be
+                const targetVel = toMech.torso.velocity;
+                let targetX = toMech.torso.position.x;
+                let targetY = toMech.torso.position.y;
+
+                // Estimate projectile speed based on weapon type
+                const projSpeed = weaponType === 'KINETIC' ? 25 : weaponType === 'EXPLOSIVE' ? 15 : 0;
+
+                if (projSpeed > 0) {
+                    const distance = Math.sqrt((targetX - startX) ** 2 + (targetY - startY) ** 2);
+                    const travelTime = distance / projSpeed;
+
+                    // Predict where target will be (accounting for physics ticks)
+                    targetX += targetVel.x * travelTime * 16;
+                    targetY += targetVel.y * travelTime * 16;
+                }
 
                 let projectile;
 
@@ -2069,6 +2089,44 @@
                 }, 2000);
             }
 
+            updateMechMovement() {
+                const Body = Matter.Body;
+                const now = Date.now();
+
+                [this.playerMech, this.enemyMech].forEach(mech => {
+                    if (!mech || !mech.torso || mech.isRagdoll) return;
+
+                    // Change direction periodically
+                    if (now > mech.nextMoveChange) {
+                        const rand = Math.random();
+                        if (rand < 0.3) {
+                            mech.moveDirection = -1; // Move left
+                        } else if (rand < 0.6) {
+                            mech.moveDirection = 1; // Move right
+                        } else {
+                            mech.moveDirection = 0; // Stay still
+                        }
+                        mech.nextMoveChange = now + 800 + Math.random() * 1200;
+                        debugLog(`${mech.isPlayer ? 'Player' : 'Enemy'} mech changing direction: ${mech.moveDirection === -1 ? 'LEFT' : mech.moveDirection === 1 ? 'RIGHT' : 'IDLE'}`);
+                    }
+
+                    // Apply movement force
+                    if (mech.moveDirection !== 0) {
+                        const pos = mech.torso.position;
+
+                        // Keep mechs on screen
+                        if ((mech.moveDirection < 0 && pos.x > 100) ||
+                            (mech.moveDirection > 0 && pos.x < this.width - 100)) {
+
+                            Body.applyForce(mech.torso, pos, {
+                                x: mech.moveDirection * mech.moveSpeed,
+                                y: 0
+                            });
+                        }
+                    }
+                });
+            }
+
             createExplosion(x, y, radius) {
                 const Body = Matter.Body;
                 const Query = Matter.Query;
@@ -2159,6 +2217,9 @@
 
                 const animate = () => {
                     if (this.running) {
+                        // Update mech AI movement
+                        this.updateMechMovement();
+
                         // Update physics
                         Engine.update(this.engine, 1000 / 60 * this.timeScale);
 

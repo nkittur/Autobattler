@@ -95,6 +95,7 @@
 
                 log('Physics engine created');
                 this.createGround();
+                this.setupCollisionDetection(); // Set up once
                 this.setupRenderLoop();
             }
 
@@ -108,6 +109,43 @@
                 log('Ground created');
             }
 
+            setupCollisionDetection() {
+                const Events = Matter.Events;
+
+                Events.on(this.engine, 'collisionStart', (event) => {
+                    event.pairs.forEach(pair => {
+                        const { bodyA, bodyB } = pair;
+
+                        // Check if either body is a projectile
+                        const projectile = this.projectiles.find(p => p === bodyA || p === bodyB);
+                        if (!projectile) return;
+
+                        const other = bodyA === projectile ? bodyB : bodyA;
+
+                        log(`🎯 Collision detected! Projectile hit: ${other.label || 'unknown'}`);
+
+                        // Check if hit player or enemy mech
+                        if (this.playerMech && (other === this.playerMech.torso || other === this.playerMech.head)) {
+                            const part = other === this.playerMech.torso ? 'torso' : 'head';
+                            this.playerMech.currentHP = Math.max(0, this.playerMech.currentHP - projectile.damage);
+                            log(`💥 PLAYER ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.playerMech.currentHP)}/${this.playerMech.maxHP} HP`);
+                            Matter.World.remove(this.world, projectile);
+                            this.projectiles = this.projectiles.filter(p => p !== projectile);
+                        } else if (this.enemyMech && (other === this.enemyMech.torso || other === this.enemyMech.head)) {
+                            const part = other === this.enemyMech.torso ? 'torso' : 'head';
+                            this.enemyMech.currentHP = Math.max(0, this.enemyMech.currentHP - projectile.damage);
+                            log(`💥 ENEMY ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.enemyMech.currentHP)}/${this.enemyMech.maxHP} HP`);
+                            Matter.World.remove(this.world, projectile);
+                            this.projectiles = this.projectiles.filter(p => p !== projectile);
+                        } else {
+                            log(`⚠️ Projectile hit something else: ${other.label}`);
+                        }
+                    });
+                });
+
+                log('✅ Collision detection setup complete');
+            }
+
             createMech(x, y, isPlayer) {
                 log(`Creating ${isPlayer ? 'player' : 'enemy'} mech at (${x}, ${y})`);
                 const Bodies = Matter.Bodies;
@@ -115,28 +153,18 @@
 
                 const size = 30;
 
-                // Simple box mech
+                // Simple box mech - STATIC so they don't move around
                 const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
-                    density: 0.002,
+                    isStatic: true, // Make static for reliable testing
                     label: isPlayer ? 'player_torso' : 'enemy_torso'
                 });
 
                 const head = Bodies.circle(x, y - size, size * 0.5, {
-                    density: 0.001,
+                    isStatic: true, // Make static for reliable testing
                     label: isPlayer ? 'player_head' : 'enemy_head'
                 });
 
                 Matter.World.add(this.world, [torso, head]);
-
-                // Simple constraint
-                const neck = Constraint.create({
-                    bodyA: head,
-                    bodyB: torso,
-                    stiffness: 0.7,
-                    length: 5
-                });
-
-                Matter.World.add(this.world, neck);
 
                 const mech = {
                     torso: torso,
@@ -146,7 +174,7 @@
                     maxHP: 0
                 };
 
-                log(`Mech created: torso ID=${torso.id}`);
+                log(`Mech created (STATIC): torso ID=${torso.id}, head ID=${head.id}`);
                 return mech;
             }
 
@@ -159,12 +187,15 @@
                 const targetX = toMech.torso.position.x;
                 const targetY = toMech.torso.position.y;
 
+                const distance = Math.sqrt((targetX - startX) ** 2 + (targetY - startY) ** 2);
                 const angle = Math.atan2(targetY - startY, targetX - startX);
                 const speed = 20;
 
                 const projectile = Bodies.circle(startX, startY, 6, {
                     density: 0.001,
-                    label: 'projectile'
+                    label: 'projectile',
+                    restitution: 0.1, // Low bounce
+                    frictionAir: 0.01 // Some air resistance
                 });
 
                 Body.setVelocity(projectile, {
@@ -174,41 +205,14 @@
 
                 projectile.damage = damage;
                 projectile.targetMech = toMech;
+                projectile.firedAt = Date.now();
 
                 Matter.World.add(this.world, projectile);
                 this.projectiles.push(projectile);
 
-                log(`Projectile fired: damage=${damage}`);
-
-                // Setup collision detection
-                this.checkCollisions(projectile, toMech);
+                log(`🚀 Projectile fired: ${damage} dmg, distance=${Math.floor(distance)} units, angle=${Math.floor(angle * 180 / Math.PI)}°`);
 
                 return projectile;
-            }
-
-            checkCollisions(projectile, targetMech) {
-                const Events = Matter.Events;
-
-                Events.on(this.engine, 'collisionStart', (event) => {
-                    event.pairs.forEach(pair => {
-                        const { bodyA, bodyB } = pair;
-
-                        if (bodyA === projectile || bodyB === projectile) {
-                            const other = bodyA === projectile ? bodyB : bodyA;
-
-                            if (other === targetMech.torso || other === targetMech.head) {
-                                log(`HIT! ${projectile.damage} damage to ${targetMech.color} mech`);
-
-                                // Apply damage
-                                targetMech.currentHP -= projectile.damage;
-
-                                // Remove projectile
-                                Matter.World.remove(this.world, projectile);
-                                this.projectiles = this.projectiles.filter(p => p !== projectile);
-                            }
-                        }
-                    });
-                });
             }
 
             start() {

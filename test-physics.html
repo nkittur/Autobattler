@@ -92,11 +92,15 @@
                 this.playerMech = null;
                 this.enemyMech = null;
                 this.projectiles = [];
+                this.projectileFired = 0;
+                this.projectileHit = 0;
+                this.projectileMissed = 0;
 
                 log('Physics engine created');
                 this.createGround();
                 this.setupCollisionDetection(); // Set up once
                 this.setupRenderLoop();
+                this.setupProjectileCleanup();
             }
 
             createGround() {
@@ -128,13 +132,15 @@
                         if (this.playerMech && (other === this.playerMech.torso || other === this.playerMech.head)) {
                             const part = other === this.playerMech.torso ? 'torso' : 'head';
                             this.playerMech.currentHP = Math.max(0, this.playerMech.currentHP - projectile.damage);
-                            log(`💥 PLAYER ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.playerMech.currentHP)}/${this.playerMech.maxHP} HP`);
+                            this.projectileHit++;
+                            log(`💥 PLAYER ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.playerMech.currentHP)}/${this.playerMech.maxHP} HP (hits: ${this.projectileHit}/${this.projectileFired})`);
                             Matter.World.remove(this.world, projectile);
                             this.projectiles = this.projectiles.filter(p => p !== projectile);
                         } else if (this.enemyMech && (other === this.enemyMech.torso || other === this.enemyMech.head)) {
                             const part = other === this.enemyMech.torso ? 'torso' : 'head';
                             this.enemyMech.currentHP = Math.max(0, this.enemyMech.currentHP - projectile.damage);
-                            log(`💥 ENEMY ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.enemyMech.currentHP)}/${this.enemyMech.maxHP} HP`);
+                            this.projectileHit++;
+                            log(`💥 ENEMY ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.enemyMech.currentHP)}/${this.enemyMech.maxHP} HP (hits: ${this.projectileHit}/${this.projectileFired})`);
                             Matter.World.remove(this.world, projectile);
                             this.projectiles = this.projectiles.filter(p => p !== projectile);
                         } else {
@@ -144,6 +150,24 @@
                 });
 
                 log('✅ Collision detection setup complete');
+            }
+
+            setupProjectileCleanup() {
+                // Remove projectiles that have been alive for too long (missed/went off screen)
+                setInterval(() => {
+                    const now = Date.now();
+                    const oldProjectiles = this.projectiles.filter(p => now - p.firedAt > 3000);
+
+                    if (oldProjectiles.length > 0) {
+                        oldProjectiles.forEach(p => {
+                            Matter.World.remove(this.world, p);
+                            this.projectileMissed++;
+                        });
+                        this.projectiles = this.projectiles.filter(p => now - p.firedAt <= 3000);
+                        log(`🗑️ Cleaned up ${oldProjectiles.length} old projectiles (total missed: ${this.projectileMissed})`);
+                    }
+                }, 1000);
+                log('✅ Projectile cleanup setup');
             }
 
             createMech(x, y, isPlayer) {
@@ -209,8 +233,9 @@
 
                 Matter.World.add(this.world, projectile);
                 this.projectiles.push(projectile);
+                this.projectileFired++;
 
-                log(`🚀 Projectile fired: ${damage} dmg, distance=${Math.floor(distance)} units, angle=${Math.floor(angle * 180 / Math.PI)}°`);
+                log(`🚀 Projectile #${this.projectileFired} fired: ${damage} dmg, distance=${Math.floor(distance)} units, angle=${Math.floor(angle * 180 / Math.PI)}°`);
 
                 return projectile;
             }
@@ -285,7 +310,9 @@
                 ctx.font = '12px monospace';
                 ctx.fillText(`Player: ${this.playerMech ? Math.floor(this.playerMech.currentHP) : 0}/${this.playerMech ? this.playerMech.maxHP : 0} HP`, 10, 20);
                 ctx.fillText(`Enemy: ${this.enemyMech ? Math.floor(this.enemyMech.currentHP) : 0}/${this.enemyMech ? this.enemyMech.maxHP : 0} HP`, 10, 40);
-                ctx.fillText(`Projectiles: ${this.projectiles.length}`, 10, 60);
+                ctx.fillText(`Projectiles: ${this.projectiles.length} active`, 10, 60);
+                ctx.fillText(`Fired: ${this.projectileFired} | Hits: ${this.projectileHit} | Missed: ${this.projectileMissed}`, 10, 80);
+                ctx.fillText(`Hit Rate: ${this.projectileFired > 0 ? Math.floor(this.projectileHit / this.projectileFired * 100) : 0}%`, 10, 100);
             }
 
             renderHPBar(mech) {

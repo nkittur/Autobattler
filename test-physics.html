@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Physics Battle Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            font-family: monospace;
+            color: #00ff88;
+        }
+        #canvas {
+            border: 3px solid #00ff88;
+            display: block;
+            margin: 20px auto;
+            image-rendering: pixelated;
+        }
+        #status {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #00ff88;
+        }
+        .log {
+            font-size: 12px;
+            margin: 2px 0;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+</head>
+<body>
+    <h1 style="text-align: center;">⚔️ Physics Battle Test ⚔️</h1>
+    <div id="status">
+        <div id="logs"></div>
+    </div>
+    <canvas id="canvas" width="800" height="450"></canvas>
+
+    <script>
+        // Simple logging
+        const logs = [];
+        function log(msg) {
+            console.log(msg);
+            logs.push(msg);
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML = logs.slice(-15).map(l => `<div class="log">${l}</div>`).join('');
+        }
+
+        log('Starting physics battle test...');
+
+        // Minimal mech data
+        const testPlayer = {
+            name: 'Test Mech',
+            class: 'Medium',
+            currentHP: 120,
+            maxHP: 120,
+            damage: 30,
+            armor: 10,
+            speed: 50
+        };
+
+        const testEnemy = {
+            name: 'Enemy Bot',
+            currentHP: 80,
+            maxHP: 80,
+            damage: 20,
+            armor: 5,
+            speed: 40
+        };
+
+        // Simple Physics Engine (minimal version)
+        class SimplePhysicsEngine {
+            constructor(canvasId) {
+                log('Initializing physics engine...');
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+
+                const Engine = Matter.Engine;
+                const World = Matter.World;
+                const Bodies = Matter.Bodies;
+
+                this.engine = Engine.create();
+                this.engine.gravity.y = 1.2;
+                this.world = this.engine.world;
+
+                this.width = 800;
+                this.height = 450;
+                this.running = false;
+
+                this.playerMech = null;
+                this.enemyMech = null;
+                this.projectiles = [];
+                this.projectileFired = 0;
+                this.projectileHit = 0;
+                this.projectileMissed = 0;
+
+                log('Physics engine created');
+                this.createGround();
+                this.setupCollisionDetection(); // Set up once
+                this.setupRenderLoop();
+                this.setupProjectileCleanup();
+            }
+
+            createGround() {
+                const Bodies = Matter.Bodies;
+                const ground = Bodies.rectangle(400, 430, 800, 40, {
+                    isStatic: true,
+                    friction: 0.8
+                });
+                Matter.World.add(this.world, ground);
+                log('Ground created');
+            }
+
+            setupCollisionDetection() {
+                const Events = Matter.Events;
+
+                Events.on(this.engine, 'collisionStart', (event) => {
+                    event.pairs.forEach(pair => {
+                        const { bodyA, bodyB } = pair;
+
+                        // Check if either body is a projectile
+                        const projectile = this.projectiles.find(p => p === bodyA || p === bodyB);
+                        if (!projectile) return;
+
+                        const other = bodyA === projectile ? bodyB : bodyA;
+
+                        log(`🎯 Collision detected! Projectile hit: ${other.label || 'unknown'}`);
+
+                        // Check if hit player or enemy mech
+                        if (this.playerMech && (other === this.playerMech.torso || other === this.playerMech.head)) {
+                            const part = other === this.playerMech.torso ? 'torso' : 'head';
+                            this.playerMech.currentHP = Math.max(0, this.playerMech.currentHP - projectile.damage);
+                            this.projectileHit++;
+                            log(`💥 PLAYER ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.playerMech.currentHP)}/${this.playerMech.maxHP} HP (hits: ${this.projectileHit}/${this.projectileFired})`);
+                            Matter.World.remove(this.world, projectile);
+                            this.projectiles = this.projectiles.filter(p => p !== projectile);
+                        } else if (this.enemyMech && (other === this.enemyMech.torso || other === this.enemyMech.head)) {
+                            const part = other === this.enemyMech.torso ? 'torso' : 'head';
+                            this.enemyMech.currentHP = Math.max(0, this.enemyMech.currentHP - projectile.damage);
+                            this.projectileHit++;
+                            log(`💥 ENEMY ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.enemyMech.currentHP)}/${this.enemyMech.maxHP} HP (hits: ${this.projectileHit}/${this.projectileFired})`);
+                            Matter.World.remove(this.world, projectile);
+                            this.projectiles = this.projectiles.filter(p => p !== projectile);
+                        } else {
+                            log(`⚠️ Projectile hit something else: ${other.label}`);
+                        }
+                    });
+                });
+
+                log('✅ Collision detection setup complete');
+            }
+
+            setupProjectileCleanup() {
+                // Remove projectiles that have been alive for too long (missed/went off screen)
+                setInterval(() => {
+                    const now = Date.now();
+                    const oldProjectiles = this.projectiles.filter(p => now - p.firedAt > 3000);
+
+                    if (oldProjectiles.length > 0) {
+                        oldProjectiles.forEach(p => {
+                            Matter.World.remove(this.world, p);
+                            this.projectileMissed++;
+                        });
+                        this.projectiles = this.projectiles.filter(p => now - p.firedAt <= 3000);
+                        log(`🗑️ Cleaned up ${oldProjectiles.length} old projectiles (total missed: ${this.projectileMissed})`);
+                    }
+                }, 1000);
+                log('✅ Projectile cleanup setup');
+            }
+
+            createMech(x, y, isPlayer) {
+                log(`Creating ${isPlayer ? 'player' : 'enemy'} mech at (${x}, ${y})`);
+                const Bodies = Matter.Bodies;
+                const Constraint = Matter.Constraint;
+
+                const size = 30;
+
+                // Create full mech body parts
+                const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
+                    density: 0.002,
+                    friction: 0.8,
+                    frictionAir: 0.02,
+                    label: isPlayer ? 'player_torso' : 'enemy_torso'
+                });
+
+                const head = Bodies.circle(x, y - size, size * 0.5, {
+                    density: 0.001,
+                    label: isPlayer ? 'player_head' : 'enemy_head'
+                });
+
+                const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
+                    density: 0.001,
+                    friction: 0.5,
+                    label: isPlayer ? 'player_arm' : 'enemy_arm'
+                });
+
+                const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
+                    density: 0.001,
+                    friction: 0.5,
+                    label: isPlayer ? 'player_arm' : 'enemy_arm'
+                });
+
+                const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
+                    density: 0.002,
+                    friction: 0.9,
+                    label: isPlayer ? 'player_leg' : 'enemy_leg'
+                });
+
+                const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
+                    density: 0.002,
+                    friction: 0.9,
+                    label: isPlayer ? 'player_leg' : 'enemy_leg'
+                });
+
+                // Create constraints (joints)
+                const constraints = [
+                    // Head to torso
+                    Constraint.create({
+                        bodyA: head,
+                        bodyB: torso,
+                        pointA: { x: 0, y: size * 0.3 },
+                        pointB: { x: 0, y: -size * 0.7 },
+                        stiffness: 0.7,
+                        length: 0
+                    }),
+                    // Left arm
+                    Constraint.create({
+                        bodyA: leftArm,
+                        bodyB: torso,
+                        pointA: { x: 0, y: -size * 0.4 },
+                        pointB: { x: -size * 0.5, y: -size * 0.3 },
+                        stiffness: 0.5,
+                        length: 0
+                    }),
+                    // Right arm
+                    Constraint.create({
+                        bodyA: rightArm,
+                        bodyB: torso,
+                        pointA: { x: 0, y: -size * 0.4 },
+                        pointB: { x: size * 0.5, y: -size * 0.3 },
+                        stiffness: 0.5,
+                        length: 0
+                    }),
+                    // Left leg
+                    Constraint.create({
+                        bodyA: leftLeg,
+                        bodyB: torso,
+                        pointA: { x: 0, y: -size * 0.4 },
+                        pointB: { x: -size * 0.2, y: size * 0.7 },
+                        stiffness: 0.6,
+                        length: 0
+                    }),
+                    // Right leg
+                    Constraint.create({
+                        bodyA: rightLeg,
+                        bodyB: torso,
+                        pointA: { x: 0, y: -size * 0.4 },
+                        pointB: { x: size * 0.2, y: size * 0.7 },
+                        stiffness: 0.6,
+                        length: 0
+                    })
+                ];
+
+                Matter.World.add(this.world, [torso, head, leftArm, rightArm, leftLeg, rightLeg]);
+                Matter.World.add(this.world, constraints);
+
+                const mech = {
+                    torso: torso,
+                    head: head,
+                    leftArm: leftArm,
+                    rightArm: rightArm,
+                    leftLeg: leftLeg,
+                    rightLeg: rightLeg,
+                    constraints: constraints,
+                    color: isPlayer ? '#00ff88' : '#ff4444',
+                    currentHP: 0,
+                    maxHP: 0,
+                    moveDirection: 0,
+                    moveSpeed: 0.005,
+                    nextMoveChange: Date.now() + 1000,
+                    isPlayer: isPlayer
+                };
+
+                log(`Full mech created: torso ID=${torso.id} with arms and legs`);
+                return mech;
+            }
+
+            fireProjectile(fromMech, toMech, damage) {
+                const Bodies = Matter.Bodies;
+                const Body = Matter.Body;
+
+                const startX = fromMech.torso.position.x;
+                const startY = fromMech.torso.position.y;
+
+                // Predictive targeting - aim where target will be
+                const targetVel = toMech.torso.velocity;
+                let targetX = toMech.torso.position.x;
+                let targetY = toMech.torso.position.y;
+
+                const speed = 20;
+                const distance = Math.sqrt((targetX - startX) ** 2 + (targetY - startY) ** 2);
+                const travelTime = distance / speed; // Approximate time to hit
+
+                // Predict where target will be
+                const predictedX = targetX + targetVel.x * travelTime * 16; // 16ms per physics tick
+                const predictedY = targetY + targetVel.y * travelTime * 16;
+
+                const finalDistance = Math.sqrt((predictedX - startX) ** 2 + (predictedY - startY) ** 2);
+                const angle = Math.atan2(predictedY - startY, predictedX - startX);
+
+                const projectile = Bodies.circle(startX, startY, 6, {
+                    density: 0.001,
+                    label: 'projectile',
+                    restitution: 0.1, // Low bounce
+                    frictionAir: 0.01 // Some air resistance
+                });
+
+                Body.setVelocity(projectile, {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                });
+
+                projectile.damage = damage;
+                projectile.targetMech = toMech;
+                projectile.firedAt = Date.now();
+
+                Matter.World.add(this.world, projectile);
+                this.projectiles.push(projectile);
+                this.projectileFired++;
+
+                const velMag = Math.sqrt(targetVel.x ** 2 + targetVel.y ** 2);
+                const leadDistance = Math.floor(Math.sqrt((predictedX - targetX) ** 2 + (predictedY - targetY) ** 2));
+                log(`🚀 Projectile #${this.projectileFired}: ${damage} dmg, dist=${Math.floor(finalDistance)}u, lead=${leadDistance}u (vel=${velMag.toFixed(1)})`);
+
+                return projectile;
+            }
+
+            updateMechMovement() {
+                const Body = Matter.Body;
+                const now = Date.now();
+
+                [this.playerMech, this.enemyMech].forEach(mech => {
+                    if (!mech || mech.currentHP <= 0) return;
+
+                    // Change direction periodically
+                    if (now > mech.nextMoveChange) {
+                        const rand = Math.random();
+                        if (rand < 0.3) {
+                            mech.moveDirection = -1; // Move left
+                        } else if (rand < 0.6) {
+                            mech.moveDirection = 1; // Move right
+                        } else {
+                            mech.moveDirection = 0; // Stay still
+                        }
+                        mech.nextMoveChange = now + 800 + Math.random() * 1200; // Random interval
+                    }
+
+                    // Apply movement force
+                    if (mech.moveDirection !== 0) {
+                        const pos = mech.torso.position;
+
+                        // Keep mechs on screen
+                        if ((mech.moveDirection < 0 && pos.x > 50) ||
+                            (mech.moveDirection > 0 && pos.x < this.width - 50)) {
+
+                            Body.applyForce(mech.torso, pos, {
+                                x: mech.moveDirection * mech.moveSpeed,
+                                y: 0
+                            });
+                        }
+                    }
+                });
+            }
+
+            start() {
+                this.running = true;
+                log('Physics started');
+            }
+
+            stop() {
+                this.running = false;
+                log('Physics stopped');
+            }
+
+            setupRenderLoop() {
+                const animate = () => {
+                    if (this.running) {
+                        this.updateMechMovement(); // Update mech AI movement
+                        Matter.Engine.update(this.engine, 16);
+                        this.render();
+                    }
+                    requestAnimationFrame(animate);
+                };
+                animate();
+            }
+
+            render() {
+                const ctx = this.ctx;
+
+                // Clear
+                ctx.fillStyle = '#0d0d1f';
+                ctx.fillRect(0, 0, this.width, this.height);
+
+                // Render ground and terrain
+                const bodies = Matter.Composite.allBodies(this.world);
+                bodies.forEach(body => {
+                    // Only render non-mech bodies with simple rendering
+                    if (!body.label.includes('player_') && !body.label.includes('enemy_') || body.label === 'ground') {
+                        const vertices = body.vertices;
+
+                        ctx.beginPath();
+                        ctx.moveTo(vertices[0].x, vertices[0].y);
+                        for (let i = 1; i < vertices.length; i++) {
+                            ctx.lineTo(vertices[i].x, vertices[i].y);
+                        }
+                        ctx.closePath();
+
+                        // Color based on label
+                        if (body.label === 'projectile') {
+                            ctx.fillStyle = '#ffaa00';
+                        } else {
+                            ctx.fillStyle = '#4a4a6a';
+                        }
+
+                        ctx.fill();
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                });
+
+                // Render mechs with detailed rendering
+                if (this.playerMech) {
+                    this.renderMech(this.playerMech, ctx);
+                }
+                if (this.enemyMech) {
+                    this.renderMech(this.enemyMech, ctx);
+                }
+
+                // Render HP bars
+                if (this.playerMech && this.playerMech.currentHP > 0) {
+                    this.renderHPBar(this.playerMech);
+                }
+                if (this.enemyMech && this.enemyMech.currentHP > 0) {
+                    this.renderHPBar(this.enemyMech);
+                }
+
+                // Debug info
+                ctx.fillStyle = '#00ff88';
+                ctx.font = '12px monospace';
+                const pDir = this.playerMech ? (this.playerMech.moveDirection < 0 ? '←' : this.playerMech.moveDirection > 0 ? '→' : '•') : '•';
+                const eDir = this.enemyMech ? (this.enemyMech.moveDirection < 0 ? '←' : this.enemyMech.moveDirection > 0 ? '→' : '•') : '•';
+                ctx.fillText(`Player ${pDir}: ${this.playerMech ? Math.floor(this.playerMech.currentHP) : 0}/${this.playerMech ? this.playerMech.maxHP : 0} HP`, 10, 20);
+                ctx.fillText(`Enemy ${eDir}: ${this.enemyMech ? Math.floor(this.enemyMech.currentHP) : 0}/${this.enemyMech ? this.enemyMech.maxHP : 0} HP`, 10, 40);
+                ctx.fillText(`Projectiles: ${this.projectiles.length} active`, 10, 60);
+                ctx.fillText(`Fired: ${this.projectileFired} | Hits: ${this.projectileHit} | Missed: ${this.projectileMissed}`, 10, 80);
+                ctx.fillText(`Hit Rate: ${this.projectileFired > 0 ? Math.floor(this.projectileHit / this.projectileFired * 100) : 0}%`, 10, 100);
+            }
+
+            renderMech(mech, ctx) {
+                // Save context
+                ctx.save();
+
+                const scale = 1; // Test mechs are all medium scale
+                const baseColor = mech.color;
+                const darkColor = this.darkenColor(baseColor, 0.6);
+                const lightColor = this.lightenColor(baseColor, 1.3);
+
+                // Render mech components in proper order (back to front)
+                this.renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor);
+
+                ctx.restore();
+            }
+
+            renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const leftLeg = mech.leftLeg;
+                const rightLeg = mech.rightLeg;
+
+                [leftLeg, rightLeg].forEach((leg, index) => {
+                    const legX = leg.position.x;
+                    const legY = leg.position.y;
+                    const angle = leg.angle;
+
+                    ctx.save();
+                    ctx.translate(legX, legY);
+                    ctx.rotate(angle);
+
+                    // Upper leg - angular armored
+                    ctx.fillStyle = baseColor;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(-6 * scale, -15 * scale, 12 * scale, 18 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Knee joint
+                    ctx.fillStyle = darkColor;
+                    ctx.beginPath();
+                    ctx.arc(0, 5 * scale, 5 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Lower leg (reverse joint)
+                    ctx.fillStyle = lightColor;
+                    ctx.beginPath();
+                    ctx.rect(-5 * scale, 5 * scale, 10 * scale, 15 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Foot
+                    ctx.fillStyle = darkColor;
+                    ctx.beginPath();
+                    ctx.rect(-8 * scale, 18 * scale, 16 * scale, 6 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Hydraulic
+                    ctx.strokeStyle = darkColor;
+                    ctx.lineWidth = 2 * scale;
+                    ctx.beginPath();
+                    ctx.moveTo(-3 * scale, -10 * scale);
+                    ctx.lineTo(-3 * scale, 15 * scale);
+                    ctx.stroke();
+
+                    ctx.restore();
+                });
+            }
+
+            renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const torso = mech.torso;
+                const torsoX = torso.position.x;
+                const torsoY = torso.position.y;
+                const angle = torso.angle;
+
+                ctx.save();
+                ctx.translate(torsoX, torsoY);
+                ctx.rotate(angle);
+
+                // Main torso - Mad Cat style
+                ctx.fillStyle = baseColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.rect(-18 * scale, -22 * scale, 36 * scale, 44 * scale);
+                ctx.fill();
+                ctx.stroke();
+
+                // Cockpit
+                ctx.fillStyle = lightColor;
+                ctx.beginPath();
+                ctx.rect(-8 * scale, -18 * scale, 16 * scale, 12 * scale);
+                ctx.fill();
+                ctx.stroke();
+
+                // Viewport
+                ctx.fillStyle = '#4dd2ff';
+                ctx.globalAlpha = 0.7;
+                ctx.beginPath();
+                ctx.rect(-5 * scale, -16 * scale, 10 * scale, 6 * scale);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.stroke();
+
+                // Armor panels
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                ctx.rect(-18 * scale, -5 * scale, 5 * scale, 20 * scale);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.rect(13 * scale, -5 * scale, 5 * scale, 20 * scale);
+                ctx.fill();
+                ctx.stroke();
+
+                // Vents
+                ctx.strokeStyle = darkColor;
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(-6 * scale, (i * 4 - 2) * scale);
+                    ctx.lineTo(6 * scale, (i * 4 - 2) * scale);
+                    ctx.stroke();
+                }
+
+                // Power core
+                ctx.fillStyle = '#ff6b35';
+                ctx.globalAlpha = 0.8;
+                ctx.beginPath();
+                ctx.arc(0, 8 * scale, 3 * scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+
+                ctx.restore();
+            }
+
+            renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const leftArm = mech.leftArm;
+                const rightArm = mech.rightArm;
+
+                [leftArm, rightArm].forEach((arm, index) => {
+                    const armX = arm.position.x;
+                    const armY = arm.position.y;
+                    const angle = arm.angle;
+
+                    ctx.save();
+                    ctx.translate(armX, armY);
+                    ctx.rotate(angle);
+
+                    // Shoulder mount
+                    ctx.fillStyle = darkColor;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, -12 * scale, 6 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Upper arm
+                    ctx.fillStyle = baseColor;
+                    ctx.beginPath();
+                    ctx.rect(-4 * scale, -12 * scale, 8 * scale, 18 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Forearm
+                    ctx.fillStyle = lightColor;
+                    ctx.beginPath();
+                    ctx.rect(-5 * scale, 6 * scale, 10 * scale, 14 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Weapon barrel
+                    ctx.fillStyle = '#666';
+                    ctx.beginPath();
+                    ctx.rect(-2 * scale, 18 * scale, 4 * scale, 8 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Muzzle
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.rect(-3 * scale, 25 * scale, 6 * scale, 3 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.restore();
+                });
+            }
+
+            renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const head = mech.head;
+                const headX = head.position.x;
+                const headY = head.position.y;
+                const angle = head.angle;
+
+                ctx.save();
+                ctx.translate(headX, headY);
+                ctx.rotate(angle);
+
+                // Mad Cat head - pentagonal
+                ctx.fillStyle = baseColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+
+                ctx.beginPath();
+                ctx.moveTo(0, -12 * scale);
+                ctx.lineTo(10 * scale, -8 * scale);
+                ctx.lineTo(10 * scale, 8 * scale);
+                ctx.lineTo(-10 * scale, 8 * scale);
+                ctx.lineTo(-10 * scale, -8 * scale);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Sensor arrays (Mad Cat ears)
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                ctx.rect(-12 * scale, -6 * scale, 4 * scale, 8 * scale);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.rect(8 * scale, -6 * scale, 4 * scale, 8 * scale);
+                ctx.fill();
+                ctx.stroke();
+
+                // Main sensor/eye
+                ctx.fillStyle = '#ff0000';
+                ctx.globalAlpha = 0.9;
+                ctx.beginPath();
+                ctx.arc(0, -2 * scale, 4 * scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.stroke();
+
+                // Visor
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 2 * scale;
+                ctx.beginPath();
+                ctx.moveTo(-6 * scale, -2 * scale);
+                ctx.lineTo(6 * scale, -2 * scale);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            darkenColor(color, factor) {
+                const hex = color.replace('#', '');
+                const r = Math.max(0, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
+                const g = Math.max(0, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
+                const b = Math.max(0, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
+                return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+            }
+
+            lightenColor(color, factor) {
+                const hex = color.replace('#', '');
+                const r = Math.min(255, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
+                const g = Math.min(255, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
+                const b = Math.min(255, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
+                return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+            }
+
+            renderHPBar(mech) {
+                const ctx = this.ctx;
+                const x = mech.torso.position.x;
+                const y = mech.torso.position.y - 60;
+                const width = 80;
+                const height = 8;
+
+                const hpPercent = mech.currentHP / mech.maxHP;
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - width/2, y, width, height);
+
+                ctx.fillStyle = hpPercent > 0.5 ? '#00ff88' : hpPercent > 0.25 ? '#ffaa00' : '#ff4444';
+                ctx.fillRect(x - width/2, y, width * hpPercent, height);
+            }
+        }
+
+        // Create physics engine
+        const physics = new SimplePhysicsEngine('canvas');
+
+        // Create mechs
+        log('Creating mechs...');
+        physics.playerMech = physics.createMech(200, 300, true);
+        physics.playerMech.currentHP = testPlayer.currentHP;
+        physics.playerMech.maxHP = testPlayer.maxHP;
+
+        physics.enemyMech = physics.createMech(600, 300, false);
+        physics.enemyMech.currentHP = testEnemy.currentHP;
+        physics.enemyMech.maxHP = testEnemy.maxHP;
+
+        log('Mechs created!');
+        log('Player HP: ' + physics.playerMech.currentHP);
+        log('Enemy HP: ' + physics.enemyMech.currentHP);
+
+        // Start physics
+        physics.start();
+        log('Physics running!');
+
+        // Auto-fire test
+        let shotCount = 0;
+        let battleOver = false;
+        setInterval(() => {
+            if (physics.playerMech.currentHP > 0 && physics.enemyMech.currentHP > 0) {
+                shotCount++;
+                log(`Round ${shotCount}: Player fires!`);
+                physics.fireProjectile(physics.playerMech, physics.enemyMech, testPlayer.damage);
+
+                // Enemy shoots back
+                setTimeout(() => {
+                    if (physics.enemyMech.currentHP > 0) {
+                        log(`Round ${shotCount}: Enemy fires!`);
+                        physics.fireProjectile(physics.enemyMech, physics.playerMech, testEnemy.damage);
+                    }
+                }, 500);
+            } else if (!battleOver) {
+                battleOver = true;
+                log('=== BATTLE OVER ===');
+                if (physics.enemyMech.currentHP <= 0) {
+                    log('🎉 PLAYER WINS!');
+                } else {
+                    log('💀 PLAYER DEFEATED!');
+                }
+                log(`Final: Player ${Math.floor(physics.playerMech.currentHP)}HP, Enemy ${Math.floor(physics.enemyMech.currentHP)}HP`);
+            }
+        }, 1500);
+
+        log('Auto-fire started - shots every 1.5 seconds');
+        log('Watch the canvas and logs!');
+    </script>
+</body>
+</html>

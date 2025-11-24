@@ -187,105 +187,145 @@
 
                 const size = 30;
 
-                // Create full mech body parts with MUCH higher density for stability
-                const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
-                    density: 0.008,  // 4x heavier - main anchor
+                // MAD CAT DESIGN: Wide, low, stable base for maximum stability
+                // WIDE TORSO - low center of gravity, wide base
+                const torso = Bodies.rectangle(x, y, size * 2.0, size * 1.0, {
+                    density: 0.012,  // Heavy central mass
                     friction: 1.0,
-                    frictionAir: 0.01,  // Air resistance for stability
-                    restitution: 0.05,  // Low bounce
+                    frictionAir: 0.02,
+                    restitution: 0.05,
                     label: isPlayer ? 'player_torso' : 'enemy_torso'
                 });
 
-                const head = Bodies.circle(x, y - size, size * 0.5, {
-                    density: 0.004,  // 4x heavier
+                const head = Bodies.circle(x, y - size * 0.8, size * 0.5, {
+                    density: 0.004,
                     friction: 0.8,
                     frictionAir: 0.01,
                     label: isPlayer ? 'player_head' : 'enemy_head'
                 });
 
-                const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
-                    density: 0.004,  // 4x heavier
+                // Arms mounted on sides of wide torso
+                const leftArm = Bodies.rectangle(x - size * 1.1, y, size * 0.3, size, {
+                    density: 0.004,
                     friction: 0.8,
                     frictionAir: 0.01,
                     label: isPlayer ? 'player_arm' : 'enemy_arm'
                 });
 
-                const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
-                    density: 0.004,  // 4x heavier
+                const rightArm = Bodies.rectangle(x + size * 1.1, y, size * 0.3, size, {
+                    density: 0.004,
                     friction: 0.8,
                     frictionAir: 0.01,
                     label: isPlayer ? 'player_arm' : 'enemy_arm'
                 });
 
-                const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.006,  // 3x heavier - legs need weight
-                    friction: 1.2,   // High friction for ground contact
+                // MAD CAT LEGS: WIDE STANCE at outer edges of torso
+                const leftLeg = Bodies.rectangle(x - size * 0.9, y + size * 0.9, size * 0.4, size * 0.7, {
+                    density: 0.008,  // Heavy legs for stability
+                    friction: 1.5,
                     frictionAir: 0.01,
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
-                const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.006,  // 3x heavier
-                    friction: 1.2,
+                const rightLeg = Bodies.rectangle(x + size * 0.9, y + size * 0.9, size * 0.4, size * 0.7, {
+                    density: 0.008,
+                    friction: 1.5,
                     frictionAir: 0.01,
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
-                // Create constraints - MAXIMUM stiffness to prevent falling
+                // SEPARATE FEET for maximum ground contact and stability
+                const leftFoot = Bodies.rectangle(x - size * 0.9, y + size * 1.5, size * 0.6, size * 0.25, {
+                    density: 0.006,
+                    friction: 2.5,  // MAXIMUM friction for stability
+                    frictionAir: 0.01,
+                    restitution: 0.0,
+                    label: isPlayer ? 'player_foot' : 'enemy_foot'
+                });
+
+                const rightFoot = Bodies.rectangle(x + size * 0.9, y + size * 1.5, size * 0.6, size * 0.25, {
+                    density: 0.006,
+                    friction: 2.5,
+                    frictionAir: 0.01,
+                    restitution: 0.0,
+                    label: isPlayer ? 'player_foot' : 'enemy_foot'
+                });
+
+                // RIGID CONSTRAINTS - Mad Cat mechs are stable platforms
                 const constraints = [
                     // Head to torso - LOCKED
                     Constraint.create({
                         bodyA: head,
                         bodyB: torso,
                         pointA: { x: 0, y: size * 0.3 },
-                        pointB: { x: 0, y: -size * 0.7 },
-                        stiffness: 1.0,  // COMPLETELY RIGID
-                        damping: 0.2,
+                        pointB: { x: 0, y: -size * 0.45 },
+                        stiffness: 1.0,
+                        damping: 0.3,
                         length: 0
                     }),
-                    // Left arm - very stiff
+                    // Left arm to torso
                     Constraint.create({
                         bodyA: leftArm,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: -size * 0.5, y: -size * 0.3 },
+                        pointB: { x: -size * 0.9, y: 0 },
                         stiffness: 0.95,
                         damping: 0.2,
                         length: 0
                     }),
-                    // Right arm - very stiff
+                    // Right arm to torso
                     Constraint.create({
                         bodyA: rightArm,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: size * 0.5, y: -size * 0.3 },
+                        pointB: { x: size * 0.9, y: 0 },
                         stiffness: 0.95,
                         damping: 0.2,
                         length: 0
                     }),
-                    // Left leg - LOCKED to torso
+                    // Left leg to torso - LOCKED (hip joint)
                     Constraint.create({
                         bodyA: leftLeg,
                         bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: -size * 0.2, y: size * 0.7 },
-                        stiffness: 1.0,  // COMPLETELY RIGID
-                        damping: 0.2,
+                        pointA: { x: 0, y: -size * 0.35 },
+                        pointB: { x: -size * 0.8, y: size * 0.45 },
+                        stiffness: 1.0,
+                        damping: 0.3,
                         length: 0
                     }),
-                    // Right leg - LOCKED to torso
+                    // Right leg to torso - LOCKED (hip joint)
                     Constraint.create({
                         bodyA: rightLeg,
                         bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: size * 0.2, y: size * 0.7 },
-                        stiffness: 1.0,  // COMPLETELY RIGID
-                        damping: 0.2,
+                        pointA: { x: 0, y: -size * 0.35 },
+                        pointB: { x: size * 0.8, y: size * 0.45 },
+                        stiffness: 1.0,
+                        damping: 0.3,
+                        length: 0
+                    }),
+                    // Left foot to left leg - LOCKED (ankle joint)
+                    Constraint.create({
+                        bodyA: leftFoot,
+                        bodyB: leftLeg,
+                        pointA: { x: 0, y: -size * 0.1 },
+                        pointB: { x: 0, y: size * 0.35 },
+                        stiffness: 1.0,
+                        damping: 0.3,
+                        length: 0
+                    }),
+                    // Right foot to right leg - LOCKED (ankle joint)
+                    Constraint.create({
+                        bodyA: rightFoot,
+                        bodyB: rightLeg,
+                        pointA: { x: 0, y: -size * 0.1 },
+                        pointB: { x: 0, y: size * 0.35 },
+                        stiffness: 1.0,
+                        damping: 0.3,
                         length: 0
                     })
                 ];
 
-                Matter.World.add(this.world, [torso, head, leftArm, rightArm, leftLeg, rightLeg]);
+                Matter.World.add(this.world, [torso, head, leftArm, rightArm, leftLeg, rightLeg, leftFoot, rightFoot]);
                 Matter.World.add(this.world, constraints);
 
                 const mech = {
@@ -295,6 +335,8 @@
                     rightArm: rightArm,
                     leftLeg: leftLeg,
                     rightLeg: rightLeg,
+                    leftFoot: leftFoot,  // NEW
+                    rightFoot: rightFoot,  // NEW
                     constraints: constraints,
                     color: isPlayer ? '#00ff88' : '#ff4444',
                     currentHP: 0,
@@ -305,7 +347,7 @@
                     isPlayer: isPlayer
                 };
 
-                log(`Full mech created: torso ID=${torso.id} with arms and legs`);
+                log(`Mad Cat mech created: torso ID=${torso.id} with wide stance`);
                 return mech;
             }
 
@@ -472,7 +514,7 @@
                 // Debug info with V3 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V3.0 ACTIVE', 10, 20);
+                ctx.fillText('V3.3 MAD CAT', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';
@@ -516,6 +558,7 @@
                 const leftLeg = mech.leftLeg;
                 const rightLeg = mech.rightLeg;
 
+                // Render leg struts (thigh + lower leg)
                 [leftLeg, rightLeg].forEach((leg, index) => {
                     const legX = leg.position.x;
                     const legY = leg.position.y;
@@ -530,12 +573,12 @@
                     ctx.strokeStyle = '#000';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.moveTo(-6 * scale, -14 * scale);
-                    ctx.lineTo(6 * scale, -14 * scale);
-                    ctx.lineTo(8 * scale, -12 * scale);
-                    ctx.lineTo(8 * scale, 2 * scale);
-                    ctx.lineTo(-8 * scale, 2 * scale);
-                    ctx.lineTo(-8 * scale, -12 * scale);
+                    ctx.moveTo(-6 * scale, -12 * scale);
+                    ctx.lineTo(6 * scale, -12 * scale);
+                    ctx.lineTo(8 * scale, -10 * scale);
+                    ctx.lineTo(8 * scale, 8 * scale);
+                    ctx.lineTo(-8 * scale, 8 * scale);
+                    ctx.lineTo(-8 * scale, -10 * scale);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
@@ -544,8 +587,8 @@
                     ctx.strokeStyle = darkColor;
                     ctx.lineWidth = 1;
                     ctx.beginPath();
-                    ctx.moveTo(-4 * scale, -10 * scale);
-                    ctx.lineTo(4 * scale, -10 * scale);
+                    ctx.moveTo(-4 * scale, -6 * scale);
+                    ctx.lineTo(4 * scale, -6 * scale);
                     ctx.stroke();
 
                     // Knee joint - mechanical with glow
@@ -553,7 +596,7 @@
                     ctx.strokeStyle = '#000';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(0, 4 * scale, 6 * scale, 0, Math.PI * 2);
+                    ctx.arc(0, 10 * scale, 5 * scale, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
 
@@ -561,21 +604,21 @@
                     ctx.fillStyle = '#ff6b35';
                     ctx.globalAlpha = 0.4;
                     ctx.beginPath();
-                    ctx.arc(0, 4 * scale, 4 * scale, 0, Math.PI * 2);
+                    ctx.arc(0, 10 * scale, 3 * scale, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.globalAlpha = 1;
 
-                    // Lower leg - sleek tapered design
+                    // Lower leg - wider, more stable design
                     ctx.fillStyle = baseColor;
                     ctx.strokeStyle = '#000';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.moveTo(-6 * scale, 4 * scale);
-                    ctx.lineTo(-4 * scale, 8 * scale);
-                    ctx.lineTo(-4 * scale, 18 * scale);
-                    ctx.lineTo(4 * scale, 18 * scale);
-                    ctx.lineTo(4 * scale, 8 * scale);
-                    ctx.lineTo(6 * scale, 4 * scale);
+                    ctx.moveTo(-7 * scale, 10 * scale);
+                    ctx.lineTo(-5 * scale, 14 * scale);
+                    ctx.lineTo(-5 * scale, 24 * scale);
+                    ctx.lineTo(5 * scale, 24 * scale);
+                    ctx.lineTo(5 * scale, 14 * scale);
+                    ctx.lineTo(7 * scale, 10 * scale);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
@@ -583,18 +626,7 @@
                     // Ankle actuator
                     ctx.fillStyle = darkColor;
                     ctx.beginPath();
-                    ctx.arc(0, 18 * scale, 3 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Foot - aggressive angular design
-                    ctx.fillStyle = '#2a2a2a';
-                    ctx.beginPath();
-                    ctx.moveTo(-8 * scale, 20 * scale);
-                    ctx.lineTo(8 * scale, 20 * scale);
-                    ctx.lineTo(11 * scale, 24 * scale);
-                    ctx.lineTo(-11 * scale, 24 * scale);
-                    ctx.closePath();
+                    ctx.arc(0, 24 * scale, 4 * scale, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
 
@@ -602,12 +634,50 @@
                     ctx.strokeStyle = '#404040';
                     ctx.lineWidth = 2.5 * scale;
                     ctx.beginPath();
-                    ctx.moveTo(-3 * scale, -8 * scale);
-                    ctx.lineTo(-3 * scale, 14 * scale);
+                    ctx.moveTo(-3 * scale, -4 * scale);
+                    ctx.lineTo(-3 * scale, 18 * scale);
                     ctx.stroke();
 
                     ctx.restore();
                 });
+
+                // Render separate FEET (Mad Cat wide stance)
+                if (mech.leftFoot && mech.rightFoot) {
+                    [mech.leftFoot, mech.rightFoot].forEach((foot) => {
+                        const footX = foot.position.x;
+                        const footY = foot.position.y;
+                        const angle = foot.angle;
+
+                        ctx.save();
+                        ctx.translate(footX, footY);
+                        ctx.rotate(angle);
+
+                        // Wide, stable foot - Mad Cat style
+                        ctx.fillStyle = '#2a2a2a';
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(-9 * scale, -3 * scale);
+                        ctx.lineTo(9 * scale, -3 * scale);
+                        ctx.lineTo(12 * scale, 4 * scale);
+                        ctx.lineTo(-12 * scale, 4 * scale);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Tread pattern for grip
+                        ctx.strokeStyle = '#1a1a1a';
+                        ctx.lineWidth = 1;
+                        for (let i = -8; i <= 8; i += 4) {
+                            ctx.beginPath();
+                            ctx.moveTo(i * scale, 0);
+                            ctx.lineTo(i * scale, 3 * scale);
+                            ctx.stroke();
+                        }
+
+                        ctx.restore();
+                    });
+                }
             }
 
             renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor) {

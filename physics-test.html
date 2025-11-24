@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Physics Combat Test - Auto-Running (Matches Real Game)</title>
+    <title>Physics Combat Test v1.19.0 - With Visible Status Log (iPhone Debugging)</title>
     <style>
         * {
             margin: 0;
@@ -65,6 +65,11 @@
         <div id="info">Initializing...</div>
     </div>
 
+    <div id="status-log" style="position: absolute; bottom: 10px; left: 10px; right: 10px; background:#222; color:#0f0; padding:15px; border-radius:8px; font-family:monospace; font-size:11px; max-height:150px; overflow-y:auto; border:1px solid #0f0;">
+        <div style="font-weight:bold; margin-bottom:10px;">📋 INITIALIZATION LOG:</div>
+        <div id="status-messages"></div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script>
         console.log('🧪 Physics test starting - MATCHES REAL GAME...');
@@ -72,6 +77,38 @@
         const canvas = document.getElementById('test-canvas');
         const ctx = canvas.getContext('2d');
         const statusDiv = document.getElementById('info');
+
+        // Visible status logging for iPhone debugging
+        function statusLog(message, type = 'info') {
+            const statusMessages = document.getElementById('status-messages');
+            if (!statusMessages) return;
+
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'info': '#0f0',
+                'success': '#0ff',
+                'warning': '#ff0',
+                'error': '#f00'
+            };
+            const icons = {
+                'info': '•',
+                'success': '✓',
+                'warning': '⚠',
+                'error': '✗'
+            };
+
+            const entry = document.createElement('div');
+            entry.style.color = colors[type] || '#0f0';
+            entry.style.marginBottom = '5px';
+            entry.textContent = `[${timestamp}] ${icons[type]} ${message}`;
+            statusMessages.appendChild(entry);
+
+            // Auto-scroll to bottom
+            statusMessages.parentElement.scrollTop = statusMessages.parentElement.scrollHeight;
+
+            // Also log to console
+            console.log(`[STATUS] ${message}`);
+        }
 
         // Test state
         const testState = {
@@ -108,6 +145,7 @@
         }
 
         // Matter.js setup
+        statusLog('Setting up Matter.js engine...', 'info');
         const Engine = Matter.Engine;
         const World = Matter.World;
         const Bodies = Matter.Bodies;
@@ -119,6 +157,7 @@
         const engine = Engine.create();
         engine.gravity.y = 1.2; // Same as real game
         const world = engine.world;
+        statusLog('Matter.js engine created (gravity: 1.2)', 'success');
 
         // Colors (same as real game)
         const colors = {
@@ -131,6 +170,7 @@
         };
 
         // Ground (matches main game: height - groundHeight/2 = 450 - 20 = 430)
+        statusLog('Creating ground terrain...', 'info');
         const ground = Bodies.rectangle(400, 430, 800, 40, {
             isStatic: true,
             friction: 0.8,
@@ -138,9 +178,11 @@
             render: { fillStyle: colors.terrain }
         });
         World.add(world, ground);
+        statusLog('Ground terrain created at y=430', 'success');
 
         // Create ARTICULATED mech (matches real game exactly!)
         function createArticulatedMech(x, y, isPlayer) {
+            statusLog(`Creating ${isPlayer ? 'PLAYER' : 'ENEMY'} mech at (${x}, ${y})`, 'info');
             const size = 30;
 
             // Body parts
@@ -237,6 +279,8 @@
             Composite.add(mech, [torso, head, leftArm, rightArm, leftLeg, rightLeg, ...constraints]);
             World.add(world, mech);
 
+            statusLog(`${isPlayer ? 'PLAYER' : 'ENEMY'} mech created successfully!`, 'success');
+
             return {
                 composite: mech,
                 torso, head, leftArm, rightArm, leftLeg, rightLeg,
@@ -246,11 +290,13 @@
         }
 
         // Create mechs at proper ground level
+        statusLog('=== CREATING MECHS ===', 'info');
         console.log('Creating articulated mechs...');
         // Match main game positions EXACTLY
         const playerMech = createArticulatedMech(200, 300, true);
         const enemyMech = createArticulatedMech(600, 300, false);
         console.log('✓ Mechs created');
+        statusLog('Both mechs added to world', 'success');
 
         // Projectiles array
         const projectiles = [];
@@ -333,6 +379,7 @@
         }
 
         // Collision detection (FIXED: prevent self-collision)
+        statusLog('Setting up collision detection...', 'info');
         Events.on(engine, 'collisionStart', (event) => {
             event.pairs.forEach(pair => {
                 const { bodyA, bodyB } = pair;
@@ -409,6 +456,7 @@
                 }
             });
         });
+        statusLog('Collision detection ready', 'success');
 
         // INTELLIGENT MOVEMENT AI SYSTEM
         const movementAI = {
@@ -748,8 +796,11 @@
         }
 
         // Start
+        statusLog('=== STARTING BATTLE ===', 'info');
         console.log('🚀 Starting auto battle (matches real game)...');
         setTimeout(() => {
+            statusLog('Physics render loop started!', 'success');
+            statusLog('⚔️ BATTLE RUNNING! ⚔️', 'success');
             mainLoop();
         }, 500);
 

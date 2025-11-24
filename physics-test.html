@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Physics Combat Test - Auto-Running</title>
+    <title>Physics Combat Test - Auto-Running (Matches Real Game)</title>
     <style>
         * {
             margin: 0;
@@ -25,20 +25,23 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             padding: 15px;
             border: 2px solid #00ff88;
-            font-size: 14px;
-            line-height: 1.6;
-            max-width: 400px;
+            font-size: 13px;
+            line-height: 1.8;
+            max-width: 350px;
+            z-index: 1000;
         }
-        .error { color: #ff4444; }
-        .success { color: #00ff88; }
-        .warning { color: #ffaa00; }
+        .error { color: #ff4444; font-weight: bold; }
+        .success { color: #00ff88; font-weight: bold; }
+        .warning { color: #ffaa00; font-weight: bold; }
         h1 {
             color: #00ccff;
             margin-bottom: 10px;
+            font-size: 16px;
         }
+        .big { font-size: 18px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -50,8 +53,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script>
-        // AUTO-RUNNING PHYSICS TEST
-        console.log('🧪 Physics test starting...');
+        console.log('🧪 Physics test starting - MATCHES REAL GAME...');
 
         const canvas = document.getElementById('test-canvas');
         const ctx = canvas.getContext('2d');
@@ -59,26 +61,34 @@
 
         // Test state
         const testState = {
-            playerHP: 100,
-            enemyHP: 100,
+            playerHP: 120,
+            enemyHP: 80,
+            playerMaxHP: 120,
+            enemyMaxHP: 80,
             playerShots: 0,
             enemyShots: 0,
             collisions: 0,
-            damageApplied: 0
+            damageApplied: 0,
+            projectileCount: 0
         };
 
         function updateStatus() {
+            const hpChange = (testState.playerHP < testState.playerMaxHP) || (testState.enemyHP < testState.enemyMaxHP);
             statusDiv.innerHTML = `
                 <div class="success">✓ Physics Running</div>
-                <div>Player HP: <span class="${testState.playerHP < 100 ? 'warning' : 'success'}">${testState.playerHP}/100</span></div>
-                <div>Enemy HP: <span class="${testState.enemyHP < 100 ? 'warning' : 'success'}">${testState.enemyHP}/100</span></div>
-                <div>Player Shots: ${testState.playerShots}</div>
-                <div>Enemy Shots: ${testState.enemyShots}</div>
-                <div>Collisions: <span class="${testState.collisions > 0 ? 'success' : 'error'}">${testState.collisions}</span></div>
-                <div>Damage Applied: <span class="${testState.damageApplied > 0 ? 'success' : 'error'}">${testState.damageApplied}</span></div>
-                <div style="margin-top: 10px; color: #ffaa00;">
-                    ${testState.collisions === 0 ? '⚠️ NO COLLISIONS!' : ''}
-                    ${testState.damageApplied === 0 ? '⚠️ NO DAMAGE!' : ''}
+                <div class="big">Player HP: <span class="${testState.playerHP < testState.playerMaxHP ? 'warning' : 'success'}">${testState.playerHP}/${testState.playerMaxHP}</span></div>
+                <div class="big">Enemy HP: <span class="${testState.enemyHP < testState.enemyMaxHP ? 'warning' : 'success'}">${testState.enemyHP}/${testState.enemyMaxHP}</span></div>
+                <hr style="border-color: #00ff88; margin: 5px 0;">
+                <div>Player Shots Fired: ${testState.playerShots}</div>
+                <div>Enemy Shots Fired: ${testState.enemyShots}</div>
+                <div>Active Projectiles: ${testState.projectileCount}</div>
+                <div>Collisions Detected: <span class="${testState.collisions > 0 ? 'success' : 'error'}">${testState.collisions}</span></div>
+                <div>Total Damage Applied: <span class="${testState.damageApplied > 0 ? 'success' : 'error'}">${testState.damageApplied}</span></div>
+                <hr style="border-color: #00ff88; margin: 5px 0;">
+                <div style="margin-top: 5px;">
+                    ${testState.collisions === 0 && testState.playerShots > 3 ? '<div class="error">⚠️ NO COLLISIONS DETECTED!</div>' : ''}
+                    ${testState.damageApplied === 0 && testState.collisions > 0 ? '<div class="error">⚠️ COLLISIONS BUT NO DAMAGE!</div>' : ''}
+                    ${hpChange ? '<div class="success">✓ HP IS CHANGING!</div>' : ''}
                 </div>
             `;
         }
@@ -89,50 +99,156 @@
         const Bodies = Matter.Bodies;
         const Body = Matter.Body;
         const Events = Matter.Events;
+        const Constraint = Matter.Constraint;
+        const Composite = Matter.Composite;
 
         const engine = Engine.create();
-        engine.gravity.y = 1.2;
+        engine.gravity.y = 1.2; // Same as real game
         const world = engine.world;
 
-        // Ground
+        // Colors (same as real game)
+        const colors = {
+            player: '#00ff88',
+            enemy: '#ff4444',
+            projectile: '#ffaa00',
+            background: '#0d0d1f',
+            sky: '#1a1a3e',
+            terrain: '#4a4a6a'
+        };
+
+        // Ground (same as real game)
         const ground = Bodies.rectangle(400, 425, 800, 50, {
             isStatic: true,
+            friction: 0.8,
             label: 'ground',
-            render: { fillStyle: '#4a4a6a' }
+            render: { fillStyle: colors.terrain }
         });
         World.add(world, ground);
 
-        // Create simple box mechs (not articulated for simpler testing)
-        const playerMech = Bodies.rectangle(200, 350, 40, 60, {
-            density: 0.01,
-            friction: 0.8,
-            label: 'player_torso',
-            render: { fillStyle: '#00ff88' }
-        });
-        Body.setInertia(playerMech, Infinity); // Can't tip over
+        // Create ARTICULATED mech (matches real game exactly!)
+        function createArticulatedMech(x, y, isPlayer) {
+            const size = 30;
 
-        const enemyMech = Bodies.rectangle(600, 350, 40, 60, {
-            density: 0.01,
-            friction: 0.8,
-            label: 'enemy_torso',
-            render: { fillStyle: '#ff4444' }
-        });
-        Body.setInertia(enemyMech, Infinity); // Can't tip over
+            // Body parts
+            const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
+                density: 0.002,
+                friction: 0.8,
+                frictionAir: 0.05,
+                restitution: 0.1,
+                inertia: Infinity, // Can't tip over
+                label: isPlayer ? 'player_torso' : 'enemy_torso'
+            });
 
-        World.add(world, [playerMech, enemyMech]);
+            const head = Bodies.circle(x, y - size, size * 0.5, {
+                density: 0.001,
+                friction: 0.5,
+                frictionAir: 0.03,
+                label: isPlayer ? 'player_head' : 'enemy_head'
+            });
+
+            const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
+                density: 0.001,
+                friction: 0.5,
+                frictionAir: 0.03,
+                label: isPlayer ? 'player_arm' : 'enemy_arm'
+            });
+
+            const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
+                density: 0.001,
+                friction: 0.5,
+                frictionAir: 0.03,
+                label: isPlayer ? 'player_arm' : 'enemy_arm'
+            });
+
+            const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
+                density: 0.002,
+                friction: 0.9,
+                frictionAir: 0.04,
+                label: isPlayer ? 'player_leg' : 'enemy_leg'
+            });
+
+            const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
+                density: 0.002,
+                friction: 0.9,
+                frictionAir: 0.04,
+                label: isPlayer ? 'player_leg' : 'enemy_leg'
+            });
+
+            // Constraints (joints)
+            const constraints = [
+                Constraint.create({
+                    bodyA: head,
+                    bodyB: torso,
+                    pointA: { x: 0, y: size * 0.3 },
+                    pointB: { x: 0, y: -size * 0.7 },
+                    stiffness: 0.7,
+                    length: 0
+                }),
+                Constraint.create({
+                    bodyA: leftArm,
+                    bodyB: torso,
+                    pointA: { x: 0, y: -size * 0.4 },
+                    pointB: { x: -size * 0.5, y: -size * 0.3 },
+                    stiffness: 0.5,
+                    length: 0
+                }),
+                Constraint.create({
+                    bodyA: rightArm,
+                    bodyB: torso,
+                    pointA: { x: 0, y: -size * 0.4 },
+                    pointB: { x: size * 0.5, y: -size * 0.3 },
+                    stiffness: 0.5,
+                    length: 0
+                }),
+                Constraint.create({
+                    bodyA: leftLeg,
+                    bodyB: torso,
+                    pointA: { x: 0, y: -size * 0.4 },
+                    pointB: { x: -size * 0.2, y: size * 0.7 },
+                    stiffness: 0.6,
+                    length: 0
+                }),
+                Constraint.create({
+                    bodyA: rightLeg,
+                    bodyB: torso,
+                    pointA: { x: 0, y: -size * 0.4 },
+                    pointB: { x: size * 0.2, y: size * 0.7 },
+                    stiffness: 0.6,
+                    length: 0
+                })
+            ];
+
+            // Add to world
+            const mech = Composite.create();
+            Composite.add(mech, [torso, head, leftArm, rightArm, leftLeg, rightLeg, ...constraints]);
+            World.add(world, mech);
+
+            return {
+                composite: mech,
+                torso, head, leftArm, rightArm, leftLeg, rightLeg,
+                color: isPlayer ? colors.player : colors.enemy,
+                isPlayer
+            };
+        }
+
+        // Create mechs at proper ground level
+        console.log('Creating articulated mechs...');
+        const playerMech = createArticulatedMech(150, 340, true);
+        const enemyMech = createArticulatedMech(650, 340, false);
+        console.log('✓ Mechs created');
 
         // Projectiles array
         const projectiles = [];
 
-        // Fire projectile function
+        // Fire projectile (EXACT copy from real game)
         function fireProjectile(from, to) {
-            const startX = from.position.x;
-            const startY = from.position.y - 10;
-            const targetX = to.position.x;
-            const targetY = to.position.y;
+            const startX = from.torso.position.x;
+            const startY = from.torso.position.y;
+            const targetX = to.torso.position.x;
+            const targetY = to.torso.position.y;
 
             const angle = Math.atan2(targetY - startY, targetX - startX);
-            const speed = 8; // Slow speed for collision detection
+            const speed = 8; // Same as fixed version
 
             const projectile = Bodies.circle(startX, startY, 10, {
                 density: 0.01,
@@ -140,7 +256,10 @@
                 friction: 0.05,
                 frictionAir: 0.001,
                 label: 'bullet',
-                render: { fillStyle: '#ffaa00' }
+                collisionFilter: {
+                    category: 0x0002,
+                    mask: 0xFFFF
+                }
             });
 
             Body.setVelocity(projectile, {
@@ -148,96 +267,91 @@
                 y: Math.sin(angle) * speed
             });
 
-            // Store metadata
             projectile.damage = 10;
-            projectile.fromPlayer = (from === playerMech);
+            projectile.fromPlayer = from.isPlayer;
 
             World.add(world, projectile);
             projectiles.push(projectile);
 
-            if (from === playerMech) {
+            if (from.isPlayer) {
                 testState.playerShots++;
-                console.log(`🔫 Player shot #${testState.playerShots}`);
+                console.log(`🔫 Player shot #${testState.playerShots} at (${Math.floor(startX)}, ${Math.floor(startY)})`);
             } else {
                 testState.enemyShots++;
-                console.log(`🔫 Enemy shot #${testState.enemyShots}`);
+                console.log(`🔫 Enemy shot #${testState.enemyShots} at (${Math.floor(startX)}, ${Math.floor(startY)})`);
             }
         }
 
-        // Collision detection
+        // Collision detection (EXACT copy from real game)
         Events.on(engine, 'collisionStart', (event) => {
             event.pairs.forEach(pair => {
                 const { bodyA, bodyB } = pair;
 
-                // Check if projectile
                 const projectile = projectiles.find(p => p === bodyA || p === bodyB);
                 if (!projectile) return;
 
                 const other = bodyA === projectile ? bodyB : bodyA;
 
-                console.log(`💥 COLLISION: ${projectile.label} hit ${other.label}`);
+                console.log(`💥 COLLISION! ${projectile.label} hit ${other.label} at (${Math.floor(other.position.x)}, ${Math.floor(other.position.y)})`);
                 testState.collisions++;
 
-                // Check if hit a mech
-                if (other === playerMech || other === enemyMech) {
-                    const hitPlayer = (other === playerMech);
+                // Check if hit player
+                if (other.label && other.label.includes('player')) {
                     const damage = projectile.damage;
-
-                    console.log(`   ✓ ${hitPlayer ? 'PLAYER' : 'ENEMY'} HIT! Damage: ${damage}`);
-
-                    // Apply damage
-                    if (hitPlayer) {
-                        testState.playerHP = Math.max(0, testState.playerHP - damage);
-                        console.log(`   Player HP: ${testState.playerHP}`);
-                    } else {
-                        testState.enemyHP = Math.max(0, testState.enemyHP - damage);
-                        console.log(`   Enemy HP: ${testState.enemyHP}`);
-                    }
-
+                    testState.playerHP = Math.max(0, testState.playerHP - damage);
                     testState.damageApplied += damage;
+                    console.log(`   ✓ PLAYER HIT! Damage: ${damage}, HP: ${testState.playerHP}`);
 
-                    // Remove projectile
                     World.remove(world, projectile);
-                    const index = projectiles.indexOf(projectile);
-                    if (index > -1) projectiles.splice(index, 1);
+                    projectiles.splice(projectiles.indexOf(projectile), 1);
+                }
+                // Check if hit enemy
+                else if (other.label && other.label.includes('enemy')) {
+                    const damage = projectile.damage;
+                    testState.enemyHP = Math.max(0, testState.enemyHP - damage);
+                    testState.damageApplied += damage;
+                    console.log(`   ✓ ENEMY HIT! Damage: ${damage}, HP: ${testState.enemyHP}`);
+
+                    World.remove(world, projectile);
+                    projectiles.splice(projectiles.indexOf(projectile), 1);
                 }
             });
         });
 
-        // Auto-fire loop
+        // Auto-fire
         let lastPlayerShot = 0;
         let lastEnemyShot = 0;
-        const fireRate = 1500; // 1.5 seconds
+        const fireRate = 2000; // 2 seconds
 
         function autoFire() {
             const now = Date.now();
 
-            if (now - lastPlayerShot > fireRate) {
+            if (now - lastPlayerShot > fireRate && testState.playerHP > 0) {
                 fireProjectile(playerMech, enemyMech);
                 lastPlayerShot = now;
             }
 
-            if (now - lastEnemyShot > fireRate) {
+            if (now - lastEnemyShot > fireRate && testState.enemyHP > 0) {
                 fireProjectile(enemyMech, playerMech);
                 lastEnemyShot = now;
             }
         }
 
-        // Render loop
+        // Render (matches real game style)
         function render() {
             // Clear
-            ctx.fillStyle = '#0d0d1f';
+            ctx.fillStyle = colors.background;
             ctx.fillRect(0, 0, 800, 450);
 
             // Sky gradient
             const gradient = ctx.createLinearGradient(0, 0, 0, 450);
-            gradient.addColorStop(0, '#1a1a3e');
-            gradient.addColorStop(1, '#0d0d1f');
+            gradient.addColorStop(0, colors.sky);
+            gradient.addColorStop(1, colors.background);
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, 800, 315);
 
             // Render all bodies
-            const allBodies = Matter.Composite.allBodies(world);
+            const allBodies = Composite.allBodies(world);
             allBodies.forEach(body => {
                 const vertices = body.vertices;
                 ctx.beginPath();
@@ -247,15 +361,15 @@
                 }
                 ctx.closePath();
 
-                // Color
-                if (body.label.includes('player')) {
-                    ctx.fillStyle = '#00ff88';
-                } else if (body.label.includes('enemy')) {
-                    ctx.fillStyle = '#ff4444';
+                // Color by label
+                if (body.label && body.label.includes('player')) {
+                    ctx.fillStyle = colors.player;
+                } else if (body.label && body.label.includes('enemy')) {
+                    ctx.fillStyle = colors.enemy;
                 } else if (body.label === 'bullet') {
-                    ctx.fillStyle = '#ffaa00';
+                    ctx.fillStyle = colors.projectile;
                 } else {
-                    ctx.fillStyle = body.render.fillStyle || '#4a4a6a';
+                    ctx.fillStyle = body.render.fillStyle || colors.terrain;
                 }
 
                 ctx.fill();
@@ -264,7 +378,7 @@
                 ctx.stroke();
             });
 
-            // Draw projectile trails
+            // Projectile trails (like real game)
             projectiles.forEach(proj => {
                 const pos = proj.position;
                 const vel = proj.velocity;
@@ -272,8 +386,8 @@
                 // Glow
                 ctx.save();
                 ctx.shadowBlur = 20;
-                ctx.shadowColor = '#ffaa00';
-                ctx.fillStyle = '#ffaa00';
+                ctx.shadowColor = colors.projectile;
+                ctx.fillStyle = colors.projectile;
                 ctx.beginPath();
                 ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
                 ctx.fill();
@@ -289,44 +403,51 @@
             });
 
             // HP bars
-            drawHPBar(playerMech.position.x, playerMech.position.y - 40, testState.playerHP, 100, '#00ff88');
-            drawHPBar(enemyMech.position.x, enemyMech.position.y - 40, testState.enemyHP, 100, '#ff4444');
+            drawHPBar(playerMech.torso.position.x, playerMech.torso.position.y - 60, testState.playerHP, testState.playerMaxHP, colors.player);
+            drawHPBar(enemyMech.torso.position.x, enemyMech.torso.position.y - 60, testState.enemyHP, testState.enemyMaxHP, colors.enemy);
         }
 
         function drawHPBar(x, y, current, max, color) {
-            const width = 60;
+            const width = 80;
             const height = 8;
 
-            // Background
             ctx.fillStyle = '#000';
             ctx.fillRect(x - width/2 - 1, y - 1, width + 2, height + 2);
 
-            // HP
-            const hpWidth = (current / max) * width;
-            ctx.fillStyle = color;
+            const hpPercent = current / max;
+            const hpWidth = Math.max(0, (width * hpPercent));
+
+            if (hpPercent > 0.6) {
+                ctx.fillStyle = '#00ff88';
+            } else if (hpPercent > 0.3) {
+                ctx.fillStyle = '#ffaa00';
+            } else {
+                ctx.fillStyle = '#ff4444';
+            }
+
             ctx.fillRect(x - width/2, y, hpWidth, height);
 
-            // Text
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 10px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(`${current}/${max}`, x, y - 3);
+            ctx.fillText(`${Math.floor(current)}/${max}`, x, y - 5);
         }
 
         // Main loop
         function mainLoop() {
             autoFire();
             Engine.update(engine, 1000 / 60);
+            testState.projectileCount = projectiles.length;
             render();
             updateStatus();
             requestAnimationFrame(mainLoop);
         }
 
-        // Start automatically
-        console.log('🚀 Starting auto battle test...');
+        // Start
+        console.log('🚀 Starting auto battle (matches real game)...');
         setTimeout(() => {
             mainLoop();
-        }, 1000);
+        }, 500);
 
         updateStatus();
     </script>

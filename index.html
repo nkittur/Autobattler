@@ -2369,30 +2369,34 @@
             }
 
             removeOffScreenProjectiles() {
-                // Remove projectiles that have left the screen bounds
-                const margin = 50; // Extra margin to allow projectiles slightly off-screen
-                const minX = -margin;
-                const maxX = this.width + margin;
-                const minY = -margin;
-                const maxY = this.height + margin;
+                // Safety check
+                if (!this.projectiles || this.projectiles.length === 0) return;
 
-                const toRemove = [];
+                try {
+                    const margin = 50;
+                    const minX = -margin;
+                    const maxX = this.width + margin;
+                    const minY = -margin;
+                    const maxY = this.height + margin;
 
-                this.projectiles.forEach(projectile => {
-                    const pos = projectile.position;
+                    const toRemove = [];
 
-                    // Check if projectile is off-screen
-                    if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
-                        console.log(`   🗑️ OFF-SCREEN projectile at (${Math.floor(pos.x)}, ${Math.floor(pos.y)}) - removing`);
-                        toRemove.push(projectile);
-                    }
-                });
+                    this.projectiles.forEach(projectile => {
+                        if (!projectile || !projectile.position) return;
+                        const pos = projectile.position;
 
-                // Remove off-screen projectiles
-                toRemove.forEach(projectile => {
-                    Matter.World.remove(this.world, projectile);
-                    this.projectiles = this.projectiles.filter(p => p !== projectile);
-                });
+                        if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
+                            toRemove.push(projectile);
+                        }
+                    });
+
+                    toRemove.forEach(projectile => {
+                        Matter.World.remove(this.world, projectile);
+                        this.projectiles = this.projectiles.filter(p => p !== projectile);
+                    });
+                } catch (error) {
+                    console.error('Error in removeOffScreenProjectiles:', error);
+                }
             }
 
             createExplosion(x, y, radius) {

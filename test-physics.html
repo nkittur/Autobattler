@@ -33,6 +33,8 @@
 </head>
 <body>
     <h1 style="text-align: center;">⚔️ Physics Battle Test ⚔️</h1>
+    <h2 style="text-align: center; color: #00ff88;">VERSION 2.0 - STABLE PHYSICS + MODERN VISUALS</h2>
+    <p style="text-align: center; color: #4dd2ff; font-size: 14px;">Updated: 2025-11-24 | Physics: 4x Mass + 0.9 Stiffness | Visuals: Angular Modern Design</p>
     <div id="status">
         <div id="logs"></div>
     </div>
@@ -48,7 +50,11 @@
             logsDiv.innerHTML = logs.slice(-15).map(l => `<div class="log">${l}</div>`).join('');
         }
 
-        log('Starting physics battle test...');
+        console.log('%c═══════════════════════════════════════', 'color: #00ff88; font-weight: bold');
+        console.log('%cPHYSICS TEST VERSION 2.0', 'color: #00ff88; font-size: 20px; font-weight: bold');
+        console.log('%c4x Mass | 0.9 Stiffness | Modern Visuals', 'color: #4dd2ff; font-size: 14px');
+        console.log('%c═══════════════════════════════════════', 'color: #00ff88; font-weight: bold');
+        log('Starting physics battle test v2.0...');
 
         // Minimal mech data
         const testPlayer = {

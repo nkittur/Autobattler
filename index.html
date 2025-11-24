@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.18.0 - SIMPLIFIED: Direct Aiming (No Complex Ballistics)</title>
+    <title>Mech Autobattler v1.19.0 - VISIBLE STATUS LOG: Complete initialization tracking for iPhone</title>
     <style>
         * {
             margin: 0;
@@ -694,6 +694,10 @@
                 <button id="toggle-effects" class="active">✨ Effects</button>
             </div>
             <div id="error-display" style="display:none; background:#ff4444; color:white; padding:20px; margin:10px; border-radius:8px; font-weight:bold;"></div>
+            <div id="status-log" style="background:#222; color:#0f0; padding:15px; margin:10px; border-radius:8px; font-family:monospace; font-size:11px; max-height:200px; overflow-y:auto; border:1px solid #0f0;">
+                <div style="font-weight:bold; margin-bottom:10px;">📋 INITIALIZATION LOG:</div>
+                <div id="status-messages"></div>
+            </div>
             <canvas id="physics-canvas" width="800" height="450"></canvas>
 
             <div class="battle-area">
@@ -1281,20 +1285,57 @@
             console.log(`[${timestamp}] [${category}]`, message, data || '');
         }
 
+        // Visible status logging for iPhone debugging
+        function statusLog(message, type = 'info') {
+            const statusMessages = document.getElementById('status-messages');
+            if (!statusMessages) return;
+
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'info': '#0f0',
+                'success': '#0ff',
+                'warning': '#ff0',
+                'error': '#f00'
+            };
+            const icons = {
+                'info': '•',
+                'success': '✓',
+                'warning': '⚠',
+                'error': '✗'
+            };
+
+            const entry = document.createElement('div');
+            entry.style.color = colors[type] || '#0f0';
+            entry.style.marginBottom = '5px';
+            entry.textContent = `[${timestamp}] ${icons[type]} ${message}`;
+            statusMessages.appendChild(entry);
+
+            // Auto-scroll to bottom
+            statusMessages.parentElement.scrollTop = statusMessages.parentElement.scrollHeight;
+
+            // Also log to console
+            console.log(`[STATUS] ${message}`);
+        }
+
         // Initialize physics after DOM is ready
         function initializePhysics() {
+            statusLog('Starting physics initialization...', 'info');
             try {
                 debugLog('INIT', 'Initializing physics engine...');
+                statusLog('Creating PhysicsEngine...', 'info');
                 physicsEngine = new PhysicsEngine('physics-canvas');
+                statusLog(`PhysicsEngine created: ${physicsEngine.width}x${physicsEngine.height}`, 'success');
                 debugLog('INIT', 'Physics engine created', {
                     width: physicsEngine.width,
                     height: physicsEngine.height,
                     running: physicsEngine.running
                 });
                 console.log('✓ Physics-driven battle system initialized successfully');
+                statusLog('Physics system ready!', 'success');
             } catch (error) {
                 console.error('✗ Failed to initialize physics:', error);
                 debugLog('ERROR', 'Physics initialization failed', error);
+                statusLog(`PHYSICS INIT FAILED: ${error.message}`, 'error');
                 // Show error on page for debugging
                 const errorDiv = document.getElementById('error-display');
                 if (errorDiv) {
@@ -1736,7 +1777,13 @@
 
         class PhysicsEngine {
             constructor(canvasId) {
+                statusLog('PhysicsEngine constructor started', 'info');
                 this.canvas = document.getElementById(canvasId);
+                if (!this.canvas) {
+                    statusLog('ERROR: Canvas element not found!', 'error');
+                    throw new Error('Canvas element not found');
+                }
+                statusLog('Canvas element found', 'success');
                 this.ctx = this.canvas.getContext('2d');
 
                 // Matter.js aliases
@@ -1795,9 +1842,13 @@
                 };
 
                 // Initialize
+                statusLog('Creating terrain...', 'info');
                 this.createTerrain();
+                statusLog('Setting up collision detection...', 'info');
                 this.setupCollisionDetection(); // Set up collision handling once
+                statusLog('Setting up render loop...', 'info');
                 this.setupRenderLoop();
+                statusLog('PhysicsEngine constructor complete!', 'success');
             }
 
             createTerrain() {
@@ -1819,6 +1870,7 @@
             }
 
             createMech(type, x, y, isPlayer) {
+                statusLog(`Creating ${isPlayer ? 'PLAYER' : 'ENEMY'} mech (${type}) at (${x}, ${y})`, 'info');
                 const Bodies = Matter.Bodies;
                 const Constraint = Matter.Constraint;
                 const Composite = Matter.Composite;
@@ -1942,6 +1994,8 @@
 
                 // Add to world
                 Matter.World.add(this.world, mech);
+
+                statusLog(`${isPlayer ? 'PLAYER' : 'ENEMY'} mech created successfully!`, 'success');
 
                 return {
                     composite: mech,
@@ -2754,7 +2808,9 @@
             }
 
             start() {
+                statusLog('PhysicsEngine.start() called', 'info');
                 this.running = true;
+                statusLog(`PhysicsEngine running set to: ${this.running}`, 'success');
             }
 
             stop() {
@@ -2762,6 +2818,7 @@
             }
 
             reset() {
+                statusLog('PhysicsEngine.reset() - clearing world', 'info');
                 const World = Matter.World;
                 const Composite = Matter.Composite;
 
@@ -2775,6 +2832,7 @@
 
                 // Recreate terrain
                 this.createTerrain();
+                statusLog('PhysicsEngine.reset() complete', 'success');
             }
 
             setTimeScale(scale) {
@@ -2853,12 +2911,14 @@
             }
 
             async initializeBattle() {
+                statusLog(`Initializing battle: ${this.playerMechData.name} vs ${this.monsterData.name}`, 'info');
                 debugLog('BATTLE', 'Initializing battle...', {
                     player: this.playerMechData.name,
                     enemy: this.monsterData.name
                 });
 
                 this.physics.reset();
+                statusLog('Physics reset complete', 'success');
                 debugLog('BATTLE', 'Physics reset complete');
 
                 // FAILSAFE: Ensure player has at least one weapon equipped
@@ -2999,9 +3059,11 @@
                 this.physics.enemyMech = this.enemyPhysMech;
 
                 // Start physics
+                statusLog('Starting physics engine...', 'info');
                 debugLog('BATTLE', 'Starting physics engine...');
                 this.physics.start();
                 this.isActive = true;
+                statusLog(`Physics started! Running: ${this.physics.running}`, 'success');
 
                 debugLog('BATTLE', 'Physics running:', this.physics.running);
 
@@ -3019,6 +3081,7 @@
 
                 this.addLog('⚔️ BATTLE START! ⚔️', 'system');
                 debugLog('BATTLE', '=== BATTLE FULLY INITIALIZED ===');
+                statusLog('⚔️ BATTLE FULLY INITIALIZED! ⚔️', 'success');
             }
 
             applyStartOfBattleAbilities() {

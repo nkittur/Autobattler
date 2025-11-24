@@ -508,42 +508,85 @@
                     ctx.translate(legX, legY);
                     ctx.rotate(angle);
 
-                    // Upper leg - angular armored
+                    // Upper thigh - angular armored with chamfered edges
+                    ctx.fillStyle = lightColor;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-6 * scale, -14 * scale);
+                    ctx.lineTo(6 * scale, -14 * scale);
+                    ctx.lineTo(8 * scale, -12 * scale);
+                    ctx.lineTo(8 * scale, 2 * scale);
+                    ctx.lineTo(-8 * scale, 2 * scale);
+                    ctx.lineTo(-8 * scale, -12 * scale);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Panel lines on thigh
+                    ctx.strokeStyle = darkColor;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(-4 * scale, -10 * scale);
+                    ctx.lineTo(4 * scale, -10 * scale);
+                    ctx.stroke();
+
+                    // Knee joint - mechanical with glow
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, 4 * scale, 6 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Knee joint glow
+                    ctx.fillStyle = '#ff6b35';
+                    ctx.globalAlpha = 0.4;
+                    ctx.beginPath();
+                    ctx.arc(0, 4 * scale, 4 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+
+                    // Lower leg - sleek tapered design
                     ctx.fillStyle = baseColor;
                     ctx.strokeStyle = '#000';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.rect(-6 * scale, -15 * scale, 12 * scale, 18 * scale);
+                    ctx.moveTo(-6 * scale, 4 * scale);
+                    ctx.lineTo(-4 * scale, 8 * scale);
+                    ctx.lineTo(-4 * scale, 18 * scale);
+                    ctx.lineTo(4 * scale, 18 * scale);
+                    ctx.lineTo(4 * scale, 8 * scale);
+                    ctx.lineTo(6 * scale, 4 * scale);
+                    ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
 
-                    // Knee joint
+                    // Ankle actuator
                     ctx.fillStyle = darkColor;
                     ctx.beginPath();
-                    ctx.arc(0, 5 * scale, 5 * scale, 0, Math.PI * 2);
+                    ctx.arc(0, 18 * scale, 3 * scale, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
 
-                    // Lower leg (reverse joint)
-                    ctx.fillStyle = lightColor;
+                    // Foot - aggressive angular design
+                    ctx.fillStyle = '#2a2a2a';
                     ctx.beginPath();
-                    ctx.rect(-5 * scale, 5 * scale, 10 * scale, 15 * scale);
+                    ctx.moveTo(-8 * scale, 20 * scale);
+                    ctx.lineTo(8 * scale, 20 * scale);
+                    ctx.lineTo(11 * scale, 24 * scale);
+                    ctx.lineTo(-11 * scale, 24 * scale);
+                    ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
 
-                    // Foot
-                    ctx.fillStyle = darkColor;
+                    // Hydraulic pistons
+                    ctx.strokeStyle = '#404040';
+                    ctx.lineWidth = 2.5 * scale;
                     ctx.beginPath();
-                    ctx.rect(-8 * scale, 18 * scale, 16 * scale, 6 * scale);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Hydraulic
-                    ctx.strokeStyle = darkColor;
-                    ctx.lineWidth = 2 * scale;
-                    ctx.beginPath();
-                    ctx.moveTo(-3 * scale, -10 * scale);
-                    ctx.lineTo(-3 * scale, 15 * scale);
+                    ctx.moveTo(-3 * scale, -8 * scale);
+                    ctx.lineTo(-3 * scale, 14 * scale);
                     ctx.stroke();
 
                     ctx.restore();
@@ -560,27 +603,49 @@
                 ctx.translate(torsoX, torsoY);
                 ctx.rotate(angle);
 
-                // Main torso - Mad Cat style
+                // Main torso - angular aggressive shape
                 ctx.fillStyle = baseColor;
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 2.5;
                 ctx.beginPath();
-                ctx.rect(-18 * scale, -22 * scale, 36 * scale, 44 * scale);
+                ctx.moveTo(-20 * scale, -20 * scale);
+                ctx.lineTo(20 * scale, -20 * scale);
+                ctx.lineTo(22 * scale, -16 * scale);
+                ctx.lineTo(22 * scale, 18 * scale);
+                ctx.lineTo(16 * scale, 22 * scale);
+                ctx.lineTo(-16 * scale, 22 * scale);
+                ctx.lineTo(-22 * scale, 18 * scale);
+                ctx.lineTo(-22 * scale, -16 * scale);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                // Cockpit
+                // Cockpit canopy
                 ctx.fillStyle = lightColor;
                 ctx.beginPath();
-                ctx.rect(-8 * scale, -18 * scale, 16 * scale, 12 * scale);
+                ctx.moveTo(-10 * scale, -18 * scale);
+                ctx.lineTo(10 * scale, -18 * scale);
+                ctx.lineTo(12 * scale, -14 * scale);
+                ctx.lineTo(12 * scale, -6 * scale);
+                ctx.lineTo(-12 * scale, -6 * scale);
+                ctx.lineTo(-12 * scale, -14 * scale);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                // Viewport
-                ctx.fillStyle = '#4dd2ff';
-                ctx.globalAlpha = 0.7;
+                // Viewport - glowing cyan gradient
+                const gradient = ctx.createLinearGradient(-6 * scale, -16 * scale, 6 * scale, -10 * scale);
+                gradient.addColorStop(0, '#00d9ff');
+                gradient.addColorStop(0.5, '#4dd2ff');
+                gradient.addColorStop(1, '#00d9ff');
+                ctx.fillStyle = gradient;
+                ctx.globalAlpha = 0.9;
                 ctx.beginPath();
-                ctx.rect(-5 * scale, -16 * scale, 10 * scale, 6 * scale);
+                ctx.moveTo(-6 * scale, -16 * scale);
+                ctx.lineTo(6 * scale, -16 * scale);
+                ctx.lineTo(8 * scale, -12 * scale);
+                ctx.lineTo(-8 * scale, -12 * scale);
+                ctx.closePath();
                 ctx.fill();
                 ctx.globalAlpha = 1;
                 ctx.stroke();
@@ -588,32 +653,58 @@
                 // Armor panels
                 ctx.fillStyle = darkColor;
                 ctx.beginPath();
-                ctx.rect(-18 * scale, -5 * scale, 5 * scale, 20 * scale);
+                ctx.moveTo(-22 * scale, -8 * scale);
+                ctx.lineTo(-16 * scale, -6 * scale);
+                ctx.lineTo(-16 * scale, 12 * scale);
+                ctx.lineTo(-22 * scale, 14 * scale);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
                 ctx.beginPath();
-                ctx.rect(13 * scale, -5 * scale, 5 * scale, 20 * scale);
+                ctx.moveTo(22 * scale, -8 * scale);
+                ctx.lineTo(16 * scale, -6 * scale);
+                ctx.lineTo(16 * scale, 12 * scale);
+                ctx.lineTo(22 * scale, 14 * scale);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                // Vents
-                ctx.strokeStyle = darkColor;
-                ctx.lineWidth = 1.5;
-                for (let i = 0; i < 3; i++) {
+                // Panel lines
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 4; i++) {
                     ctx.beginPath();
-                    ctx.moveTo(-6 * scale, (i * 4 - 2) * scale);
-                    ctx.lineTo(6 * scale, (i * 4 - 2) * scale);
+                    ctx.moveTo(-12 * scale, (-8 + i * 6) * scale);
+                    ctx.lineTo(12 * scale, (-8 + i * 6) * scale);
                     ctx.stroke();
                 }
 
-                // Power core
-                ctx.fillStyle = '#ff6b35';
-                ctx.globalAlpha = 0.8;
+                // Power core - glowing
+                const coreGlow = ctx.createRadialGradient(0, 10 * scale, 0, 0, 10 * scale, 6 * scale);
+                coreGlow.addColorStop(0, '#ff6b35');
+                coreGlow.addColorStop(0.7, '#ff6b3588');
+                coreGlow.addColorStop(1, '#ff6b3500');
+                ctx.fillStyle = coreGlow;
+                ctx.globalAlpha = 0.9;
                 ctx.beginPath();
-                ctx.arc(0, 8 * scale, 3 * scale, 0, Math.PI * 2);
+                ctx.arc(0, 10 * scale, 6 * scale, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.globalAlpha = 1;
+
+                ctx.fillStyle = '#ff6b35';
+                ctx.beginPath();
+                ctx.arc(0, 10 * scale, 3 * scale, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Vent ports
+                ctx.fillStyle = '#1a1a1a';
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.arc((-6 + i * 6) * scale, 4 * scale, 2 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
 
                 ctx.restore();
             }
@@ -682,48 +773,75 @@
                 ctx.translate(headX, headY);
                 ctx.rotate(angle);
 
-                // Mad Cat head - pentagonal
+                // Modern aggressive head - angular wedge
                 ctx.fillStyle = baseColor;
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 2;
 
                 ctx.beginPath();
-                ctx.moveTo(0, -12 * scale);
-                ctx.lineTo(10 * scale, -8 * scale);
+                ctx.moveTo(0, -14 * scale);
+                ctx.lineTo(12 * scale, -10 * scale);
+                ctx.lineTo(14 * scale, -6 * scale);
+                ctx.lineTo(14 * scale, 4 * scale);
                 ctx.lineTo(10 * scale, 8 * scale);
                 ctx.lineTo(-10 * scale, 8 * scale);
-                ctx.lineTo(-10 * scale, -8 * scale);
+                ctx.lineTo(-14 * scale, 4 * scale);
+                ctx.lineTo(-14 * scale, -6 * scale);
+                ctx.lineTo(-12 * scale, -10 * scale);
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                // Sensor arrays (Mad Cat ears)
-                ctx.fillStyle = darkColor;
+                // Sensor pods - sleek angled
+                ctx.fillStyle = '#2a2a2a';
                 ctx.beginPath();
-                ctx.rect(-12 * scale, -6 * scale, 4 * scale, 8 * scale);
+                ctx.moveTo(-16 * scale, -8 * scale);
+                ctx.lineTo(-12 * scale, -10 * scale);
+                ctx.lineTo(-12 * scale, 2 * scale);
+                ctx.lineTo(-16 * scale, 4 * scale);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
                 ctx.beginPath();
-                ctx.rect(8 * scale, -6 * scale, 4 * scale, 8 * scale);
+                ctx.moveTo(16 * scale, -8 * scale);
+                ctx.lineTo(12 * scale, -10 * scale);
+                ctx.lineTo(12 * scale, 2 * scale);
+                ctx.lineTo(16 * scale, 4 * scale);
+                ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                // Main sensor/eye
+                // Visor glow effect
+                const visorGlow = ctx.createRadialGradient(0, -4 * scale, 0, 0, -4 * scale, 8 * scale);
+                visorGlow.addColorStop(0, '#ff0000');
+                visorGlow.addColorStop(0.6, '#ff000066');
+                visorGlow.addColorStop(1, '#ff000000');
+                ctx.fillStyle = visorGlow;
+                ctx.globalAlpha = 0.7;
+                ctx.fillRect(-10 * scale, -8 * scale, 20 * scale, 8 * scale);
+                ctx.globalAlpha = 1;
+
+                // Main visor - angular slit
                 ctx.fillStyle = '#ff0000';
-                ctx.globalAlpha = 0.9;
+                ctx.globalAlpha = 0.95;
                 ctx.beginPath();
-                ctx.arc(0, -2 * scale, 4 * scale, 0, Math.PI * 2);
+                ctx.moveTo(-8 * scale, -6 * scale);
+                ctx.lineTo(8 * scale, -6 * scale);
+                ctx.lineTo(10 * scale, -4 * scale);
+                ctx.lineTo(10 * scale, -2 * scale);
+                ctx.lineTo(-10 * scale, -2 * scale);
+                ctx.lineTo(-10 * scale, -4 * scale);
+                ctx.closePath();
                 ctx.fill();
                 ctx.globalAlpha = 1;
                 ctx.stroke();
 
-                // Visor
-                ctx.strokeStyle = '#ff0000';
-                ctx.lineWidth = 2 * scale;
+                // Center camera/sensor
+                ctx.fillStyle = '#ff0000';
                 ctx.beginPath();
-                ctx.moveTo(-6 * scale, -2 * scale);
-                ctx.lineTo(6 * scale, -2 * scale);
+                ctx.arc(0, -4 * scale, 2.5 * scale, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.stroke();
 
                 ctx.restore();

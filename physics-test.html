@@ -340,8 +340,10 @@
             projectile.damage = 10;
             projectile.fromPlayer = from.isPlayer;
             projectile.shooter = from;
-            projectile.targetX = targetX; // Store ADJUSTED target (not original position!)
-            projectile.targetY = targetY; // This includes adaptive corrections
+            // Store ORIGINAL enemy position for adaptive learning
+            // Error calculation needs to measure "how far from enemy", not "how close to adjusted aim"
+            projectile.targetX = to.torso.position.x;
+            projectile.targetY = to.torso.position.y;
 
             World.add(world, projectile);
             projectiles.push(projectile);
@@ -433,15 +435,16 @@
                     const errorX = projectile.targetX - projectile.position.x;
                     const errorY = projectile.targetY - projectile.position.y;
 
-                    // Apply 30% of error as correction (gradual learning)
-                    const learningRate = 0.3;
+                    // Apply 70% of error as correction for FAST, VISIBLE adaptation
+                    const learningRate = 0.7;
                     shooterData.aimAdjustX += errorX * learningRate;
                     shooterData.aimAdjustY += errorY * learningRate;
                     shooterData.misses++;
 
-                    console.log(`   📊 Miss error: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
+                    console.log(`   📊 Miss error from ENEMY: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
                     console.log(`   🔧 Adjusted aim by: (${(errorX * learningRate).toFixed(1)}, ${(errorY * learningRate).toFixed(1)})`);
                     console.log(`   📈 New aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
+                    console.log(`   🎯 Adaptive Learning ACTIVE - Next shot will be ${Math.abs(errorX * learningRate).toFixed(0)}px closer!`);
 
                     World.remove(world, projectile);
                     projectiles.splice(projectiles.indexOf(projectile), 1);

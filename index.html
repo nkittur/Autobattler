@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.14.0 - Fixed Projectile Collisions & Targeting Drift</title>
+    <title>Mech Autobattler v1.15.0 - FIXED Adaptive Learning & Miss Detection</title>
     <style>
         * {
             margin: 0;
@@ -1802,6 +1802,7 @@
                 const ground = Bodies.rectangle(this.width / 2, this.height - groundHeight / 2, this.width, groundHeight, {
                     isStatic: true,
                     friction: 0.8,
+                    label: 'ground', // CRITICAL: Label needed for miss detection!
                     render: { fillStyle: this.colors.terrain }
                 });
                 Matter.World.add(this.world, ground);
@@ -2096,10 +2097,11 @@
                 console.log(`   Velocity: (${projectile.velocity.x.toFixed(2)}, ${projectile.velocity.y.toFixed(2)})`);
                 console.log(`   Color: ${projectile.render.fillStyle}`);
 
-                // Store ADJUSTED target for adaptive learning (not original position!)
-                // This includes ballistic compensation + adaptive corrections
-                projectile.targetX = targetX;
-                projectile.targetY = targetY;
+                // Store ORIGINAL enemy position for adaptive learning
+                // Error calculation needs to measure "how far from enemy", not "how close to adjusted aim"
+                projectile.targetX = toMech.torso.position.x;
+                projectile.targetY = toMech.torso.position.y;
+                projectile.shooterData = shooterData; // Store shooter reference for learning
 
                 Matter.World.add(this.world, projectile);
                 this.projectiles.push(projectile);
@@ -2154,7 +2156,8 @@
                         console.log(`💥 COLLISION! Projectile hit: ${other.label || 'unknown'} at (${Math.floor(other.position.x)}, ${Math.floor(other.position.y)})`);
 
                         // ADAPTIVE LEARNING: Determine shooter for targeting updates
-                        const shooterData = projectile.shooter?.isPlayer ? this.targetingData.player : this.targetingData.enemy;
+                        // Use stored shooterData reference (more reliable than projectile.shooter)
+                        const shooterData = projectile.shooterData || (projectile.shooter?.isPlayer ? this.targetingData.player : this.targetingData.enemy);
 
                         // Hit player mech
                         if (this.playerMech && other.label && other.label.includes('player')) {
@@ -2233,15 +2236,16 @@
                                 const errorX = projectile.targetX - projectile.position.x;
                                 const errorY = projectile.targetY - projectile.position.y;
 
-                                // Apply 30% of error as correction (gradual learning)
-                                const learningRate = 0.3;
+                                // Apply 70% of error as correction for FAST, VISIBLE adaptation
+                                const learningRate = 0.7;
                                 shooterData.aimAdjustX += errorX * learningRate;
                                 shooterData.aimAdjustY += errorY * learningRate;
                                 shooterData.misses++;
 
-                                console.log(`   📊 Miss error: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
+                                console.log(`   📊 Miss error from ENEMY: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
                                 console.log(`   🔧 Aim adjusted by: (${(errorX * learningRate).toFixed(1)}, ${(errorY * learningRate).toFixed(1)})`);
                                 console.log(`   📈 New aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
+                                console.log(`   🎯 Adaptive Learning ACTIVE - Next shot will be ${Math.abs(errorX * learningRate).toFixed(0)}px closer!`);
                             }
 
                             if (projectile.type === 'EXPLOSIVE') {

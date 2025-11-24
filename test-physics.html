@@ -33,8 +33,8 @@
 </head>
 <body>
     <h1 style="text-align: center;">⚔️ Physics Battle Test ⚔️</h1>
-    <h2 style="text-align: center; color: #ff00ff; background: #000; padding: 10px;">VERSION 3.1 MOBILE - ON-SCREEN DIAGNOSTICS</h2>
-    <p style="text-align: center; color: #ff6b35; font-size: 18px; font-weight: bold;">📱 MOBILE VERSION | Look for "V3.0 ACTIVE" on canvas</p>
+    <h2 style="text-align: center; color: #ff00ff; background: #000; padding: 10px;">VERSION 3.2 - PHYSICS STABILITY FIX</h2>
+    <p style="text-align: center; color: #ff6b35; font-size: 18px; font-weight: bold;">🔧 Rigid joints | 2x ground friction | Mechs should STAND!</p>
     <p style="text-align: center; color: #00ff88; font-size: 14px;">Look for "Modern Rendering: YES" in top left of game</p>
     <div id="status">
         <div id="logs"></div>
@@ -116,10 +116,11 @@
                 const Bodies = Matter.Bodies;
                 const ground = Bodies.rectangle(400, 430, 800, 40, {
                     isStatic: true,
-                    friction: 0.8
+                    friction: 2.0,  // VERY high friction to prevent sliding
+                    label: 'ground'
                 });
                 Matter.World.add(this.world, ground);
-                log('Ground created');
+                log('Ground created with high friction');
             }
 
             setupCollisionDetection() {
@@ -230,56 +231,56 @@
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
-                // Create constraints (joints) - MUCH stiffer for stability
+                // Create constraints - MAXIMUM stiffness to prevent falling
                 const constraints = [
-                    // Head to torso - very stiff
+                    // Head to torso - LOCKED
                     Constraint.create({
                         bodyA: head,
                         bodyB: torso,
                         pointA: { x: 0, y: size * 0.3 },
                         pointB: { x: 0, y: -size * 0.7 },
-                        stiffness: 0.95,  // Much stiffer
-                        damping: 0.1,     // Add damping
+                        stiffness: 1.0,  // COMPLETELY RIGID
+                        damping: 0.2,
                         length: 0
                     }),
-                    // Left arm - stiff but some movement
+                    // Left arm - very stiff
                     Constraint.create({
                         bodyA: leftArm,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: -size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.85,
-                        damping: 0.1,
+                        stiffness: 0.95,
+                        damping: 0.2,
                         length: 0
                     }),
-                    // Right arm
+                    // Right arm - very stiff
                     Constraint.create({
                         bodyA: rightArm,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.85,
-                        damping: 0.1,
+                        stiffness: 0.95,
+                        damping: 0.2,
                         length: 0
                     }),
-                    // Left leg - very stiff for standing
+                    // Left leg - LOCKED to torso
                     Constraint.create({
                         bodyA: leftLeg,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: -size * 0.2, y: size * 0.7 },
-                        stiffness: 0.9,
-                        damping: 0.1,
+                        stiffness: 1.0,  // COMPLETELY RIGID
+                        damping: 0.2,
                         length: 0
                     }),
-                    // Right leg
+                    // Right leg - LOCKED to torso
                     Constraint.create({
                         bodyA: rightLeg,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: size * 0.2, y: size * 0.7 },
-                        stiffness: 0.9,
-                        damping: 0.1,
+                        stiffness: 1.0,  // COMPLETELY RIGID
+                        damping: 0.2,
                         length: 0
                     })
                 ];

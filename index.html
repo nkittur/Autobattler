@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.8.0 - Visual Projectile Trails & Collision Logging</title>
+    <title>Mech Autobattler v1.10.0 - Enhanced Collision Detection with Fallback Damage</title>
     <style>
         * {
             margin: 0;
@@ -2086,6 +2086,7 @@
                         // Hit player mech
                         if (this.playerMech && other.label && other.label.includes('player')) {
                             console.log(`   ✓ PLAYER HIT! Damage: ${projectile.damage}, Has battleSystem: ${!!projectile.battleSystem}`);
+                            console.log(`   Current player HP BEFORE: ${this.playerMech.currentHP}/${this.playerMech.maxHP}`);
                             debugLog(`💥 Player hit by projectile: ${projectile.damage} damage`);
 
                             // BIG VISUAL FLASH for mobile visibility!
@@ -2098,8 +2099,15 @@
                                 console.log(`   Calling applyDamageToMech...`);
                                 projectile.battleSystem.applyDamageToMech(this.playerMech, projectile.damage, projectile.type);
                             } else {
-                                console.log(`   ⚠️ NO BATTLESYSTEM ON PROJECTILE!`);
+                                console.log(`   ⚠️ NO BATTLESYSTEM ON PROJECTILE! Applying direct damage fallback`);
+                                // FALLBACK: Direct HP reduction if battleSystem is missing
+                                if (this.playerMech.currentHP) {
+                                    this.playerMech.currentHP = Math.max(0, this.playerMech.currentHP - (projectile.damage || 10));
+                                    console.log(`   Direct damage applied: ${projectile.damage || 10}`);
+                                }
                             }
+
+                            console.log(`   Current player HP AFTER: ${this.playerMech.currentHP}/${this.playerMech.maxHP}`);
 
                             this.createImpactEffect(other.position.x, other.position.y, projectile.type);
                             Matter.World.remove(this.world, projectile);
@@ -2108,6 +2116,7 @@
                         // Hit enemy mech
                         else if (this.enemyMech && other.label && other.label.includes('enemy')) {
                             console.log(`   ✓ ENEMY HIT! Damage: ${projectile.damage}, Has battleSystem: ${!!projectile.battleSystem}`);
+                            console.log(`   Current enemy HP BEFORE: ${this.enemyMech.currentHP}/${this.enemyMech.maxHP}`);
                             debugLog(`💥 Enemy hit by projectile: ${projectile.damage} damage`);
                             this.applyPhysicalImpact(this.enemyMech, projectile.damage, projectile.type);
 
@@ -2115,8 +2124,15 @@
                                 console.log(`   Calling applyDamageToMech...`);
                                 projectile.battleSystem.applyDamageToMech(this.enemyMech, projectile.damage, projectile.type);
                             } else {
-                                console.log(`   ⚠️ NO BATTLESYSTEM ON PROJECTILE!`);
+                                console.log(`   ⚠️ NO BATTLESYSTEM ON PROJECTILE! Applying direct damage fallback`);
+                                // FALLBACK: Direct HP reduction if battleSystem is missing
+                                if (this.enemyMech.currentHP) {
+                                    this.enemyMech.currentHP = Math.max(0, this.enemyMech.currentHP - (projectile.damage || 10));
+                                    console.log(`   Direct damage applied: ${projectile.damage || 10}`);
+                                }
                             }
+
+                            console.log(`   Current enemy HP AFTER: ${this.enemyMech.currentHP}/${this.enemyMech.maxHP}`);
 
                             this.createImpactEffect(other.position.x, other.position.y, projectile.type);
                             Matter.World.remove(this.world, projectile);

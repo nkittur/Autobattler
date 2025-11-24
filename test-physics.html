@@ -101,6 +101,7 @@
                 this.playerMech = null;
                 this.enemyMech = null;
                 this.projectiles = [];
+                this.impactEffects = [];  // Track impact animations
                 this.projectileFired = 0;
                 this.projectileHit = 0;
                 this.projectileMissed = 0;
@@ -144,6 +145,10 @@
                             this.playerMech.currentHP = Math.max(0, this.playerMech.currentHP - projectile.damage);
                             this.projectileHit++;
                             log(`💥 PLAYER ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.playerMech.currentHP)}/${this.playerMech.maxHP} HP (hits: ${this.projectileHit}/${this.projectileFired})`);
+
+                            // CREATE IMPACT EFFECT
+                            this.createImpactEffect(projectile.position.x, projectile.position.y, projectile.velocity);
+
                             Matter.World.remove(this.world, projectile);
                             this.projectiles = this.projectiles.filter(p => p !== projectile);
                         } else if (this.enemyMech && (other === this.enemyMech.torso || other === this.enemyMech.head)) {
@@ -151,6 +156,10 @@
                             this.enemyMech.currentHP = Math.max(0, this.enemyMech.currentHP - projectile.damage);
                             this.projectileHit++;
                             log(`💥 ENEMY ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.enemyMech.currentHP)}/${this.enemyMech.maxHP} HP (hits: ${this.projectileHit}/${this.projectileFired})`);
+
+                            // CREATE IMPACT EFFECT
+                            this.createImpactEffect(projectile.position.x, projectile.position.y, projectile.velocity);
+
                             Matter.World.remove(this.world, projectile);
                             this.projectiles = this.projectiles.filter(p => p !== projectile);
                         } else {
@@ -363,7 +372,7 @@
                 let targetX = toMech.torso.position.x;
                 let targetY = toMech.torso.position.y;
 
-                const speed = 20;
+                const speed = 35;  // INCREASED from 20 for more force
                 const tempStartX = fromMech.torso.position.x;
                 const tempStartY = fromMech.torso.position.y;
                 const distance = Math.sqrt((targetX - tempStartX) ** 2 + (targetY - tempStartY) ** 2);
@@ -383,12 +392,12 @@
 
                 const finalDistance = Math.sqrt((predictedX - startX) ** 2 + (predictedY - startY) ** 2);
 
-                // Create projectile OUTSIDE mech
-                const projectile = Bodies.circle(startX, startY, 6, {
-                    density: 0.001,
+                // Create projectile OUTSIDE mech - heavier for more impact force
+                const projectile = Bodies.circle(startX, startY, 8, {
+                    density: 0.005,  // INCREASED mass for more impact
                     label: 'projectile',
-                    restitution: 0.1,
-                    frictionAir: 0.01,
+                    restitution: 0.2,
+                    frictionAir: 0.008,  // Less drag
                     isSensor: false  // Allow collision
                 });
 
@@ -410,6 +419,32 @@
                 log(`🚀 Projectile #${this.projectileFired}: ${damage} dmg, dist=${Math.floor(finalDistance)}u, lead=${leadDistance}u (vel=${velMag.toFixed(1)})`);
 
                 return projectile;
+            }
+
+            createImpactEffect(x, y, velocity) {
+                // Create impact effect with particles and flash
+                const effect = {
+                    x: x,
+                    y: y,
+                    createdAt: Date.now(),
+                    duration: 300,  // 300ms animation
+                    particles: []
+                };
+
+                // Create 8 impact particles flying outward
+                const particleCount = 8;
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = (Math.PI * 2 * i) / particleCount;
+                    effect.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * 3 + (velocity.x * 0.3),  // Inherit some projectile velocity
+                        vy: Math.sin(angle) * 3 + (velocity.y * 0.3),
+                        life: 1.0  // Fades from 1 to 0
+                    });
+                }
+
+                this.impactEffects.push(effect);
             }
 
             updateMechMovement() {
@@ -514,6 +549,9 @@
                     this.renderMech(this.enemyMech, ctx);
                 }
 
+                // Render impact effects
+                this.renderImpactEffects(ctx);
+
                 // Render HP bars
                 if (this.playerMech && this.playerMech.currentHP > 0) {
                     this.renderHPBar(this.playerMech);
@@ -525,7 +563,7 @@
                 // Debug info with V3 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V3.4 STABLE', 10, 20);
+                ctx.fillText('V3.5 IMPACT', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';
@@ -975,6 +1013,56 @@
 
                 ctx.fillStyle = hpPercent > 0.5 ? '#00ff88' : hpPercent > 0.25 ? '#ffaa00' : '#ff4444';
                 ctx.fillRect(x - width/2, y, width * hpPercent, height);
+            }
+
+            renderImpactEffects(ctx) {
+                const now = Date.now();
+
+                // Update and render each impact effect
+                this.impactEffects = this.impactEffects.filter(effect => {
+                    const age = now - effect.createdAt;
+                    if (age > effect.duration) return false;  // Remove expired effects
+
+                    const progress = age / effect.duration;  // 0 to 1
+
+                    // Central flash that fades quickly
+                    const flashAlpha = Math.max(0, 1 - progress * 2);  // Fades faster
+                    if (flashAlpha > 0) {
+                        ctx.save();
+                        ctx.globalAlpha = flashAlpha;
+
+                        // Bright orange flash
+                        const flashRadius = 15 + progress * 10;
+                        const gradient = ctx.createRadialGradient(effect.x, effect.y, 0, effect.x, effect.y, flashRadius);
+                        gradient.addColorStop(0, '#fff');
+                        gradient.addColorStop(0.3, '#ffaa00');
+                        gradient.addColorStop(0.6, '#ff6b35');
+                        gradient.addColorStop(1, 'rgba(255, 107, 53, 0)');
+
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(effect.x - flashRadius, effect.y - flashRadius, flashRadius * 2, flashRadius * 2);
+                        ctx.restore();
+                    }
+
+                    // Render particles flying outward
+                    effect.particles.forEach(particle => {
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        particle.life = 1 - progress;
+
+                        if (particle.life > 0) {
+                            ctx.save();
+                            ctx.globalAlpha = particle.life;
+                            ctx.fillStyle = '#ffaa00';
+                            ctx.beginPath();
+                            ctx.arc(particle.x, particle.y, 3, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.restore();
+                        }
+                    });
+
+                    return true;  // Keep effect
+                });
             }
         }
 

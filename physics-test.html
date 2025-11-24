@@ -76,9 +76,11 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="physics-engine.js"></script>
     <script>
         // IMMEDIATE TEST - If you see this text change, JavaScript is working!
         document.getElementById('status-messages').innerHTML = '<div style="color:#0ff;">✓ JavaScript is running!</div>';
+        document.getElementById('status-messages').innerHTML += '<div style="color:#0ff;">✓ Shared physics-engine.js loaded!</div>';
 
         // Test if Matter.js loaded
         if (typeof Matter === 'undefined') {
@@ -313,11 +315,33 @@
 
         // Create mechs at proper ground level
         statusLog('=== CREATING MECHS ===', 'info');
-        console.log('Creating articulated mechs...');
-        // Match main game positions EXACTLY
-        const playerMech = createArticulatedMech(200, 300, true);
-        const enemyMech = createArticulatedMech(600, 300, false);
-        console.log('✓ Mechs created');
+        console.log('Creating articulated mechs using SHARED physics-engine.js...');
+
+        // Use shared PhysicsEngine module
+        const playerMechData = PhysicsEngine.createMech(Matter, 200, 300, true, 'Medium');
+        const enemyMechData = PhysicsEngine.createMech(Matter, 600, 300, false, 'Medium');
+
+        // Add to world
+        const playerComposite = Composite.create();
+        Composite.add(playerComposite, [...playerMechData.parts, ...playerMechData.constraints]);
+        World.add(world, playerComposite);
+
+        const enemyComposite = Composite.create();
+        Composite.add(enemyComposite, [...enemyMechData.parts, ...enemyMechData.constraints]);
+        World.add(world, enemyComposite);
+
+        // Create mech objects with same structure as before
+        const playerMech = {
+            composite: playerComposite,
+            ...playerMechData
+        };
+
+        const enemyMech = {
+            composite: enemyComposite,
+            ...enemyMechData
+        };
+
+        console.log('✓ Mechs created using shared module');
         statusLog('Both mechs added to world', 'success');
 
         // Projectiles array
@@ -338,64 +362,25 @@
             return Math.atan2(targetY - startY, targetX - startX);
         }
 
-        // Fire projectile with ACCURATE BALLISTIC TARGETING + JITTER
+        // Fire projectile using SHARED physics-engine.js
         function fireProjectile(from, to) {
-            const centerX = from.torso.position.x;
-            const centerY = from.torso.position.y;
-            const targetX = to.torso.position.x;
-            const targetY = to.torso.position.y;
+            // Use shared PhysicsEngine.fireProjectile
+            const projectile = PhysicsEngine.fireProjectile(Matter, world, from, to, 10);
 
-            // Projectile speed (pixels per frame)
-            const speed = 30;
+            // Add to projectiles array
+            projectiles.push(projectile);
 
             // Get shooter data for targeting tracking
             const shooterData = from.isPlayer ? targetingData.player : targetingData.enemy;
-
-            // Simple direct aim at target
-            const angle = Math.atan2(targetY - centerY, targetX - centerX);
-
-            // Spawn projectile 60px AWAY from mech center (outside body!)
-            const spawnOffset = 60;
-            const startX = centerX + Math.cos(angle) * spawnOffset;
-            const startY = centerY + Math.sin(angle) * spawnOffset;
-
-            const projectile = Bodies.circle(startX, startY, 10, {
-                density: 0.01,
-                restitution: 0.1,
-                friction: 0.05,
-                frictionAir: 0.001,
-                label: 'bullet',
-                collisionFilter: {
-                    category: 0x0002,  // Projectile category
-                    mask: 0x0001       // ONLY collide with mechs (0x0001), NOT other projectiles (0x0002)
-                }
-            });
-
-            Body.setVelocity(projectile, {
-                x: Math.cos(angle) * speed,
-                y: Math.sin(angle) * speed
-            });
-
-            projectile.damage = 10;
-            projectile.fromPlayer = from.isPlayer;
-            projectile.shooter = from;
-            // Store ORIGINAL enemy position for adaptive learning
-            // Error calculation needs to measure "how far from enemy", not "how close to adjusted aim"
-            projectile.targetX = to.torso.position.x;
-            projectile.targetY = to.torso.position.y;
-
-            World.add(world, projectile);
-            projectiles.push(projectile);
-
-            // Store shot data for adaptive learning
-            shooterData.lastShotX = targetX;
-            shooterData.lastShotY = targetY;
+            shooterData.lastShotX = to.torso.position.x;
+            shooterData.lastShotY = to.torso.position.y;
 
             // MUZZLE FLASH for visibility!
+            const startX = projectile.position.x;
+            const startY = projectile.position.y;
             muzzleFlashes.push({x: startX, y: startY, life: 10});
 
-            console.log(`🔫 Shot spawned at (${Math.floor(startX)}, ${Math.floor(startY)}) targeting (${Math.floor(targetX)}, ${Math.floor(targetY)})`);
-            console.log(`   Velocity: (${(Math.cos(angle) * speed).toFixed(2)}, ${(Math.sin(angle) * speed).toFixed(2)})`);
+            console.log(`🔫 Shot spawned using shared module at (${Math.floor(startX)}, ${Math.floor(startY)})`);
 
             if (from.isPlayer) {
                 testState.playerShots++;

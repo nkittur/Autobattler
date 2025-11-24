@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.2.0 - Mech Stability & Battle System</title>
+    <title>Mech Autobattler v1.3.0 - Enhanced Debugging & Terrain Removal</title>
     <style>
         * {
             margin: 0;
@@ -1736,29 +1736,8 @@
                 });
                 Matter.World.add(this.world, ground);
 
-                // Destructible terrain blocks
-                const blockSize = 20;
-                const numBlocks = 15;
-
-                for (let i = 0; i < numBlocks; i++) {
-                    const x = 150 + i * (blockSize + 2) + Math.random() * 50;
-                    const y = platformY - blockSize - Math.random() * 100;
-
-                    // Random block configurations
-                    const isLarge = Math.random() > 0.7;
-                    const size = isLarge ? blockSize * 1.5 : blockSize;
-
-                    const block = Bodies.rectangle(x, y, size, size, {
-                        friction: 0.6,
-                        restitution: 0.3,
-                        density: 0.001,
-                        label: 'terrain',
-                        render: { fillStyle: this.colors.terrain }
-                    });
-
-                    Matter.World.add(this.world, block);
-                    this.terrain.push(block);
-                }
+                // Terrain blocks DISABLED per user request - clear line of sight for projectiles
+                // (blocks were blocking shots and making it hard to see combat)
             }
 
             createMech(type, x, y, isPlayer) {
@@ -2150,6 +2129,69 @@
                 });
             }
 
+            enforceWorldBounds() {
+                // Additional safety: Force mechs back in bounds if they somehow escape
+                const Body = Matter.Body;
+                const minX = 100;
+                const maxX = this.width - 100;
+                const maxY = this.height - 50; // Don't let them fall below ground
+
+                [this.playerMech, this.enemyMech].forEach(mech => {
+                    if (!mech || !mech.torso) return;
+
+                    const pos = mech.torso.position;
+                    let outOfBounds = false;
+                    let newX = pos.x;
+                    let newY = pos.y;
+
+                    // Check X bounds
+                    if (pos.x < minX) {
+                        newX = minX;
+                        outOfBounds = true;
+                    } else if (pos.x > maxX) {
+                        newX = maxX;
+                        outOfBounds = true;
+                    }
+
+                    // Check Y bounds (prevent falling through world)
+                    if (pos.y > maxY) {
+                        newY = maxY - 50; // Place back on ground
+                        outOfBounds = true;
+                    }
+
+                    // Force back in bounds if needed
+                    if (outOfBounds) {
+                        debugLog(`⚠️ ${mech.isPlayer ? 'Player' : 'Enemy'} mech out of bounds! Pos: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}) → Correcting to (${newX}, ${newY})`);
+
+                        Body.setPosition(mech.torso, { x: newX, y: newY });
+                        Body.setVelocity(mech.torso, { x: 0, y: 0 }); // Zero velocity
+                        Body.setAngularVelocity(mech.torso, 0); // Zero rotation
+
+                        // Also zero velocity on all body parts
+                        if (mech.head) {
+                            Body.setVelocity(mech.head, { x: 0, y: 0 });
+                            Body.setAngularVelocity(mech.head, 0);
+                        }
+                        if (mech.leftArm) {
+                            Body.setVelocity(mech.leftArm, { x: 0, y: 0 });
+                            Body.setAngularVelocity(mech.leftArm, 0);
+                        }
+                        if (mech.rightArm) {
+                            Body.setVelocity(mech.rightArm, { x: 0, y: 0 });
+                            Body.setAngularVelocity(mech.rightArm, 0);
+                        }
+                        if (mech.leftLeg) {
+                            Body.setVelocity(mech.leftLeg, { x: 0, y: 0 });
+                            Body.setAngularVelocity(mech.leftLeg, 0);
+                        }
+                        if (mech.rightLeg) {
+                            Body.setVelocity(mech.rightLeg, { x: 0, y: 0 });
+                            Body.setAngularVelocity(mech.rightLeg, 0);
+                        }
+                    }
+                });
+            }
+
             createExplosion(x, y, radius) {
                 const Body = Matter.Body;
                 const Query = Matter.Query;
@@ -2245,6 +2287,9 @@
 
                         // Update physics
                         Engine.update(this.engine, 1000 / 60 * this.timeScale);
+
+                        // CRITICAL: Force mechs back in bounds if they escape (additional safety)
+                        this.enforceWorldBounds();
 
                         // Update particles
                         this.updateParticles();
@@ -2700,19 +2745,52 @@
             }
 
             startCombatLoop() {
+                debugLog('COMBAT', 'Combat loop started', {
+                    playerFireRate: this.playerFireRate + 'ms',
+                    enemyFireRate: this.enemyFireRate + 'ms',
+                    hasPlayerMech: !!this.playerPhysMech,
+                    hasEnemyMech: !!this.enemyPhysMech
+                });
+
+                let tickCount = 0;
                 const combatTick = () => {
                     if (!this.isActive) return;
 
+                    tickCount++;
                     const now = Date.now();
+
+                    // Debug every 120 ticks (2 seconds)
+                    if (tickCount % 120 === 0) {
+                        debugLog('COMBAT', 'Combat loop tick', {
+                            tickCount,
+                            playerTimeSinceShot: now - this.lastPlayerShot,
+                            enemyTimeSinceShot: now - this.lastEnemyShot,
+                            playerFireRate: this.playerFireRate,
+                            enemyFireRate: this.enemyFireRate,
+                            hasPlayerMech: !!this.playerPhysMech,
+                            hasEnemyMech: !!this.enemyPhysMech
+                        });
+                    }
 
                     // Player auto-fire
                     if (now - this.lastPlayerShot > this.playerFireRate && this.playerPhysMech && this.enemyPhysMech) {
+                        debugLog('COMBAT', '🚀 Player firing weapon');
                         this.fireWeapon(this.playerPhysMech, this.enemyPhysMech, true);
                         this.lastPlayerShot = now;
+                    } else if (tickCount < 10) {
+                        // Debug first few ticks to see why not firing
+                        debugLog('COMBAT', 'Player not firing', {
+                            timeSinceShot: now - this.lastPlayerShot,
+                            fireRate: this.playerFireRate,
+                            readyToFire: now - this.lastPlayerShot > this.playerFireRate,
+                            hasPlayerMech: !!this.playerPhysMech,
+                            hasEnemyMech: !!this.enemyPhysMech
+                        });
                     }
 
                     // Enemy auto-fire
                     if (now - this.lastEnemyShot > this.enemyFireRate && this.playerPhysMech && this.enemyPhysMech) {
+                        debugLog('COMBAT', '🚀 Enemy firing weapon');
                         this.fireWeapon(this.enemyPhysMech, this.playerPhysMech, false);
                         this.lastEnemyShot = now;
                     }
@@ -2768,11 +2846,39 @@
             getDamageType(mech) {
                 // Determine damage type from equipped components
                 if (mech.isPlayer) {
-                    const components = Object.values(this.playerMechData.loadout || {});
-                    const types = components.map(c => c?.damageType).filter(Boolean);
+                    // DEBUG: Check if player mech data exists
+                    if (!this.playerMechData) {
+                        debugLog('WEAPON', '⚠️ playerMechData is null/undefined!');
+                        return 'KINETIC';
+                    }
 
-                    if (types.includes('EXPLOSIVE')) return 'EXPLOSIVE';
-                    if (types.includes('ENERGY')) return 'ENERGY';
+                    if (!this.playerMechData.loadout) {
+                        debugLog('WEAPON', '⚠️ playerMechData.loadout is null/undefined!');
+                        return 'KINETIC';
+                    }
+
+                    const components = Object.values(this.playerMechData.loadout || {});
+                    debugLog('WEAPON', 'Checking equipped components', {
+                        loadoutKeys: Object.keys(this.playerMechData.loadout),
+                        componentCount: components.length,
+                        components: components.map(c => ({
+                            name: c?.name || 'unnamed',
+                            damageType: c?.damageType || 'none'
+                        }))
+                    });
+
+                    const types = components.map(c => c?.damageType).filter(Boolean);
+                    debugLog('WEAPON', 'Damage types found', { types, count: types.length });
+
+                    if (types.includes('EXPLOSIVE')) {
+                        debugLog('WEAPON', 'Using EXPLOSIVE damage type');
+                        return 'EXPLOSIVE';
+                    }
+                    if (types.includes('ENERGY')) {
+                        debugLog('WEAPON', 'Using ENERGY damage type');
+                        return 'ENERGY';
+                    }
+                    debugLog('WEAPON', 'Using KINETIC damage type (default)');
                     return 'KINETIC';
                 }
                 return Math.random() > 0.5 ? 'KINETIC' : 'EXPLOSIVE';

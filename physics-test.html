@@ -24,13 +24,13 @@
         #status {
             position: absolute;
             top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 15px;
-            border: 2px solid #00ff88;
-            font-size: 13px;
-            line-height: 1.8;
-            max-width: 350px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 8px 12px;
+            border: 1px solid #00ff88;
+            font-size: 10px;
+            line-height: 1.4;
+            max-width: 200px;
             z-index: 1000;
         }
         .error { color: #ff4444; font-weight: bold; }
@@ -38,10 +38,10 @@
         .warning { color: #ffaa00; font-weight: bold; }
         h1 {
             color: #00ccff;
-            margin-bottom: 10px;
-            font-size: 16px;
+            margin-bottom: 5px;
+            font-size: 11px;
         }
-        .big { font-size: 18px; font-weight: bold; }
+        .big { font-size: 13px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -116,8 +116,8 @@
             terrain: '#4a4a6a'
         };
 
-        // Ground (same as real game)
-        const ground = Bodies.rectangle(400, 425, 800, 50, {
+        // Ground (matches main game: height - groundHeight/2 = 450 - 20 = 430)
+        const ground = Bodies.rectangle(400, 430, 800, 40, {
             isStatic: true,
             friction: 0.8,
             label: 'ground',
@@ -233,12 +233,16 @@
 
         // Create mechs at proper ground level
         console.log('Creating articulated mechs...');
-        const playerMech = createArticulatedMech(150, 340, true);
-        const enemyMech = createArticulatedMech(650, 340, false);
+        // Match main game positions EXACTLY
+        const playerMech = createArticulatedMech(200, 300, true);
+        const enemyMech = createArticulatedMech(600, 300, false);
         console.log('✓ Mechs created');
 
         // Projectiles array
         const projectiles = [];
+
+        // Visual effects
+        const muzzleFlashes = []; // {x, y, life}
 
         // Fire projectile (EXACT copy from real game)
         function fireProjectile(from, to) {
@@ -272,6 +276,9 @@
 
             World.add(world, projectile);
             projectiles.push(projectile);
+
+            // MUZZLE FLASH for visibility!
+            muzzleFlashes.push({x: startX, y: startY, life: 10});
 
             if (from.isPlayer) {
                 testState.playerShots++;
@@ -378,33 +385,97 @@
                 ctx.stroke();
             });
 
-            // Projectile trails (like real game)
+            // MUZZLE FLASHES (shows when mechs fire)
+            for (let i = muzzleFlashes.length - 1; i >= 0; i--) {
+                const flash = muzzleFlashes[i];
+                const opacity = flash.life / 10;
+
+                ctx.save();
+                ctx.shadowBlur = 40;
+                ctx.shadowColor = '#ffff00';
+                ctx.fillStyle = `rgba(255, 255, 0, ${opacity})`;
+                ctx.beginPath();
+                ctx.arc(flash.x, flash.y, 30 * opacity, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                flash.life--;
+                if (flash.life <= 0) {
+                    muzzleFlashes.splice(i, 1);
+                }
+            }
+
+            // SUPER VISIBLE PROJECTILES
             projectiles.forEach(proj => {
                 const pos = proj.position;
                 const vel = proj.velocity;
 
-                // Glow
+                // OUTER MASSIVE GLOW (so you can't miss it!)
                 ctx.save();
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = colors.projectile;
-                ctx.fillStyle = colors.projectile;
+                ctx.shadowBlur = 60;
+                ctx.shadowColor = '#ffff00';
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
                 ctx.beginPath();
-                ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
+                ctx.arc(pos.x, pos.y, 40, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
 
-                // Velocity line
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
+                // MIDDLE GLOW
+                ctx.save();
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = '#ff8800';
+                ctx.fillStyle = 'rgba(255, 136, 0, 0.6)';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // INNER CORE (bright!)
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ffffff';
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // THICK VELOCITY TRAIL
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 8;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ffff00';
                 ctx.beginPath();
                 ctx.moveTo(pos.x, pos.y);
-                ctx.lineTo(pos.x - vel.x * 2, pos.y - vel.y * 2);
+                ctx.lineTo(pos.x - vel.x * 5, pos.y - vel.y * 5);
                 ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // DEBUG: Position text
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 10px monospace';
+                ctx.fillText(`SHOT ${Math.floor(pos.x)},${Math.floor(pos.y)}`, pos.x + 20, pos.y - 20);
             });
 
             // HP bars
             drawHPBar(playerMech.torso.position.x, playerMech.torso.position.y - 60, testState.playerHP, testState.playerMaxHP, colors.player);
             drawHPBar(enemyMech.torso.position.x, enemyMech.torso.position.y - 60, testState.enemyHP, testState.enemyMaxHP, colors.enemy);
+
+            // BIG ON-SCREEN STATUS (for mobile)
+            ctx.save();
+            ctx.font = 'bold 16px monospace';
+            ctx.textAlign = 'center';
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = '#000';
+
+            // Projectiles count (HUGE and bright)
+            if (projectiles.length > 0) {
+                ctx.fillStyle = '#ffff00';
+                ctx.font = 'bold 24px monospace';
+                ctx.fillText(`⚡ ${projectiles.length} PROJECTILES ACTIVE ⚡`, 400, 50);
+            }
+
+            ctx.restore();
         }
 
         function drawHPBar(x, y, current, max, color) {

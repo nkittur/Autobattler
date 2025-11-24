@@ -199,10 +199,11 @@
                 // MAD CAT DESIGN: Wide, low, stable base for maximum stability
                 // WIDE TORSO - low center of gravity, wide base
                 const torso = Bodies.rectangle(x, y, size * 2.0, size * 1.0, {
-                    density: 0.012,  // Heavy central mass
-                    friction: 1.0,
-                    frictionAir: 0.02,
-                    restitution: 0.05,
+                    density: 0.020,  // Heavy central mass for stability
+                    friction: 1.2,
+                    frictionAir: 0.08,  // High air resistance prevents sliding
+                    restitution: 0.0,
+                    inertia: Infinity,  // PREVENT ROTATION - stays upright!
                     label: isPlayer ? 'player_torso' : 'enemy_torso'
                 });
 
@@ -230,109 +231,113 @@
 
                 // MAD CAT LEGS: WIDE STANCE at outer edges of torso
                 // Torso bottom is at y + size*0.5, legs must connect there
-                const leftLeg = Bodies.rectangle(x - size * 0.9, y + size * 0.85, size * 0.4, size * 0.7, {
-                    density: 0.010,  // Heavy legs for stability
-                    friction: 1.8,
-                    frictionAir: 0.01,
+                const leftLeg = Bodies.rectangle(x - size * 0.9, y + size * 0.85, size * 0.5, size * 0.6, {
+                    density: 0.015,  // Heavy legs for stability
+                    friction: 2.5,
+                    frictionAir: 0.05,
                     restitution: 0.0,
+                    inertia: Infinity,  // Legs don't rotate - stay vertical
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
-                const rightLeg = Bodies.rectangle(x + size * 0.9, y + size * 0.85, size * 0.4, size * 0.7, {
-                    density: 0.010,
-                    friction: 1.8,
-                    frictionAir: 0.01,
+                const rightLeg = Bodies.rectangle(x + size * 0.9, y + size * 0.85, size * 0.5, size * 0.6, {
+                    density: 0.015,
+                    friction: 2.5,
+                    frictionAir: 0.05,
                     restitution: 0.0,
+                    inertia: Infinity,  // Legs don't rotate - stay vertical
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
                 // SEPARATE FEET for maximum ground contact and stability
-                const leftFoot = Bodies.rectangle(x - size * 0.9, y + size * 1.4, size * 0.7, size * 0.3, {
-                    density: 0.008,
-                    friction: 3.0,  // MAXIMUM friction for stability
-                    frictionAir: 0.01,
+                const leftFoot = Bodies.rectangle(x - size * 0.9, y + size * 1.35, size * 1.0, size * 0.3, {
+                    density: 0.012,
+                    friction: 5.0,  // EXTREME friction - no sliding!
+                    frictionAir: 0.05,
                     restitution: 0.0,
+                    inertia: Infinity,  // Feet stay flat on ground
                     label: isPlayer ? 'player_foot' : 'enemy_foot'
                 });
 
-                const rightFoot = Bodies.rectangle(x + size * 0.9, y + size * 1.4, size * 0.7, size * 0.3, {
-                    density: 0.008,
-                    friction: 3.0,
-                    frictionAir: 0.01,
+                const rightFoot = Bodies.rectangle(x + size * 0.9, y + size * 1.35, size * 1.0, size * 0.3, {
+                    density: 0.012,
+                    friction: 5.0,  // EXTREME friction - no sliding!
+                    frictionAir: 0.05,
                     restitution: 0.0,
+                    inertia: Infinity,  // Feet stay flat on ground
                     label: isPlayer ? 'player_foot' : 'enemy_foot'
                 });
 
-                // RIGID CONSTRAINTS - Mad Cat mechs are stable platforms
+                // EXTREMELY RIGID CONSTRAINTS - welded together
                 const constraints = [
-                    // Head to torso - LOCKED
+                    // Head welded to torso
                     Constraint.create({
                         bodyA: head,
                         bodyB: torso,
                         pointA: { x: 0, y: size * 0.3 },
                         pointB: { x: 0, y: -size * 0.45 },
                         stiffness: 1.0,
-                        damping: 0.3,
+                        damping: 0.8,  // Very high damping
                         length: 0
                     }),
-                    // Left arm to torso
+                    // Left arm - rigid
                     Constraint.create({
                         bodyA: leftArm,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: -size * 0.9, y: 0 },
-                        stiffness: 0.95,
-                        damping: 0.2,
+                        stiffness: 1.0,
+                        damping: 0.6,
                         length: 0
                     }),
-                    // Right arm to torso
+                    // Right arm - rigid
                     Constraint.create({
                         bodyA: rightArm,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: size * 0.9, y: 0 },
-                        stiffness: 0.95,
-                        damping: 0.2,
+                        stiffness: 1.0,
+                        damping: 0.6,
                         length: 0
                     }),
-                    // Left leg to torso - LOCKED (hip joint)
+                    // Left leg welded - absolutely rigid
                     Constraint.create({
                         bodyA: leftLeg,
                         bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.35 },
+                        pointA: { x: 0, y: -size * 0.3 },
                         pointB: { x: -size * 0.8, y: size * 0.45 },
                         stiffness: 1.0,
-                        damping: 0.3,
+                        damping: 0.9,  // Maximum damping
                         length: 0
                     }),
-                    // Right leg to torso - LOCKED (hip joint)
+                    // Right leg welded - absolutely rigid
                     Constraint.create({
                         bodyA: rightLeg,
                         bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.35 },
+                        pointA: { x: 0, y: -size * 0.3 },
                         pointB: { x: size * 0.8, y: size * 0.45 },
                         stiffness: 1.0,
-                        damping: 0.3,
+                        damping: 0.9,  // Maximum damping
                         length: 0
                     }),
-                    // Left foot to left leg - LOCKED (ankle joint)
+                    // Left foot welded - absolutely rigid
                     Constraint.create({
                         bodyA: leftFoot,
                         bodyB: leftLeg,
                         pointA: { x: 0, y: -size * 0.1 },
-                        pointB: { x: 0, y: size * 0.35 },
+                        pointB: { x: 0, y: size * 0.3 },
                         stiffness: 1.0,
-                        damping: 0.3,
+                        damping: 0.9,  // Maximum damping
                         length: 0
                     }),
-                    // Right foot to right leg - LOCKED (ankle joint)
+                    // Right foot welded - absolutely rigid
                     Constraint.create({
                         bodyA: rightFoot,
                         bodyB: rightLeg,
                         pointA: { x: 0, y: -size * 0.1 },
-                        pointB: { x: 0, y: size * 0.35 },
+                        pointB: { x: 0, y: size * 0.3 },
                         stiffness: 1.0,
-                        damping: 0.3,
+                        damping: 0.9,  // Maximum damping
                         length: 0
                     })
                 ];
@@ -354,7 +359,7 @@
                     currentHP: 0,
                     maxHP: 0,
                     moveDirection: 0,
-                    moveSpeed: 0.005,
+                    moveSpeed: 0.002,  // REDUCED for stable walking
                     nextMoveChange: Date.now() + 1000,
                     isPlayer: isPlayer
                 };
@@ -563,7 +568,7 @@
                 // Debug info with V3 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V3.5 IMPACT', 10, 20);
+                ctx.fillText('V3.6 STABLE WALK', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';

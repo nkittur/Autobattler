@@ -2233,38 +2233,514 @@
             }
 
             renderMech(mech, ctx) {
-                const parts = [mech.torso, mech.head, mech.leftArm, mech.rightArm, mech.leftLeg, mech.rightLeg];
+                // Save context
+                ctx.save();
 
-                ctx.fillStyle = mech.color;
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
+                const scale = mech.scale || 1;
+                const baseColor = mech.color;
+                const darkColor = this.darkenColor(baseColor, 0.6);
+                const lightColor = this.lightenColor(baseColor, 1.3);
 
-                parts.forEach(part => {
-                    const vertices = part.vertices;
-                    ctx.beginPath();
-                    ctx.moveTo(vertices[0].x, vertices[0].y);
+                // Render mech components in proper order (back to front)
+                this.renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor);
 
-                    for (let i = 1; i < vertices.length; i++) {
-                        ctx.lineTo(vertices[i].x, vertices[i].y);
+                ctx.restore();
+            }
+
+            renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                // Mad Cat inspired reverse-joint legs
+                const leftLeg = mech.leftLeg;
+                const rightLeg = mech.rightLeg;
+                const loadout = mech.loadout || {};
+                const legsComponent = loadout.legs;
+                const mechClass = mech.mechClass || 'Medium';
+
+                [leftLeg, rightLeg].forEach((leg, index) => {
+                    const isLeft = index === 0;
+                    const legX = leg.position.x;
+                    const legY = leg.position.y;
+                    const angle = leg.angle;
+
+                    ctx.save();
+                    ctx.translate(legX, legY);
+                    ctx.rotate(angle);
+
+                    // Adjust size based on mech class
+                    let sizeMultiplier = 1;
+                    let legThickness = 12;
+                    if (mechClass === 'Light') {
+                        sizeMultiplier = 0.85;
+                        legThickness = 10;
+                    }
+                    if (mechClass === 'Heavy') {
+                        sizeMultiplier = 1.2;
+                        legThickness = 14;
                     }
 
+                    // Upper leg (thigh) - angular armored
+                    ctx.fillStyle = baseColor;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(-legThickness/2 * scale, -15 * scale * sizeMultiplier, legThickness * scale, 18 * scale * sizeMultiplier);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Knee joint - exposed mechanical, larger for heavy mechs
+                    const kneeSize = mechClass === 'Heavy' ? 6 : 5;
+                    ctx.fillStyle = darkColor;
+                    ctx.beginPath();
+                    ctx.arc(0, 5 * scale * sizeMultiplier, kneeSize * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Lower leg (reverse joint) - characteristic Mad Cat feature
+                    ctx.fillStyle = lightColor;
+                    ctx.beginPath();
+                    ctx.rect(-5 * scale * sizeMultiplier, 5 * scale * sizeMultiplier, 10 * scale * sizeMultiplier, 15 * scale * sizeMultiplier);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Foot - wider for Heavy, sleeker for Light
+                    const footWidth = mechClass === 'Heavy' ? 18 : mechClass === 'Light' ? 14 : 16;
+                    ctx.fillStyle = darkColor;
+                    ctx.beginPath();
+                    ctx.rect(-footWidth/2 * scale * sizeMultiplier, 18 * scale * sizeMultiplier, footWidth * scale * sizeMultiplier, 6 * scale * sizeMultiplier);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Jump jets for Light mechs with boosters
+                    if (mechClass === 'Light' && legsComponent && legsComponent.name && legsComponent.name.includes('Boost')) {
+                        ctx.fillStyle = '#4dd2ff';
+                        ctx.globalAlpha = 0.6;
+                        ctx.beginPath();
+                        ctx.rect(-3 * scale, 10 * scale * sizeMultiplier, 6 * scale, 4 * scale);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                    }
+
+                    // Hydraulic details - more for Heavy mechs
+                    ctx.strokeStyle = darkColor;
+                    ctx.lineWidth = 2 * scale;
+                    const hydraulicCount = mechClass === 'Heavy' ? 2 : 1;
+                    for (let i = 0; i < hydraulicCount; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo((-3 + i * 6) * scale, -10 * scale * sizeMultiplier);
+                        ctx.lineTo((-3 + i * 6) * scale, 15 * scale * sizeMultiplier);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                });
+            }
+
+            renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const torso = mech.torso;
+                const torsoX = torso.position.x;
+                const torsoY = torso.position.y;
+                const angle = torso.angle;
+                const loadout = mech.loadout || {};
+                const torsoComponent = loadout.torso;
+                const mechClass = mech.mechClass || 'Medium';
+
+                ctx.save();
+                ctx.translate(torsoX, torsoY);
+                ctx.rotate(angle);
+
+                // Adjust size based on mech class
+                let sizeMultiplier = 1;
+                if (mechClass === 'Light') sizeMultiplier = 0.9;
+                if (mechClass === 'Heavy') sizeMultiplier = 1.15;
+
+                // Main torso chassis - boxy Mad Cat style
+                ctx.fillStyle = baseColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.rect(-18 * scale * sizeMultiplier, -22 * scale * sizeMultiplier, 36 * scale * sizeMultiplier, 44 * scale * sizeMultiplier);
+                ctx.fill();
+                ctx.stroke();
+
+                // Cockpit area - angular center section
+                ctx.fillStyle = lightColor;
+                ctx.beginPath();
+                ctx.rect(-8 * scale * sizeMultiplier, -18 * scale * sizeMultiplier, 16 * scale * sizeMultiplier, 12 * scale * sizeMultiplier);
+                ctx.fill();
+                ctx.stroke();
+
+                // Viewport/canopy
+                ctx.fillStyle = '#4dd2ff';
+                ctx.globalAlpha = 0.7;
+                ctx.beginPath();
+                ctx.rect(-5 * scale * sizeMultiplier, -16 * scale * sizeMultiplier, 10 * scale * sizeMultiplier, 6 * scale * sizeMultiplier);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.stroke();
+
+                // Armor panels - enhanced if torso component equipped
+                if (torsoComponent) {
+                    const armorColor = torsoComponent.name && torsoComponent.name.includes('Heavy') ? '#4a4a4a' : darkColor;
+                    const armorThickness = torsoComponent.armor > 10 ? 6 : 5;
+
+                    // Heavy armor plating
+                    ctx.fillStyle = armorColor;
+                    ctx.beginPath();
+                    ctx.rect(-18 * scale * sizeMultiplier, -5 * scale * sizeMultiplier, armorThickness * scale, 20 * scale * sizeMultiplier);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.rect((18 - armorThickness) * scale * sizeMultiplier, -5 * scale * sizeMultiplier, armorThickness * scale, 20 * scale * sizeMultiplier);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Additional armor plates for heavy components
+                    if (torsoComponent.armor > 15) {
+                        ctx.beginPath();
+                        ctx.rect(-10 * scale * sizeMultiplier, 8 * scale * sizeMultiplier, 20 * scale * sizeMultiplier, 3 * scale);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                } else {
+                    // Standard armor panels
+                    ctx.fillStyle = darkColor;
+                    ctx.beginPath();
+                    ctx.rect(-18 * scale * sizeMultiplier, -5 * scale * sizeMultiplier, 5 * scale, 20 * scale * sizeMultiplier);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.rect(13 * scale * sizeMultiplier, -5 * scale * sizeMultiplier, 5 * scale, 20 * scale * sizeMultiplier);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // Center vent details
+                ctx.strokeStyle = darkColor;
+                ctx.lineWidth = 1.5;
+                const ventCount = mechClass === 'Heavy' ? 4 : 3;
+                for (let i = 0; i < ventCount; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(-6 * scale * sizeMultiplier, (i * 4 - 2) * scale);
+                    ctx.lineTo(6 * scale * sizeMultiplier, (i * 4 - 2) * scale);
+                    ctx.stroke();
+                }
+
+                // Power core indicator - brighter for Light mechs
+                const coreColor = mechClass === 'Light' ? '#00ffff' : '#ff6b35';
+                ctx.fillStyle = coreColor;
+                ctx.globalAlpha = 0.8;
+                ctx.beginPath();
+                ctx.arc(0, 8 * scale, 3 * scale * sizeMultiplier, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+
+                ctx.restore();
+            }
+
+            renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const leftArm = mech.leftArm;
+                const rightArm = mech.rightArm;
+                const loadout = mech.loadout || {};
+
+                [leftArm, rightArm].forEach((arm, index) => {
+                    const isLeft = index === 0;
+                    const armX = arm.position.x;
+                    const armY = arm.position.y;
+                    const angle = arm.angle;
+
+                    // Get equipped components for this side
+                    const armSlot = isLeft ? 'leftArm' : 'rightArm';
+                    const shoulderSlot = isLeft ? 'leftShoulder' : 'rightShoulder';
+                    const armComponent = loadout[armSlot];
+                    const shoulderComponent = loadout[shoulderSlot];
+
+                    ctx.save();
+                    ctx.translate(armX, armY);
+                    ctx.rotate(angle);
+
+                    // Shoulder mount - varies based on equipped shoulder component
+                    if (shoulderComponent) {
+                        this.renderShoulderWeapon(ctx, scale, shoulderComponent, darkColor);
+                    } else {
+                        // Default shoulder mount
+                        ctx.fillStyle = darkColor;
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(0, -12 * scale, 6 * scale, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+
+                    // Upper arm
+                    ctx.fillStyle = baseColor;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(-4 * scale, -12 * scale, 8 * scale, 18 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Forearm/weapon mount - varies based on equipped arm component
+                    if (armComponent) {
+                        this.renderArmWeapon(ctx, scale, armComponent, lightColor, darkColor);
+                    } else {
+                        // Default forearm
+                        ctx.fillStyle = lightColor;
+                        ctx.beginPath();
+                        ctx.rect(-5 * scale, 6 * scale, 10 * scale, 14 * scale);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Default actuator
+                        ctx.fillStyle = '#666';
+                        ctx.beginPath();
+                        ctx.rect(-2 * scale, 18 * scale, 4 * scale, 8 * scale);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                });
+            }
+
+            renderShoulderWeapon(ctx, scale, component, darkColor) {
+                const weaponColor = this.getWeaponColor(component);
+
+                // Larger shoulder mount for weapons
+                ctx.fillStyle = darkColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, -12 * scale, 8 * scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Weapon pod based on type
+                if (component.name && component.name.includes('Missile')) {
+                    // Missile pods
+                    ctx.fillStyle = weaponColor;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.rect((i - 1) * 4 * scale - 2 * scale, -16 * scale, 3 * scale, 6 * scale);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                } else if (component.name && component.name.includes('Laser')) {
+                    // Laser emitter
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-3 * scale, -18 * scale, 6 * scale, 10 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Emitter tip
+                    ctx.fillStyle = '#ff0000';
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath();
+                    ctx.arc(0, -19 * scale, 2 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                } else {
+                    // Generic weapon pod
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-4 * scale, -18 * scale, 8 * scale, 8 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            renderArmWeapon(ctx, scale, component, lightColor, darkColor) {
+                const weaponColor = this.getWeaponColor(component);
+
+                // Forearm mount
+                ctx.fillStyle = lightColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.rect(-5 * scale, 6 * scale, 10 * scale, 14 * scale);
+                ctx.fill();
+                ctx.stroke();
+
+                // Weapon based on type
+                if (component.name && (component.name.includes('Cannon') || component.name.includes('Rifle'))) {
+                    // Ballistic weapon - long barrel
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-3 * scale, 18 * scale, 6 * scale, 12 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Muzzle brake
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.rect(-4 * scale, 28 * scale, 8 * scale, 2 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (component.name && component.name.includes('Blade')) {
+                    // Melee weapon - blade
+                    ctx.fillStyle = '#c0c0c0';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 18 * scale);
+                    ctx.lineTo(-4 * scale, 28 * scale);
+                    ctx.lineTo(0, 32 * scale);
+                    ctx.lineTo(4 * scale, 28 * scale);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
-                });
-
-                // Render constraints (joints)
-                mech.constraints.forEach(constraint => {
-                    const posA = constraint.bodyA.position;
-                    const posB = constraint.bodyB.position;
-
-                    ctx.strokeStyle = mech.color;
-                    ctx.lineWidth = 3;
+                } else if (component.name && component.name.includes('Plasma')) {
+                    // Energy weapon - glowing
+                    ctx.fillStyle = weaponColor;
                     ctx.beginPath();
-                    ctx.moveTo(posA.x, posA.y);
-                    ctx.lineTo(posB.x, posB.y);
+                    ctx.rect(-3 * scale, 18 * scale, 6 * scale, 10 * scale);
+                    ctx.fill();
                     ctx.stroke();
-                });
+
+                    // Energy glow
+                    ctx.fillStyle = '#00ffff';
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath();
+                    ctx.arc(0, 28 * scale, 3 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                } else {
+                    // Default weapon
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-2 * scale, 18 * scale, 4 * scale, 10 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            getWeaponColor(component) {
+                if (!component || !component.damageType) return '#666';
+
+                switch(component.damageType) {
+                    case 'ENERGY': return '#00bfff';
+                    case 'KINETIC': return '#808080';
+                    case 'EXPLOSIVE': return '#ff6b35';
+                    default: return '#666';
+                }
+            }
+
+            renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const head = mech.head;
+                const headX = head.position.x;
+                const headY = head.position.y;
+                const angle = head.angle;
+                const loadout = mech.loadout || {};
+                const headComponent = loadout.head;
+                const mechClass = mech.mechClass || 'Medium';
+
+                ctx.save();
+                ctx.translate(headX, headY);
+                ctx.rotate(angle);
+
+                // Adjust size based on mech class
+                let sizeMultiplier = 1;
+                if (mechClass === 'Light') sizeMultiplier = 0.85;
+                if (mechClass === 'Heavy') sizeMultiplier = 1.2;
+
+                // Mad Cat inspired head - angular and aggressive
+                ctx.fillStyle = baseColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+
+                // Main head structure - pentagonal
+                ctx.beginPath();
+                ctx.moveTo(0, -12 * scale * sizeMultiplier);
+                ctx.lineTo(10 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
+                ctx.lineTo(10 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
+                ctx.lineTo(-10 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
+                ctx.lineTo(-10 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Sensor arrays (Mad Cat ears) - enhanced if head component has sensors
+                const earSize = headComponent && headComponent.name && headComponent.name.includes('Sensor') ? 5 : 4;
+                ctx.fillStyle = darkColor;
+                ctx.beginPath();
+                ctx.rect(-12 * scale * sizeMultiplier, -6 * scale * sizeMultiplier, earSize * scale, 8 * scale * sizeMultiplier);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.rect((12 - earSize) * scale * sizeMultiplier, -6 * scale * sizeMultiplier, earSize * scale, 8 * scale * sizeMultiplier);
+                ctx.fill();
+                ctx.stroke();
+
+                // Additional sensor dishes if equipped
+                if (headComponent && headComponent.name && headComponent.name.includes('Sensor')) {
+                    ctx.fillStyle = '#4dd2ff';
+                    ctx.globalAlpha = 0.5;
+                    ctx.beginPath();
+                    ctx.arc(-10 * scale * sizeMultiplier, -2 * scale * sizeMultiplier, 2 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(10 * scale * sizeMultiplier, -2 * scale * sizeMultiplier, 2 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+
+                // Main sensor/eye - color varies by component
+                const eyeColor = headComponent && headComponent.name && headComponent.name.includes('Advanced') ? '#00ff00' : '#ff0000';
+                ctx.fillStyle = eyeColor;
+                ctx.globalAlpha = 0.9;
+                ctx.beginPath();
+                ctx.arc(0, -2 * scale * sizeMultiplier, 4 * scale * sizeMultiplier, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.stroke();
+
+                // Visor/viewport
+                ctx.strokeStyle = eyeColor;
+                ctx.lineWidth = 2 * scale;
+                ctx.beginPath();
+                ctx.moveTo(-6 * scale * sizeMultiplier, -2 * scale * sizeMultiplier);
+                ctx.lineTo(6 * scale * sizeMultiplier, -2 * scale * sizeMultiplier);
+                ctx.stroke();
+
+                // Antenna for communication systems
+                if (headComponent && headComponent.name && headComponent.name.includes('Comm')) {
+                    ctx.strokeStyle = darkColor;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -12 * scale * sizeMultiplier);
+                    ctx.lineTo(0, -16 * scale * sizeMultiplier);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ff6b35';
+                    ctx.beginPath();
+                    ctx.arc(0, -16 * scale * sizeMultiplier, 1.5 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            darkenColor(color, factor) {
+                // Simple color darkening
+                const hex = color.replace('#', '');
+                const r = Math.max(0, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
+                const g = Math.max(0, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
+                const b = Math.max(0, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
+                return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+            }
+
+            lightenColor(color, factor) {
+                // Simple color lightening
+                const hex = color.replace('#', '');
+                const r = Math.min(255, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
+                const g = Math.min(255, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
+                const b = Math.min(255, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
+                return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
             }
 
             renderParticles(ctx) {
@@ -2417,6 +2893,8 @@
                 this.playerPhysMech.stats = this.playerStats;
                 this.playerPhysMech.battleSystem = this;
                 this.playerPhysMech.isPlayer = true;
+                this.playerPhysMech.loadout = this.playerMechData.loadout;
+                this.playerPhysMech.mechClass = this.playerMechData.class;
 
                 this.enemyPhysMech.currentHP = this.monsterData.currentHP;
                 this.enemyPhysMech.maxHP = this.monsterData.maxHP;
@@ -2428,6 +2906,8 @@
                 this.enemyPhysMech.battleSystem = this;
                 this.enemyPhysMech.isPlayer = false;
                 this.enemyPhysMech.special = this.monsterData.special;
+                this.enemyPhysMech.loadout = this.monsterData.loadout || {};
+                this.enemyPhysMech.mechClass = this.monsterData.class || 'Medium';
 
                 // Apply start of battle effects
                 this.applyStartOfBattleAbilities();

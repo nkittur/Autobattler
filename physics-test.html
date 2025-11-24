@@ -839,23 +839,43 @@
 
         // Main loop
         function mainLoop() {
-            autoFire();
-            movementAI.update(); // Intelligent movement with boundary enforcement
-            Engine.update(engine, 1000 / 60);
-            removeOffScreenProjectiles(); // Clean up projectiles that fly off-screen
-            testState.projectileCount = projectiles.length;
-            render();
-            updateStatus();
-            requestAnimationFrame(mainLoop);
+            try {
+                autoFire();
+                movementAI.update(); // Intelligent movement with boundary enforcement
+                Engine.update(engine, 1000 / 60);
+                removeOffScreenProjectiles(); // Clean up projectiles that fly off-screen
+                testState.projectileCount = projectiles.length;
+                render();
+                updateStatus();
+                requestAnimationFrame(mainLoop);
+            } catch (error) {
+                // Show error visibly on page
+                ctx.fillStyle = '#f00';
+                ctx.font = 'bold 20px monospace';
+                ctx.fillText('ERROR IN MAINLOOP:', 50, 250);
+                ctx.fillText(error.message, 50, 280);
+                document.getElementById('status-messages').innerHTML += `<div style="color:#f00;">✗ MAINLOOP ERROR: ${error.message}</div>`;
+                console.error('MainLoop error:', error);
+            }
         }
 
         // Start
         statusLog('=== STARTING BATTLE ===', 'info');
         console.log('🚀 Starting auto battle (matches real game)...');
         setTimeout(() => {
-            statusLog('Physics render loop started!', 'success');
-            statusLog('⚔️ BATTLE RUNNING! ⚔️', 'success');
-            mainLoop();
+            try {
+                statusLog('Physics render loop started!', 'success');
+                statusLog('⚔️ BATTLE RUNNING! ⚔️', 'success');
+                statusLog('Calling mainLoop()...', 'info');
+                mainLoop();
+            } catch (error) {
+                ctx.fillStyle = '#f00';
+                ctx.font = 'bold 20px monospace';
+                ctx.fillText('ERROR STARTING MAINLOOP:', 50, 250);
+                ctx.fillText(error.message, 50, 280);
+                document.getElementById('status-messages').innerHTML += `<div style="color:#f00;">✗ START ERROR: ${error.message}</div>`;
+                console.error('Start error:', error);
+            }
         }, 500);
 
         updateStatus();

@@ -33,9 +33,9 @@
 </head>
 <body>
     <h1 style="text-align: center;">⚔️ Physics Battle Test ⚔️</h1>
-    <h2 style="text-align: center; color: #ff00ff; background: #000; padding: 10px;">VERSION 3.0 - MODERN VISUALS CRITICAL FIX</h2>
-    <p style="text-align: center; color: #ff6b35; font-size: 16px; font-weight: bold;">🔥 Updated: 2025-11-24 23:59 | GLOWING EFFECTS ACTIVE 🔥</p>
-    <p style="text-align: center; color: #00ff88; font-size: 14px;">If you see VERSION 3.0, modern visuals ARE loaded!</p>
+    <h2 style="text-align: center; color: #ff00ff; background: #000; padding: 10px;">VERSION 3.1 MOBILE - ON-SCREEN DIAGNOSTICS</h2>
+    <p style="text-align: center; color: #ff6b35; font-size: 18px; font-weight: bold;">📱 MOBILE VERSION | Look for "V3.0 ACTIVE" on canvas</p>
+    <p style="text-align: center; color: #00ff88; font-size: 14px;">Look for "Modern Rendering: YES" in top left of game</p>
     <div id="status">
         <div id="logs"></div>
     </div>
@@ -468,16 +468,23 @@
                     this.renderHPBar(this.enemyMech);
                 }
 
-                // Debug info
+                // Debug info with V3 STATUS
+                ctx.fillStyle = '#ff00ff';
+                ctx.font = 'bold 16px monospace';
+                ctx.fillText('V3.0 ACTIVE', 10, 20);
+
                 ctx.fillStyle = '#00ff88';
-                ctx.font = '12px monospace';
+                ctx.font = '14px monospace';
                 const pDir = this.playerMech ? (this.playerMech.moveDirection < 0 ? '←' : this.playerMech.moveDirection > 0 ? '→' : '•') : '•';
                 const eDir = this.enemyMech ? (this.enemyMech.moveDirection < 0 ? '←' : this.enemyMech.moveDirection > 0 ? '→' : '•') : '•';
-                ctx.fillText(`Player ${pDir}: ${this.playerMech ? Math.floor(this.playerMech.currentHP) : 0}/${this.playerMech ? this.playerMech.maxHP : 0} HP`, 10, 20);
-                ctx.fillText(`Enemy ${eDir}: ${this.enemyMech ? Math.floor(this.enemyMech.currentHP) : 0}/${this.enemyMech ? this.enemyMech.maxHP : 0} HP`, 10, 40);
-                ctx.fillText(`Projectiles: ${this.projectiles.length} active`, 10, 60);
-                ctx.fillText(`Fired: ${this.projectileFired} | Hits: ${this.projectileHit} | Missed: ${this.projectileMissed}`, 10, 80);
-                ctx.fillText(`Hit Rate: ${this.projectileFired > 0 ? Math.floor(this.projectileHit / this.projectileFired * 100) : 0}%`, 10, 100);
+                ctx.fillText(`Player ${pDir}: ${this.playerMech ? Math.floor(this.playerMech.currentHP) : 0}/${this.playerMech ? this.playerMech.maxHP : 0} HP`, 10, 45);
+                ctx.fillText(`Enemy ${eDir}: ${this.enemyMech ? Math.floor(this.enemyMech.currentHP) : 0}/${this.enemyMech ? this.enemyMech.maxHP : 0} HP`, 10, 65);
+                ctx.fillText(`Projectiles: ${this.projectiles.length} active`, 10, 85);
+                ctx.fillText(`Fired: ${this.projectileFired} | Hit: ${this.projectileHit} | Miss: ${this.projectileMissed}`, 10, 105);
+
+                // RENDER VERIFICATION
+                ctx.fillStyle = '#ff6b35';
+                ctx.fillText('Modern Rendering: ' + (this._v3verified ? 'YES' : 'NO'), 10, 125);
             }
 
             renderMech(mech, ctx) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.19.0 - VISIBLE STATUS LOG: Complete initialization tracking for iPhone</title>
+    <title>Mech Autobattler v1.20.0 - Toggleable Debug Panel</title>
     <style>
         * {
             margin: 0;
@@ -692,12 +692,26 @@
                 <button id="speed-2x">2x Speed</button>
                 <button id="speed-4x">4x Speed</button>
                 <button id="toggle-effects" class="active">✨ Effects</button>
+                <button id="toggle-debug">🐛 Debug</button>
             </div>
             <div id="error-display" style="display:none; background:#ff4444; color:white; padding:20px; margin:10px; border-radius:8px; font-weight:bold;"></div>
-            <div id="status-log" style="background:#222; color:#0f0; padding:15px; margin:10px; border-radius:8px; font-family:monospace; font-size:11px; max-height:200px; overflow-y:auto; border:1px solid #0f0;">
-                <div style="font-weight:bold; margin-bottom:10px;">📋 INITIALIZATION LOG:</div>
-                <div id="status-messages"></div>
+
+            <!-- DEBUG PANEL - Hidden by default, shown as popup -->
+            <div id="debug-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#000; color:#0f0; padding:20px; border-radius:12px; font-family:monospace; font-size:11px; max-width:90%; max-height:80vh; overflow-y:auto; border:3px solid #0f0; box-shadow:0 0 30px rgba(0,255,0,0.5); z-index:10000;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div style="font-weight:bold; font-size:14px;">🐛 DEBUG CONSOLE</div>
+                    <button id="close-debug" style="background:#f00; color:#fff; border:none; padding:5px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">✕ Close</button>
+                </div>
+                <div style="background:#111; padding:10px; border-radius:5px; margin-bottom:10px;">
+                    <div style="font-weight:bold; margin-bottom:5px;">📋 INITIALIZATION LOG:</div>
+                    <div id="status-messages"></div>
+                </div>
+                <div style="background:#111; padding:10px; border-radius:5px;">
+                    <div style="font-weight:bold; margin-bottom:5px;">📊 REAL-TIME STATUS:</div>
+                    <div id="realtime-status" style="color:#0ff;"></div>
+                </div>
             </div>
+
             <canvas id="physics-canvas" width="800" height="450"></canvas>
 
             <div class="battle-area">
@@ -4984,6 +4998,59 @@
                 this.classList.toggle('active');
             }
         });
+
+        // Debug panel toggle
+        document.getElementById('toggle-debug').addEventListener('click', function() {
+            const debugPanel = document.getElementById('debug-panel');
+            const isVisible = debugPanel.style.display !== 'none';
+            debugPanel.style.display = isVisible ? 'none' : 'block';
+            this.classList.toggle('active');
+
+            // Start real-time updates when opened
+            if (!isVisible) {
+                updateDebugPanel();
+            }
+        });
+
+        document.getElementById('close-debug').addEventListener('click', function() {
+            document.getElementById('debug-panel').style.display = 'none';
+            document.getElementById('toggle-debug').classList.remove('active');
+        });
+
+        // Update debug panel with real-time info
+        function updateDebugPanel() {
+            const panel = document.getElementById('debug-panel');
+            if (panel.style.display === 'none') return;
+
+            const statusDiv = document.getElementById('realtime-status');
+            if (!physicsEngine) {
+                statusDiv.innerHTML = '<div style="color:#f00;">Physics engine not initialized</div>';
+                return;
+            }
+
+            let html = '';
+            html += `<div>Physics Running: ${physicsEngine.running ? '✓ YES' : '✗ NO'}</div>`;
+            html += `<div>Player Mech: ${physicsEngine.playerMech ? '✓ EXISTS' : '✗ NULL'}</div>`;
+            html += `<div>Enemy Mech: ${physicsEngine.enemyMech ? '✓ EXISTS' : '✗ NULL'}</div>`;
+
+            if (physicsEngine.playerMech && physicsEngine.playerMech.torso) {
+                const pos = physicsEngine.playerMech.torso.position;
+                html += `<div>Player Position: (${Math.floor(pos.x)}, ${Math.floor(pos.y)})</div>`;
+            }
+
+            if (physicsEngine.enemyMech && physicsEngine.enemyMech.torso) {
+                const pos = physicsEngine.enemyMech.torso.position;
+                html += `<div>Enemy Position: (${Math.floor(pos.x)}, ${Math.floor(pos.y)})</div>`;
+            }
+
+            html += `<div>Projectiles: ${physicsEngine.projectiles.length}</div>`;
+            html += `<div>Particles: ${physicsEngine.particles.length}</div>`;
+
+            statusDiv.innerHTML = html;
+
+            // Update again in 100ms if still open
+            setTimeout(updateDebugPanel, 100);
+        }
 
         // Abilities guide toggle
         document.getElementById('toggle-abilities-guide').addEventListener('click', () => {

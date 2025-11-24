@@ -264,66 +264,10 @@
             enemy: { aimAdjustX: 0, aimAdjustY: 0, lastShotX: 0, lastShotY: 0, hits: 0, misses: 0 }
         };
 
-        // ACCURATE BALLISTIC TRAJECTORY SOLVER using physics equations
-        // Solves: y = y0 + x*tan(θ) - (g*x²/(2*v²))*(1 + tan²(θ))
-        // Returns angle that will hit the target, accounting for gravity
+        // SIMPLE DIRECT AIMING - just aim at target
         function calculateBallisticTrajectory(startX, startY, targetX, targetY, speed, gravity) {
-            const dx = targetX - startX;
-            const dy = targetY - startY;
-
-            // Safety check for zero distance
-            if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
-                console.log(`   ⚠️ Target too close, firing horizontally`);
-                return 0;
-            }
-
-            // Safety check for zero/low speed
-            if (speed < 5) {
-                console.log(`   ⚠️ Speed too low (${speed}), using fallback angle`);
-                return Math.atan2(dy, dx);
-            }
-
-            // Solve quadratic equation for tan(θ)
-            // a*tan²(θ) + b*tan(θ) + c = 0
-            const v2 = speed * speed;
-            const a = (gravity * dx * dx) / (2 * v2);
-            const b = -dx;
-            const c = dy + a;
-
-            const discriminant = b * b - 4 * a * c;
-
-            if (discriminant < 0) {
-                // Target out of range - aim slightly upward for best distance
-                const optimalAngle = Math.atan2(dy, dx) + 0.3; // 17 degrees upward
-                console.log(`   ⚠️ Target out of range (disc=${discriminant.toFixed(0)}), aiming up at ${(optimalAngle * 180 / Math.PI).toFixed(1)}°`);
-                return optimalAngle;
-            }
-
-            // Two solutions: high arc and low arc
-            // We want LOW arc for direct fire
-            const sqrtDisc = Math.sqrt(discriminant);
-            const tanTheta1 = (-b + sqrtDisc) / (2 * a); // High arc
-            const tanTheta2 = (-b - sqrtDisc) / (2 * a); // Low arc
-
-            // Choose the lower angle (more direct shot)
-            const angle1 = Math.atan(tanTheta1);
-            const angle2 = Math.atan(tanTheta2);
-            let angle = Math.abs(angle1) < Math.abs(angle2) ? angle1 : angle2;
-
-            // Safety check for NaN or Infinity
-            if (!isFinite(angle)) {
-                console.log(`   ⚠️ Invalid angle calculated, using fallback`);
-                angle = Math.atan2(dy, dx);
-            }
-
-            // RANDOM JITTER: ±3 degrees for realistic variation
-            const jitterDegrees = (Math.random() - 0.5) * 6; // -3 to +3 degrees
-            const jitterRadians = jitterDegrees * Math.PI / 180;
-            const finalAngle = angle + jitterRadians;
-
-            console.log(`   📐 Ballistic: dx=${dx.toFixed(0)}, dy=${dy.toFixed(0)}, angle=${(angle * 180 / Math.PI).toFixed(1)}°, jitter=${jitterDegrees.toFixed(1)}°`);
-
-            return finalAngle;
+            // Aim directly at target
+            return Math.atan2(targetY - startY, targetX - startX);
         }
 
         // Fire projectile with ACCURATE BALLISTIC TARGETING + JITTER
@@ -333,12 +277,8 @@
             const targetX = to.torso.position.x;
             const targetY = to.torso.position.y;
 
-            const speed = 25; // INCREASED to 25 for longer range
-            const gravity = 1.2;
-
-            // ACCURATE BALLISTIC TRAJECTORY with built-in jitter
-            // No adaptive learning needed - physics-based targeting is accurate
-            const angle = calculateBallisticTrajectory(centerX, centerY, targetX, targetY, speed, gravity);
+            // Simple direct aim at target
+            const angle = Math.atan2(targetY - centerY, targetX - centerX);
 
             // Spawn projectile 60px AWAY from mech center (outside body!)
             const spawnOffset = 60;

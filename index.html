@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.10.0 - Enhanced Collision Detection with Fallback Damage</title>
+    <title>Mech Autobattler v1.11.0 - Fixed Projectile Spawn Outside Mech Body</title>
     <style>
         * {
             margin: 0;
@@ -1953,10 +1953,8 @@
                 const Bodies = Matter.Bodies;
                 const Body = Matter.Body;
 
-                const startX = fromMech.torso.position.x;
-                const startY = fromMech.torso.position.y;
-
-                console.log(`🚀 fireProjectile called: ${weaponType} from (${Math.floor(startX)}, ${Math.floor(startY)})`);
+                const centerX = fromMech.torso.position.x;
+                const centerY = fromMech.torso.position.y;
 
                 // Predictive targeting - aim where target will be
                 const targetVel = toMech.torso.velocity;
@@ -1964,10 +1962,10 @@
                 let targetY = toMech.torso.position.y;
 
                 // Estimate projectile speed based on weapon type
-                const projSpeed = weaponType === 'KINETIC' ? 25 : weaponType === 'EXPLOSIVE' ? 15 : 0;
+                const projSpeed = weaponType === 'KINETIC' ? 8 : weaponType === 'EXPLOSIVE' ? 15 : 0;
 
                 if (projSpeed > 0) {
-                    const distance = Math.sqrt((targetX - startX) ** 2 + (targetY - startY) ** 2);
+                    const distance = Math.sqrt((targetX - centerX) ** 2 + (targetY - centerY) ** 2);
                     const travelTime = distance / projSpeed;
 
                     // Predict where target will be (accounting for physics ticks)
@@ -1975,11 +1973,20 @@
                     targetY += targetVel.y * travelTime * 16;
                 }
 
+                // Calculate firing angle
+                const angle = Math.atan2(targetY - centerY, targetX - centerX);
+
+                // CRITICAL FIX: Spawn projectile OUTSIDE mech body (60px offset)
+                const spawnOffset = 60;
+                const startX = centerX + Math.cos(angle) * spawnOffset;
+                const startY = centerY + Math.sin(angle) * spawnOffset;
+
+                console.log(`🚀 fireProjectile: ${weaponType} spawning at (${Math.floor(startX)}, ${Math.floor(startY)}) [offset ${spawnOffset}px from center]`);
+
                 let projectile;
 
                 if (weaponType === 'EXPLOSIVE') {
                     // Ballistic trajectory rocket
-                    const angle = Math.atan2(targetY - startY, targetX - startX);
                     const power = 15 + Math.random() * 5;
                     const arcBoost = -8; // Upward boost for arc
 
@@ -2002,7 +2009,6 @@
 
                 } else if (weaponType === 'KINETIC') {
                     // SLOWER bullet for reliable collision detection
-                    const angle = Math.atan2(targetY - startY, targetX - startX);
                     const speed = 8; // REDUCED from 25 to 8 - much slower for collision detection!
 
                     projectile = Bodies.circle(startX, startY, 10, {
@@ -2080,6 +2086,22 @@
                         if (!projectile) return; // Not a projectile collision
 
                         const other = bodyA === projectile ? bodyB : bodyA;
+
+                        // CRITICAL: Ignore collision with shooter's own body parts
+                        if (projectile.shooter) {
+                            const shooterParts = [
+                                projectile.shooter.torso,
+                                projectile.shooter.head,
+                                projectile.shooter.leftArm,
+                                projectile.shooter.rightArm,
+                                projectile.shooter.leftLeg,
+                                projectile.shooter.rightLeg
+                            ];
+                            if (shooterParts.includes(other)) {
+                                console.log(`   (Ignoring self-collision with shooter's ${other.label})`);
+                                return; // Skip this collision
+                            }
+                        }
 
                         console.log(`💥 COLLISION! Projectile hit: ${other.label || 'unknown'} at (${Math.floor(other.position.x)}, ${Math.floor(other.position.y)})`);
 
@@ -3127,6 +3149,7 @@
                     projectile.fromMech = fromMech;
                     projectile.toMech = toMech;
                     projectile.battleSystem = this;
+                    projectile.shooter = fromMech; // Prevent self-collision
                     debugLog('WEAPON', 'Projectile created', { id: projectile.id });
                 } else {
                     debugLog('WEAPON', 'Projectile was null (energy beam)');

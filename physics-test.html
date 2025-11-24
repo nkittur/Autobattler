@@ -299,6 +299,10 @@
             const shooterData = from.isPlayer ? targetingData.player : targetingData.enemy;
 
             // ADAPTIVE CORRECTION: Apply learned adjustments from previous misses
+            // CLAMP adjustments to prevent runaway drift (max ±100px correction)
+            shooterData.aimAdjustX = Math.max(-100, Math.min(100, shooterData.aimAdjustX));
+            shooterData.aimAdjustY = Math.max(-100, Math.min(100, shooterData.aimAdjustY));
+
             targetX += shooterData.aimAdjustX;
             targetY += shooterData.aimAdjustY;
 
@@ -323,8 +327,8 @@
                 frictionAir: 0.001,
                 label: 'bullet',
                 collisionFilter: {
-                    category: 0x0002,
-                    mask: 0xFFFF
+                    category: 0x0002,  // Projectile category
+                    mask: 0x0001       // ONLY collide with mechs (0x0001), NOT other projectiles (0x0002)
                 }
             });
 
@@ -336,8 +340,8 @@
             projectile.damage = 10;
             projectile.fromPlayer = from.isPlayer;
             projectile.shooter = from;
-            projectile.targetX = to.torso.position.x; // Store intended target for miss tracking
-            projectile.targetY = to.torso.position.y;
+            projectile.targetX = targetX; // Store ADJUSTED target (not original position!)
+            projectile.targetY = targetY; // This includes adaptive corrections
 
             World.add(world, projectile);
             projectiles.push(projectile);

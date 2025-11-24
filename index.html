@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.13.0 - Increased Projectile Force & Intelligent Movement AI</title>
+    <title>Mech Autobattler v1.14.0 - Fixed Projectile Collisions & Targeting Drift</title>
     <style>
         * {
             margin: 0;
@@ -2006,6 +2006,10 @@
                 const isPlayerShooter = fromMech.isPlayer;
                 const shooterData = isPlayerShooter ? this.targetingData.player : this.targetingData.enemy;
 
+                // CLAMP adjustments to prevent runaway drift (max ±100px correction)
+                shooterData.aimAdjustX = Math.max(-100, Math.min(100, shooterData.aimAdjustX));
+                shooterData.aimAdjustY = Math.max(-100, Math.min(100, shooterData.aimAdjustY));
+
                 targetX += shooterData.aimAdjustX;
                 targetY += shooterData.aimAdjustY;
 
@@ -2058,7 +2062,7 @@
                         label: 'bullet',
                         collisionFilter: {
                             category: 0x0002, // Projectile category
-                            mask: 0xFFFF      // Collide with everything
+                            mask: 0x0001      // ONLY collide with mechs (0x0001), NOT other projectiles (0x0002)
                         }
                     });
 
@@ -2092,9 +2096,10 @@
                 console.log(`   Velocity: (${projectile.velocity.x.toFixed(2)}, ${projectile.velocity.y.toFixed(2)})`);
                 console.log(`   Color: ${projectile.render.fillStyle}`);
 
-                // Store original target for adaptive learning
-                projectile.targetX = toMech.torso.position.x;
-                projectile.targetY = toMech.torso.position.y;
+                // Store ADJUSTED target for adaptive learning (not original position!)
+                // This includes ballistic compensation + adaptive corrections
+                projectile.targetX = targetX;
+                projectile.targetY = targetY;
 
                 Matter.World.add(this.world, projectile);
                 this.projectiles.push(projectile);

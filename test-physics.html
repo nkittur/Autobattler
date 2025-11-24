@@ -177,61 +177,70 @@
 
                 const size = 30;
 
-                // Create full mech body parts
+                // Create full mech body parts with MUCH higher density for stability
                 const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
-                    density: 0.002,
-                    friction: 0.8,
-                    frictionAir: 0.02,
+                    density: 0.008,  // 4x heavier - main anchor
+                    friction: 1.0,
+                    frictionAir: 0.01,  // Air resistance for stability
+                    restitution: 0.05,  // Low bounce
                     label: isPlayer ? 'player_torso' : 'enemy_torso'
                 });
 
                 const head = Bodies.circle(x, y - size, size * 0.5, {
-                    density: 0.001,
+                    density: 0.004,  // 4x heavier
+                    friction: 0.8,
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_head' : 'enemy_head'
                 });
 
                 const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
-                    density: 0.001,
-                    friction: 0.5,
+                    density: 0.004,  // 4x heavier
+                    friction: 0.8,
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_arm' : 'enemy_arm'
                 });
 
                 const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
-                    density: 0.001,
-                    friction: 0.5,
+                    density: 0.004,  // 4x heavier
+                    friction: 0.8,
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_arm' : 'enemy_arm'
                 });
 
                 const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.002,
-                    friction: 0.9,
+                    density: 0.006,  // 3x heavier - legs need weight
+                    friction: 1.2,   // High friction for ground contact
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
                 const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.002,
-                    friction: 0.9,
+                    density: 0.006,  // 3x heavier
+                    friction: 1.2,
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
-                // Create constraints (joints)
+                // Create constraints (joints) - MUCH stiffer for stability
                 const constraints = [
-                    // Head to torso
+                    // Head to torso - very stiff
                     Constraint.create({
                         bodyA: head,
                         bodyB: torso,
                         pointA: { x: 0, y: size * 0.3 },
                         pointB: { x: 0, y: -size * 0.7 },
-                        stiffness: 0.7,
+                        stiffness: 0.95,  // Much stiffer
+                        damping: 0.1,     // Add damping
                         length: 0
                     }),
-                    // Left arm
+                    // Left arm - stiff but some movement
                     Constraint.create({
                         bodyA: leftArm,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: -size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.5,
+                        stiffness: 0.85,
+                        damping: 0.1,
                         length: 0
                     }),
                     // Right arm
@@ -240,16 +249,18 @@
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.5,
+                        stiffness: 0.85,
+                        damping: 0.1,
                         length: 0
                     }),
-                    // Left leg
+                    // Left leg - very stiff for standing
                     Constraint.create({
                         bodyA: leftLeg,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: -size * 0.2, y: size * 0.7 },
-                        stiffness: 0.6,
+                        stiffness: 0.9,
+                        damping: 0.1,
                         length: 0
                     }),
                     // Right leg
@@ -258,7 +269,8 @@
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: size * 0.2, y: size * 0.7 },
-                        stiffness: 0.6,
+                        stiffness: 0.9,
+                        damping: 0.1,
                         length: 0
                     })
                 ];

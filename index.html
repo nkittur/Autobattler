@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.7.0 - Comprehensive Combat Logging</title>
+    <title>Mech Autobattler v1.8.0 - Visual Projectile Trails & Collision Logging</title>
     <style>
         * {
             margin: 0;
@@ -2070,17 +2070,23 @@
 
                         // Check if either body is a projectile
                         const projectile = this.projectiles.find(p => p === bodyA || p === bodyB);
-                        if (!projectile) return;
+                        if (!projectile) return; // Not a projectile collision
 
                         const other = bodyA === projectile ? bodyB : bodyA;
 
+                        console.log(`💥 COLLISION! Projectile hit: ${other.label || 'unknown'} at (${Math.floor(other.position.x)}, ${Math.floor(other.position.y)})`);
+
                         // Hit player mech
                         if (this.playerMech && other.label && other.label.includes('player')) {
+                            console.log(`   ✓ PLAYER HIT! Damage: ${projectile.damage}, Has battleSystem: ${!!projectile.battleSystem}`);
                             debugLog(`💥 Player hit by projectile: ${projectile.damage} damage`);
                             this.applyPhysicalImpact(this.playerMech, projectile.damage, projectile.type);
 
                             if (projectile.battleSystem) {
+                                console.log(`   Calling applyDamageToMech...`);
                                 projectile.battleSystem.applyDamageToMech(this.playerMech, projectile.damage, projectile.type);
+                            } else {
+                                console.log(`   ⚠️ NO BATTLESYSTEM ON PROJECTILE!`);
                             }
 
                             this.createImpactEffect(other.position.x, other.position.y, projectile.type);
@@ -2089,11 +2095,15 @@
                         }
                         // Hit enemy mech
                         else if (this.enemyMech && other.label && other.label.includes('enemy')) {
+                            console.log(`   ✓ ENEMY HIT! Damage: ${projectile.damage}, Has battleSystem: ${!!projectile.battleSystem}`);
                             debugLog(`💥 Enemy hit by projectile: ${projectile.damage} damage`);
                             this.applyPhysicalImpact(this.enemyMech, projectile.damage, projectile.type);
 
                             if (projectile.battleSystem) {
+                                console.log(`   Calling applyDamageToMech...`);
                                 projectile.battleSystem.applyDamageToMech(this.enemyMech, projectile.damage, projectile.type);
+                            } else {
+                                console.log(`   ⚠️ NO BATTLESYSTEM ON PROJECTILE!`);
                             }
 
                             this.createImpactEffect(other.position.x, other.position.y, projectile.type);
@@ -2102,6 +2112,7 @@
                         }
                         // Hit terrain
                         else if (other.label === 'terrain') {
+                            console.log(`   Hit terrain/ground`);
                             if (projectile.type === 'EXPLOSIVE') {
                                 this.createExplosion(other.position.x, other.position.y, 80);
                                 Matter.World.remove(this.world, other);
@@ -2426,6 +2437,9 @@
                     this.renderParticles(ctx);
                 }
 
+                // Render projectile trails for visibility!
+                this.renderProjectileTrails(ctx);
+
                 // Render mechs with custom rendering
                 if (this.playerMech) this.renderMech(this.playerMech, ctx);
                 if (this.enemyMech) this.renderMech(this.enemyMech, ctx);
@@ -2485,6 +2499,37 @@
                 ctx.font = 'bold 10px monospace';
                 ctx.textAlign = 'center';
                 ctx.fillText(`${Math.max(0, Math.floor(mech.currentHP))}/${mech.maxHP}`, x, y - 5);
+            }
+
+            renderProjectileTrails(ctx) {
+                // Draw bright trails behind projectiles so they're SUPER visible!
+                this.projectiles.forEach(proj => {
+                    const pos = proj.position;
+                    const vel = proj.velocity;
+
+                    // Draw a glowing circle
+                    ctx.save();
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = proj.render.fillStyle || '#ffaa00';
+                    ctx.fillStyle = proj.render.fillStyle || '#ffaa00';
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2); // Big glowing circle
+                    ctx.fill();
+                    ctx.restore();
+
+                    // Draw velocity line showing direction
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x, pos.y);
+                    ctx.lineTo(pos.x - vel.x * 2, pos.y - vel.y * 2);
+                    ctx.stroke();
+
+                    // Draw position text for debugging
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 8px monospace';
+                    ctx.fillText(`(${Math.floor(pos.x)},${Math.floor(pos.y)})`, pos.x + 15, pos.y);
+                });
             }
 
             renderBodies(bodies, ctx) {

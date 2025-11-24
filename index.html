@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.5.0 - On-Screen Combat Diagnostics</title>
+    <title>Mech Autobattler v1.6.0 - Failsafe Weapons & Visible Projectiles</title>
     <style>
         * {
             margin: 0;
@@ -1983,11 +1983,11 @@
                     projectile.trail = [];
 
                 } else if (weaponType === 'KINETIC') {
-                    // Fast bullet
+                    // Fast bullet - MADE BIGGER AND MORE VISIBLE
                     const angle = Math.atan2(targetY - startY, targetX - startX);
                     const speed = 25;
 
-                    projectile = Bodies.circle(startX, startY, 4, {
+                    projectile = Bodies.circle(startX, startY, 10, { // Increased from 4 to 10!
                         density: 0.0005,
                         restitution: 0.8,
                         friction: 0.05,
@@ -1999,7 +1999,9 @@
                         y: Math.sin(angle) * speed
                     });
 
-                    projectile.render.fillStyle = this.colors.kinetic;
+                    projectile.render.fillStyle = this.colors.kinetic; // Bright orange/yellow
+                    projectile.render.strokeStyle = '#fff'; // White outline for visibility
+                    projectile.render.lineWidth = 2;
                     projectile.damage = damage;
                     projectile.type = 'KINETIC';
 
@@ -2658,6 +2660,38 @@
 
                 this.physics.reset();
                 debugLog('BATTLE', 'Physics reset complete');
+
+                // FAILSAFE: Ensure player has at least one weapon equipped
+                const hasWeapon = Object.values(this.playerMechData.loadout || {}).some(comp =>
+                    comp && comp.type === 'weapon'
+                );
+
+                if (!hasWeapon) {
+                    debugLog('BATTLE', '⚠️ NO WEAPON DETECTED - Adding default Light Machine Gun');
+
+                    // Find the Light Machine Gun template
+                    const lmgTemplate = COMPONENT_TEMPLATES.find(t => t.name === 'Light Machine Gun');
+
+                    if (lmgTemplate && this.playerMechData.slots.includes('rightShoulder')) {
+                        // Create the component manually
+                        const defaultWeapon = {
+                            name: 'Light Machine Gun',
+                            type: 'weapon',
+                            slot: 'rightShoulder',
+                            damage: 12,
+                            armor: 0,
+                            tier: 1,
+                            damageType: 'KINETIC',
+                            abilities: [],
+                            rarity: 'COMMON',
+                            id: 'default_lmg_' + Date.now()
+                        };
+
+                        this.playerMechData.loadout['rightShoulder'] = defaultWeapon;
+
+                        debugLog('BATTLE', '✓ Default weapon equipped', defaultWeapon);
+                    }
+                }
 
                 // Create physics mechs
                 debugLog('BATTLE', 'Creating player mech...', {

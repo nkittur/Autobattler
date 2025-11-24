@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.16.1 - HOTFIX: Fixed Undefined shooterData Error</title>
+    <title>Mech Autobattler v1.17.0 - Robust Ballistics with Safety Checks & Increased Speed</title>
     <style>
         * {
             margin: 0;
@@ -1963,6 +1963,18 @@
                 const dx = targetX - startX;
                 const dy = targetY - startY;
 
+                // Safety check for zero distance
+                if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+                    console.log(`   ⚠️ Target too close, firing horizontally`);
+                    return 0;
+                }
+
+                // Safety check for zero/low speed
+                if (speed < 5) {
+                    console.log(`   ⚠️ Speed too low (${speed}), using fallback angle`);
+                    return Math.atan2(dy, dx);
+                }
+
                 // Solve quadratic equation for tan(θ)
                 // a*tan²(θ) + b*tan(θ) + c = 0
                 const v2 = speed * speed;
@@ -1973,9 +1985,10 @@
                 const discriminant = b * b - 4 * a * c;
 
                 if (discriminant < 0) {
-                    // No solution - target out of range, fire directly at it
-                    console.log(`   ⚠️ Target out of range! Firing directly.`);
-                    return Math.atan2(dy, dx);
+                    // Target out of range - aim slightly upward for best distance
+                    const optimalAngle = Math.atan2(dy, dx) + 0.3; // 17 degrees upward
+                    console.log(`   ⚠️ Target out of range (disc=${discriminant.toFixed(0)}), aiming up at ${(optimalAngle * 180 / Math.PI).toFixed(1)}°`);
+                    return optimalAngle;
                 }
 
                 // Two solutions: high arc and low arc
@@ -1987,7 +2000,13 @@
                 // Choose the lower angle (more direct shot)
                 const angle1 = Math.atan(tanTheta1);
                 const angle2 = Math.atan(tanTheta2);
-                const angle = Math.abs(angle1) < Math.abs(angle2) ? angle1 : angle2;
+                let angle = Math.abs(angle1) < Math.abs(angle2) ? angle1 : angle2;
+
+                // Safety check for NaN or Infinity
+                if (!isFinite(angle)) {
+                    console.log(`   ⚠️ Invalid angle calculated, using fallback`);
+                    angle = Math.atan2(dy, dx);
+                }
 
                 // RANDOM JITTER: ±3 degrees for realistic variation
                 const jitterDegrees = (Math.random() - 0.5) * 6; // -3 to +3 degrees
@@ -2012,7 +2031,7 @@
                 let targetY = toMech.torso.position.y;
 
                 // Estimate projectile speed based on weapon type
-                const projSpeed = weaponType === 'KINETIC' ? 15 : weaponType === 'EXPLOSIVE' ? 15 : 0; // INCREASED KINETIC from 8 to 15 for more force
+                const projSpeed = weaponType === 'KINETIC' ? 25 : weaponType === 'EXPLOSIVE' ? 25 : 0; // INCREASED to 25 for longer range
 
                 if (projSpeed > 0) {
                     const distance = Math.sqrt((targetX - centerX) ** 2 + (targetY - centerY) ** 2);
@@ -2065,7 +2084,7 @@
 
                 } else if (weaponType === 'KINETIC') {
                     // INCREASED SPEED for more force while maintaining collision detection
-                    const speed = 15; // INCREASED from 8 to 15 - more force to reach target!
+                    const speed = 25; // INCREASED to 25 - ensures projectiles can reach 400px distance with gravity
 
                     projectile = Bodies.circle(startX, startY, 10, {
                         density: 0.02, // INCREASED density for more momentum

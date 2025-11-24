@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.16.0 - Accurate Ballistics with Jitter & Off-Screen Detection</title>
+    <title>Mech Autobattler v1.16.1 - HOTFIX: Fixed Undefined shooterData Error</title>
     <style>
         * {
             margin: 0;
@@ -2027,6 +2027,10 @@
                 // No adaptive learning needed - physics-based targeting is accurate
                 const gravity = this.engine.gravity.y;
                 const angle = this.calculateBallisticAngle(centerX, centerY, targetX, targetY, projSpeed, gravity);
+
+                // Get shooter data for stats tracking (not used for aim adjustments anymore)
+                const isPlayerShooter = fromMech.isPlayer;
+                const shooterData = isPlayerShooter ? this.targetingData.player : this.targetingData.enemy;
 
                 // CRITICAL FIX: Spawn projectile OUTSIDE mech body (60px offset)
                 const spawnOffset = 60;

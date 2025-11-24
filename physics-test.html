@@ -264,55 +264,61 @@
             enemy: { aimAdjustX: 0, aimAdjustY: 0, lastShotX: 0, lastShotY: 0, hits: 0, misses: 0 }
         };
 
-        // BALLISTIC TRAJECTORY SOLVER - accounts for gravity
+        // ACCURATE BALLISTIC TRAJECTORY SOLVER using physics equations
+        // Solves: y = y0 + x*tan(θ) - (g*x²/(2*v²))*(1 + tan²(θ))
+        // Returns angle that will hit the target, accounting for gravity
         function calculateBallisticTrajectory(startX, startY, targetX, targetY, speed, gravity) {
             const dx = targetX - startX;
             const dy = targetY - startY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
 
-            // Time to reach target horizontally
-            const timeToTarget = distance / speed;
+            // Solve quadratic equation for tan(θ)
+            // a*tan²(θ) + b*tan(θ) + c = 0
+            const v2 = speed * speed;
+            const a = (gravity * dx * dx) / (2 * v2);
+            const b = -dx;
+            const c = dy + a;
 
-            // Calculate gravity drop over that time
-            // drop = 0.5 * gravity * time^2
-            const gravityDrop = 0.5 * gravity * timeToTarget * timeToTarget;
+            const discriminant = b * b - 4 * a * c;
 
-            // Aim ABOVE target to compensate for drop
-            const compensatedTargetY = targetY - gravityDrop;
+            if (discriminant < 0) {
+                // No solution - target out of range, fire directly at it
+                console.log(`   ⚠️ Target out of range! Firing directly.`);
+                return Math.atan2(dy, dx);
+            }
 
-            // Calculate angle to compensated target
-            const angle = Math.atan2(compensatedTargetY - startY, dx);
+            // Two solutions: high arc and low arc
+            // We want LOW arc for direct fire
+            const sqrtDisc = Math.sqrt(discriminant);
+            const tanTheta1 = (-b + sqrtDisc) / (2 * a); // High arc
+            const tanTheta2 = (-b - sqrtDisc) / (2 * a); // Low arc
 
-            console.log(`   📐 Ballistic calc: distance=${distance.toFixed(1)}, time=${timeToTarget.toFixed(2)}s, drop=${gravityDrop.toFixed(1)}px`);
-            console.log(`   📐 Aiming ${gravityDrop.toFixed(1)}px ABOVE target to compensate for gravity`);
+            // Choose the lower angle (more direct shot)
+            const angle1 = Math.atan(tanTheta1);
+            const angle2 = Math.atan(tanTheta2);
+            const angle = Math.abs(angle1) < Math.abs(angle2) ? angle1 : angle2;
 
-            return angle;
+            // RANDOM JITTER: ±3 degrees for realistic variation
+            const jitterDegrees = (Math.random() - 0.5) * 6; // -3 to +3 degrees
+            const jitterRadians = jitterDegrees * Math.PI / 180;
+            const finalAngle = angle + jitterRadians;
+
+            console.log(`   📐 Ballistic: dx=${dx.toFixed(0)}, dy=${dy.toFixed(0)}, angle=${(angle * 180 / Math.PI).toFixed(1)}°, jitter=${jitterDegrees.toFixed(1)}°`);
+
+            return finalAngle;
         }
 
-        // Fire projectile with ADAPTIVE BALLISTIC TARGETING
+        // Fire projectile with ACCURATE BALLISTIC TARGETING + JITTER
         function fireProjectile(from, to) {
             const centerX = from.torso.position.x;
             const centerY = from.torso.position.y;
-            let targetX = to.torso.position.x;
-            let targetY = to.torso.position.y;
-
-            const shooterData = from.isPlayer ? targetingData.player : targetingData.enemy;
-
-            // ADAPTIVE CORRECTION: Apply learned adjustments from previous misses
-            // CLAMP adjustments to prevent runaway drift (max ±100px correction)
-            shooterData.aimAdjustX = Math.max(-100, Math.min(100, shooterData.aimAdjustX));
-            shooterData.aimAdjustY = Math.max(-100, Math.min(100, shooterData.aimAdjustY));
-
-            targetX += shooterData.aimAdjustX;
-            targetY += shooterData.aimAdjustY;
-
-            console.log(`🎯 Adaptive aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
-            console.log(`   Hit rate: ${shooterData.hits}/${shooterData.hits + shooterData.misses}`);
+            const targetX = to.torso.position.x;
+            const targetY = to.torso.position.y;
 
             const speed = 15; // INCREASED from 8 to 15 for more force
             const gravity = 1.2;
 
-            // BALLISTIC TRAJECTORY with gravity compensation
+            // ACCURATE BALLISTIC TRAJECTORY with built-in jitter
+            // No adaptive learning needed - physics-based targeting is accurate
             const angle = calculateBallisticTrajectory(centerX, centerY, targetX, targetY, speed, gravity);
 
             // Spawn projectile 60px AWAY from mech center (outside body!)
@@ -431,20 +437,13 @@
                 else if (other.label === 'ground') {
                     console.log(`   ✗ MISS! Hit ground at (${Math.floor(projectile.position.x)}, ${Math.floor(projectile.position.y)})`);
 
-                    // LEARNING: Calculate error and adjust aim
-                    const errorX = projectile.targetX - projectile.position.x;
-                    const errorY = projectile.targetY - projectile.position.y;
-
-                    // Apply 70% of error as correction for FAST, VISIBLE adaptation
-                    const learningRate = 0.7;
-                    shooterData.aimAdjustX += errorX * learningRate;
-                    shooterData.aimAdjustY += errorY * learningRate;
-                    shooterData.misses++;
-
-                    console.log(`   📊 Miss error from ENEMY: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
-                    console.log(`   🔧 Adjusted aim by: (${(errorX * learningRate).toFixed(1)}, ${(errorY * learningRate).toFixed(1)})`);
-                    console.log(`   📈 New aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
-                    console.log(`   🎯 Adaptive Learning ACTIVE - Next shot will be ${Math.abs(errorX * learningRate).toFixed(0)}px closer!`);
+                    // Track miss for stats (no adaptive learning - using accurate ballistics now)
+                    if (shooterData) {
+                        shooterData.misses++;
+                        const errorX = projectile.targetX ? projectile.targetX - projectile.position.x : 0;
+                        const errorY = projectile.targetY ? projectile.targetY - projectile.position.y : 0;
+                        console.log(`   📊 Miss distance from target: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
+                    }
 
                     World.remove(world, projectile);
                     projectiles.splice(projectiles.indexOf(projectile), 1);
@@ -754,11 +753,35 @@
             ctx.fillText(`${Math.floor(current)}/${max}`, x, y - 5);
         }
 
+        // Remove projectiles that go off-screen
+        function removeOffScreenProjectiles() {
+            const margin = 50;
+            const minX = -margin;
+            const maxX = 800 + margin;
+            const minY = -margin;
+            const maxY = 600 + margin;
+
+            const toRemove = [];
+            projectiles.forEach(projectile => {
+                const pos = projectile.position;
+                if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
+                    console.log(`   🗑️ OFF-SCREEN projectile at (${Math.floor(pos.x)}, ${Math.floor(pos.y)}) - removing`);
+                    toRemove.push(projectile);
+                }
+            });
+
+            toRemove.forEach(projectile => {
+                World.remove(world, projectile);
+                projectiles.splice(projectiles.indexOf(projectile), 1);
+            });
+        }
+
         // Main loop
         function mainLoop() {
             autoFire();
             movementAI.update(); // Intelligent movement with boundary enforcement
             Engine.update(engine, 1000 / 60);
+            removeOffScreenProjectiles(); // Clean up projectiles that fly off-screen
             testState.projectileCount = projectiles.length;
             render();
             updateStatus();

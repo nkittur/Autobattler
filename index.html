@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.15.0 - FIXED Adaptive Learning & Miss Detection</title>
+    <title>Mech Autobattler v1.16.0 - Accurate Ballistics with Jitter & Off-Screen Detection</title>
     <style>
         * {
             margin: 0;
@@ -1956,27 +1956,47 @@
                 };
             }
 
-            // BALLISTIC TRAJECTORY SOLVER - accounts for gravity
+            // ACCURATE BALLISTIC TRAJECTORY SOLVER using physics equations
+            // Solves: y = y0 + x*tan(θ) - (g*x²/(2*v²))*(1 + tan²(θ))
+            // Returns angle that will hit the target, accounting for gravity
             calculateBallisticAngle(startX, startY, targetX, targetY, speed, gravity) {
                 const dx = targetX - startX;
                 const dy = targetY - startY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
 
-                // Time to reach target horizontally
-                const timeToTarget = distance / speed;
+                // Solve quadratic equation for tan(θ)
+                // a*tan²(θ) + b*tan(θ) + c = 0
+                const v2 = speed * speed;
+                const a = (gravity * dx * dx) / (2 * v2);
+                const b = -dx;
+                const c = dy + a;
 
-                // Calculate gravity drop: drop = 0.5 * gravity * time^2
-                const gravityDrop = 0.5 * gravity * timeToTarget * timeToTarget;
+                const discriminant = b * b - 4 * a * c;
 
-                // Aim ABOVE target to compensate for drop
-                const compensatedTargetY = targetY - gravityDrop;
+                if (discriminant < 0) {
+                    // No solution - target out of range, fire directly at it
+                    console.log(`   ⚠️ Target out of range! Firing directly.`);
+                    return Math.atan2(dy, dx);
+                }
 
-                // Calculate angle to compensated target
-                const angle = Math.atan2(compensatedTargetY - startY, dx);
+                // Two solutions: high arc and low arc
+                // We want LOW arc for direct fire
+                const sqrtDisc = Math.sqrt(discriminant);
+                const tanTheta1 = (-b + sqrtDisc) / (2 * a); // High arc
+                const tanTheta2 = (-b - sqrtDisc) / (2 * a); // Low arc
 
-                console.log(`   📐 Ballistic: dist=${distance.toFixed(1)}, time=${timeToTarget.toFixed(2)}s, drop=${gravityDrop.toFixed(1)}px, aiming ${gravityDrop.toFixed(1)}px above`);
+                // Choose the lower angle (more direct shot)
+                const angle1 = Math.atan(tanTheta1);
+                const angle2 = Math.atan(tanTheta2);
+                const angle = Math.abs(angle1) < Math.abs(angle2) ? angle1 : angle2;
 
-                return angle;
+                // RANDOM JITTER: ±3 degrees for realistic variation
+                const jitterDegrees = (Math.random() - 0.5) * 6; // -3 to +3 degrees
+                const jitterRadians = jitterDegrees * Math.PI / 180;
+                const finalAngle = angle + jitterRadians;
+
+                console.log(`   📐 Ballistic: dx=${dx.toFixed(0)}, dy=${dy.toFixed(0)}, angle=${(angle * 180 / Math.PI).toFixed(1)}°, jitter=${jitterDegrees.toFixed(1)}°`);
+
+                return finalAngle;
             }
 
             fireProjectile(fromMech, toMech, weaponType, damage) {
@@ -2003,20 +2023,8 @@
                     targetY += targetVel.y * travelTime * 16;
                 }
 
-                // ADAPTIVE TARGETING: Apply learned corrections
-                const isPlayerShooter = fromMech.isPlayer;
-                const shooterData = isPlayerShooter ? this.targetingData.player : this.targetingData.enemy;
-
-                // CLAMP adjustments to prevent runaway drift (max ±100px correction)
-                shooterData.aimAdjustX = Math.max(-100, Math.min(100, shooterData.aimAdjustX));
-                shooterData.aimAdjustY = Math.max(-100, Math.min(100, shooterData.aimAdjustY));
-
-                targetX += shooterData.aimAdjustX;
-                targetY += shooterData.aimAdjustY;
-
-                console.log(`🎯 Adaptive aim: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)}) | Hits: ${shooterData.hits}/${shooterData.hits + shooterData.misses}`);
-
-                // BALLISTIC TRAJECTORY with gravity compensation
+                // ACCURATE BALLISTIC TRAJECTORY with built-in jitter
+                // No adaptive learning needed - physics-based targeting is accurate
                 const gravity = this.engine.gravity.y;
                 const angle = this.calculateBallisticAngle(centerX, centerY, targetX, targetY, projSpeed, gravity);
 
@@ -2231,21 +2239,12 @@
                         else if (other.label === 'terrain' || other.label === 'ground') {
                             console.log(`   ✗ MISS! Hit ${other.label} at (${Math.floor(projectile.position.x)}, ${Math.floor(projectile.position.y)})`);
 
-                            // LEARNING: Calculate error and adjust aim
-                            if (shooterData && projectile.targetX !== undefined) {
-                                const errorX = projectile.targetX - projectile.position.x;
-                                const errorY = projectile.targetY - projectile.position.y;
-
-                                // Apply 70% of error as correction for FAST, VISIBLE adaptation
-                                const learningRate = 0.7;
-                                shooterData.aimAdjustX += errorX * learningRate;
-                                shooterData.aimAdjustY += errorY * learningRate;
+                            // Track miss for stats (no adaptive learning - using accurate ballistics now)
+                            if (shooterData) {
                                 shooterData.misses++;
-
-                                console.log(`   📊 Miss error from ENEMY: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
-                                console.log(`   🔧 Aim adjusted by: (${(errorX * learningRate).toFixed(1)}, ${(errorY * learningRate).toFixed(1)})`);
-                                console.log(`   📈 New aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
-                                console.log(`   🎯 Adaptive Learning ACTIVE - Next shot will be ${Math.abs(errorX * learningRate).toFixed(0)}px closer!`);
+                                const errorX = projectile.targetX ? projectile.targetX - projectile.position.x : 0;
+                                const errorY = projectile.targetY ? projectile.targetY - projectile.position.y : 0;
+                                console.log(`   📊 Miss distance from target: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
                             }
 
                             if (projectile.type === 'EXPLOSIVE') {
@@ -2417,6 +2416,33 @@
                 });
             }
 
+            removeOffScreenProjectiles() {
+                // Remove projectiles that have left the screen bounds
+                const margin = 50; // Extra margin to allow projectiles slightly off-screen
+                const minX = -margin;
+                const maxX = this.width + margin;
+                const minY = -margin;
+                const maxY = this.height + margin;
+
+                const toRemove = [];
+
+                this.projectiles.forEach(projectile => {
+                    const pos = projectile.position;
+
+                    // Check if projectile is off-screen
+                    if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
+                        console.log(`   🗑️ OFF-SCREEN projectile at (${Math.floor(pos.x)}, ${Math.floor(pos.y)}) - removing`);
+                        toRemove.push(projectile);
+                    }
+                });
+
+                // Remove off-screen projectiles
+                toRemove.forEach(projectile => {
+                    Matter.World.remove(this.world, projectile);
+                    this.projectiles = this.projectiles.filter(p => p !== projectile);
+                });
+            }
+
             createExplosion(x, y, radius) {
                 const Body = Matter.Body;
                 const Query = Matter.Query;
@@ -2515,6 +2541,9 @@
 
                         // CRITICAL: Force mechs back in bounds if they escape (additional safety)
                         this.enforceWorldBounds();
+
+                        // Remove projectiles that go off-screen
+                        this.removeOffScreenProjectiles();
 
                         // Update particles
                         this.updateParticles();

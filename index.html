@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.11.0 - Fixed Projectile Spawn Outside Mech Body</title>
+    <title>Mech Autobattler v1.12.0 - Adaptive Ballistic Targeting with Learning AI</title>
     <style>
         * {
             margin: 0;
@@ -1766,6 +1766,12 @@
                 this.projectiles = [];
                 this.particles = [];
 
+                // ADAPTIVE TARGETING SYSTEM - learns from misses
+                this.targetingData = {
+                    player: { aimAdjustX: 0, aimAdjustY: 0, hits: 0, misses: 0 },
+                    enemy: { aimAdjustX: 0, aimAdjustY: 0, hits: 0, misses: 0 }
+                };
+
                 // Camera shake
                 this.cameraShake = { x: 0, y: 0, intensity: 0 };
 
@@ -1949,6 +1955,29 @@
                 };
             }
 
+            // BALLISTIC TRAJECTORY SOLVER - accounts for gravity
+            calculateBallisticAngle(startX, startY, targetX, targetY, speed, gravity) {
+                const dx = targetX - startX;
+                const dy = targetY - startY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Time to reach target horizontally
+                const timeToTarget = distance / speed;
+
+                // Calculate gravity drop: drop = 0.5 * gravity * time^2
+                const gravityDrop = 0.5 * gravity * timeToTarget * timeToTarget;
+
+                // Aim ABOVE target to compensate for drop
+                const compensatedTargetY = targetY - gravityDrop;
+
+                // Calculate angle to compensated target
+                const angle = Math.atan2(compensatedTargetY - startY, dx);
+
+                console.log(`   📐 Ballistic: dist=${distance.toFixed(1)}, time=${timeToTarget.toFixed(2)}s, drop=${gravityDrop.toFixed(1)}px, aiming ${gravityDrop.toFixed(1)}px above`);
+
+                return angle;
+            }
+
             fireProjectile(fromMech, toMech, weaponType, damage) {
                 const Bodies = Matter.Bodies;
                 const Body = Matter.Body;
@@ -1973,8 +2002,18 @@
                     targetY += targetVel.y * travelTime * 16;
                 }
 
-                // Calculate firing angle
-                const angle = Math.atan2(targetY - centerY, targetX - centerX);
+                // ADAPTIVE TARGETING: Apply learned corrections
+                const isPlayerShooter = fromMech.isPlayer;
+                const shooterData = isPlayerShooter ? this.targetingData.player : this.targetingData.enemy;
+
+                targetX += shooterData.aimAdjustX;
+                targetY += shooterData.aimAdjustY;
+
+                console.log(`🎯 Adaptive aim: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)}) | Hits: ${shooterData.hits}/${shooterData.hits + shooterData.misses}`);
+
+                // BALLISTIC TRAJECTORY with gravity compensation
+                const gravity = this.engine.gravity.y;
+                const angle = this.calculateBallisticAngle(centerX, centerY, targetX, targetY, projSpeed, gravity);
 
                 // CRITICAL FIX: Spawn projectile OUTSIDE mech body (60px offset)
                 const spawnOffset = 60;
@@ -2053,6 +2092,10 @@
                 console.log(`   Velocity: (${projectile.velocity.x.toFixed(2)}, ${projectile.velocity.y.toFixed(2)})`);
                 console.log(`   Color: ${projectile.render.fillStyle}`);
 
+                // Store original target for adaptive learning
+                projectile.targetX = toMech.torso.position.x;
+                projectile.targetY = toMech.torso.position.y;
+
                 Matter.World.add(this.world, projectile);
                 this.projectiles.push(projectile);
 
@@ -2105,11 +2148,20 @@
 
                         console.log(`💥 COLLISION! Projectile hit: ${other.label || 'unknown'} at (${Math.floor(other.position.x)}, ${Math.floor(other.position.y)})`);
 
+                        // ADAPTIVE LEARNING: Determine shooter for targeting updates
+                        const shooterData = projectile.shooter?.isPlayer ? this.targetingData.player : this.targetingData.enemy;
+
                         // Hit player mech
                         if (this.playerMech && other.label && other.label.includes('player')) {
                             console.log(`   ✓ PLAYER HIT! Damage: ${projectile.damage}, Has battleSystem: ${!!projectile.battleSystem}`);
                             console.log(`   Current player HP BEFORE: ${this.playerMech.currentHP}/${this.playerMech.maxHP}`);
                             debugLog(`💥 Player hit by projectile: ${projectile.damage} damage`);
+
+                            // LEARNING: Record successful hit
+                            if (shooterData) {
+                                shooterData.hits++;
+                                console.log(`   🎯 Enemy targeting improved! Hit rate: ${shooterData.hits}/${shooterData.hits + shooterData.misses}`);
+                            }
 
                             // BIG VISUAL FLASH for mobile visibility!
                             this.addCameraShake(15);
@@ -2140,6 +2192,13 @@
                             console.log(`   ✓ ENEMY HIT! Damage: ${projectile.damage}, Has battleSystem: ${!!projectile.battleSystem}`);
                             console.log(`   Current enemy HP BEFORE: ${this.enemyMech.currentHP}/${this.enemyMech.maxHP}`);
                             debugLog(`💥 Enemy hit by projectile: ${projectile.damage} damage`);
+
+                            // LEARNING: Record successful hit
+                            if (shooterData) {
+                                shooterData.hits++;
+                                console.log(`   🎯 Player targeting improved! Hit rate: ${shooterData.hits}/${shooterData.hits + shooterData.misses}`);
+                            }
+
                             this.applyPhysicalImpact(this.enemyMech, projectile.damage, projectile.type);
 
                             if (projectile.battleSystem) {
@@ -2160,9 +2219,26 @@
                             Matter.World.remove(this.world, projectile);
                             this.projectiles = this.projectiles.filter(p => p !== projectile);
                         }
-                        // Hit terrain
-                        else if (other.label === 'terrain') {
-                            console.log(`   Hit terrain/ground`);
+                        // Hit terrain/ground - MISS
+                        else if (other.label === 'terrain' || other.label === 'ground') {
+                            console.log(`   ✗ MISS! Hit ${other.label} at (${Math.floor(projectile.position.x)}, ${Math.floor(projectile.position.y)})`);
+
+                            // LEARNING: Calculate error and adjust aim
+                            if (shooterData && projectile.targetX !== undefined) {
+                                const errorX = projectile.targetX - projectile.position.x;
+                                const errorY = projectile.targetY - projectile.position.y;
+
+                                // Apply 30% of error as correction (gradual learning)
+                                const learningRate = 0.3;
+                                shooterData.aimAdjustX += errorX * learningRate;
+                                shooterData.aimAdjustY += errorY * learningRate;
+                                shooterData.misses++;
+
+                                console.log(`   📊 Miss error: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
+                                console.log(`   🔧 Aim adjusted by: (${(errorX * learningRate).toFixed(1)}, ${(errorY * learningRate).toFixed(1)})`);
+                                console.log(`   📈 New aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
+                            }
+
                             if (projectile.type === 'EXPLOSIVE') {
                                 this.createExplosion(other.position.x, other.position.y, 80);
                                 Matter.World.remove(this.world, other);

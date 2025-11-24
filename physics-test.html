@@ -258,17 +258,60 @@
         // Visual effects
         const muzzleFlashes = []; // {x, y, life}
 
-        // Fire projectile (FIXED: spawn OUTSIDE mech body!)
+        // ADAPTIVE TARGETING SYSTEM - learns from misses
+        const targetingData = {
+            player: { aimAdjustX: 0, aimAdjustY: 0, lastShotX: 0, lastShotY: 0, hits: 0, misses: 0 },
+            enemy: { aimAdjustX: 0, aimAdjustY: 0, lastShotX: 0, lastShotY: 0, hits: 0, misses: 0 }
+        };
+
+        // BALLISTIC TRAJECTORY SOLVER - accounts for gravity
+        function calculateBallisticTrajectory(startX, startY, targetX, targetY, speed, gravity) {
+            const dx = targetX - startX;
+            const dy = targetY - startY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Time to reach target horizontally
+            const timeToTarget = distance / speed;
+
+            // Calculate gravity drop over that time
+            // drop = 0.5 * gravity * time^2
+            const gravityDrop = 0.5 * gravity * timeToTarget * timeToTarget;
+
+            // Aim ABOVE target to compensate for drop
+            const compensatedTargetY = targetY - gravityDrop;
+
+            // Calculate angle to compensated target
+            const angle = Math.atan2(compensatedTargetY - startY, dx);
+
+            console.log(`   📐 Ballistic calc: distance=${distance.toFixed(1)}, time=${timeToTarget.toFixed(2)}s, drop=${gravityDrop.toFixed(1)}px`);
+            console.log(`   📐 Aiming ${gravityDrop.toFixed(1)}px ABOVE target to compensate for gravity`);
+
+            return angle;
+        }
+
+        // Fire projectile with ADAPTIVE BALLISTIC TARGETING
         function fireProjectile(from, to) {
             const centerX = from.torso.position.x;
             const centerY = from.torso.position.y;
-            const targetX = to.torso.position.x;
-            const targetY = to.torso.position.y;
+            let targetX = to.torso.position.x;
+            let targetY = to.torso.position.y;
 
-            const angle = Math.atan2(targetY - centerY, targetX - centerX);
-            const speed = 8; // Same as fixed version
+            const shooterData = from.isPlayer ? targetingData.player : targetingData.enemy;
 
-            // CRITICAL FIX: Spawn projectile 60px AWAY from mech center (outside body!)
+            // ADAPTIVE CORRECTION: Apply learned adjustments from previous misses
+            targetX += shooterData.aimAdjustX;
+            targetY += shooterData.aimAdjustY;
+
+            console.log(`🎯 Adaptive aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
+            console.log(`   Hit rate: ${shooterData.hits}/${shooterData.hits + shooterData.misses}`);
+
+            const speed = 8;
+            const gravity = 1.2;
+
+            // BALLISTIC TRAJECTORY with gravity compensation
+            const angle = calculateBallisticTrajectory(centerX, centerY, targetX, targetY, speed, gravity);
+
+            // Spawn projectile 60px AWAY from mech center (outside body!)
             const spawnOffset = 60;
             const startX = centerX + Math.cos(angle) * spawnOffset;
             const startY = centerY + Math.sin(angle) * spawnOffset;
@@ -292,16 +335,22 @@
 
             projectile.damage = 10;
             projectile.fromPlayer = from.isPlayer;
-            projectile.shooter = from; // Store shooter reference to prevent self-collision
+            projectile.shooter = from;
+            projectile.targetX = to.torso.position.x; // Store intended target for miss tracking
+            projectile.targetY = to.torso.position.y;
 
             World.add(world, projectile);
             projectiles.push(projectile);
 
+            // Store shot data for adaptive learning
+            shooterData.lastShotX = targetX;
+            shooterData.lastShotY = targetY;
+
             // MUZZLE FLASH for visibility!
             muzzleFlashes.push({x: startX, y: startY, life: 10});
 
-            console.log(`🔫 Shot spawned at (${Math.floor(startX)}, ${Math.floor(startY)}) moving toward (${Math.floor(targetX)}, ${Math.floor(targetY)})`);
-            console.log(`   Velocity: (${Math.cos(angle) * speed}, ${Math.sin(angle) * speed})`);
+            console.log(`🔫 Shot spawned at (${Math.floor(startX)}, ${Math.floor(startY)}) targeting (${Math.floor(targetX)}, ${Math.floor(targetY)})`);
+            console.log(`   Velocity: (${(Math.cos(angle) * speed).toFixed(2)}, ${(Math.sin(angle) * speed).toFixed(2)})`);
 
             if (from.isPlayer) {
                 testState.playerShots++;
@@ -341,12 +390,19 @@
                 console.log(`💥 COLLISION! ${projectile.label} hit ${other.label} at (${Math.floor(other.position.x)}, ${Math.floor(other.position.y)})`);
                 testState.collisions++;
 
+                // ADAPTIVE LEARNING: Track hit/miss outcomes
+                const shooterData = projectile.fromPlayer ? targetingData.enemy : targetingData.player;
+
                 // Check if hit player
                 if (other.label && other.label.includes('player')) {
                     const damage = projectile.damage;
                     testState.playerHP = Math.max(0, testState.playerHP - damage);
                     testState.damageApplied += damage;
                     console.log(`   ✓ PLAYER HIT! Damage: ${damage}, HP: ${testState.playerHP}`);
+
+                    // LEARNING: Record successful hit
+                    shooterData.hits++;
+                    console.log(`   🎯 Enemy targeting improved! Hits: ${shooterData.hits}`);
 
                     World.remove(world, projectile);
                     projectiles.splice(projectiles.indexOf(projectile), 1);
@@ -357,6 +413,31 @@
                     testState.enemyHP = Math.max(0, testState.enemyHP - damage);
                     testState.damageApplied += damage;
                     console.log(`   ✓ ENEMY HIT! Damage: ${damage}, HP: ${testState.enemyHP}`);
+
+                    // LEARNING: Record successful hit
+                    shooterData.hits++;
+                    console.log(`   🎯 Player targeting improved! Hits: ${shooterData.hits}`);
+
+                    World.remove(world, projectile);
+                    projectiles.splice(projectiles.indexOf(projectile), 1);
+                }
+                // MISS: Hit ground or terrain
+                else if (other.label === 'ground') {
+                    console.log(`   ✗ MISS! Hit ground at (${Math.floor(projectile.position.x)}, ${Math.floor(projectile.position.y)})`);
+
+                    // LEARNING: Calculate error and adjust aim
+                    const errorX = projectile.targetX - projectile.position.x;
+                    const errorY = projectile.targetY - projectile.position.y;
+
+                    // Apply 30% of error as correction (gradual learning)
+                    const learningRate = 0.3;
+                    shooterData.aimAdjustX += errorX * learningRate;
+                    shooterData.aimAdjustY += errorY * learningRate;
+                    shooterData.misses++;
+
+                    console.log(`   📊 Miss error: (${errorX.toFixed(1)}, ${errorY.toFixed(1)})`);
+                    console.log(`   🔧 Adjusted aim by: (${(errorX * learningRate).toFixed(1)}, ${(errorY * learningRate).toFixed(1)})`);
+                    console.log(`   📈 New aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
 
                     World.remove(world, projectile);
                     projectiles.splice(projectiles.indexOf(projectile), 1);

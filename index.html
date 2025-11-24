@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.4.0 - Default Weapons & Standing Mechs</title>
+    <title>Mech Autobattler v1.5.0 - On-Screen Combat Diagnostics</title>
     <style>
         * {
             margin: 0;
@@ -1316,6 +1316,29 @@
                 `Particles: ${physicsEngine.particles.length}`
             ];
 
+            // WEAPON FIRING DEBUG INFO
+            if (currentBattle) {
+                const now = Date.now();
+                info.push(`--- WEAPON FIRING DEBUG ---`);
+                info.push(`🎯 SHOTS FIRED: P=${currentBattle.playerShotCount} E=${currentBattle.enemyShotCount}`);
+                info.push(`Combat Active: ${currentBattle.isActive}`);
+                info.push(`Player Fire Rate: ${currentBattle.playerFireRate}ms`);
+                info.push(`Enemy Fire Rate: ${currentBattle.enemyFireRate}ms`);
+                info.push(`Time Since Player Shot: ${now - currentBattle.lastPlayerShot}ms`);
+                info.push(`Time Since Enemy Shot: ${now - currentBattle.lastEnemyShot}ms`);
+                info.push(`Player Ready: ${(now - currentBattle.lastPlayerShot) > currentBattle.playerFireRate ? 'YES ⚡' : 'NO'}`);
+                info.push(`Enemy Ready: ${(now - currentBattle.lastEnemyShot) > currentBattle.enemyFireRate ? 'YES ⚡' : 'NO'}`);
+
+                // Check weapon equipped
+                if (currentBattle.playerMechData && currentBattle.playerMechData.loadout) {
+                    const weapons = Object.values(currentBattle.playerMechData.loadout).filter(c => c && c.type === 'WEAPON');
+                    info.push(`Weapons Equipped: ${weapons.length}`);
+                    if (weapons.length > 0) {
+                        info.push(`Weapon: ${weapons[0].name} (${weapons[0].damageType})`);
+                    }
+                }
+            }
+
             if (physicsEngine.playerMech) {
                 info.push(`Player Pos: (${Math.floor(physicsEngine.playerMech.torso.position.x)}, ${Math.floor(physicsEngine.playerMech.torso.position.y)})`);
                 info.push(`Player HP: ${physicsEngine.playerMech.currentHP || 'undefined'}/${physicsEngine.playerMech.maxHP || 'undefined'}`);
@@ -2589,6 +2612,8 @@
                 this.enemyFireRate = 0;
                 this.lastPlayerShot = 0;
                 this.lastEnemyShot = 0;
+                this.playerShotCount = 0; // DEBUG: Count shots fired
+                this.enemyShotCount = 0; // DEBUG: Count shots fired
 
                 // DoT timers
                 this.dotInterval = null;
@@ -2914,6 +2939,13 @@
                 if (!fromMech || !toMech) {
                     debugLog('WEAPON', 'Fire weapon failed - missing mech', { fromMech: !!fromMech, toMech: !!toMech });
                     return;
+                }
+
+                // INCREMENT SHOT COUNTER
+                if (isPlayer) {
+                    this.playerShotCount++;
+                } else {
+                    this.enemyShotCount++;
                 }
 
                 const weaponType = this.getDamageType(fromMech);
@@ -4130,6 +4162,7 @@
 
             // Create physics-driven battle system
             const battle = new PhysicsBattleSystem(game.currentMech, game.currentMonster, physicsEngine);
+            currentBattle = battle; // Store for debugging
 
             // Initialize battle (starts physics and auto-combat)
             await battle.initializeBattle();

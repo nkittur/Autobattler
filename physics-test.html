@@ -77,11 +77,28 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script>
+        // IMMEDIATE TEST - If you see this text change, JavaScript is working!
+        document.getElementById('status-messages').innerHTML = '<div style="color:#0ff;">✓ JavaScript is running!</div>';
+
+        // Test if Matter.js loaded
+        if (typeof Matter === 'undefined') {
+            document.getElementById('status-messages').innerHTML += '<div style="color:#f00;">✗ Matter.js FAILED TO LOAD from CDN!</div>';
+            throw new Error('Matter.js not loaded');
+        } else {
+            document.getElementById('status-messages').innerHTML += '<div style="color:#0ff;">✓ Matter.js loaded successfully!</div>';
+        }
+
         console.log('🧪 Physics test starting - MATCHES REAL GAME...');
 
         const canvas = document.getElementById('test-canvas');
         const ctx = canvas.getContext('2d');
         const statusDiv = document.getElementById('info');
+
+        // IMMEDIATE CANVAS TEST - Draw something to prove canvas works!
+        ctx.fillStyle = '#f00';
+        ctx.font = 'bold 30px monospace';
+        ctx.fillText('CANVAS TEST - JS WORKING!', 100, 200);
+        document.getElementById('status-messages').innerHTML += '<div style="color:#0ff;">✓ Canvas test drawn!</div>';
 
         // Visible status logging for iPhone debugging
         function statusLog(message, type = 'info') {

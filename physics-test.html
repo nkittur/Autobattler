@@ -367,6 +367,9 @@
             // Use shared PhysicsEngine.fireProjectile
             const projectile = PhysicsEngine.fireProjectile(Matter, world, from, to, 10);
 
+            // CRITICAL: Add projectile to physics world so it moves!
+            World.add(world, projectile);
+
             // Add to projectiles array
             projectiles.push(projectile);
 

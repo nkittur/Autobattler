@@ -59,6 +59,11 @@
     </style>
 </head>
 <body>
+    <!-- VERSION BADGE - NO JAVASCRIPT NEEDED -->
+    <div style="position: absolute; top: 10px; left: 10px; background: #ff0; color: #000; padding: 10px; font-weight: bold; font-size: 14px; border: 2px solid #000; z-index: 9999;">
+        📱 v1.19.0 - STATUS LOG ENABLED
+    </div>
+
     <canvas id="test-canvas" width="800" height="450"></canvas>
     <div id="status">
         <h1>⚔️ AUTO BATTLE TEST</h1>
@@ -601,10 +606,42 @@
         }
 
         // Render (matches real game style)
+        let frameCount = 0;
         function render() {
-            // Clear
+            frameCount++;
+
+            // VISIBLE DEBUG INFO ON CANVAS
             ctx.fillStyle = colors.background;
             ctx.fillRect(0, 0, 800, 450);
+
+            // DEBUG: Show frame count and mech info
+            ctx.fillStyle = '#ff0';
+            ctx.font = 'bold 16px monospace';
+            ctx.fillText(`FRAME: ${frameCount}`, 10, 30);
+            ctx.fillText(`BODIES IN WORLD: ${Composite.allBodies(world).length}`, 10, 50);
+
+            if (playerMech && playerMech.torso) {
+                const px = Math.floor(playerMech.torso.position.x);
+                const py = Math.floor(playerMech.torso.position.y);
+                ctx.fillStyle = colors.player;
+                ctx.fillText(`PLAYER: (${px}, ${py})`, 10, 70);
+            } else {
+                ctx.fillStyle = '#f00';
+                ctx.fillText(`PLAYER: NULL/UNDEFINED`, 10, 70);
+            }
+
+            if (enemyMech && enemyMech.torso) {
+                const ex = Math.floor(enemyMech.torso.position.x);
+                const ey = Math.floor(enemyMech.torso.position.y);
+                ctx.fillStyle = colors.enemy;
+                ctx.fillText(`ENEMY: (${ex}, ${ey})`, 10, 90);
+            } else {
+                ctx.fillStyle = '#f00';
+                ctx.fillText(`ENEMY: NULL/UNDEFINED`, 10, 90);
+            }
+
+            // Continue with normal rendering
+            ctx.fillStyle = colors.background;
 
             // Sky gradient
             const gradient = ctx.createLinearGradient(0, 0, 0, 450);

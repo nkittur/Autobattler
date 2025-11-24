@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.12.0 - Adaptive Ballistic Targeting with Learning AI</title>
+    <title>Mech Autobattler v1.13.0 - Increased Projectile Force & Intelligent Movement AI</title>
     <style>
         * {
             margin: 0;
@@ -1991,7 +1991,7 @@
                 let targetY = toMech.torso.position.y;
 
                 // Estimate projectile speed based on weapon type
-                const projSpeed = weaponType === 'KINETIC' ? 8 : weaponType === 'EXPLOSIVE' ? 15 : 0;
+                const projSpeed = weaponType === 'KINETIC' ? 15 : weaponType === 'EXPLOSIVE' ? 15 : 0; // INCREASED KINETIC from 8 to 15 for more force
 
                 if (projSpeed > 0) {
                     const distance = Math.sqrt((targetX - centerX) ** 2 + (targetY - centerY) ** 2);
@@ -2047,14 +2047,14 @@
                     projectile.trail = [];
 
                 } else if (weaponType === 'KINETIC') {
-                    // SLOWER bullet for reliable collision detection
-                    const speed = 8; // REDUCED from 25 to 8 - much slower for collision detection!
+                    // INCREASED SPEED for more force while maintaining collision detection
+                    const speed = 15; // INCREASED from 8 to 15 - more force to reach target!
 
                     projectile = Bodies.circle(startX, startY, 10, {
-                        density: 0.01, // INCREASED density - less affected by gravity
-                        restitution: 0.1, // REDUCED bounce
-                        friction: 0.05,
-                        frictionAir: 0.001, // Very low air resistance
+                        density: 0.02, // INCREASED density for more momentum
+                        restitution: 0.05, // MINIMAL bounce
+                        friction: 0.02,
+                        frictionAir: 0.0005, // Very low air resistance
                         label: 'bullet',
                         collisionFilter: {
                             category: 0x0002, // Projectile category

@@ -305,7 +305,7 @@
             console.log(`🎯 Adaptive aim correction: (${shooterData.aimAdjustX.toFixed(1)}, ${shooterData.aimAdjustY.toFixed(1)})`);
             console.log(`   Hit rate: ${shooterData.hits}/${shooterData.hits + shooterData.misses}`);
 
-            const speed = 8;
+            const speed = 15; // INCREASED from 8 to 15 for more force
             const gravity = 1.2;
 
             // BALLISTIC TRAJECTORY with gravity compensation
@@ -444,6 +444,129 @@
                 }
             });
         });
+
+        // INTELLIGENT MOVEMENT AI SYSTEM
+        const movementAI = {
+            lastPlayerMove: 0,
+            lastEnemyMove: 0,
+            moveInterval: 3000, // Reconsider movement every 3 seconds
+
+            // Calculate tactical score for a position
+            evaluatePosition(mech, enemyMech, x, y) {
+                let score = 100;
+
+                // Boundary penalties (CRITICAL - avoid edges!)
+                const leftBound = 120;
+                const rightBound = 680;
+                if (x < leftBound) score -= (leftBound - x) * 5; // Heavy penalty near left
+                if (x > rightBound) score -= (x - rightBound) * 5; // Heavy penalty near right
+                if (x < 100 || x > 700) score -= 1000; // MASSIVE penalty for danger zone
+
+                // Optimal range scoring (prefer ~350-450px distance)
+                const distance = Math.abs(x - enemyMech.torso.position.x);
+                const optimalDistance = 400;
+                const distanceError = Math.abs(distance - optimalDistance);
+                score -= distanceError * 0.3;
+
+                // Height advantage (higher is better, but not too high)
+                const heightAdvantage = enemyMech.torso.position.y - y;
+                score += heightAdvantage * 0.5;
+
+                // Center preference (stay away from edges)
+                const distanceFromCenter = Math.abs(x - 400);
+                score -= distanceFromCenter * 0.1;
+
+                return score;
+            },
+
+            // Decide where to move
+            planMovement(mech, enemyMech) {
+                const currentX = mech.torso.position.x;
+                const currentY = mech.torso.position.y;
+                const currentScore = this.evaluatePosition(mech, enemyMech, currentX, currentY);
+
+                // Test potential movements
+                const movements = [
+                    { dx: -80, dy: 0, name: 'LEFT' },
+                    { dx: 80, dy: 0, name: 'RIGHT' },
+                    { dx: -120, dy: 0, name: 'FAR LEFT' },
+                    { dx: 120, dy: 0, name: 'FAR RIGHT' },
+                    { dx: 0, dy: 0, name: 'STAY' }
+                ];
+
+                let bestMove = movements[4]; // Default: stay
+                let bestScore = currentScore;
+
+                movements.forEach(move => {
+                    const newX = currentX + move.dx;
+                    const newY = currentY; // Keep same height
+                    const score = this.evaluatePosition(mech, enemyMech, newX, newY);
+
+                    if (score > bestScore + 20) { // Threshold to avoid jittering
+                        bestScore = score;
+                        bestMove = move;
+                    }
+                });
+
+                console.log(`🤖 ${mech.isPlayer ? 'Player' : 'Enemy'} AI: Current score=${currentScore.toFixed(1)}, Best move=${bestMove.name} (score=${bestScore.toFixed(1)})`);
+
+                return bestMove;
+            },
+
+            // Execute discrete jump movement
+            executeMove(mech, move) {
+                if (move.dx === 0 && move.dy === 0) return; // No movement
+
+                // DISCRETE JUMP - apply impulse force
+                const forceMagnitude = 0.12; // Strong impulse
+                const forceX = Math.sign(move.dx) * forceMagnitude;
+
+                Body.applyForce(mech.torso, mech.torso.position, {
+                    x: forceX,
+                    y: -0.02 // Slight upward for hop
+                });
+
+                console.log(`   💨 Executing ${move.name}: force=(${forceX.toFixed(3)}, -0.02)`);
+            },
+
+            // Enforce strict boundaries
+            enforceBoundaries(mech) {
+                const pos = mech.torso.position;
+                const minX = 100;
+                const maxX = 700;
+
+                if (pos.x < minX || pos.x > maxX) {
+                    // HARD RESET to safe position
+                    const safeX = pos.x < minX ? 150 : 650;
+                    Body.setPosition(mech.torso, { x: safeX, y: pos.y });
+                    Body.setVelocity(mech.torso, { x: 0, y: 0 });
+                    console.log(`⚠️ BOUNDARY VIOLATION! Reset ${mech.isPlayer ? 'player' : 'enemy'} to x=${safeX}`);
+                }
+            },
+
+            // Main update function
+            update() {
+                const now = Date.now();
+
+                // Player movement AI
+                if (now - this.lastPlayerMove > this.moveInterval && testState.playerHP > 0) {
+                    const move = this.planMovement(playerMech, enemyMech);
+                    this.executeMove(playerMech, move);
+                    this.lastPlayerMove = now;
+                }
+
+                // Enemy movement AI
+                if (now - this.lastEnemyMove > this.moveInterval && testState.enemyHP > 0) {
+                    const move = this.planMovement(enemyMech, playerMech);
+                    this.executeMove(enemyMech, move);
+                    this.lastEnemyMove = now;
+                }
+
+                // Always enforce boundaries
+                this.enforceBoundaries(playerMech);
+                this.enforceBoundaries(enemyMech);
+            }
+        };
 
         // Auto-fire
         let lastPlayerShot = 0;
@@ -627,6 +750,7 @@
         // Main loop
         function mainLoop() {
             autoFire();
+            movementAI.update(); // Intelligent movement with boundary enforcement
             Engine.update(engine, 1000 / 60);
             testState.projectileCount = projectiles.length;
             render();

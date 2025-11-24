@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Physics Combat Test - Auto-Running (Matches Real Game)</title>
     <style>
         * {
@@ -15,11 +15,25 @@
             font-family: monospace;
             color: #00ff88;
             overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         #test-canvas {
             display: block;
-            margin: 0 auto;
             border: 2px solid #00ff88;
+            max-width: 100vw;
+            max-height: 100vh;
+            width: 800px;
+            height: 450px;
+        }
+        @media (max-width: 800px) {
+            #test-canvas {
+                width: 100vw;
+                height: 56.25vw; /* 16:9 aspect ratio */
+            }
         }
         #status {
             position: absolute;
@@ -244,15 +258,20 @@
         // Visual effects
         const muzzleFlashes = []; // {x, y, life}
 
-        // Fire projectile (EXACT copy from real game)
+        // Fire projectile (FIXED: spawn OUTSIDE mech body!)
         function fireProjectile(from, to) {
-            const startX = from.torso.position.x;
-            const startY = from.torso.position.y;
+            const centerX = from.torso.position.x;
+            const centerY = from.torso.position.y;
             const targetX = to.torso.position.x;
             const targetY = to.torso.position.y;
 
-            const angle = Math.atan2(targetY - startY, targetX - startX);
+            const angle = Math.atan2(targetY - centerY, targetX - centerX);
             const speed = 8; // Same as fixed version
+
+            // CRITICAL FIX: Spawn projectile 60px AWAY from mech center (outside body!)
+            const spawnOffset = 60;
+            const startX = centerX + Math.cos(angle) * spawnOffset;
+            const startY = centerY + Math.sin(angle) * spawnOffset;
 
             const projectile = Bodies.circle(startX, startY, 10, {
                 density: 0.01,
@@ -273,6 +292,7 @@
 
             projectile.damage = 10;
             projectile.fromPlayer = from.isPlayer;
+            projectile.shooter = from; // Store shooter reference to prevent self-collision
 
             World.add(world, projectile);
             projectiles.push(projectile);
@@ -280,16 +300,19 @@
             // MUZZLE FLASH for visibility!
             muzzleFlashes.push({x: startX, y: startY, life: 10});
 
+            console.log(`🔫 Shot spawned at (${Math.floor(startX)}, ${Math.floor(startY)}) moving toward (${Math.floor(targetX)}, ${Math.floor(targetY)})`);
+            console.log(`   Velocity: (${Math.cos(angle) * speed}, ${Math.sin(angle) * speed})`);
+
             if (from.isPlayer) {
                 testState.playerShots++;
-                console.log(`🔫 Player shot #${testState.playerShots} at (${Math.floor(startX)}, ${Math.floor(startY)})`);
+                console.log(`   Player shot #${testState.playerShots}`);
             } else {
                 testState.enemyShots++;
-                console.log(`🔫 Enemy shot #${testState.enemyShots} at (${Math.floor(startX)}, ${Math.floor(startY)})`);
+                console.log(`   Enemy shot #${testState.enemyShots}`);
             }
         }
 
-        // Collision detection (EXACT copy from real game)
+        // Collision detection (FIXED: prevent self-collision)
         Events.on(engine, 'collisionStart', (event) => {
             event.pairs.forEach(pair => {
                 const { bodyA, bodyB } = pair;
@@ -298,6 +321,22 @@
                 if (!projectile) return;
 
                 const other = bodyA === projectile ? bodyB : bodyA;
+
+                // CRITICAL: Ignore collision with shooter's own body parts
+                if (projectile.shooter) {
+                    const shooterParts = [
+                        projectile.shooter.torso,
+                        projectile.shooter.head,
+                        projectile.shooter.leftArm,
+                        projectile.shooter.rightArm,
+                        projectile.shooter.leftLeg,
+                        projectile.shooter.rightLeg
+                    ];
+                    if (shooterParts.includes(other)) {
+                        console.log(`   (Ignoring self-collision with shooter's ${other.label})`);
+                        return; // Skip this collision
+                    }
+                }
 
                 console.log(`💥 COLLISION! ${projectile.label} hit ${other.label} at (${Math.floor(other.position.x)}, ${Math.floor(other.position.y)})`);
                 testState.collisions++;

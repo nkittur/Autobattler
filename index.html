@@ -1779,6 +1779,7 @@
                 const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
                     density: 0.002,
                     friction: 0.8,
+                    frictionAir: 0.05, // Air resistance for stability
                     restitution: 0.1,
                     label: isPlayer ? 'player_torso' : 'enemy_torso'
                 });
@@ -1786,30 +1787,36 @@
                 const head = Bodies.circle(x, y - size, size * 0.5, {
                     density: 0.001,
                     friction: 0.5,
+                    frictionAir: 0.03, // Air resistance for stability
                     label: isPlayer ? 'player_head' : 'enemy_head'
                 });
 
                 const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
                     density: 0.001,
                     friction: 0.5,
+                    frictionAir: 0.03, // Air resistance for stability
                     label: isPlayer ? 'player_arm' : 'enemy_arm'
                 });
 
                 const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
                     density: 0.001,
                     friction: 0.5,
+                    frictionAir: 0.03, // Air resistance for stability
                     label: isPlayer ? 'player_arm' : 'enemy_arm'
                 });
 
                 const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
                     density: 0.002,
                     friction: 0.9,
+                    frictionAir: 0.04, // Air resistance for stability
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
                 const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
                     density: 0.002,
                     friction: 0.9,
+                    frictionAir: 0.04, // Air resistance for stability
+
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 

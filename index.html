@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.3.0 - Enhanced Debugging & Terrain Removal</title>
+    <title>Mech Autobattler v1.4.0 - Default Weapons & Standing Mechs</title>
     <style>
         * {
             margin: 0;
@@ -1158,6 +1158,7 @@
             // KINETIC WEAPONS
             { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: -10, tier: 4, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'], rarity: 'RARE' },
             { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [], rarity: 'COMMON' },
+            { name: 'Light Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 12, armor: 0, tier: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [], rarity: 'COMMON' },
             { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: -5, tier: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'], rarity: 'UNCOMMON' },
 
             // EXPLOSIVE WEAPONS
@@ -1230,6 +1231,23 @@
                     this.relics = data.relics || [];
                     this.permanentDamageBonus = data.permanentDamageBonus || 0;
                     this.componentBattleCount = data.componentBattleCount || {};
+
+                    // MIGRATION: Ensure existing mechs have a default weapon
+                    if (this.currentMech && this.currentMech.loadout) {
+                        const hasWeapon = Object.values(this.currentMech.loadout).some(comp =>
+                            comp && comp.type === COMPONENT_TYPES.WEAPON
+                        );
+
+                        if (!hasWeapon && this.currentMech.slots.includes(SLOT_TYPES.RIGHT_SHOULDER)) {
+                            const defaultWeaponTemplate = COMPONENT_TEMPLATES.find(t => t.name === 'Light Machine Gun');
+                            if (defaultWeaponTemplate) {
+                                this.currentMech.loadout[SLOT_TYPES.RIGHT_SHOULDER] = createComponent(defaultWeaponTemplate, 1, 'COMMON');
+                                debugLog('MECH', 'Migration: Added default Light Machine Gun to existing mech');
+                                this.save(); // Save the migrated mech
+                            }
+                        }
+                    }
+
                     return true;
                 }
                 return false;
@@ -1325,6 +1343,13 @@
             template.slots.forEach(slot => {
                 loadout[slot] = null;
             });
+
+            // ALWAYS equip a default Light Machine Gun on RIGHT_SHOULDER for guaranteed weapon
+            const defaultWeaponTemplate = COMPONENT_TEMPLATES.find(t => t.name === 'Light Machine Gun');
+            if (defaultWeaponTemplate && template.slots.includes(SLOT_TYPES.RIGHT_SHOULDER)) {
+                loadout[SLOT_TYPES.RIGHT_SHOULDER] = createComponent(defaultWeaponTemplate, 1, 'COMMON');
+                debugLog('MECH', `Created mech with default Light Machine Gun on RIGHT_SHOULDER`);
+            }
 
             return {
                 name: template.name,
@@ -1760,6 +1785,7 @@
                     friction: 0.8,
                     frictionAir: 0.05, // Air resistance for stability
                     restitution: 0.1,
+                    inertia: Infinity, // Prevent rotation - keeps mech upright!
                     label: isPlayer ? 'player_torso' : 'enemy_torso'
                 });
 

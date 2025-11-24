@@ -220,32 +220,35 @@
                 });
 
                 // MAD CAT LEGS: WIDE STANCE at outer edges of torso
-                const leftLeg = Bodies.rectangle(x - size * 0.9, y + size * 0.9, size * 0.4, size * 0.7, {
-                    density: 0.008,  // Heavy legs for stability
-                    friction: 1.5,
+                // Torso bottom is at y + size*0.5, legs must connect there
+                const leftLeg = Bodies.rectangle(x - size * 0.9, y + size * 0.85, size * 0.4, size * 0.7, {
+                    density: 0.010,  // Heavy legs for stability
+                    friction: 1.8,
                     frictionAir: 0.01,
+                    restitution: 0.0,
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
-                const rightLeg = Bodies.rectangle(x + size * 0.9, y + size * 0.9, size * 0.4, size * 0.7, {
-                    density: 0.008,
-                    friction: 1.5,
+                const rightLeg = Bodies.rectangle(x + size * 0.9, y + size * 0.85, size * 0.4, size * 0.7, {
+                    density: 0.010,
+                    friction: 1.8,
                     frictionAir: 0.01,
+                    restitution: 0.0,
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
                 // SEPARATE FEET for maximum ground contact and stability
-                const leftFoot = Bodies.rectangle(x - size * 0.9, y + size * 1.5, size * 0.6, size * 0.25, {
-                    density: 0.006,
-                    friction: 2.5,  // MAXIMUM friction for stability
+                const leftFoot = Bodies.rectangle(x - size * 0.9, y + size * 1.4, size * 0.7, size * 0.3, {
+                    density: 0.008,
+                    friction: 3.0,  // MAXIMUM friction for stability
                     frictionAir: 0.01,
                     restitution: 0.0,
                     label: isPlayer ? 'player_foot' : 'enemy_foot'
                 });
 
-                const rightFoot = Bodies.rectangle(x + size * 0.9, y + size * 1.5, size * 0.6, size * 0.25, {
-                    density: 0.006,
-                    friction: 2.5,
+                const rightFoot = Bodies.rectangle(x + size * 0.9, y + size * 1.4, size * 0.7, size * 0.3, {
+                    density: 0.008,
+                    friction: 3.0,
                     frictionAir: 0.01,
                     restitution: 0.0,
                     label: isPlayer ? 'player_foot' : 'enemy_foot'
@@ -355,30 +358,38 @@
                 const Bodies = Matter.Bodies;
                 const Body = Matter.Body;
 
-                const startX = fromMech.torso.position.x;
-                const startY = fromMech.torso.position.y;
-
-                // Predictive targeting - aim where target will be
+                // Calculate firing direction first
                 const targetVel = toMech.torso.velocity;
                 let targetX = toMech.torso.position.x;
                 let targetY = toMech.torso.position.y;
 
                 const speed = 20;
-                const distance = Math.sqrt((targetX - startX) ** 2 + (targetY - startY) ** 2);
-                const travelTime = distance / speed; // Approximate time to hit
+                const tempStartX = fromMech.torso.position.x;
+                const tempStartY = fromMech.torso.position.y;
+                const distance = Math.sqrt((targetX - tempStartX) ** 2 + (targetY - tempStartY) ** 2);
+                const travelTime = distance / speed;
 
                 // Predict where target will be
-                const predictedX = targetX + targetVel.x * travelTime * 16; // 16ms per physics tick
+                const predictedX = targetX + targetVel.x * travelTime * 16;
                 const predictedY = targetY + targetVel.y * travelTime * 16;
 
-                const finalDistance = Math.sqrt((predictedX - startX) ** 2 + (predictedY - startY) ** 2);
-                const angle = Math.atan2(predictedY - startY, predictedX - startX);
+                const angle = Math.atan2(predictedY - tempStartY, predictedX - tempStartX);
 
+                // SPAWN PROJECTILE OUTSIDE MECH BODY
+                // Offset by 40 pixels in firing direction (torso is 60 wide)
+                const spawnOffset = 40;
+                const startX = tempStartX + Math.cos(angle) * spawnOffset;
+                const startY = tempStartY + Math.sin(angle) * spawnOffset;
+
+                const finalDistance = Math.sqrt((predictedX - startX) ** 2 + (predictedY - startY) ** 2);
+
+                // Create projectile OUTSIDE mech
                 const projectile = Bodies.circle(startX, startY, 6, {
                     density: 0.001,
                     label: 'projectile',
-                    restitution: 0.1, // Low bounce
-                    frictionAir: 0.01 // Some air resistance
+                    restitution: 0.1,
+                    frictionAir: 0.01,
+                    isSensor: false  // Allow collision
                 });
 
                 Body.setVelocity(projectile, {
@@ -514,7 +525,7 @@
                 // Debug info with V3 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V3.3 MAD CAT', 10, 20);
+                ctx.fillText('V3.4 STABLE', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';

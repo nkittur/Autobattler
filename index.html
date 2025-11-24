@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mech Autobattler v1.20.0 - Toggleable Debug Panel</title>
+    <title>Mech Autobattler v1.21.0 - Shared Physics Engine</title>
     <style>
         * {
             margin: 0;
@@ -670,6 +670,7 @@
 
     <!-- Matter.js Physics Engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="physics-engine.js"></script>
 </head>
 <body>
     <div class="container">
@@ -1884,150 +1885,37 @@
             }
 
             createMech(type, x, y, isPlayer) {
-                statusLog(`Creating ${isPlayer ? 'PLAYER' : 'ENEMY'} mech (${type}) at (${x}, ${y})`, 'info');
-                const Bodies = Matter.Bodies;
-                const Constraint = Matter.Constraint;
-                const Composite = Matter.Composite;
-                const Body = Matter.Body;
+                statusLog(`Creating ${isPlayer ? 'PLAYER' : 'ENEMY'} mech (${type}) at (${x}, ${y}) using SHARED physics-engine.js`, 'info');
 
-                // Size based on mech class
-                let scale = 1;
-                if (type === 'Light') scale = 0.8;
-                if (type === 'Heavy') scale = 1.3;
-
-                const baseSize = 30;
-                const size = baseSize * scale;
-
-                // Create body parts
-                const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
-                    density: 0.002,
-                    friction: 0.8,
-                    frictionAir: 0.05, // Air resistance for stability
-                    restitution: 0.1,
-                    inertia: Infinity, // Prevent rotation - keeps mech upright!
-                    label: isPlayer ? 'player_torso' : 'enemy_torso'
-                });
-
-                const head = Bodies.circle(x, y - size, size * 0.5, {
-                    density: 0.001,
-                    friction: 0.5,
-                    frictionAir: 0.03, // Air resistance for stability
-                    label: isPlayer ? 'player_head' : 'enemy_head'
-                });
-
-                const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
-                    density: 0.001,
-                    friction: 0.5,
-                    frictionAir: 0.03, // Air resistance for stability
-                    label: isPlayer ? 'player_arm' : 'enemy_arm'
-                });
-
-                const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
-                    density: 0.001,
-                    friction: 0.5,
-                    frictionAir: 0.03, // Air resistance for stability
-                    label: isPlayer ? 'player_arm' : 'enemy_arm'
-                });
-
-                const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.002,
-                    friction: 0.9,
-                    frictionAir: 0.04, // Air resistance for stability
-                    label: isPlayer ? 'player_leg' : 'enemy_leg'
-                });
-
-                const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.002,
-                    friction: 0.9,
-                    frictionAir: 0.04, // Air resistance for stability
-
-                    label: isPlayer ? 'player_leg' : 'enemy_leg'
-                });
-
-                // Create composite mech
-                const mech = Composite.create({ label: isPlayer ? 'player_mech' : 'enemy_mech' });
-
-                // Add parts
-                Composite.add(mech, [torso, head, leftArm, rightArm, leftLeg, rightLeg]);
-
-                // Constraints (joints) - can be broken for ragdoll
-                const constraints = [
-                    // Head to torso
-                    Constraint.create({
-                        bodyA: head,
-                        bodyB: torso,
-                        pointA: { x: 0, y: size * 0.3 },
-                        pointB: { x: 0, y: -size * 0.7 },
-                        stiffness: 0.7,
-                        length: 0,
-                        label: 'neck'
-                    }),
-                    // Left arm
-                    Constraint.create({
-                        bodyA: leftArm,
-                        bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: -size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.5,
-                        length: 0,
-                        label: 'left_shoulder'
-                    }),
-                    // Right arm
-                    Constraint.create({
-                        bodyA: rightArm,
-                        bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.5,
-                        length: 0,
-                        label: 'right_shoulder'
-                    }),
-                    // Left leg
-                    Constraint.create({
-                        bodyA: leftLeg,
-                        bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: -size * 0.2, y: size * 0.7 },
-                        stiffness: 0.6,
-                        length: 0,
-                        label: 'left_hip'
-                    }),
-                    // Right leg
-                    Constraint.create({
-                        bodyA: rightLeg,
-                        bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: size * 0.2, y: size * 0.7 },
-                        stiffness: 0.6,
-                        length: 0,
-                        label: 'right_hip'
-                    })
-                ];
-
-                Composite.add(mech, constraints);
+                // Use shared PhysicsEngine module
+                const mechData = window.PhysicsEngine.createMech(Matter, x, y, isPlayer, type);
 
                 // Add to world
+                const Composite = Matter.Composite;
+                const mech = Composite.create({ label: isPlayer ? 'player_mech' : 'enemy_mech' });
+                Composite.add(mech, [...mechData.parts, ...mechData.constraints]);
                 Matter.World.add(this.world, mech);
 
                 statusLog(`${isPlayer ? 'PLAYER' : 'ENEMY'} mech created successfully!`, 'success');
 
+                // Return mech object with same structure as before
                 return {
                     composite: mech,
-                    torso: torso,
-                    head: head,
-                    leftArm: leftArm,
-                    rightArm: rightArm,
-                    leftLeg: leftLeg,
-                    rightLeg: rightLeg,
-                    constraints: constraints,
-                    color: isPlayer ? this.colors.player : this.colors.enemy,
-                    scale: scale,
+                    torso: mechData.torso,
+                    head: mechData.head,
+                    leftArm: mechData.leftArm,
+                    rightArm: mechData.rightArm,
+                    leftLeg: mechData.leftLeg,
+                    rightLeg: mechData.rightLeg,
+                    constraints: mechData.constraints,
+                    color: mechData.color,
+                    scale: mechData.scale,
                     isRagdoll: false,
                     // Movement AI properties
-                    moveDirection: 0, // -1 = left, 0 = still, 1 = right
-                    moveSpeed: 0.004 * scale, // Movement force scaled by mech size
-                    nextMoveChange: Date.now() + 1000, // When to change direction
-                    isPlayer: isPlayer
+                    moveDirection: 0,
+                    moveSpeed: 0.004 * mechData.scale,
+                    nextMoveChange: Date.now() + 1000,
+                    isPlayer: mechData.isPlayer
                 };
             }
 

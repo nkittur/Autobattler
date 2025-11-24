@@ -693,6 +693,7 @@
                 <button id="speed-4x">4x Speed</button>
                 <button id="toggle-effects" class="active">✨ Effects</button>
             </div>
+            <div id="error-display" style="display:none; background:#ff4444; color:white; padding:20px; margin:10px; border-radius:8px; font-weight:bold;"></div>
             <canvas id="physics-canvas" width="800" height="450"></canvas>
 
             <div class="battle-area">
@@ -1294,6 +1295,12 @@
             } catch (error) {
                 console.error('✗ Failed to initialize physics:', error);
                 debugLog('ERROR', 'Physics initialization failed', error);
+                // Show error on page for debugging
+                const errorDiv = document.getElementById('error-display');
+                if (errorDiv) {
+                    errorDiv.style.display = 'block';
+                    errorDiv.textContent = '❌ ERROR: ' + error.message + ' (Check console for details)';
+                }
                 physicsEnabled = false;
             }
         }

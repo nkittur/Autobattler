@@ -236,6 +236,7 @@
 
                 log('Physics engine created');
                 this.createGround();
+                this.createWalls();
                 this.setupCollisionDetection(); // Set up once
                 this.setupRenderLoop();
                 this.setupProjectileCleanup();
@@ -254,6 +255,35 @@
                 });
                 Matter.World.add(this.world, ground);
                 log('Ground created with high friction');
+            }
+
+            createWalls() {
+                const Bodies = Matter.Bodies;
+
+                // Left wall at x=0
+                const leftWall = Bodies.rectangle(0, 225, 20, 450, {
+                    isStatic: true,
+                    friction: 0.5,
+                    label: 'wall',
+                    collisionFilter: {
+                        category: 0x0008,  // Ground/wall category
+                        mask: 0xFFFF  // Collide with everything
+                    }
+                });
+
+                // Right wall at x=800
+                const rightWall = Bodies.rectangle(800, 225, 20, 450, {
+                    isStatic: true,
+                    friction: 0.5,
+                    label: 'wall',
+                    collisionFilter: {
+                        category: 0x0008,  // Ground/wall category
+                        mask: 0xFFFF  // Collide with everything
+                    }
+                });
+
+                Matter.World.add(this.world, [leftWall, rightWall]);
+                log('Boundary walls created at x=0 and x=800');
             }
 
             setupCollisionDetection() {
@@ -981,24 +1011,9 @@
                         desiredDirection = 0;
                     }
 
-                    // ACTIVE SCREEN BOUNDARY FORCES - PUSH AWAY FROM EDGES!
-                    if (pos.x < 100) {
-                        // Near left edge - EMERGENCY push right
-                        needsEmergencyForce = true;
-                        emergencyForce = (100 - pos.x) * 0.01;  // Stronger the closer to edge
-                        desiredDirection = 1;
-                        forceMultiplier = 100;  // MASSIVE force near boundaries
-                    } else if (pos.x > this.width - 100) {
-                        // Near right edge - EMERGENCY push left
-                        needsEmergencyForce = true;
-                        emergencyForce = (pos.x - (this.width - 100)) * 0.01;
-                        desiredDirection = -1;
-                        forceMultiplier = 100;
-                    }
-
-                    // EXTREME REPULSION when mechs are too close (override everything)
+                    // EXTREME REPULSION when mechs are too close
                     if (distance < 120) {
-                        // Mechs are colliding - MASSIVE repulsion
+                        // Mechs too close - repel strongly
                         desiredDirection = pos.x < otherPos.x ? -1 : 1;
                         forceMultiplier = 200;  // 200x force when colliding!
                         needsEmergencyForce = true;
@@ -1006,9 +1021,7 @@
 
                     // Apply movement forces
                     if (desiredDirection !== 0) {
-                        const force = needsEmergencyForce ?
-                            (mech.moveSpeed * forceMultiplier + emergencyForce) :
-                            (mech.moveSpeed * forceMultiplier);
+                        const force = mech.moveSpeed * forceMultiplier;
 
                         Body.applyForce(mech.torso, pos, {
                             x: desiredDirection * force,
@@ -1753,10 +1766,10 @@
         // Create physics engine
         const physics = new SimplePhysicsEngine('canvas');
 
-        // Create mechs
+        // Create mechs closer together (300 units apart for firing range)
         log('Creating mechs...');
         physics.playerMech = physics.createMech(200, 300, true);
-        physics.enemyMech = physics.createMech(600, 300, false);
+        physics.enemyMech = physics.createMech(500, 300, false);  // 300 units apart
 
         log('Mechs created with component-based health!');
         log(`Player Torso: ${physics.playerMech.components.torso.health}HP (${physics.playerMech.components.torso.armor} armor)`);

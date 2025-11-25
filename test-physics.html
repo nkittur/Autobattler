@@ -632,6 +632,23 @@
                 Matter.World.add(this.world, [torso, head, leftArm, rightArm, leftLeg, rightLeg, leftFoot, rightFoot]);
                 Matter.World.add(this.world, constraints);
 
+                // WEAPON LOADOUTS FROM LIBRARY
+                const weapons = isPlayer ? [
+                    // Player loadout: Machine Gun + Heavy Cannon
+                    { ...this.weaponDefs.machineGun, lastFired: 0 },
+                    { ...this.weaponDefs.heavyCannon, lastFired: 0 }
+                ] : [
+                    // Enemy loadout: Autocannon + Pulse Laser + Blue Beam
+                    { ...this.weaponDefs.autocannon, lastFired: 0 },
+                    { ...this.weaponDefs.pulseLaser, lastFired: 0 },
+                    { ...this.weaponDefs.blueBeam, lastFired: 0 }
+                ];
+
+                // Calculate movement ranges from weapons
+                const minRange = Math.min(...weapons.map(w => w.minRange));
+                const maxRange = Math.max(...weapons.map(w => w.maxRange));
+                const optimalRange = (minRange + maxRange) / 2;
+
                 // COMPONENT-BASED HEALTH AND ARMOR SYSTEM
                 // Armor is uniform (8) across all components - health is the differentiator
                 const mech = {
@@ -719,25 +736,14 @@
                     isPlayer: isPlayer,
                     destroyed: false,  // Full mech destroyed flag
                     destroyedComponents: [],  // Track destroyed component names
-                    // WEAPON LOADOUTS FROM LIBRARY
-                    weapons: isPlayer ? [
-                        // Player loadout: Machine Gun + Heavy Cannon
-                        { ...this.weaponDefs.machineGun, lastFired: 0 },
-                        { ...this.weaponDefs.heavyCannon, lastFired: 0 }
-                    ] : [
-                        // Enemy loadout: Autocannon + Pulse Laser + Blue Beam
-                        { ...this.weaponDefs.autocannon, lastFired: 0 },
-                        { ...this.weaponDefs.pulseLaser, lastFired: 0 },
-                        { ...this.weaponDefs.blueBeam, lastFired: 0 }
-                    ],
-                    // Range for movement AI (calculated from weapons)
-                    weapon: (() => {
-                        const weapons = mech.weapons;
-                        const minRange = Math.min(...weapons.map(w => w.minRange));
-                        const maxRange = Math.max(...weapons.map(w => w.maxRange));
-                        const optimalRange = (minRange + maxRange) / 2;
-                        return { minRange, maxRange, optimalRange };
-                    })()
+                    // Weapons assigned above
+                    weapons: weapons,
+                    // Range for movement AI (calculated above)
+                    weapon: {
+                        minRange: minRange,
+                        maxRange: maxRange,
+                        optimalRange: optimalRange
+                    }
                 };
 
                 log(`Component-based mech created: Torso=${mech.components.torso.health}HP/${mech.components.torso.armor}Armor`);

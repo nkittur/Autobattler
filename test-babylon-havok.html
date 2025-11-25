@@ -46,35 +46,10 @@
         .log.info { color: #00ff88; }
         .log.warn { color: #ffaa00; }
         .log.error { color: #ff4444; }
-        #controls {
-            text-align: center;
-            margin: 10px 0;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 5px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 2px solid #00ff88;
-            color: #00ff88;
-            cursor: pointer;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 14px;
-        }
-        button:hover {
-            background: rgba(0, 255, 136, 0.4);
-        }
     </style>
 </head>
 <body>
     <h1>Babylon.js + Havok Physics Test</h1>
-    <div id="controls">
-        <button onclick="firePlayerProjectile()">Fire Player Weapon</button>
-        <button onclick="fireEnemyProjectile()">Fire Enemy Weapon</button>
-        <button onclick="fireLaser(true)">Player Laser</button>
-        <button onclick="fireLaser(false)">Enemy Laser</button>
-        <button onclick="resetScene()">Reset Scene</button>
-    </div>
     <canvas id="renderCanvas"></canvas>
     <div id="status">
         <div id="logs"></div>
@@ -295,38 +270,51 @@
             jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
             jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
 
-            // Calculate mech component heights
-            // From torso center down to feet bottom: upperLeg (-1.35) + lowerLeg (-0.85) + foot (-0.38) + foot half-height (-0.075)
-            const footBottomOffset = 1.35 + 0.85 + 0.38 + 0.075; // = 2.655 units below torso center
+            // Calculate mech component heights from feet to torso
+            // upperLeg position from torso: -1.35
+            // lowerLeg position from upperLeg: -0.85
+            // foot position from lowerLeg: -0.38
+            // foot half-height: 0.075
+            const legOffset = 1.35; // upperLeg center from torso center
+            const shinOffset = 0.85; // lowerLeg center from upperLeg center
+            const footOffset = 0.38; // foot center from lowerLeg center
+            const footHalfHeight = 0.075; // half of foot height (0.15 / 2)
 
-            // Create collision box: extends from torso center down to feet, plus some upward for torso top
-            const collisionBoxHeight = footBottomOffset + 1.0; // 2.655 down + 1.0 up = 3.655 total
-            const collisionBox = BABYLON.MeshBuilder.CreateBox(`${mechName}_collision`, {
-                width: 1.0, height: collisionBoxHeight, depth: 0.8
+            // Total distance from torso center to foot bottom
+            const torsoToFootBottom = legOffset + shinOffset + footOffset + footHalfHeight; // = 2.655
+
+            // Create invisible collision body that extends from torso down to feet
+            // This ensures proper ground collision
+            const collisionHeight = 1.5 + torsoToFootBottom; // Torso height + distance to feet = 4.155
+            const collisionBody = BABYLON.MeshBuilder.CreateBox(`${mechName}_collision`, {
+                width: 1.0,
+                height: collisionHeight,
+                depth: 0.8
             }, scene);
-            // Position so bottom of collision box aligns with feet at ground level
-            // Collision box center = ground + half height = 0 + collisionBoxHeight/2
-            const spawnHeight = collisionBoxHeight / 2 + 0.15; // Slight offset above ground to drop
-            collisionBox.position = new BABYLON.Vector3(xPos, spawnHeight, 0);
-            collisionBox.visibility = 0; // Invisible
 
-            // Add physics to collision box (main physics body for entire mech)
+            // Position collision body so its bottom aligns with feet
+            // Collision center should be at: feet bottom (0) + half collision height
+            const collisionSpawnHeight = collisionHeight / 2 + 0.2; // Slight offset to drop
+            collisionBody.position = new BABYLON.Vector3(xPos, collisionSpawnHeight, 0);
+            collisionBody.visibility = 0; // Invisible
+
+            // Add physics to collision body
             const torsoAggregate = new BABYLON.PhysicsAggregate(
-                collisionBox,
+                collisionBody,
                 BABYLON.PhysicsShapeType.BOX,
                 { mass: 50, friction: 0.8, restitution: 0.1 },
                 scene
             );
 
-            // === TORSO (visual only - parented to collision box) ===
+            // === TORSO (visual - parented to collision body) ===
             const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
                 width: 1.2, height: 1.5, depth: 0.8
             }, scene);
-            // Position torso: collision box bottom is at y=-collisionBoxHeight/2 locally
-            // We want torso center at: (collision box bottom + footBottomOffset)
-            // = -collisionBoxHeight/2 + footBottomOffset = -1.8275 + 2.655 = 0.8275
-            torso.position = new BABYLON.Vector3(0, -collisionBoxHeight/2 + footBottomOffset, 0);
-            torso.parent = collisionBox;
+            // Position torso at correct height within collision body
+            // Collision body bottom is at -collisionHeight/2 locally
+            // Torso center should be at: collision bottom + torsoToFootBottom = -2.0775 + 2.655 = 0.5775
+            torso.position = new BABYLON.Vector3(0, -collisionHeight/2 + torsoToFootBottom, 0);
+            torso.parent = collisionBody;
             torso.material = bodyMat;
 
             // === HEAD ===
@@ -459,8 +447,8 @@
             // Store mech data
             const mechData = {
                 root: mechRoot,
-                collisionBox: collisionBox,  // Physics body (invisible)
-                torso: torso,                 // Visual body
+                collisionBody: collisionBody, // Physics body (invisible)
+                torso: torso,                 // Visual torso
                 torsoAggregate: torsoAggregate,
                 head: head,
                 visor: visor,
@@ -688,17 +676,19 @@
         }
 
         function resetScene() {
-            // Reset mech positions - use collisionBox since it has the physics
+            // Reset mech positions
             if (playerMech) {
-                const resetHeight = (1.35 + 0.85 + 0.38 + 0.075 + 1.0) / 2 + 1.0; // Spawn height
-                playerMech.collisionBox.position = new BABYLON.Vector3(-5, resetHeight, 0);
+                const collisionHeight = 1.5 + 1.35 + 0.85 + 0.38 + 0.075; // = 4.155
+                const resetHeight = collisionHeight / 2 + 1.0;
+                playerMech.collisionBody.position = new BABYLON.Vector3(-5, resetHeight, 0);
                 playerMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 playerMech.currentHP = playerMech.maxHP;
             }
             if (enemyMech) {
-                const resetHeight = (1.35 + 0.85 + 0.38 + 0.075 + 1.0) / 2 + 1.0; // Spawn height
-                enemyMech.collisionBox.position = new BABYLON.Vector3(5, resetHeight, 0);
+                const collisionHeight = 1.5 + 1.35 + 0.85 + 0.38 + 0.075; // = 4.155
+                const resetHeight = collisionHeight / 2 + 1.0;
+                enemyMech.collisionBody.position = new BABYLON.Vector3(5, resetHeight, 0);
                 enemyMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 enemyMech.currentHP = enemyMech.maxHP;
@@ -715,8 +705,33 @@
             log('Scene reset!', 'info');
         }
 
+        // Auto-fire weapons periodically
+        function startAutoFire() {
+            setInterval(() => {
+                if (playerMech && enemyMech && playerMech.currentHP > 0 && enemyMech.currentHP > 0) {
+                    // Randomly fire weapons
+                    if (Math.random() > 0.7) {
+                        createProjectile(playerMech, enemyMech, 15);
+                    }
+                    if (Math.random() > 0.7) {
+                        createProjectile(enemyMech, playerMech, 12);
+                    }
+                    if (Math.random() > 0.8) {
+                        fireLaser(true);
+                    }
+                    if (Math.random() > 0.8) {
+                        fireLaser(false);
+                    }
+                }
+            }, 1000); // Fire every second
+        }
+
         // Initialize when page loads
-        initEngine();
+        initEngine().then(() => {
+            // Start auto-fire after scene is initialized
+            setTimeout(startAutoFire, 2000);
+            log('Auto-fire enabled!', 'info');
+        });
     </script>
 </body>
 </html>

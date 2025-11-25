@@ -378,15 +378,45 @@
                 this.createImpactEffect(component.body.position.x, component.body.position.y, { x: 0, y: 0 });
                 this.createImpactEffect(component.body.position.x, component.body.position.y, { x: 0, y: 0 });  // Double explosion
 
-                // Remove component from world
-                Matter.World.remove(this.world, component.body);
-
                 // Mark as destroyed
                 mech.destroyedComponents.push(componentKey);
 
                 // If critical component (torso or head), destroy entire mech
                 if (component.critical) {
                     this.destroyMech(mech);
+                } else {
+                    // NON-CRITICAL COMPONENT - Make it fly off dramatically!
+                    const Body = Matter.Body;
+                    const pos = component.body.position;
+
+                    // Remove constraints connecting this component
+                    // Find and remove constraints that connect to this body
+                    const constraintsToRemove = mech.constraints.filter(constraint =>
+                        constraint.bodyA === component.body || constraint.bodyB === component.body
+                    );
+
+                    constraintsToRemove.forEach(constraint => {
+                        Matter.World.remove(this.world, constraint);
+                    });
+
+                    // Remove constraints from mech's constraint array
+                    mech.constraints = mech.constraints.filter(c => !constraintsToRemove.includes(c));
+
+                    // Apply EXPLOSIVE FORCE - component flies up and away!
+                    const explosionForce = 0.15;  // Strong explosive force
+                    const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI / 3;  // Upward with random spread
+
+                    Body.applyForce(component.body, pos, {
+                        x: Math.cos(angle) * explosionForce,
+                        y: Math.sin(angle) * explosionForce
+                    });
+
+                    // Add spin to the component
+                    Body.setAngularVelocity(component.body, (Math.random() - 0.5) * 0.3);
+
+                    // Component will fall away naturally - don't remove from world yet
+                    // It will be cleaned up when it goes off screen
+                    log(`💫 ${component.name} BLOWN OFF! Flying away...`);
                 }
             }
 
@@ -1173,6 +1203,11 @@
                 const darkColor = this.darkenColor(baseColor, 0.6);
                 const lightColor = this.lightenColor(baseColor, 1.3);
 
+                // DARKENED RENDERING for destroyed mechs
+                if (mech.destroyed) {
+                    ctx.globalAlpha = 0.4;  // Make destroyed mech semi-transparent and dark
+                }
+
                 // V3.0 VERIFICATION - Log once on first render
                 if (!this._v3verified) {
                     console.log('%c✅ V3.0 RENDERING ACTIVE - Angular + Glow Effects', 'color: #00ff88; font-size: 14px; font-weight: bold');
@@ -1202,6 +1237,10 @@
 
                 // Render legs (thigh + shin)
                 [leftLeg, rightLeg].forEach((leg, index) => {
+                    const componentKey = index === 0 ? 'leftLeg' : 'rightLeg';
+                    // Skip if component destroyed
+                    if (mech.destroyedComponents.includes(componentKey)) return;
+
                     const legX = leg.position.x;
                     const legY = leg.position.y;
                     const angle = leg.angle;
@@ -1261,6 +1300,10 @@
                 // Render separate FEET
                 if (mech.leftFoot && mech.rightFoot) {
                     [mech.leftFoot, mech.rightFoot].forEach((foot, index) => {
+                        const componentKey = index === 0 ? 'leftFoot' : 'rightFoot';
+                        // Skip if component destroyed
+                        if (mech.destroyedComponents.includes(componentKey)) return;
+
                         const footX = foot.position.x;
                         const footY = foot.position.y;
                         const angle = foot.angle;
@@ -1318,6 +1361,9 @@
             }
 
             renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                // Skip if torso destroyed (mech should be destroyed if torso is gone)
+                if (mech.destroyedComponents.includes('torso')) return;
+
                 // SVG-INSPIRED COLORS
                 const armorBase = '#7c8a7c';
                 const armorDark = '#4a524a';
@@ -1426,6 +1472,10 @@
                 const rightArm = mech.rightArm;
 
                 [leftArm, rightArm].forEach((arm, index) => {
+                    const componentKey = index === 0 ? 'leftArm' : 'rightArm';
+                    // Skip if component destroyed
+                    if (mech.destroyedComponents.includes(componentKey)) return;
+
                     const armX = arm.position.x;
                     const armY = arm.position.y;
                     const angle = arm.angle;
@@ -1485,6 +1535,9 @@
             }
 
             renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                // Skip if head destroyed (mech should be destroyed if head is gone)
+                if (mech.destroyedComponents.includes('head')) return;
+
                 // SVG-INSPIRED COLORS
                 const armorBase = '#7c8a7c';
 

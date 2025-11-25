@@ -173,10 +173,14 @@
             createWalls(scene);
 
             // Create mechs (spawned at x position, they will drop to ground)
-            playerMech = createMech(scene, -5, true);
-            enemyMech = createMech(scene, 5, false);
-
-            log('Scene fully initialized with mechs!', 'info');
+            try {
+                playerMech = createMech(scene, -5, true);
+                enemyMech = createMech(scene, 5, false);
+                log('Scene fully initialized with mechs!', 'info');
+            } catch (error) {
+                log('CRITICAL ERROR creating mechs: ' + error.message, 'error');
+                console.error('Full error:', error);
+            }
             return scene;
         }
 
@@ -250,52 +254,59 @@
         }
 
         function createMech(scene, xPos, isPlayer) {
-            const color = isPlayer ? COLORS.player : COLORS.enemy;
-            const mechName = isPlayer ? 'player' : 'enemy';
+            try {
+                const color = isPlayer ? COLORS.player : COLORS.enemy;
+                const mechName = isPlayer ? 'player' : 'enemy';
 
-            // Create parent transform node (non-physics, just for grouping)
-            const mechRoot = new BABYLON.TransformNode(`${mechName}_root`, scene);
-            mechRoot.position = new BABYLON.Vector3(xPos, 0, 0);
+                log(`Creating ${mechName} mech...`, 'info');
 
-            // Create materials
-            const bodyMat = new BABYLON.StandardMaterial(`${mechName}_bodyMat`, scene);
-            bodyMat.diffuseColor = color;
-            bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
-            bodyMat.emissiveColor = color.scale(0.2);
+                // Create parent transform node (non-physics, just for grouping)
+                const mechRoot = new BABYLON.TransformNode(`${mechName}_root`, scene);
+                mechRoot.position = new BABYLON.Vector3(xPos, 0, 0);
 
-            const darkMat = new BABYLON.StandardMaterial(`${mechName}_darkMat`, scene);
-            darkMat.diffuseColor = color.scale(0.5);
+                // Create materials
+                const bodyMat = new BABYLON.StandardMaterial(`${mechName}_bodyMat`, scene);
+                bodyMat.diffuseColor = color;
+                bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                bodyMat.emissiveColor = color.scale(0.2);
 
-            const jointMat = new BABYLON.StandardMaterial(`${mechName}_jointMat`, scene);
-            jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
-            jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+                const darkMat = new BABYLON.StandardMaterial(`${mechName}_darkMat`, scene);
+                darkMat.diffuseColor = color.scale(0.5);
 
-            const spawnY = 3.5; // Spawn height
+                const jointMat = new BABYLON.StandardMaterial(`${mechName}_jointMat`, scene);
+                jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
 
-            // === TORSO (Main physics body) ===
-            const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
-                width: 1.2, height: 1.5, depth: 0.8
-            }, scene);
-            torso.position = new BABYLON.Vector3(xPos, spawnY, 0);
-            if (isPlayer) {
-                torso.rotation.y = 0;
-            } else {
-                torso.rotation.y = Math.PI;
-            }
-            torso.material = bodyMat;
+                const spawnY = 3.5; // Spawn height
 
-            // Add physics to torso
-            const torsoAggregate = new BABYLON.PhysicsAggregate(
-                torso,
-                BABYLON.PhysicsShapeType.BOX,
-                { mass: 80, friction: 1.0, restitution: 0.05 },
-                scene
-            );
+                log(`Creating ${mechName} torso...`, 'info');
 
-            // Lock X/Z rotation for upright stability
-            torsoAggregate.body.setMassProperties({
-                inertia: new BABYLON.Vector3(Infinity, 1, Infinity)
-            });
+                // === TORSO (Main physics body) ===
+                const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
+                    width: 1.2, height: 1.5, depth: 0.8
+                }, scene);
+                torso.position = new BABYLON.Vector3(xPos, spawnY, 0);
+                if (isPlayer) {
+                    torso.rotation.y = 0;
+                } else {
+                    torso.rotation.y = Math.PI;
+                }
+                torso.material = bodyMat;
+
+                // Add physics to torso
+                const torsoAggregate = new BABYLON.PhysicsAggregate(
+                    torso,
+                    BABYLON.PhysicsShapeType.BOX,
+                    { mass: 80, friction: 1.0, restitution: 0.05 },
+                    scene
+                );
+
+                log(`${mechName} torso created with physics`, 'info');
+
+                // Lock X/Z rotation for upright stability
+                torsoAggregate.body.setMassProperties({
+                    inertia: new BABYLON.Vector3(Infinity, 1, Infinity)
+                });
 
             // === HEAD ===
             const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
@@ -350,18 +361,23 @@
                 );
 
                 // Connect arm to torso with ball and socket joint
-                const armConstraint = new BABYLON.PhysicsConstraint(
-                    BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
-                    {
-                        pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Pivot on torso
-                        pivotB: new BABYLON.Vector3(0, 0.35, 0),  // Pivot on arm (top of arm)
-                    },
-                    [
-                        { key: 'collision', value: false }  // Disable collision between connected bodies
-                    ],
-                    scene
-                );
-                torsoAggregate.body.addConstraint(armAggregate.body, armConstraint);
+                try {
+                    const armConstraint = new BABYLON.PhysicsConstraint(
+                        BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
+                        {
+                            pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Pivot on torso
+                            pivotB: new BABYLON.Vector3(0, 0.35, 0),  // Pivot on arm (top of arm)
+                        },
+                        [
+                            { key: 'collision', value: false }  // Disable collision between connected bodies
+                        ],
+                        scene
+                    );
+                    torsoAggregate.body.addConstraint(armAggregate.body, armConstraint);
+                    log(`${side} arm constraint created`, 'info');
+                } catch (e) {
+                    log(`Error creating ${side} arm constraint: ${e.message}`, 'error');
+                }
 
                 // Lower arm / weapon (parented to upper arm for simplicity)
                 const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
@@ -420,18 +436,23 @@
                 );
 
                 // Connect leg to torso with ball and socket joint
-                const legConstraint = new BABYLON.PhysicsConstraint(
-                    BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
-                    {
-                        pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),  // Pivot on torso
-                        pivotB: new BABYLON.Vector3(0, 0.5, 0),  // Pivot on leg (top of leg)
-                    },
-                    [
-                        { key: 'collision', value: false }  // Disable collision between connected bodies
-                    ],
-                    scene
-                );
-                torsoAggregate.body.addConstraint(legAggregate.body, legConstraint);
+                try {
+                    const legConstraint = new BABYLON.PhysicsConstraint(
+                        BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
+                        {
+                            pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),  // Pivot on torso
+                            pivotB: new BABYLON.Vector3(0, 0.5, 0),  // Pivot on leg (top of leg)
+                        },
+                        [
+                            { key: 'collision', value: false }  // Disable collision between connected bodies
+                        ],
+                        scene
+                    );
+                    torsoAggregate.body.addConstraint(legAggregate.body, legConstraint);
+                    log(`${side} leg constraint created`, 'info');
+                } catch (e) {
+                    log(`Error creating ${side} leg constraint: ${e.message}`, 'error');
+                }
 
                 // Knee joint (visual, parented to upper leg)
                 const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
@@ -495,8 +516,13 @@
                 color: color
             };
 
-            log(`${isPlayer ? 'Player' : 'Enemy'} mech created at torso: (${torso.position.x.toFixed(1)}, ${torso.position.y.toFixed(1)}, ${torso.position.z.toFixed(1)})`, 'info');
-            return mechData;
+                log(`${isPlayer ? 'Player' : 'Enemy'} mech created at torso: (${torso.position.x.toFixed(1)}, ${torso.position.y.toFixed(1)}, ${torso.position.z.toFixed(1)})`, 'info');
+                return mechData;
+            } catch (error) {
+                log(`ERROR creating ${isPlayer ? 'player' : 'enemy'} mech: ${error.message}`, 'error');
+                console.error('Mech creation error:', error);
+                throw error;
+            }
         }
 
         // === PROJECTILE SYSTEM ===

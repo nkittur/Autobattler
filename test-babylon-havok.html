@@ -50,6 +50,11 @@
 </head>
 <body>
     <h1>Babylon.js + Havok Physics Test</h1>
+    <div style="text-align: center; margin: 10px;">
+        <button id="toggleAutoFire" style="padding: 10px 20px; font-size: 16px; background: #00ff88; border: none; border-radius: 5px; cursor: pointer;">
+            Start Auto-Fire
+        </button>
+    </div>
     <canvas id="renderCanvas"></canvas>
     <div id="status">
         <div id="logs"></div>
@@ -79,6 +84,8 @@
         let playerMech, enemyMech;
         let projectiles = [];
         let laserBeams = [];
+        let autoFireEnabled = false;
+        let autoFireInterval = null;
 
         // Colors
         const COLORS = {
@@ -1227,8 +1234,11 @@
 
         // Auto-fire weapons periodically
         function startAutoFire() {
-            setInterval(() => {
-                if (playerMech && enemyMech && playerMech.currentHP > 0 && enemyMech.currentHP > 0) {
+            if (autoFireInterval) {
+                clearInterval(autoFireInterval);
+            }
+            autoFireInterval = setInterval(() => {
+                if (autoFireEnabled && playerMech && enemyMech && playerMech.currentHP > 0 && enemyMech.currentHP > 0) {
                     // Randomly fire weapons
                     if (Math.random() > 0.7) {
                         createProjectile(playerMech, enemyMech, 15);
@@ -1246,12 +1256,29 @@
             }, 1000); // Fire every second
         }
 
+        function toggleAutoFire() {
+            autoFireEnabled = !autoFireEnabled;
+            const button = document.getElementById('toggleAutoFire');
+            if (autoFireEnabled) {
+                button.textContent = 'Stop Auto-Fire';
+                button.style.background = '#ff4444';
+                log('Auto-fire ENABLED', 'warn');
+            } else {
+                button.textContent = 'Start Auto-Fire';
+                button.style.background = '#00ff88';
+                log('Auto-fire DISABLED', 'warn');
+            }
+        }
+
         // Initialize when page loads
         initEngine().then(() => {
-            // Start auto-fire after scene is initialized
-            setTimeout(startAutoFire, 2000);
-            log('Auto-fire enabled!', 'info');
+            // Set up auto-fire interval (but it won't fire unless enabled)
+            startAutoFire();
+            log('Scene ready! Click "Start Auto-Fire" button to begin combat.', 'info');
         });
+
+        // Add button event listener
+        document.getElementById('toggleAutoFire').addEventListener('click', toggleAutoFire);
     </script>
 </body>
 </html>

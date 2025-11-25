@@ -668,8 +668,9 @@
         }
     </style>
 
-    <!-- Matter.js Physics Engine -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <!-- Babylon.js 3D Engine + Havok Physics -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
 </head>
 <body>
     <div class="container">
@@ -1608,40 +1609,29 @@
         }
 
         // ============================================================================
-        // PHYSICS COMBAT VISUALIZATION SYSTEM
+        // BABYLON.JS + HAVOK PHYSICS COMBAT VISUALIZATION SYSTEM
         // ============================================================================
 
         class PhysicsEngine {
             constructor(canvasId) {
                 this.canvas = document.getElementById(canvasId);
-                this.ctx = this.canvas.getContext('2d');
+                this.canvasId = canvasId;
 
-                // Matter.js aliases
-                const Engine = Matter.Engine;
-                const Render = Matter.Render;
-                const World = Matter.World;
-                const Bodies = Matter.Bodies;
-                const Body = Matter.Body;
-                const Composite = Matter.Composite;
-                const Constraint = Matter.Constraint;
-                const Events = Matter.Events;
-
-                // Create engine with custom gravity
-                this.engine = Engine.create();
-                this.engine.gravity.y = 1.2; // Increased gravity for better feel
-                this.world = this.engine.world;
-
-                // Canvas dimensions (pixelated low-res)
+                // Canvas dimensions
                 this.width = 800;
                 this.height = 450;
-
-                // Render scale
-                this.scale = 1;
 
                 // Animation settings
                 this.running = false;
                 this.effectsEnabled = true;
                 this.timeScale = 1;
+
+                // Babylon.js objects
+                this.babylonEngine = null;
+                this.scene = null;
+                this.camera = null;
+                this.havokPlugin = null;
+                this.havokInstance = null;
 
                 // Entities
                 this.playerMech = null;
@@ -1649,11 +1639,14 @@
                 this.terrain = [];
                 this.projectiles = [];
                 this.particles = [];
+                this.laserBeams = [];
+                this.damageNumbers = [];
 
                 // Camera shake
                 this.cameraShake = { x: 0, y: 0, intensity: 0 };
+                this.cameraBasePosition = null;
 
-                // Colors
+                // Colors (as Babylon Color3 objects will be created on init)
                 this.colors = {
                     player: '#00ff88',
                     enemy: '#ff4444',
@@ -1665,419 +1658,773 @@
                     sky: '#1a1a3e'
                 };
 
-                // Initialize
+                // Initialize async
+                this.initialized = false;
+                this.initPromise = this.initBabylon();
+            }
+
+            async initBabylon() {
+                try {
+                    // Create Babylon engine
+                    this.babylonEngine = new BABYLON.Engine(this.canvas, true, {
+                        preserveDrawingBuffer: true,
+                        stencil: true
+                    });
+
+                    // Initialize Havok Physics
+                    this.havokInstance = await HavokPhysics();
+                    console.log('Babylon.js + Havok Physics initialized!');
+
+                    // Create scene
+                    this.scene = this.createScene();
+
+                    // Setup render loop
+                    this.setupRenderLoop();
+
+                    // Handle resize
+                    window.addEventListener('resize', () => {
+                        if (this.babylonEngine) {
+                            this.babylonEngine.resize();
+                        }
+                    });
+
+                    this.initialized = true;
+                    console.log('Babylon.js Physics Engine fully initialized');
+                } catch (error) {
+                    console.error('Failed to initialize Babylon.js:', error);
+                    // Fallback message on canvas
+                    const ctx = this.canvas.getContext('2d');
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.fillRect(0, 0, this.width, this.height);
+                    ctx.fillStyle = '#ff4444';
+                    ctx.font = '16px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Failed to load 3D engine. Please refresh.', this.width/2, this.height/2);
+                }
+            }
+
+            createScene() {
+                const scene = new BABYLON.Scene(this.babylonEngine);
+                scene.clearColor = new BABYLON.Color3(0.05, 0.05, 0.12);
+
+                // Enable Havok physics
+                this.havokPlugin = new BABYLON.HavokPlugin(true, this.havokInstance);
+                scene.enablePhysics(new BABYLON.Vector3(0, -15, 0), this.havokPlugin);
+
+                // Create isometric-style camera (fixed angle view)
+                this.camera = new BABYLON.ArcRotateCamera(
+                    'camera',
+                    -Math.PI / 2,      // Alpha: horizontal rotation (facing front)
+                    Math.PI / 3.5,     // Beta: vertical angle (elevated view)
+                    22,                // Radius: distance from target
+                    new BABYLON.Vector3(0, 2, 0),  // Target point
+                    scene
+                );
+                this.camera.attachControl(this.canvas, false); // Disable user rotation
+                this.camera.lowerRadiusLimit = 15;
+                this.camera.upperRadiusLimit = 35;
+                this.cameraBasePosition = this.camera.position.clone();
+
+                // Lighting
+                const hemiLight = new BABYLON.HemisphericLight(
+                    'hemiLight',
+                    new BABYLON.Vector3(0, 1, 0),
+                    scene
+                );
+                hemiLight.intensity = 0.6;
+
+                const dirLight = new BABYLON.DirectionalLight(
+                    'dirLight',
+                    new BABYLON.Vector3(-0.5, -1, 0.5),
+                    scene
+                );
+                dirLight.intensity = 0.4;
+
+                // Create terrain
                 this.createTerrain();
-                this.setupRenderLoop();
+
+                return scene;
             }
 
             createTerrain() {
-                const Bodies = Matter.Bodies;
-                const groundHeight = 40;
-                const platformY = this.height - groundHeight;
+                if (!this.scene) return;
 
-                // Main ground
-                const ground = Bodies.rectangle(this.width / 2, this.height - groundHeight / 2, this.width, groundHeight, {
-                    isStatic: true,
-                    friction: 0.8,
-                    render: { fillStyle: this.colors.terrain }
-                });
-                Matter.World.add(this.world, ground);
+                // Create ground plane
+                const ground = BABYLON.MeshBuilder.CreateGround('ground', {
+                    width: 25,
+                    height: 12
+                }, this.scene);
 
-                // Destructible terrain blocks
-                const blockSize = 20;
-                const numBlocks = 15;
+                const groundMat = new BABYLON.StandardMaterial('groundMat', this.scene);
+                groundMat.diffuseColor = this.hexToColor3(this.colors.terrain);
+                groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+                ground.material = groundMat;
 
-                for (let i = 0; i < numBlocks; i++) {
-                    const x = 150 + i * (blockSize + 2) + Math.random() * 50;
-                    const y = platformY - blockSize - Math.random() * 100;
+                // Add physics to ground (static)
+                new BABYLON.PhysicsAggregate(
+                    ground,
+                    BABYLON.PhysicsShapeType.BOX,
+                    { mass: 0, friction: 0.8, restitution: 0.1 },
+                    this.scene
+                );
 
-                    // Random block configurations
-                    const isLarge = Math.random() > 0.7;
-                    const size = isLarge ? blockSize * 1.5 : blockSize;
+                // Create boundary walls (invisible)
+                this.createWalls();
 
-                    const block = Bodies.rectangle(x, y, size, size, {
-                        friction: 0.6,
-                        restitution: 0.3,
-                        density: 0.001,
-                        label: 'terrain',
-                        render: { fillStyle: this.colors.terrain }
-                    });
+                // Create some destructible terrain blocks
+                const blockCount = 10;
+                for (let i = 0; i < blockCount; i++) {
+                    const x = -8 + (i % 5) * 4 + (Math.random() - 0.5) * 2;
+                    const z = -3 + Math.floor(i / 5) * 6 + (Math.random() - 0.5);
+                    const y = 0.5 + Math.random() * 0.5;
+                    const size = 0.4 + Math.random() * 0.3;
 
-                    Matter.World.add(this.world, block);
+                    const block = BABYLON.MeshBuilder.CreateBox('terrain_' + i, {
+                        width: size, height: size, depth: size
+                    }, this.scene);
+                    block.position = new BABYLON.Vector3(x, y, z);
+
+                    const blockMat = new BABYLON.StandardMaterial('blockMat_' + i, this.scene);
+                    blockMat.diffuseColor = this.hexToColor3(this.colors.terrain).scale(0.8 + Math.random() * 0.4);
+                    block.material = blockMat;
+
+                    // Add physics
+                    const blockAggregate = new BABYLON.PhysicsAggregate(
+                        block,
+                        BABYLON.PhysicsShapeType.BOX,
+                        { mass: 2, friction: 0.6, restitution: 0.3 },
+                        this.scene
+                    );
+
+                    block.physicsAggregate = blockAggregate;
+                    block.isDestructible = true;
                     this.terrain.push(block);
                 }
             }
 
+            createWalls() {
+                if (!this.scene) return;
+
+                const wallHeight = 6;
+                const arenaWidth = 25;
+                const arenaDepth = 12;
+
+                const wallMat = new BABYLON.StandardMaterial('wallMat', this.scene);
+                wallMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.3);
+                wallMat.alpha = 0.2;
+
+                // Left wall
+                const leftWall = BABYLON.MeshBuilder.CreateBox('leftWall', {
+                    width: 0.5, height: wallHeight, depth: arenaDepth
+                }, this.scene);
+                leftWall.position = new BABYLON.Vector3(-arenaWidth/2, wallHeight/2, 0);
+                leftWall.material = wallMat;
+                new BABYLON.PhysicsAggregate(leftWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, this.scene);
+
+                // Right wall
+                const rightWall = BABYLON.MeshBuilder.CreateBox('rightWall', {
+                    width: 0.5, height: wallHeight, depth: arenaDepth
+                }, this.scene);
+                rightWall.position = new BABYLON.Vector3(arenaWidth/2, wallHeight/2, 0);
+                rightWall.material = wallMat;
+                new BABYLON.PhysicsAggregate(rightWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, this.scene);
+
+                // Back wall
+                const backWall = BABYLON.MeshBuilder.CreateBox('backWall', {
+                    width: arenaWidth, height: wallHeight, depth: 0.5
+                }, this.scene);
+                backWall.position = new BABYLON.Vector3(0, wallHeight/2, -arenaDepth/2);
+                backWall.material = wallMat;
+                new BABYLON.PhysicsAggregate(backWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, this.scene);
+
+                // Front wall (mostly invisible)
+                const frontWall = BABYLON.MeshBuilder.CreateBox('frontWall', {
+                    width: arenaWidth, height: wallHeight, depth: 0.5
+                }, this.scene);
+                frontWall.position = new BABYLON.Vector3(0, wallHeight/2, arenaDepth/2);
+                frontWall.material = wallMat;
+                frontWall.visibility = 0.1;
+                new BABYLON.PhysicsAggregate(frontWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, this.scene);
+            }
+
+            // Helper to convert hex color to Babylon Color3
+            hexToColor3(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                if (result) {
+                    return new BABYLON.Color3(
+                        parseInt(result[1], 16) / 255,
+                        parseInt(result[2], 16) / 255,
+                        parseInt(result[3], 16) / 255
+                    );
+                }
+                return new BABYLON.Color3(0.5, 0.5, 0.5);
+            }
+
             createMech(type, x, y, isPlayer) {
-                const Bodies = Matter.Bodies;
-                const Constraint = Matter.Constraint;
-                const Composite = Matter.Composite;
-                const Body = Matter.Body;
+                if (!this.scene) return null;
+
+                // Convert 2D coordinates to 3D (x stays, y becomes height, z=0)
+                // Scale down from pixel coords to 3D world units
+                const worldX = (x - 400) / 50;  // Center around 0, scale down
+                const worldY = 2.5;  // Spawn height
+                const worldZ = 0;
 
                 // Size based on mech class
                 let scale = 1;
                 if (type === 'Light') scale = 0.8;
-                if (type === 'Heavy') scale = 1.3;
+                if (type === 'Heavy') scale = 1.2;
 
-                const baseSize = 30;
-                const size = baseSize * scale;
+                const mechName = isPlayer ? 'player' : 'enemy';
+                const color = isPlayer ? this.hexToColor3(this.colors.player) : this.hexToColor3(this.colors.enemy);
+                const darkColor = color.scale(0.6);
 
-                // Create body parts with MUCH higher density for stability
-                const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
-                    density: 0.008,  // 4x heavier - main anchor
-                    friction: 1.0,
-                    frictionAir: 0.01,  // Air resistance for stability
-                    restitution: 0.05,  // Low bounce
-                    label: isPlayer ? 'player_torso' : 'enemy_torso'
-                });
+                // Create materials
+                const bodyMat = new BABYLON.StandardMaterial(`${mechName}_bodyMat`, this.scene);
+                bodyMat.diffuseColor = color;
+                bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                bodyMat.emissiveColor = color.scale(0.15);
 
-                const head = Bodies.circle(x, y - size, size * 0.5, {
-                    density: 0.004,  // 4x heavier
-                    friction: 0.8,
-                    frictionAir: 0.01,
-                    label: isPlayer ? 'player_head' : 'enemy_head'
-                });
+                const darkMat = new BABYLON.StandardMaterial(`${mechName}_darkMat`, this.scene);
+                darkMat.diffuseColor = darkColor;
 
-                const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
-                    density: 0.004,  // 4x heavier
-                    friction: 0.8,
-                    frictionAir: 0.01,
-                    label: isPlayer ? 'player_arm' : 'enemy_arm'
-                });
+                const jointMat = new BABYLON.StandardMaterial(`${mechName}_jointMat`, this.scene);
+                jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
 
-                const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
-                    density: 0.004,  // 4x heavier
-                    friction: 0.8,
-                    frictionAir: 0.01,
-                    label: isPlayer ? 'player_arm' : 'enemy_arm'
-                });
+                // === TORSO (Main physics body) ===
+                const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
+                    width: 1.0 * scale, height: 1.2 * scale, depth: 0.6 * scale
+                }, this.scene);
+                torso.position = new BABYLON.Vector3(worldX, worldY, worldZ);
+                torso.material = bodyMat;
 
-                const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.006,  // 3x heavier - legs need weight
-                    friction: 1.2,   // High friction for ground contact
-                    frictionAir: 0.01,
-                    label: isPlayer ? 'player_leg' : 'enemy_leg'
-                });
+                // Add physics to torso (main physics body)
+                const torsoAggregate = new BABYLON.PhysicsAggregate(
+                    torso,
+                    BABYLON.PhysicsShapeType.BOX,
+                    { mass: 40 * scale, friction: 0.8, restitution: 0.1 },
+                    this.scene
+                );
 
-                const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.006,  // 3x heavier
-                    friction: 1.2,
-                    frictionAir: 0.01,
-                    label: isPlayer ? 'player_leg' : 'enemy_leg'
-                });
+                // Limit torso rotation to stay upright
+                torsoAggregate.body.setAngularDamping(0.95);
 
-                // Create composite mech
-                const mech = Composite.create({ label: isPlayer ? 'player_mech' : 'enemy_mech' });
+                // === HEAD ===
+                const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
+                    width: 0.5 * scale, height: 0.4 * scale, depth: 0.4 * scale
+                }, this.scene);
+                head.position = new BABYLON.Vector3(0, 0.9 * scale, 0);
+                head.parent = torso;
+                head.material = bodyMat;
 
-                // Add parts
-                Composite.add(mech, [torso, head, leftArm, rightArm, leftLeg, rightLeg]);
+                // Visor (glowing)
+                const visor = BABYLON.MeshBuilder.CreateBox(`${mechName}_visor`, {
+                    width: 0.4 * scale, height: 0.12 * scale, depth: 0.08 * scale
+                }, this.scene);
+                visor.position = new BABYLON.Vector3(0, 0.08 * scale, 0.18 * scale);
+                visor.parent = head;
+                const visorMat = new BABYLON.StandardMaterial(`${mechName}_visorMat`, this.scene);
+                visorMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0);
+                visorMat.emissiveColor = new BABYLON.Color3(1, 0.2, 0);
+                visor.material = visorMat;
 
-                // Constraints (joints) - MUCH stiffer for stability
-                const constraints = [
-                    // Head to torso - very stiff
-                    Constraint.create({
-                        bodyA: head,
-                        bodyB: torso,
-                        pointA: { x: 0, y: size * 0.3 },
-                        pointB: { x: 0, y: -size * 0.7 },
-                        stiffness: 0.95,  // Much stiffer
-                        damping: 0.1,     // Add damping
-                        length: 0,
-                        label: 'neck'
-                    }),
-                    // Left arm - stiff but some movement
-                    Constraint.create({
-                        bodyA: leftArm,
-                        bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: -size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.85,
-                        damping: 0.1,
-                        length: 0,
-                        label: 'left_shoulder'
-                    }),
-                    // Right arm
-                    Constraint.create({
-                        bodyA: rightArm,
-                        bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.85,
-                        damping: 0.1,
-                        length: 0,
-                        label: 'right_shoulder'
-                    }),
-                    // Left leg - very stiff for standing
-                    Constraint.create({
-                        bodyA: leftLeg,
-                        bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: -size * 0.2, y: size * 0.7 },
-                        stiffness: 0.9,
-                        damping: 0.1,
-                        length: 0,
-                        label: 'left_hip'
-                    }),
-                    // Right leg
-                    Constraint.create({
-                        bodyA: rightLeg,
-                        bodyB: torso,
-                        pointA: { x: 0, y: -size * 0.4 },
-                        pointB: { x: size * 0.2, y: size * 0.7 },
-                        stiffness: 0.9,
-                        damping: 0.1,
-                        length: 0,
-                        label: 'right_hip'
-                    })
-                ];
+                // === ARMS ===
+                const createArm = (side) => {
+                    const xOffset = side === 'left' ? -0.7 * scale : 0.7 * scale;
 
-                Composite.add(mech, constraints);
+                    // Upper arm
+                    const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperArm`, {
+                        width: 0.2 * scale, height: 0.5 * scale, depth: 0.2 * scale
+                    }, this.scene);
+                    upperArm.position = new BABYLON.Vector3(xOffset, 0.25 * scale, 0);
+                    upperArm.parent = torso;
+                    upperArm.material = darkMat;
 
-                // Add to world
-                Matter.World.add(this.world, mech);
+                    // Shoulder joint
+                    const shoulder = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
+                        diameter: 0.25 * scale
+                    }, this.scene);
+                    shoulder.position = new BABYLON.Vector3(xOffset, 0.5 * scale, 0);
+                    shoulder.parent = torso;
+                    shoulder.material = jointMat;
 
-                return {
-                    composite: mech,
-                    torso: torso,
+                    // Weapon / Lower arm
+                    const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
+                        width: 0.15 * scale, height: 0.6 * scale, depth: 0.15 * scale
+                    }, this.scene);
+                    weapon.position = new BABYLON.Vector3(0, -0.55 * scale, 0);
+                    weapon.parent = upperArm;
+                    weapon.material = jointMat;
+
+                    // Weapon barrel
+                    const barrel = BABYLON.MeshBuilder.CreateCylinder(`${mechName}_${side}Barrel`, {
+                        height: 0.3 * scale, diameter: 0.1 * scale
+                    }, this.scene);
+                    barrel.rotation.x = Math.PI / 2;
+                    barrel.position = new BABYLON.Vector3(0, -0.2 * scale, 0.18 * scale);
+                    barrel.parent = weapon;
+                    barrel.material = jointMat;
+
+                    return { upperArm, shoulder, weapon, barrel };
+                };
+
+                const leftArm = createArm('left');
+                const rightArm = createArm('right');
+
+                // === LEGS ===
+                const createLeg = (side) => {
+                    const xOffset = side === 'left' ? -0.3 * scale : 0.3 * scale;
+
+                    // Hip joint
+                    const hip = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Hip`, {
+                        diameter: 0.2 * scale
+                    }, this.scene);
+                    hip.position = new BABYLON.Vector3(xOffset, -0.65 * scale, 0);
+                    hip.parent = torso;
+                    hip.material = jointMat;
+
+                    // Upper leg
+                    const upperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperLeg`, {
+                        width: 0.25 * scale, height: 0.55 * scale, depth: 0.25 * scale
+                    }, this.scene);
+                    upperLeg.position = new BABYLON.Vector3(xOffset, -1.05 * scale, 0);
+                    upperLeg.parent = torso;
+                    upperLeg.material = bodyMat;
+
+                    // Knee joint
+                    const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
+                        diameter: 0.18 * scale
+                    }, this.scene);
+                    knee.position = new BABYLON.Vector3(0, -0.35 * scale, 0);
+                    knee.parent = upperLeg;
+                    knee.material = jointMat;
+
+                    // Lower leg
+                    const lowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}LowerLeg`, {
+                        width: 0.2 * scale, height: 0.5 * scale, depth: 0.2 * scale
+                    }, this.scene);
+                    lowerLeg.position = new BABYLON.Vector3(0, -0.65 * scale, 0);
+                    lowerLeg.parent = upperLeg;
+                    lowerLeg.material = darkMat;
+
+                    // Foot
+                    const foot = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Foot`, {
+                        width: 0.3 * scale, height: 0.12 * scale, depth: 0.4 * scale
+                    }, this.scene);
+                    foot.position = new BABYLON.Vector3(0, -0.3 * scale, 0.08 * scale);
+                    foot.parent = lowerLeg;
+                    foot.material = jointMat;
+
+                    return { hip, upperLeg, knee, lowerLeg, foot };
+                };
+
+                const leftLeg = createLeg('left');
+                const rightLeg = createLeg('right');
+
+                // === SHOULDER ARMOR ===
+                const createShoulderArmor = (side) => {
+                    const xOffset = side === 'left' ? -0.65 * scale : 0.65 * scale;
+                    const armor = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}ShoulderArmor`, {
+                        width: 0.4 * scale, height: 0.28 * scale, depth: 0.5 * scale
+                    }, this.scene);
+                    armor.position = new BABYLON.Vector3(xOffset, 0.6 * scale, 0);
+                    armor.parent = torso;
+                    armor.material = bodyMat;
+                    return armor;
+                };
+
+                createShoulderArmor('left');
+                createShoulderArmor('right');
+
+                // Store mech data with compatibility properties for battle system
+                const mechData = {
+                    // Babylon.js specific
+                    torsoMesh: torso,
+                    torsoAggregate: torsoAggregate,
                     head: head,
+                    visor: visor,
                     leftArm: leftArm,
                     rightArm: rightArm,
                     leftLeg: leftLeg,
                     rightLeg: rightLeg,
-                    constraints: constraints,
+
+                    // Compatibility with old Matter.js API (torso has position property)
+                    torso: {
+                        position: {
+                            get x() { return torso.position.x * 50 + 400; },  // Convert back to pixel coords
+                            get y() { return (5 - torso.position.y) * 50; },
+                            set x(val) { torso.position.x = (val - 400) / 50; },
+                            set y(val) { torso.position.y = 5 - val / 50; }
+                        },
+                        angle: 0
+                    },
+
+                    // Visual properties
                     color: isPlayer ? this.colors.player : this.colors.enemy,
                     scale: scale,
-                    isRagdoll: false
+                    isRagdoll: false,
+                    isPlayer: isPlayer,
+
+                    // Methods for position access
+                    getPosition: () => torso.position.clone(),
+                    setPosition: (pos) => {
+                        torso.position = pos;
+                        torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
+                        torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                    }
                 };
+
+                console.log(`Created ${isPlayer ? 'player' : 'enemy'} mech at (${worldX.toFixed(2)}, ${worldY.toFixed(2)})`);
+                return mechData;
             }
 
             fireProjectile(fromMech, toMech, weaponType, damage) {
-                const Bodies = Matter.Bodies;
-                const Body = Matter.Body;
+                if (!this.scene || !fromMech || !toMech) return null;
 
-                const startX = fromMech.torso.position.x;
-                const startY = fromMech.torso.position.y;
-                const targetX = toMech.torso.position.x;
-                const targetY = toMech.torso.position.y;
+                // Get 3D positions from mechs
+                const startPos = fromMech.torsoMesh ? fromMech.torsoMesh.position.clone() :
+                                 new BABYLON.Vector3((fromMech.torso.position.x - 400) / 50, 2.5, 0);
+                const targetPos = toMech.torsoMesh ? toMech.torsoMesh.position.clone() :
+                                  new BABYLON.Vector3((toMech.torso.position.x - 400) / 50, 2.5, 0);
 
-                let projectile;
+                // Adjust start position to weapon mount
+                startPos.y += 0.3;
 
-                if (weaponType === 'EXPLOSIVE') {
-                    // Ballistic trajectory rocket
-                    const angle = Math.atan2(targetY - startY, targetX - startX);
-                    const power = 15 + Math.random() * 5;
-                    const arcBoost = -8; // Upward boost for arc
-
-                    projectile = Bodies.circle(startX, startY, 8, {
-                        density: 0.001,
-                        restitution: 0.3,
-                        friction: 0.1,
-                        label: 'rocket'
-                    });
-
-                    Body.setVelocity(projectile, {
-                        x: Math.cos(angle) * power,
-                        y: Math.sin(angle) * power + arcBoost
-                    });
-
-                    projectile.render.fillStyle = this.colors.explosion;
-                    projectile.damage = damage;
-                    projectile.type = 'EXPLOSIVE';
-                    projectile.trail = [];
-
-                } else if (weaponType === 'KINETIC') {
-                    // Fast bullet
-                    const angle = Math.atan2(targetY - startY, targetX - startX);
-                    const speed = 25;
-
-                    projectile = Bodies.circle(startX, startY, 4, {
-                        density: 0.0005,
-                        restitution: 0.8,
-                        friction: 0.05,
-                        label: 'bullet'
-                    });
-
-                    Body.setVelocity(projectile, {
-                        x: Math.cos(angle) * speed,
-                        y: Math.sin(angle) * speed
-                    });
-
-                    projectile.render.fillStyle = this.colors.kinetic;
-                    projectile.damage = damage;
-                    projectile.type = 'KINETIC';
-
-                } else if (weaponType === 'ENERGY') {
-                    // Energy beam (instant raycast) - damage handled by battle system
-                    this.createEnergyBeam(startX, startY, targetX, targetY, damage);
+                // Handle ENERGY weapons (instant beam)
+                if (weaponType === 'ENERGY') {
+                    this.createEnergyBeam(startPos, targetPos, damage);
                     if (toMech.battleSystem) {
                         toMech.battleSystem.applyDamageToMech(toMech, damage, 'ENERGY');
                     }
+                    this.createImpactEffect(targetPos, weaponType);
                     return null;
                 }
 
-                Matter.World.add(this.world, projectile);
-                this.projectiles.push(projectile);
+                // Create projectile mesh
+                const projSize = weaponType === 'EXPLOSIVE' ? 0.15 : 0.08;
+                const projectileMesh = BABYLON.MeshBuilder.CreateSphere('projectile_' + Date.now(), {
+                    diameter: projSize
+                }, this.scene);
+                projectileMesh.position = startPos.clone();
 
-                // Check for impacts - collision will call battle system
-                this.setupProjectileCollision(projectile, toMech);
+                // Projectile material with glow
+                const projMat = new BABYLON.StandardMaterial('projMat_' + Date.now(), this.scene);
+                const projColor = weaponType === 'EXPLOSIVE' ?
+                    this.hexToColor3(this.colors.explosion) : this.hexToColor3(this.colors.kinetic);
+                projMat.diffuseColor = projColor;
+                projMat.emissiveColor = projColor;
+                projectileMesh.material = projMat;
 
-                return projectile; // Return for battle system to attach metadata
-            }
+                // Add physics to projectile
+                const projAggregate = new BABYLON.PhysicsAggregate(
+                    projectileMesh,
+                    BABYLON.PhysicsShapeType.SPHERE,
+                    { mass: weaponType === 'EXPLOSIVE' ? 1 : 0.3, friction: 0, restitution: 0.3 },
+                    this.scene
+                );
 
-            createEnergyBeam(x1, y1, x2, y2, damage) {
-                const beam = {
-                    x1, y1, x2, y2,
-                    life: 30, // frames
-                    width: 4,
-                    color: this.colors.energy,
-                    damage: damage
+                // Calculate velocity
+                const direction = targetPos.subtract(startPos).normalize();
+                const speed = weaponType === 'EXPLOSIVE' ? 12 : 18;
+                const velocity = direction.scale(speed);
+
+                // Add arc for explosive
+                if (weaponType === 'EXPLOSIVE') {
+                    velocity.y += 4;
+                }
+
+                projAggregate.body.setLinearVelocity(velocity);
+
+                // Store projectile data
+                const projectileData = {
+                    mesh: projectileMesh,
+                    aggregate: projAggregate,
+                    damage: damage,
+                    type: weaponType,
+                    target: toMech,
+                    firedAt: Date.now(),
+                    fromPlayer: fromMech.isPlayer
                 };
-                this.particles.push(beam);
+
+                this.projectiles.push(projectileData);
+                return projectileData;
             }
 
-            setupProjectileCollision(projectile, targetMech) {
-                const Events = Matter.Events;
+            createEnergyBeam(startPos, endPos, damage) {
+                if (!this.scene) return;
 
-                Events.on(this.engine, 'collisionStart', (event) => {
-                    event.pairs.forEach(pair => {
-                        const { bodyA, bodyB } = pair;
+                // Create laser beam tube
+                const points = [startPos, endPos];
+                const laserBeam = BABYLON.MeshBuilder.CreateTube('laser_' + Date.now(), {
+                    path: points,
+                    radius: 0.06,
+                    updatable: false
+                }, this.scene);
 
-                        // Check if projectile hit target
-                        if ((bodyA === projectile || bodyB === projectile)) {
-                            const other = bodyA === projectile ? bodyB : bodyA;
+                // Laser material with glow
+                const laserMat = new BABYLON.StandardMaterial('laserMat_' + Date.now(), this.scene);
+                const laserColor = this.hexToColor3(this.colors.energy);
+                laserMat.diffuseColor = laserColor;
+                laserMat.emissiveColor = laserColor;
+                laserMat.alpha = 0.9;
+                laserBeam.material = laserMat;
 
-                            // Hit enemy mech
-                            if (other.label && other.label.includes(targetMech === this.enemyMech ? 'enemy' : 'player')) {
-                                // Apply physics effects (knockback, ragdoll)
-                                this.applyPhysicalImpact(targetMech, projectile.damage, projectile.type);
+                // Store for fadeout
+                this.laserBeams.push({
+                    mesh: laserBeam,
+                    material: laserMat,
+                    createdAt: Date.now(),
+                    duration: 200
+                });
 
-                                // Apply gameplay damage through battle system
-                                if (projectile.battleSystem) {
-                                    projectile.battleSystem.applyDamageToMech(targetMech, projectile.damage, projectile.type);
-                                }
+                // Apply visual impact at target
+                this.createImpactEffect(endPos, 'ENERGY');
+            }
 
-                                this.createImpactEffect(other.position.x, other.position.y, projectile.type);
-                                Matter.World.remove(this.world, projectile);
-                                this.projectiles = this.projectiles.filter(p => p !== projectile);
+            // Update projectiles each frame (called from render loop)
+            updateProjectiles() {
+                const now = Date.now();
+
+                this.projectiles = this.projectiles.filter(proj => {
+                    // Remove old projectiles (after 5 seconds)
+                    if (now - proj.firedAt > 5000) {
+                        proj.mesh.dispose();
+                        return false;
+                    }
+
+                    // Check for collision with target
+                    if (proj.target && proj.target.torsoMesh) {
+                        const projPos = proj.mesh.position;
+                        const targetPos = proj.target.torsoMesh.position;
+                        const distance = BABYLON.Vector3.Distance(projPos, targetPos);
+
+                        if (distance < 1.2) {
+                            // Hit!
+                            this.applyPhysicalImpact(proj.target, proj.damage, proj.type);
+
+                            // Apply gameplay damage through battle system
+                            if (proj.battleSystem) {
+                                proj.battleSystem.applyDamageToMech(proj.target, proj.damage, proj.type);
                             }
-                            // Hit terrain
-                            else if (other.label === 'terrain') {
-                                if (projectile.type === 'EXPLOSIVE') {
-                                    this.createExplosion(other.position.x, other.position.y, 80);
-                                    Matter.World.remove(this.world, other);
-                                    this.terrain = this.terrain.filter(t => t !== other);
-                                }
-                                this.createImpactEffect(other.position.x, other.position.y, projectile.type);
-                                Matter.World.remove(this.world, projectile);
-                                this.projectiles = this.projectiles.filter(p => p !== projectile);
+
+                            this.createImpactEffect(projPos.clone(), proj.type);
+
+                            if (proj.type === 'EXPLOSIVE') {
+                                this.createExplosion(projPos.clone(), 2);
                             }
+
+                            proj.mesh.dispose();
+                            return false;
                         }
-                    });
+                    }
+
+                    // Check if projectile is out of bounds
+                    const pos = proj.mesh.position;
+                    if (pos.y < -2 || Math.abs(pos.x) > 15 || Math.abs(pos.z) > 8) {
+                        if (proj.type === 'EXPLOSIVE') {
+                            this.createExplosion(pos.clone(), 1.5);
+                        }
+                        proj.mesh.dispose();
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                // Update laser beams (fade out)
+                this.laserBeams = this.laserBeams.filter(beam => {
+                    const age = now - beam.createdAt;
+                    if (age > beam.duration) {
+                        beam.mesh.dispose();
+                        return false;
+                    }
+                    beam.material.alpha = 0.9 * (1 - age / beam.duration);
+                    return true;
                 });
             }
 
             applyPhysicalImpact(mech, damage, type) {
-                const Body = Matter.Body;
+                if (!mech || !mech.torsoAggregate) return;
 
-                // Apply knockback force
-                const force = type === 'EXPLOSIVE' ? 0.015 :
-                             type === 'KINETIC' ? 0.008 : 0.003;
+                // Calculate knockback force
+                const forceMag = type === 'EXPLOSIVE' ? 8 :
+                                type === 'KINETIC' ? 4 : 2;
 
-                const direction = mech === this.playerMech ? -1 : 1;
+                const direction = mech.isPlayer ? -1 : 1;
 
-                Body.applyForce(mech.torso, mech.torso.position, {
-                    x: direction * force * (1 + Math.random() * 0.5),
-                    y: -force * 0.3
-                });
+                // Apply impulse to physics body
+                const impulse = new BABYLON.Vector3(
+                    direction * forceMag * (1 + Math.random() * 0.3),
+                    forceMag * 0.3,
+                    (Math.random() - 0.5) * 2
+                );
+
+                mech.torsoAggregate.body.applyImpulse(
+                    impulse,
+                    mech.torsoMesh.position
+                );
 
                 // Camera shake
-                this.addCameraShake(damage / 20);
+                this.addCameraShake(damage / 15);
             }
 
             enableRagdoll(mech) {
-                const Composite = Matter.Composite;
-
-                // Remove some constraints for ragdoll effect
-                mech.constraints.forEach(constraint => {
-                    constraint.stiffness *= 0.3; // Make joints looser
-                });
+                if (!mech) return;
 
                 mech.isRagdoll = true;
 
+                // Apply random torque for tumble effect
+                if (mech.torsoAggregate) {
+                    const randomTorque = new BABYLON.Vector3(
+                        (Math.random() - 0.5) * 5,
+                        (Math.random() - 0.5) * 3,
+                        (Math.random() - 0.5) * 5
+                    );
+                    mech.torsoAggregate.body.setAngularVelocity(randomTorque);
+                }
+
                 // Auto-recover after time
                 setTimeout(() => {
-                    mech.constraints.forEach(constraint => {
-                        constraint.stiffness /= 0.3; // Restore stiffness
-                    });
+                    if (mech.torsoAggregate) {
+                        mech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                    }
                     mech.isRagdoll = false;
                 }, 2000);
             }
 
-            createExplosion(x, y, radius) {
-                const Body = Matter.Body;
-                const Query = Matter.Query;
+            createExplosion(positionOrX, radiusOrY, radiusArg) {
+                if (!this.scene) return;
 
-                // Create explosion particles
-                for (let i = 0; i < 20; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = 3 + Math.random() * 5;
-
-                    this.particles.push({
-                        x, y,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        life: 30 + Math.random() * 30,
-                        maxLife: 60,
-                        size: 3 + Math.random() * 5,
-                        color: Math.random() > 0.5 ? this.colors.explosion : '#ffaa00',
-                        type: 'explosion'
-                    });
+                // Handle both old API (x, y, radius) and new API (Vector3, radius)
+                let position;
+                let radius;
+                if (positionOrX instanceof BABYLON.Vector3) {
+                    position = positionOrX;
+                    radius = radiusOrY / 50; // Scale down from pixel to 3D units
+                } else {
+                    // Convert old 2D pixel coords to 3D world position
+                    const x = (positionOrX - 400) / 50;
+                    const y = 2.5; // Fixed height
+                    position = new BABYLON.Vector3(x, y, 0);
+                    radius = (radiusArg || radiusOrY) / 50; // Scale radius
                 }
 
-                // Apply force to nearby bodies
-                const nearbyBodies = Query.region(Matter.Composite.allBodies(this.world), {
-                    min: { x: x - radius, y: y - radius },
-                    max: { x: x + radius, y: y + radius }
-                });
+                // Create particle system for explosion
+                const particleSystem = new BABYLON.ParticleSystem('explosion_' + Date.now(), 100, this.scene);
 
-                nearbyBodies.forEach(body => {
-                    if (!body.isStatic) {
-                        const dist = Math.hypot(body.position.x - x, body.position.y - y);
-                        const forceMag = Math.max(0, (radius - dist) / radius) * 0.02;
-                        const angle = Math.atan2(body.position.y - y, body.position.x - x);
+                // Use built-in flare texture
+                particleSystem.particleTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/flare.png', this.scene);
 
-                        Body.applyForce(body, body.position, {
-                            x: Math.cos(angle) * forceMag,
-                            y: Math.sin(angle) * forceMag
-                        });
+                // Emitter
+                particleSystem.emitter = position;
+                particleSystem.minEmitBox = new BABYLON.Vector3(-0.2, -0.2, -0.2);
+                particleSystem.maxEmitBox = new BABYLON.Vector3(0.2, 0.2, 0.2);
+
+                // Colors
+                particleSystem.color1 = new BABYLON.Color4(1, 0.5, 0, 1);
+                particleSystem.color2 = new BABYLON.Color4(1, 0.2, 0, 1);
+                particleSystem.colorDead = new BABYLON.Color4(0.3, 0.1, 0, 0);
+
+                // Size
+                particleSystem.minSize = 0.2 * radius;
+                particleSystem.maxSize = 0.5 * radius;
+
+                // Lifetime
+                particleSystem.minLifeTime = 0.2;
+                particleSystem.maxLifeTime = 0.5;
+
+                // Emission
+                particleSystem.emitRate = 500;
+                particleSystem.manualEmitCount = 60;
+
+                // Speed
+                particleSystem.minEmitPower = 3 * radius;
+                particleSystem.maxEmitPower = 6 * radius;
+                particleSystem.updateSpeed = 0.02;
+
+                // Direction (spherical)
+                particleSystem.direction1 = new BABYLON.Vector3(-1, 1, -1);
+                particleSystem.direction2 = new BABYLON.Vector3(1, 1, 1);
+
+                // Gravity
+                particleSystem.gravity = new BABYLON.Vector3(0, -8, 0);
+
+                // Start and auto-dispose
+                particleSystem.start();
+                particleSystem.targetStopDuration = 0.4;
+                particleSystem.disposeOnStop = true;
+
+                // Apply force to nearby terrain blocks
+                this.terrain.forEach(block => {
+                    if (block && block.physicsAggregate) {
+                        const dist = BABYLON.Vector3.Distance(block.position, position);
+                        if (dist < radius * 2) {
+                            const dir = block.position.subtract(position).normalize();
+                            const forceMag = Math.max(0, (radius * 2 - dist) / (radius * 2)) * 15;
+                            block.physicsAggregate.body.applyImpulse(
+                                dir.scale(forceMag),
+                                block.position
+                            );
+                        }
                     }
                 });
 
-                this.addCameraShake(8);
+                this.addCameraShake(radius * 3);
             }
 
-            createImpactEffect(x, y, type) {
-                const color = type === 'EXPLOSIVE' ? this.colors.explosion :
-                             type === 'KINETIC' ? this.colors.kinetic :
-                             this.colors.energy;
+            createImpactEffect(position, type) {
+                if (!this.scene) return;
 
-                for (let i = 0; i < 10; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = 1 + Math.random() * 3;
+                // Create particle system for impact
+                const particleSystem = new BABYLON.ParticleSystem('impact_' + Date.now(), 30, this.scene);
 
-                    this.particles.push({
-                        x, y,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        life: 20 + Math.random() * 20,
-                        maxLife: 40,
-                        size: 2 + Math.random() * 3,
-                        color: color,
-                        type: 'impact'
-                    });
-                }
+                particleSystem.particleTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/flare.png', this.scene);
 
-                this.addCameraShake(2);
+                // Emitter at position
+                particleSystem.emitter = position instanceof BABYLON.Vector3 ? position :
+                    new BABYLON.Vector3(position.x || 0, position.y || 0, position.z || 0);
+                particleSystem.minEmitBox = new BABYLON.Vector3(-0.1, -0.1, -0.1);
+                particleSystem.maxEmitBox = new BABYLON.Vector3(0.1, 0.1, 0.1);
+
+                // Colors based on weapon type
+                const colorHex = type === 'EXPLOSIVE' ? this.colors.explosion :
+                                type === 'KINETIC' ? this.colors.kinetic : this.colors.energy;
+                const color = this.hexToColor3(colorHex);
+
+                particleSystem.color1 = new BABYLON.Color4(color.r, color.g, color.b, 1);
+                particleSystem.color2 = new BABYLON.Color4(color.r * 0.7, color.g * 0.7, color.b * 0.7, 1);
+                particleSystem.colorDead = new BABYLON.Color4(color.r * 0.3, color.g * 0.3, color.b * 0.3, 0);
+
+                // Size
+                particleSystem.minSize = 0.05;
+                particleSystem.maxSize = 0.15;
+
+                // Lifetime
+                particleSystem.minLifeTime = 0.1;
+                particleSystem.maxLifeTime = 0.25;
+
+                // Emission
+                particleSystem.emitRate = 100;
+                particleSystem.manualEmitCount = 20;
+
+                // Speed
+                particleSystem.minEmitPower = 1;
+                particleSystem.maxEmitPower = 3;
+                particleSystem.updateSpeed = 0.02;
+
+                // Direction
+                particleSystem.direction1 = new BABYLON.Vector3(-1, 0.5, -1);
+                particleSystem.direction2 = new BABYLON.Vector3(1, 1, 1);
+
+                // Gravity
+                particleSystem.gravity = new BABYLON.Vector3(0, -5, 0);
+
+                // Start and auto-dispose
+                particleSystem.start();
+                particleSystem.targetStopDuration = 0.25;
+                particleSystem.disposeOnStop = true;
+
+                this.addCameraShake(1.5);
             }
 
             addCameraShake(intensity) {
@@ -2085,621 +2432,88 @@
             }
 
             updateCameraShake() {
+                if (!this.camera || !this.cameraBasePosition) return;
+
                 if (this.cameraShake.intensity > 0) {
-                    this.cameraShake.x = (Math.random() - 0.5) * this.cameraShake.intensity;
-                    this.cameraShake.y = (Math.random() - 0.5) * this.cameraShake.intensity;
-                    this.cameraShake.intensity *= 0.9; // Decay
+                    // Apply shake to camera target
+                    const shakeX = (Math.random() - 0.5) * this.cameraShake.intensity * 0.1;
+                    const shakeY = (Math.random() - 0.5) * this.cameraShake.intensity * 0.1;
+
+                    this.camera.target = new BABYLON.Vector3(shakeX, 2 + shakeY, 0);
+
+                    // Decay
+                    this.cameraShake.intensity *= 0.92;
 
                     if (this.cameraShake.intensity < 0.1) {
                         this.cameraShake.intensity = 0;
-                        this.cameraShake.x = 0;
-                        this.cameraShake.y = 0;
+                        this.camera.target = new BABYLON.Vector3(0, 2, 0);
                     }
                 }
             }
 
             setupRenderLoop() {
-                const Engine = Matter.Engine;
+                if (!this.babylonEngine) return;
 
-                const animate = () => {
-                    if (this.running) {
-                        // Update physics
-                        Engine.update(this.engine, 1000 / 60 * this.timeScale);
-
-                        // Update particles
-                        this.updateParticles();
+                this.babylonEngine.runRenderLoop(() => {
+                    if (this.scene && this.running) {
+                        // Update projectiles
+                        this.updateProjectiles();
 
                         // Update camera shake
                         this.updateCameraShake();
 
-                        // Render
-                        this.render();
+                        // Update health bar displays
+                        this.updateHealthBarDisplays();
+
+                        // Render scene
+                        this.scene.render();
+                    } else if (this.scene) {
+                        // Still render even when not "running" so scene is visible
+                        this.scene.render();
                     }
-
-                    requestAnimationFrame(animate);
-                };
-
-                animate();
-            }
-
-            updateParticles() {
-                this.particles = this.particles.filter(p => {
-                    p.life--;
-
-                    if (p.type === 'explosion' || p.type === 'impact') {
-                        p.x += p.vx;
-                        p.y += p.vy;
-                        p.vy += 0.2; // Gravity
-                    }
-
-                    return p.life > 0;
                 });
             }
 
-            render() {
-                const ctx = this.ctx;
-
-                // Clear
-                ctx.fillStyle = this.colors.background;
-                ctx.fillRect(0, 0, this.width, this.height);
-
-                // Sky gradient
-                const gradient = ctx.createLinearGradient(0, 0, 0, this.height);
-                gradient.addColorStop(0, this.colors.sky);
-                gradient.addColorStop(1, this.colors.background);
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, this.width, this.height * 0.7);
-
-                // Apply camera shake
-                ctx.save();
-                ctx.translate(this.cameraShake.x, this.cameraShake.y);
-
-                // Render terrain
-                this.renderBodies(Matter.Composite.allBodies(this.world), ctx);
-
-                // Render particles
-                if (this.effectsEnabled) {
-                    this.renderParticles(ctx);
-                }
-
-                // Render mechs with custom rendering
-                if (this.playerMech) this.renderMech(this.playerMech, ctx);
-                if (this.enemyMech) this.renderMech(this.enemyMech, ctx);
-
-                // Render health bars
-                if (this.playerMech) this.renderHealthBar(this.playerMech, ctx);
-                if (this.enemyMech) this.renderHealthBar(this.enemyMech, ctx);
-
-                ctx.restore();
+            updateHealthBarDisplays() {
+                // Update floating health bars using Babylon.js GUI or simple meshes
+                // For now, health is tracked in the battle system UI
             }
 
-            renderHealthBar(mech, ctx) {
-                if (!mech.currentHP || !mech.maxHP) return;
-
-                const x = mech.torso.position.x;
-                const y = mech.torso.position.y - 60;
-                const width = 80;
-                const height = 8;
-
-                // Background
-                ctx.fillStyle = '#000';
-                ctx.fillRect(x - width/2 - 1, y - 1, width + 2, height + 2);
-
-                // Health bar
-                const healthPercent = mech.currentHP / mech.maxHP;
-                const healthWidth = Math.max(0, (width * healthPercent));
-
-                // Color based on health
-                if (healthPercent > 0.6) {
-                    ctx.fillStyle = '#00ff88';
-                } else if (healthPercent > 0.3) {
-                    ctx.fillStyle = '#ffaa00';
-                } else {
-                    ctx.fillStyle = '#ff4444';
-                }
-
-                ctx.fillRect(x - width/2, y, healthWidth, height);
-
-                // Shield bar
-                if (mech.shield && mech.shield > 0) {
-                    const shieldY = y - 10;
-                    const shieldMax = 50; // Estimate
-                    const shieldPercent = Math.min(1, mech.shield / shieldMax);
-                    const shieldWidth = width * shieldPercent;
-
-                    ctx.fillStyle = '#00ccff';
-                    ctx.fillRect(x - width/2, shieldY, shieldWidth, 4);
-                }
-
-                // HP text
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 10px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${Math.max(0, Math.floor(mech.currentHP))}/${mech.maxHP}`, x, y - 5);
-            }
-
+            // Compatibility stubs for old canvas API - Babylon.js handles rendering
             renderBodies(bodies, ctx) {
-                bodies.forEach(body => {
-                    if (body.label && (body.label.includes('player') || body.label.includes('enemy'))) {
-                        return; // Skip mech parts, we render them separately
-                    }
-
-                    const vertices = body.vertices;
-                    ctx.beginPath();
-                    ctx.moveTo(vertices[0].x, vertices[0].y);
-
-                    for (let i = 1; i < vertices.length; i++) {
-                        ctx.lineTo(vertices[i].x, vertices[i].y);
-                    }
-
-                    ctx.closePath();
-                    ctx.fillStyle = body.render.fillStyle || this.colors.terrain;
-                    ctx.fill();
-
-                    // Pixel-art outline
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                });
+                // No-op: Babylon.js renders all meshes automatically
             }
 
             renderMech(mech, ctx) {
-                // Save context
-                ctx.save();
-
-                const scale = mech.scale || 1;
-                const baseColor = mech.color;
-                const darkColor = this.darkenColor(baseColor, 0.6);
-                const lightColor = this.lightenColor(baseColor, 1.3);
-
-                // Render mech components in proper order (back to front)
-                this.renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor);
-                this.renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor);
-                this.renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor);
-                this.renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor);
-
-                ctx.restore();
+                // No-op: 3D mechs are rendered by Babylon.js
             }
 
             renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor) {
-                const leftLeg = mech.leftLeg;
-                const rightLeg = mech.rightLeg;
-                const loadout = mech.loadout || {};
-                const legsComponent = loadout.legs;
-                const mechClass = mech.mechClass || 'Medium';
-
-                [leftLeg, rightLeg].forEach((leg, index) => {
-                    const isLeft = index === 0;
-                    const legX = leg.position.x;
-                    const legY = leg.position.y;
-                    const angle = leg.angle;
-
-                    ctx.save();
-                    ctx.translate(legX, legY);
-                    ctx.rotate(angle);
-
-                    let sizeMultiplier = 1;
-                    let legThickness = 12;
-                    if (mechClass === 'Light') {
-                        sizeMultiplier = 0.85;
-                        legThickness = 10;
-                    }
-                    if (mechClass === 'Heavy') {
-                        sizeMultiplier = 1.2;
-                        legThickness = 14;
-                    }
-
-                    // Upper thigh - angular armored with chamfered edges
-                    ctx.fillStyle = lightColor;
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(-legThickness/2 * scale, -14 * scale * sizeMultiplier);
-                    ctx.lineTo(legThickness/2 * scale, -14 * scale * sizeMultiplier);
-                    ctx.lineTo(legThickness/2 * scale + 2 * scale, -12 * scale * sizeMultiplier);
-                    ctx.lineTo(legThickness/2 * scale + 2 * scale, 2 * scale * sizeMultiplier);
-                    ctx.lineTo(-legThickness/2 * scale - 2 * scale, 2 * scale * sizeMultiplier);
-                    ctx.lineTo(-legThickness/2 * scale - 2 * scale, -12 * scale * sizeMultiplier);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Panel lines on thigh
-                    ctx.strokeStyle = darkColor;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(-4 * scale, -10 * scale * sizeMultiplier);
-                    ctx.lineTo(4 * scale, -10 * scale * sizeMultiplier);
-                    ctx.stroke();
-
-                    // Knee joint - larger, mechanical with glow
-                    const kneeSize = mechClass === 'Heavy' ? 7 : 6;
-                    ctx.fillStyle = '#1a1a1a';
-                    ctx.beginPath();
-                    ctx.arc(0, 4 * scale * sizeMultiplier, kneeSize * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Knee joint glow
-                    ctx.fillStyle = '#ff6b35';
-                    ctx.globalAlpha = 0.4;
-                    ctx.beginPath();
-                    ctx.arc(0, 4 * scale * sizeMultiplier, (kneeSize - 2) * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-
-                    // Lower leg - sleek reverse-joint design
-                    ctx.fillStyle = baseColor;
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(-6 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
-                    ctx.lineTo(-4 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
-                    ctx.lineTo(-4 * scale * sizeMultiplier, 18 * scale * sizeMultiplier);
-                    ctx.lineTo(4 * scale * sizeMultiplier, 18 * scale * sizeMultiplier);
-                    ctx.lineTo(4 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
-                    ctx.lineTo(6 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Ankle actuator
-                    ctx.fillStyle = darkColor;
-                    ctx.beginPath();
-                    ctx.arc(0, 18 * scale * sizeMultiplier, 3 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Foot - aggressive angular design
-                    const footWidth = mechClass === 'Heavy' ? 18 : mechClass === 'Light' ? 14 : 16;
-                    ctx.fillStyle = '#2a2a2a';
-                    ctx.beginPath();
-                    ctx.moveTo(-footWidth/2 * scale * sizeMultiplier, 20 * scale * sizeMultiplier);
-                    ctx.lineTo(footWidth/2 * scale * sizeMultiplier, 20 * scale * sizeMultiplier);
-                    ctx.lineTo((footWidth/2 + 3) * scale * sizeMultiplier, 24 * scale * sizeMultiplier);
-                    ctx.lineTo(-(footWidth/2 + 3) * scale * sizeMultiplier, 24 * scale * sizeMultiplier);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Thrusters for Light mechs
-                    if (mechClass === 'Light' || (legsComponent && legsComponent.name && legsComponent.name.includes('Boost'))) {
-                        ctx.fillStyle = '#00d9ff';
-                        ctx.globalAlpha = 0.7;
-                        for (let i = 0; i < 2; i++) {
-                            ctx.beginPath();
-                            ctx.arc((-2 + i * 4) * scale, 12 * scale * sizeMultiplier, 1.5 * scale, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                        ctx.globalAlpha = 1;
-                    }
-
-                    // Hydraulic pistons
-                    ctx.strokeStyle = '#404040';
-                    ctx.lineWidth = 2.5 * scale;
-                    const hydraulicCount = mechClass === 'Heavy' ? 2 : 1;
-                    for (let i = 0; i < hydraulicCount; i++) {
-                        ctx.beginPath();
-                        ctx.moveTo((-3 + i * 6) * scale, -8 * scale * sizeMultiplier);
-                        ctx.lineTo((-3 + i * 6) * scale, 14 * scale * sizeMultiplier);
-                        ctx.stroke();
-                    }
-
-                    ctx.restore();
-                });
+                // No-op: 3D mechs are rendered by Babylon.js
             }
 
             renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor) {
-                const torso = mech.torso;
-                const torsoX = torso.position.x;
-                const torsoY = torso.position.y;
-                const angle = torso.angle;
-                const loadout = mech.loadout || {};
-                const torsoComponent = loadout.torso;
-                const mechClass = mech.mechClass || 'Medium';
-
-                ctx.save();
-                ctx.translate(torsoX, torsoY);
-                ctx.rotate(angle);
-
-                let sizeMultiplier = 1;
-                if (mechClass === 'Light') sizeMultiplier = 0.9;
-                if (mechClass === 'Heavy') sizeMultiplier = 1.15;
-
-                // Main torso chassis - angular, aggressive shape
-                ctx.fillStyle = baseColor;
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                ctx.moveTo(-20 * scale * sizeMultiplier, -20 * scale * sizeMultiplier);
-                ctx.lineTo(20 * scale * sizeMultiplier, -20 * scale * sizeMultiplier);
-                ctx.lineTo(22 * scale * sizeMultiplier, -16 * scale * sizeMultiplier);
-                ctx.lineTo(22 * scale * sizeMultiplier, 18 * scale * sizeMultiplier);
-                ctx.lineTo(16 * scale * sizeMultiplier, 22 * scale * sizeMultiplier);
-                ctx.lineTo(-16 * scale * sizeMultiplier, 22 * scale * sizeMultiplier);
-                ctx.lineTo(-22 * scale * sizeMultiplier, 18 * scale * sizeMultiplier);
-                ctx.lineTo(-22 * scale * sizeMultiplier, -16 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Cockpit canopy - sleek angular design
-                ctx.fillStyle = lightColor;
-                ctx.beginPath();
-                ctx.moveTo(-10 * scale * sizeMultiplier, -18 * scale * sizeMultiplier);
-                ctx.lineTo(10 * scale * sizeMultiplier, -18 * scale * sizeMultiplier);
-                ctx.lineTo(12 * scale * sizeMultiplier, -14 * scale * sizeMultiplier);
-                ctx.lineTo(12 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
-                ctx.lineTo(-12 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
-                ctx.lineTo(-12 * scale * sizeMultiplier, -14 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Viewport - glowing cyan
-                const gradient = ctx.createLinearGradient(-6 * scale * sizeMultiplier, -16 * scale * sizeMultiplier,
-                                                          6 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
-                gradient.addColorStop(0, '#00d9ff');
-                gradient.addColorStop(0.5, '#4dd2ff');
-                gradient.addColorStop(1, '#00d9ff');
-                ctx.fillStyle = gradient;
-                ctx.globalAlpha = 0.9;
-                ctx.beginPath();
-                ctx.moveTo(-6 * scale * sizeMultiplier, -16 * scale * sizeMultiplier);
-                ctx.lineTo(6 * scale * sizeMultiplier, -16 * scale * sizeMultiplier);
-                ctx.lineTo(8 * scale * sizeMultiplier, -12 * scale * sizeMultiplier);
-                ctx.lineTo(-8 * scale * sizeMultiplier, -12 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.globalAlpha = 1;
-                ctx.stroke();
-
-                // Armor panels with improved design
-                const armorColor = torsoComponent && torsoComponent.name && torsoComponent.name.includes('Heavy') ? '#3a3a3a' : darkColor;
-                const armorThickness = torsoComponent && torsoComponent.armor > 10 ? 7 : 5;
-
-                // Left side armor - layered plates
-                ctx.fillStyle = armorColor;
-                ctx.beginPath();
-                ctx.moveTo(-22 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
-                ctx.lineTo(-16 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
-                ctx.lineTo(-16 * scale * sizeMultiplier, 12 * scale * sizeMultiplier);
-                ctx.lineTo(-22 * scale * sizeMultiplier, 14 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Right side armor
-                ctx.beginPath();
-                ctx.moveTo(22 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
-                ctx.lineTo(16 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
-                ctx.lineTo(16 * scale * sizeMultiplier, 12 * scale * sizeMultiplier);
-                ctx.lineTo(22 * scale * sizeMultiplier, 14 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Panel lines and details
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                for (let i = 0; i < 4; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(-12 * scale * sizeMultiplier, (-8 + i * 6) * scale);
-                    ctx.lineTo(12 * scale * sizeMultiplier, (-8 + i * 6) * scale);
-                    ctx.stroke();
-                }
-
-                // Power core - glowing reactor
-                const coreColor = mechClass === 'Light' ? '#00ffff' : mechClass === 'Heavy' ? '#ff3333' : '#ff6b35';
-                const coreGlow = ctx.createRadialGradient(0, 10 * scale, 0, 0, 10 * scale, 6 * scale * sizeMultiplier);
-                coreGlow.addColorStop(0, coreColor);
-                coreGlow.addColorStop(0.7, coreColor + '88');
-                coreGlow.addColorStop(1, coreColor + '00');
-                ctx.fillStyle = coreGlow;
-                ctx.globalAlpha = 0.9;
-                ctx.beginPath();
-                ctx.arc(0, 10 * scale, 6 * scale * sizeMultiplier, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-
-                // Core center
-                ctx.fillStyle = coreColor;
-                ctx.beginPath();
-                ctx.arc(0, 10 * scale, 3 * scale * sizeMultiplier, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Vent ports
-                ctx.fillStyle = '#1a1a1a';
-                for (let i = 0; i < 3; i++) {
-                    ctx.beginPath();
-                    ctx.arc((-6 + i * 6) * scale * sizeMultiplier, 4 * scale, 2 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-                }
-
-                ctx.restore();
+                // No-op: 3D mechs are rendered by Babylon.js
             }
 
             renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor) {
-                const leftArm = mech.leftArm;
-                const rightArm = mech.rightArm;
-                const loadout = mech.loadout || {};
+                // No-op: 3D mechs are rendered by Babylon.js
+            }
 
-                [leftArm, rightArm].forEach((arm, index) => {
-                    const isLeft = index === 0;
-                    const armX = arm.position.x;
-                    const armY = arm.position.y;
-                    const angle = arm.angle;
-
-                    // Get equipped components for this side
-                    const armSlot = isLeft ? 'leftArm' : 'rightArm';
-                    const shoulderSlot = isLeft ? 'leftShoulder' : 'rightShoulder';
-                    const armComponent = loadout[armSlot];
-                    const shoulderComponent = loadout[shoulderSlot];
-
-                    ctx.save();
-                    ctx.translate(armX, armY);
-                    ctx.rotate(angle);
-
-                    // Shoulder mount - varies based on equipped shoulder component
-                    if (shoulderComponent) {
-                        this.renderShoulderWeapon(ctx, scale, shoulderComponent, darkColor);
-                    } else {
-                        // Default shoulder mount
-                        ctx.fillStyle = darkColor;
-                        ctx.strokeStyle = '#000';
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.arc(0, -12 * scale, 6 * scale, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.stroke();
-                    }
-
-                    // Upper arm
-                    ctx.fillStyle = baseColor;
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.rect(-4 * scale, -12 * scale, 8 * scale, 18 * scale);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Forearm/weapon mount - varies based on equipped arm component
-                    if (armComponent) {
-                        this.renderArmWeapon(ctx, scale, armComponent, lightColor, darkColor);
-                    } else {
-                        // Default forearm
-                        ctx.fillStyle = lightColor;
-                        ctx.beginPath();
-                        ctx.rect(-5 * scale, 6 * scale, 10 * scale, 14 * scale);
-                        ctx.fill();
-                        ctx.stroke();
-
-                        // Default actuator
-                        ctx.fillStyle = '#666';
-                        ctx.beginPath();
-                        ctx.rect(-2 * scale, 18 * scale, 4 * scale, 8 * scale);
-                        ctx.fill();
-                        ctx.stroke();
-                    }
-
-                    ctx.restore();
-                });
+            renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                // No-op: 3D mechs are rendered by Babylon.js
             }
 
             renderShoulderWeapon(ctx, scale, component, darkColor) {
-                const weaponColor = this.getWeaponColor(component);
-
-                // Larger shoulder mount for weapons
-                ctx.fillStyle = darkColor;
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(0, -12 * scale, 8 * scale, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-
-                // Weapon pod based on type
-                if (component.name && component.name.includes('Missile')) {
-                    // Missile pods
-                    ctx.fillStyle = weaponColor;
-                    for (let i = 0; i < 3; i++) {
-                        ctx.beginPath();
-                        ctx.rect((i - 1) * 4 * scale - 2 * scale, -16 * scale, 3 * scale, 6 * scale);
-                        ctx.fill();
-                        ctx.stroke();
-                    }
-                } else if (component.name && component.name.includes('Laser')) {
-                    // Laser emitter
-                    ctx.fillStyle = weaponColor;
-                    ctx.beginPath();
-                    ctx.rect(-3 * scale, -18 * scale, 6 * scale, 10 * scale);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Emitter tip
-                    ctx.fillStyle = '#ff0000';
-                    ctx.globalAlpha = 0.6;
-                    ctx.beginPath();
-                    ctx.arc(0, -19 * scale, 2 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-                } else {
-                    // Generic weapon pod
-                    ctx.fillStyle = weaponColor;
-                    ctx.beginPath();
-                    ctx.rect(-4 * scale, -18 * scale, 8 * scale, 8 * scale);
-                    ctx.fill();
-                    ctx.stroke();
-                }
+                // No-op: 3D mechs are rendered by Babylon.js
             }
 
             renderArmWeapon(ctx, scale, component, lightColor, darkColor) {
-                const weaponColor = this.getWeaponColor(component);
-
-                // Forearm mount
-                ctx.fillStyle = lightColor;
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.rect(-5 * scale, 6 * scale, 10 * scale, 14 * scale);
-                ctx.fill();
-                ctx.stroke();
-
-                // Weapon based on type
-                if (component.name && (component.name.includes('Cannon') || component.name.includes('Rifle'))) {
-                    // Ballistic weapon - long barrel
-                    ctx.fillStyle = weaponColor;
-                    ctx.beginPath();
-                    ctx.rect(-3 * scale, 18 * scale, 6 * scale, 12 * scale);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Muzzle brake
-                    ctx.fillStyle = '#333';
-                    ctx.beginPath();
-                    ctx.rect(-4 * scale, 28 * scale, 8 * scale, 2 * scale);
-                    ctx.fill();
-                    ctx.stroke();
-                } else if (component.name && component.name.includes('Blade')) {
-                    // Melee weapon - blade
-                    ctx.fillStyle = '#c0c0c0';
-                    ctx.beginPath();
-                    ctx.moveTo(0, 18 * scale);
-                    ctx.lineTo(-4 * scale, 28 * scale);
-                    ctx.lineTo(0, 32 * scale);
-                    ctx.lineTo(4 * scale, 28 * scale);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                } else if (component.name && component.name.includes('Plasma')) {
-                    // Energy weapon - glowing
-                    ctx.fillStyle = weaponColor;
-                    ctx.beginPath();
-                    ctx.rect(-3 * scale, 18 * scale, 6 * scale, 10 * scale);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Energy glow
-                    ctx.fillStyle = '#00ffff';
-                    ctx.globalAlpha = 0.6;
-                    ctx.beginPath();
-                    ctx.arc(0, 28 * scale, 3 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-                } else {
-                    // Default weapon
-                    ctx.fillStyle = weaponColor;
-                    ctx.beginPath();
-                    ctx.rect(-2 * scale, 18 * scale, 4 * scale, 10 * scale);
-                    ctx.fill();
-                    ctx.stroke();
-                }
+                // No-op: 3D mechs are rendered by Babylon.js
             }
 
             getWeaponColor(component) {
                 if (!component || !component.damageType) return '#666';
-
                 switch(component.damageType) {
                     case 'ENERGY': return '#00bfff';
                     case 'KINETIC': return '#808080';
@@ -2708,154 +2522,11 @@
                 }
             }
 
-            renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor) {
-                const head = mech.head;
-                const headX = head.position.x;
-                const headY = head.position.y;
-                const angle = head.angle;
-                const loadout = mech.loadout || {};
-                const headComponent = loadout.head;
-                const mechClass = mech.mechClass || 'Medium';
-
-                ctx.save();
-                ctx.translate(headX, headY);
-                ctx.rotate(angle);
-
-                let sizeMultiplier = 1;
-                if (mechClass === 'Light') sizeMultiplier = 0.85;
-                if (mechClass === 'Heavy') sizeMultiplier = 1.2;
-
-                // Modern aggressive head - angular wedge shape
-                ctx.fillStyle = baseColor;
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
-
-                // Main head structure - aggressive forward-swept design
-                ctx.beginPath();
-                ctx.moveTo(0, -14 * scale * sizeMultiplier);  // Top point
-                ctx.lineTo(12 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
-                ctx.lineTo(14 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
-                ctx.lineTo(14 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
-                ctx.lineTo(10 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
-                ctx.lineTo(-10 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
-                ctx.lineTo(-14 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
-                ctx.lineTo(-14 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
-                ctx.lineTo(-12 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Sensor pods - sleek angled design
-                const earSize = headComponent && headComponent.name && headComponent.name.includes('Sensor') ? 6 : 5;
-                ctx.fillStyle = '#2a2a2a';
-
-                // Left sensor pod
-                ctx.beginPath();
-                ctx.moveTo(-16 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
-                ctx.lineTo(-12 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
-                ctx.lineTo(-12 * scale * sizeMultiplier, 2 * scale * sizeMultiplier);
-                ctx.lineTo(-16 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Right sensor pod
-                ctx.beginPath();
-                ctx.moveTo(16 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
-                ctx.lineTo(12 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
-                ctx.lineTo(12 * scale * sizeMultiplier, 2 * scale * sizeMultiplier);
-                ctx.lineTo(16 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Sensor lights on pods
-                if (headComponent && headComponent.name && headComponent.name.includes('Sensor')) {
-                    ctx.fillStyle = '#00d9ff';
-                    ctx.globalAlpha = 0.8;
-                    [-14, 14].forEach(x => {
-                        ctx.beginPath();
-                        ctx.arc(x * scale * sizeMultiplier, -4 * scale * sizeMultiplier, 2 * scale, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                    ctx.globalAlpha = 1;
-                }
-
-                // Main visor - aggressive angular design with glow
-                const eyeColor = headComponent && headComponent.name && headComponent.name.includes('Advanced') ? '#00ff00' : '#ff0000';
-
-                // Visor glow
-                const visorGlow = ctx.createRadialGradient(0, -4 * scale * sizeMultiplier, 0, 0, -4 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
-                visorGlow.addColorStop(0, eyeColor);
-                visorGlow.addColorStop(0.6, eyeColor + '66');
-                visorGlow.addColorStop(1, eyeColor + '00');
-                ctx.fillStyle = visorGlow;
-                ctx.globalAlpha = 0.7;
-                ctx.fillRect(-10 * scale * sizeMultiplier, -8 * scale * sizeMultiplier,
-                            20 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
-                ctx.globalAlpha = 1;
-
-                // Visor shape - angular slit
-                ctx.fillStyle = eyeColor;
-                ctx.globalAlpha = 0.95;
-                ctx.beginPath();
-                ctx.moveTo(-8 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
-                ctx.lineTo(8 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
-                ctx.lineTo(10 * scale * sizeMultiplier, -4 * scale * sizeMultiplier);
-                ctx.lineTo(10 * scale * sizeMultiplier, -2 * scale * sizeMultiplier);
-                ctx.lineTo(-10 * scale * sizeMultiplier, -2 * scale * sizeMultiplier);
-                ctx.lineTo(-10 * scale * sizeMultiplier, -4 * scale * sizeMultiplier);
-                ctx.closePath();
-                ctx.fill();
-                ctx.globalAlpha = 1;
-                ctx.stroke();
-
-                // Center camera/sensor
-                ctx.fillStyle = eyeColor;
-                ctx.beginPath();
-                ctx.arc(0, -4 * scale * sizeMultiplier, 2.5 * scale * sizeMultiplier, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-
-                // Antenna/communication array
-                if (headComponent && headComponent.name && headComponent.name.includes('Comm')) {
-                    ctx.strokeStyle = '#404040';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(0, -14 * scale * sizeMultiplier);
-                    ctx.lineTo(0, -18 * scale * sizeMultiplier);
-                    ctx.stroke();
-
-                    // Antenna tip with glow
-                    const antennaGlow = ctx.createRadialGradient(0, -18 * scale * sizeMultiplier, 0,
-                                                                  0, -18 * scale * sizeMultiplier, 3 * scale);
-                    antennaGlow.addColorStop(0, '#ff6b35');
-                    antennaGlow.addColorStop(0.7, '#ff6b3588');
-                    antennaGlow.addColorStop(1, '#ff6b3500');
-                    ctx.fillStyle = antennaGlow;
-                    ctx.beginPath();
-                    ctx.arc(0, -18 * scale * sizeMultiplier, 3 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.fillStyle = '#ff6b35';
-                    ctx.beginPath();
-                    ctx.arc(0, -18 * scale * sizeMultiplier, 1.5 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                // Panel lines for detail
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(-8 * scale * sizeMultiplier, 2 * scale * sizeMultiplier);
-                ctx.lineTo(8 * scale * sizeMultiplier, 2 * scale * sizeMultiplier);
-                ctx.stroke();
-
-                ctx.restore();
+            renderParticles(ctx) {
+                // No-op: Babylon.js ParticleSystem handles this
             }
 
             darkenColor(color, factor) {
-                // Simple color darkening
                 const hex = color.replace('#', '');
                 const r = Math.max(0, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
                 const g = Math.max(0, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
@@ -2864,41 +2535,11 @@
             }
 
             lightenColor(color, factor) {
-                // Simple color lightening
                 const hex = color.replace('#', '');
                 const r = Math.min(255, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
                 const g = Math.min(255, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
                 const b = Math.min(255, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
                 return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
-            }
-
-            renderParticles(ctx) {
-                this.particles.forEach(p => {
-                    if (p.type === 'explosion' || p.type === 'impact') {
-                        const alpha = p.life / p.maxLife;
-                        ctx.fillStyle = p.color;
-                        ctx.globalAlpha = alpha;
-                        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-                        ctx.globalAlpha = 1;
-                    } else if (p.x1 !== undefined) {
-                        // Energy beam
-                        const alpha = p.life / 30;
-                        ctx.strokeStyle = p.color;
-                        ctx.globalAlpha = alpha;
-                        ctx.lineWidth = p.width;
-                        ctx.beginPath();
-                        ctx.moveTo(p.x1, p.y1);
-                        ctx.lineTo(p.x2, p.y2);
-                        ctx.stroke();
-
-                        // Glow effect
-                        ctx.shadowBlur = 20;
-                        ctx.shadowColor = p.color;
-                        ctx.stroke();
-                        ctx.shadowBlur = 0;
-                        ctx.globalAlpha = 1;
-                    }
-                });
             }
 
             start() {
@@ -2909,28 +2550,71 @@
                 this.running = false;
             }
 
-            reset() {
-                const World = Matter.World;
-                const Composite = Matter.Composite;
+            async reset() {
+                // Dispose of existing mechs
+                if (this.playerMech && this.playerMech.torsoMesh) {
+                    this.disposeMech(this.playerMech);
+                }
+                if (this.enemyMech && this.enemyMech.torsoMesh) {
+                    this.disposeMech(this.enemyMech);
+                }
 
-                // Clear all bodies except ground
-                World.clear(this.world, false);
-                this.terrain = [];
+                // Clear projectiles
+                this.projectiles.forEach(p => {
+                    if (p.mesh) p.mesh.dispose();
+                });
                 this.projectiles = [];
-                this.particles = [];
+
+                // Clear laser beams
+                this.laserBeams.forEach(b => {
+                    if (b.mesh) b.mesh.dispose();
+                });
+                this.laserBeams = [];
+
+                // Clear terrain blocks
+                this.terrain.forEach(block => {
+                    if (block && block.dispose) block.dispose();
+                });
+                this.terrain = [];
+
                 this.playerMech = null;
                 this.enemyMech = null;
+
+                // Wait for Babylon to be initialized
+                if (!this.initialized) {
+                    await this.initPromise;
+                }
 
                 // Recreate terrain
                 this.createTerrain();
             }
 
+            disposeMech(mech) {
+                if (!mech) return;
+
+                // Dispose the main torso (and all children)
+                if (mech.torsoMesh) {
+                    // Get all child meshes first
+                    const children = mech.torsoMesh.getChildMeshes();
+                    children.forEach(child => {
+                        if (child.material) child.material.dispose();
+                        child.dispose();
+                    });
+
+                    // Dispose torso material and mesh
+                    if (mech.torsoMesh.material) mech.torsoMesh.material.dispose();
+                    if (mech.torsoAggregate) {
+                        mech.torsoAggregate.dispose();
+                    }
+                    mech.torsoMesh.dispose();
+                }
+            }
+
             setTimeScale(scale) {
                 this.timeScale = scale;
-                this.engine.timing.timeScale = scale;
+                // Havok doesn't have a direct time scale, but we can adjust update frequency
             }
         }
-
         // ============================================================================
         // PHYSICS BATTLE SYSTEM - Real-time physics-driven combat
         // ============================================================================
@@ -2999,7 +2683,13 @@
             }
 
             async initializeBattle() {
-                this.physics.reset();
+                // Wait for physics engine to reset (may need to initialize Babylon.js)
+                await this.physics.reset();
+
+                // Wait for Babylon.js to be ready if needed
+                if (this.physics.initPromise && !this.physics.initialized) {
+                    await this.physics.initPromise;
+                }
 
                 // Create physics mechs
                 this.playerPhysMech = this.physics.createMech(

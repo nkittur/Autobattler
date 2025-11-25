@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babylon.js + Havok Physics Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            font-family: monospace;
+            color: #00ff88;
+            overflow: hidden;
+        }
+        #renderCanvas {
+            width: 100%;
+            max-width: 900px;
+            height: 500px;
+            display: block;
+            margin: 0 auto;
+            border: 3px solid #00ff88;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+        }
+        #status {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+        }
+        .log {
+            font-size: 12px;
+            margin: 2px 0;
+            padding: 2px 5px;
+        }
+        .log.info { color: #00ff88; }
+        .log.warn { color: #ffaa00; }
+        .log.error { color: #ff4444; }
+        #controls {
+            text-align: center;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        button:hover {
+            background: rgba(0, 255, 136, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <h1>Babylon.js + Havok Physics Test</h1>
+    <div id="controls">
+        <button onclick="firePlayerProjectile()">Fire Player Weapon</button>
+        <button onclick="fireEnemyProjectile()">Fire Enemy Weapon</button>
+        <button onclick="fireLaser(true)">Player Laser</button>
+        <button onclick="fireLaser(false)">Enemy Laser</button>
+        <button onclick="resetScene()">Reset Scene</button>
+    </div>
+    <canvas id="renderCanvas"></canvas>
+    <div id="status">
+        <div id="logs"></div>
+    </div>
+
+    <!-- Babylon.js Core -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <!-- Havok Physics -->
+    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+
+    <script>
+        // Logging system
+        const logs = [];
+        function log(msg, type = 'info') {
+            console.log(msg);
+            logs.push({ msg, type });
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML = logs.slice(-15).map(l =>
+                `<div class="log ${l.type}">${l.msg}</div>`
+            ).join('');
+        }
+
+        log('Initializing Babylon.js + Havok Physics...', 'info');
+
+        // Global references
+        let engine, scene, camera, havokInstance, havokPlugin;
+        let playerMech, enemyMech;
+        let projectiles = [];
+        let laserBeams = [];
+
+        // Colors
+        const COLORS = {
+            player: new BABYLON.Color3(0, 1, 0.53),     // #00ff88
+            enemy: new BABYLON.Color3(1, 0.27, 0.27),   // #ff4444
+            ground: new BABYLON.Color3(0.29, 0.29, 0.42), // #4a4a6a
+            projectile: new BABYLON.Color3(1, 0.67, 0),  // #ffaa00
+            laser: new BABYLON.Color3(1, 0, 0),          // Red
+            explosion: new BABYLON.Color3(1, 0.4, 0)     // #ff6600
+        };
+
+        // Initialize Babylon.js and Havok
+        async function initEngine() {
+            const canvas = document.getElementById('renderCanvas');
+
+            // Create Babylon engine
+            engine = new BABYLON.Engine(canvas, true, {
+                preserveDrawingBuffer: true,
+                stencil: true
+            });
+
+            log('Babylon Engine created', 'info');
+
+            // Initialize Havok Physics
+            try {
+                havokInstance = await HavokPhysics();
+                log('Havok Physics initialized!', 'info');
+            } catch (error) {
+                log('Failed to load Havok: ' + error.message, 'error');
+                return;
+            }
+
+            // Create scene
+            scene = createScene();
+
+            // Start render loop
+            engine.runRenderLoop(() => {
+                if (scene) {
+                    scene.render();
+                    updateProjectiles();
+                    updateLaserBeams();
+                }
+            });
+
+            // Handle resize
+            window.addEventListener('resize', () => engine.resize());
+
+            log('Scene created and render loop started!', 'info');
+        }
+
+        function createScene() {
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.05, 0.05, 0.12); // Dark background
+
+            // Create Havok physics plugin
+            havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
+            scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), havokPlugin);
+            log('Physics enabled with Havok', 'info');
+
+            // Create camera - fixed isometric-style view
+            camera = new BABYLON.ArcRotateCamera(
+                'camera',
+                -Math.PI / 2,  // Alpha (horizontal rotation)
+                Math.PI / 3,   // Beta (vertical angle - more top-down)
+                25,            // Radius (distance)
+                new BABYLON.Vector3(0, 2, 0), // Target
+                scene
+            );
+            camera.attachControl(document.getElementById('renderCanvas'), true);
+            camera.lowerRadiusLimit = 10;
+            camera.upperRadiusLimit = 50;
+
+            // Lighting
+            const hemisphericLight = new BABYLON.HemisphericLight(
+                'hemiLight',
+                new BABYLON.Vector3(0, 1, 0),
+                scene
+            );
+            hemisphericLight.intensity = 0.7;
+
+            const directionalLight = new BABYLON.DirectionalLight(
+                'dirLight',
+                new BABYLON.Vector3(-1, -2, 1),
+                scene
+            );
+            directionalLight.intensity = 0.5;
+
+            // Create ground
+            createGround(scene);
+
+            // Create boundary walls
+            createWalls(scene);
+
+            // Create mechs
+            playerMech = createMech(scene, -6, true);
+            enemyMech = createMech(scene, 6, false);
+
+            log('Scene fully initialized with mechs!', 'info');
+            return scene;
+        }
+
+        function createGround(scene) {
+            const ground = BABYLON.MeshBuilder.CreateGround('ground', {
+                width: 30,
+                height: 15
+            }, scene);
+
+            const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
+            groundMat.diffuseColor = COLORS.ground;
+            groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+            ground.material = groundMat;
+
+            // Add physics to ground (static body)
+            const groundAggregate = new BABYLON.PhysicsAggregate(
+                ground,
+                BABYLON.PhysicsShapeType.BOX,
+                { mass: 0, friction: 0.8, restitution: 0.1 },
+                scene
+            );
+
+            log('Ground created with physics', 'info');
+            return ground;
+        }
+
+        function createWalls(scene) {
+            // Create invisible boundary walls
+            const wallHeight = 8;
+            const wallThickness = 1;
+            const arenaWidth = 30;
+            const arenaDepth = 15;
+
+            const wallMat = new BABYLON.StandardMaterial('wallMat', scene);
+            wallMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.4);
+            wallMat.alpha = 0.3;
+
+            // Left wall
+            const leftWall = BABYLON.MeshBuilder.CreateBox('leftWall', {
+                width: wallThickness, height: wallHeight, depth: arenaDepth
+            }, scene);
+            leftWall.position = new BABYLON.Vector3(-arenaWidth/2, wallHeight/2, 0);
+            leftWall.material = wallMat;
+            new BABYLON.PhysicsAggregate(leftWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+
+            // Right wall
+            const rightWall = BABYLON.MeshBuilder.CreateBox('rightWall', {
+                width: wallThickness, height: wallHeight, depth: arenaDepth
+            }, scene);
+            rightWall.position = new BABYLON.Vector3(arenaWidth/2, wallHeight/2, 0);
+            rightWall.material = wallMat;
+            new BABYLON.PhysicsAggregate(rightWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+
+            // Front wall
+            const frontWall = BABYLON.MeshBuilder.CreateBox('frontWall', {
+                width: arenaWidth, height: wallHeight, depth: wallThickness
+            }, scene);
+            frontWall.position = new BABYLON.Vector3(0, wallHeight/2, arenaDepth/2);
+            frontWall.material = wallMat;
+            new BABYLON.PhysicsAggregate(frontWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+
+            // Back wall
+            const backWall = BABYLON.MeshBuilder.CreateBox('backWall', {
+                width: arenaWidth, height: wallHeight, depth: wallThickness
+            }, scene);
+            backWall.position = new BABYLON.Vector3(0, wallHeight/2, -arenaDepth/2);
+            backWall.material = wallMat;
+            new BABYLON.PhysicsAggregate(backWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+
+            log('Boundary walls created', 'info');
+        }
+
+        function createMech(scene, xPos, isPlayer) {
+            const color = isPlayer ? COLORS.player : COLORS.enemy;
+            const mechName = isPlayer ? 'player' : 'enemy';
+
+            // Create parent transform node
+            const mechRoot = new BABYLON.TransformNode(`${mechName}_root`, scene);
+            mechRoot.position = new BABYLON.Vector3(xPos, 0, 0);
+
+            // Create materials
+            const bodyMat = new BABYLON.StandardMaterial(`${mechName}_bodyMat`, scene);
+            bodyMat.diffuseColor = color;
+            bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+            bodyMat.emissiveColor = color.scale(0.2);
+
+            const darkMat = new BABYLON.StandardMaterial(`${mechName}_darkMat`, scene);
+            darkMat.diffuseColor = color.scale(0.5);
+
+            const jointMat = new BABYLON.StandardMaterial(`${mechName}_jointMat`, scene);
+            jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+
+            // === TORSO (Main body with physics) ===
+            const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
+                width: 1.2, height: 1.5, depth: 0.8
+            }, scene);
+            torso.position = new BABYLON.Vector3(xPos, 3.5, 0);
+            torso.material = bodyMat;
+
+            // Add physics to torso (main physics body)
+            const torsoAggregate = new BABYLON.PhysicsAggregate(
+                torso,
+                BABYLON.PhysicsShapeType.BOX,
+                { mass: 50, friction: 0.8, restitution: 0.1 },
+                scene
+            );
+
+            // === HEAD ===
+            const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
+                width: 0.6, height: 0.5, depth: 0.5
+            }, scene);
+            head.position = new BABYLON.Vector3(0, 1.2, 0);
+            head.parent = torso;
+            head.material = bodyMat;
+
+            // Visor
+            const visor = BABYLON.MeshBuilder.CreateBox(`${mechName}_visor`, {
+                width: 0.5, height: 0.15, depth: 0.1
+            }, scene);
+            visor.position = new BABYLON.Vector3(0, 0.1, 0.25);
+            visor.parent = head;
+            const visorMat = new BABYLON.StandardMaterial(`${mechName}_visorMat`, scene);
+            visorMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0);
+            visorMat.emissiveColor = new BABYLON.Color3(1, 0.2, 0);
+            visor.material = visorMat;
+
+            // === ARMS ===
+            const createArm = (side) => {
+                const xOffset = side === 'left' ? -0.9 : 0.9;
+
+                // Upper arm
+                const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperArm`, {
+                    width: 0.25, height: 0.6, depth: 0.25
+                }, scene);
+                upperArm.position = new BABYLON.Vector3(xOffset, 0.3, 0);
+                upperArm.parent = torso;
+                upperArm.material = darkMat;
+
+                // Shoulder joint
+                const shoulder = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
+                    diameter: 0.3
+                }, scene);
+                shoulder.position = new BABYLON.Vector3(xOffset, 0.65, 0);
+                shoulder.parent = torso;
+                shoulder.material = jointMat;
+
+                // Lower arm / weapon
+                const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
+                    width: 0.2, height: 0.8, depth: 0.2
+                }, scene);
+                weapon.position = new BABYLON.Vector3(0, -0.7, 0);
+                weapon.parent = upperArm;
+                weapon.material = jointMat;
+
+                // Weapon barrel
+                const barrel = BABYLON.MeshBuilder.CreateCylinder(`${mechName}_${side}Barrel`, {
+                    height: 0.4, diameter: 0.12
+                }, scene);
+                barrel.rotation.x = Math.PI / 2;
+                barrel.position = new BABYLON.Vector3(0, -0.3, 0.25);
+                barrel.parent = weapon;
+                barrel.material = jointMat;
+
+                return { upperArm, shoulder, weapon, barrel };
+            };
+
+            const leftArm = createArm('left');
+            const rightArm = createArm('right');
+
+            // === LEGS ===
+            const createLeg = (side) => {
+                const xOffset = side === 'left' ? -0.4 : 0.4;
+
+                // Hip joint
+                const hip = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Hip`, {
+                    diameter: 0.25
+                }, scene);
+                hip.position = new BABYLON.Vector3(xOffset, -0.85, 0);
+                hip.parent = torso;
+                hip.material = jointMat;
+
+                // Upper leg
+                const upperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperLeg`, {
+                    width: 0.3, height: 0.7, depth: 0.3
+                }, scene);
+                upperLeg.position = new BABYLON.Vector3(xOffset, -1.35, 0);
+                upperLeg.parent = torso;
+                upperLeg.material = bodyMat;
+
+                // Knee joint
+                const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
+                    diameter: 0.2
+                }, scene);
+                knee.position = new BABYLON.Vector3(0, -0.45, 0);
+                knee.parent = upperLeg;
+                knee.material = jointMat;
+
+                // Lower leg
+                const lowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}LowerLeg`, {
+                    width: 0.25, height: 0.6, depth: 0.25
+                }, scene);
+                lowerLeg.position = new BABYLON.Vector3(0, -0.85, 0);
+                lowerLeg.parent = upperLeg;
+                lowerLeg.material = darkMat;
+
+                // Foot
+                const foot = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Foot`, {
+                    width: 0.35, height: 0.15, depth: 0.5
+                }, scene);
+                foot.position = new BABYLON.Vector3(0, -0.38, 0.1);
+                foot.parent = lowerLeg;
+                foot.material = jointMat;
+
+                return { hip, upperLeg, knee, lowerLeg, foot };
+            };
+
+            const leftLeg = createLeg('left');
+            const rightLeg = createLeg('right');
+
+            // === SHOULDER ARMOR ===
+            const createShoulderArmor = (side) => {
+                const xOffset = side === 'left' ? -0.85 : 0.85;
+                const shoulderArmor = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}ShoulderArmor`, {
+                    width: 0.5, height: 0.35, depth: 0.6
+                }, scene);
+                shoulderArmor.position = new BABYLON.Vector3(xOffset, 0.8, 0);
+                shoulderArmor.parent = torso;
+                shoulderArmor.material = bodyMat;
+                return shoulderArmor;
+            };
+
+            createShoulderArmor('left');
+            createShoulderArmor('right');
+
+            // Store mech data
+            const mechData = {
+                root: mechRoot,
+                torso: torso,
+                torsoAggregate: torsoAggregate,
+                head: head,
+                visor: visor,
+                leftArm: leftArm,
+                rightArm: rightArm,
+                leftLeg: leftLeg,
+                rightLeg: rightLeg,
+                isPlayer: isPlayer,
+                currentHP: 100,
+                maxHP: 100,
+                color: color
+            };
+
+            log(`${isPlayer ? 'Player' : 'Enemy'} mech created at x=${xPos}`, 'info');
+            return mechData;
+        }
+
+        // === PROJECTILE SYSTEM ===
+        function firePlayerProjectile() {
+            if (!playerMech || !enemyMech) return;
+            createProjectile(playerMech, enemyMech, 15);
+        }
+
+        function fireEnemyProjectile() {
+            if (!playerMech || !enemyMech) return;
+            createProjectile(enemyMech, playerMech, 12);
+        }
+
+        function createProjectile(fromMech, toMech, damage) {
+            const startPos = fromMech.torso.position.clone();
+            startPos.y += 0.3; // Fire from weapon height
+
+            const targetPos = toMech.torso.position.clone();
+
+            // Calculate direction
+            const direction = targetPos.subtract(startPos).normalize();
+
+            // Create projectile mesh
+            const projectile = BABYLON.MeshBuilder.CreateSphere('projectile_' + Date.now(), {
+                diameter: 0.2
+            }, scene);
+            projectile.position = startPos.clone();
+
+            // Projectile material with glow
+            const projMat = new BABYLON.StandardMaterial('projMat_' + Date.now(), scene);
+            projMat.diffuseColor = COLORS.projectile;
+            projMat.emissiveColor = COLORS.projectile;
+            projectile.material = projMat;
+
+            // Add physics to projectile
+            const projAggregate = new BABYLON.PhysicsAggregate(
+                projectile,
+                BABYLON.PhysicsShapeType.SPHERE,
+                { mass: 0.5, friction: 0, restitution: 0.3 },
+                scene
+            );
+
+            // Apply velocity
+            const speed = 15;
+            const velocity = direction.scale(speed);
+            projAggregate.body.setLinearVelocity(velocity);
+
+            // Store projectile data
+            projectiles.push({
+                mesh: projectile,
+                aggregate: projAggregate,
+                damage: damage,
+                target: toMech,
+                firedAt: Date.now(),
+                fromPlayer: fromMech.isPlayer
+            });
+
+            log(`${fromMech.isPlayer ? 'Player' : 'Enemy'} fired projectile!`, 'info');
+        }
+
+        function updateProjectiles() {
+            const now = Date.now();
+
+            projectiles = projectiles.filter(proj => {
+                // Remove old projectiles (after 5 seconds)
+                if (now - proj.firedAt > 5000) {
+                    proj.mesh.dispose();
+                    return false;
+                }
+
+                // Check for collision with target
+                const projPos = proj.mesh.position;
+                const targetPos = proj.target.torso.position;
+                const distance = BABYLON.Vector3.Distance(projPos, targetPos);
+
+                if (distance < 1.5) {
+                    // Hit!
+                    proj.target.currentHP -= proj.damage;
+                    log(`HIT! ${proj.fromPlayer ? 'Enemy' : 'Player'} takes ${proj.damage} damage! (${proj.target.currentHP}/${proj.target.maxHP} HP)`, 'warn');
+
+                    // Create impact effect
+                    createImpactEffect(projPos.clone());
+
+                    // Apply knockback force to target
+                    const knockbackDir = projPos.subtract(proj.target.torso.position).normalize().scale(-1);
+                    proj.target.torsoAggregate.body.applyImpulse(
+                        knockbackDir.scale(5),
+                        proj.target.torso.position
+                    );
+
+                    proj.mesh.dispose();
+                    return false;
+                }
+
+                // Check if projectile is out of bounds
+                if (projPos.y < -5 || Math.abs(projPos.x) > 20 || Math.abs(projPos.z) > 10) {
+                    proj.mesh.dispose();
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        // === LASER BEAM SYSTEM ===
+        function fireLaser(isPlayer) {
+            const fromMech = isPlayer ? playerMech : enemyMech;
+            const toMech = isPlayer ? enemyMech : playerMech;
+
+            const startPos = fromMech.torso.position.clone();
+            startPos.y += 0.3;
+
+            const endPos = toMech.torso.position.clone();
+
+            // Create laser beam
+            const points = [startPos, endPos];
+            const laserBeam = BABYLON.MeshBuilder.CreateTube('laser_' + Date.now(), {
+                path: points,
+                radius: 0.08,
+                updatable: false
+            }, scene);
+
+            // Laser material with glow
+            const laserMat = new BABYLON.StandardMaterial('laserMat_' + Date.now(), scene);
+            laserMat.diffuseColor = COLORS.laser;
+            laserMat.emissiveColor = COLORS.laser;
+            laserMat.alpha = 0.8;
+            laserBeam.material = laserMat;
+
+            // Apply damage immediately (laser is instant)
+            const damage = 10;
+            toMech.currentHP -= damage;
+            log(`LASER HIT! ${isPlayer ? 'Enemy' : 'Player'} takes ${damage} damage! (${toMech.currentHP}/${toMech.maxHP} HP)`, 'warn');
+
+            // Store for fadeout
+            laserBeams.push({
+                mesh: laserBeam,
+                material: laserMat,
+                createdAt: Date.now(),
+                duration: 150 // ms
+            });
+
+            // Create impact at target
+            createImpactEffect(endPos.clone());
+        }
+
+        function updateLaserBeams() {
+            const now = Date.now();
+
+            laserBeams = laserBeams.filter(beam => {
+                const age = now - beam.createdAt;
+
+                if (age > beam.duration) {
+                    beam.mesh.dispose();
+                    return false;
+                }
+
+                // Fade out
+                beam.material.alpha = 0.8 * (1 - age / beam.duration);
+                return true;
+            });
+        }
+
+        // === EFFECTS ===
+        function createImpactEffect(position) {
+            // Create particle system for impact
+            const particleSystem = new BABYLON.ParticleSystem('impact_' + Date.now(), 50, scene);
+
+            // Texture (procedural)
+            particleSystem.particleTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/flare.png', scene);
+
+            // Emitter
+            particleSystem.emitter = position;
+            particleSystem.minEmitBox = new BABYLON.Vector3(-0.1, -0.1, -0.1);
+            particleSystem.maxEmitBox = new BABYLON.Vector3(0.1, 0.1, 0.1);
+
+            // Colors
+            particleSystem.color1 = new BABYLON.Color4(1, 0.5, 0, 1);
+            particleSystem.color2 = new BABYLON.Color4(1, 0.2, 0, 1);
+            particleSystem.colorDead = new BABYLON.Color4(0.2, 0.1, 0, 0);
+
+            // Size
+            particleSystem.minSize = 0.1;
+            particleSystem.maxSize = 0.3;
+
+            // Lifetime
+            particleSystem.minLifeTime = 0.1;
+            particleSystem.maxLifeTime = 0.3;
+
+            // Emission
+            particleSystem.emitRate = 200;
+            particleSystem.manualEmitCount = 30;
+
+            // Speed
+            particleSystem.minEmitPower = 2;
+            particleSystem.maxEmitPower = 5;
+            particleSystem.updateSpeed = 0.02;
+
+            // Direction
+            particleSystem.direction1 = new BABYLON.Vector3(-1, 1, -1);
+            particleSystem.direction2 = new BABYLON.Vector3(1, 1, 1);
+
+            // Gravity
+            particleSystem.gravity = new BABYLON.Vector3(0, -5, 0);
+
+            // Start and auto-dispose
+            particleSystem.start();
+            particleSystem.targetStopDuration = 0.3;
+            particleSystem.disposeOnStop = true;
+        }
+
+        function resetScene() {
+            // Reset mech positions
+            if (playerMech) {
+                playerMech.torso.position = new BABYLON.Vector3(-6, 3.5, 0);
+                playerMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
+                playerMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                playerMech.currentHP = playerMech.maxHP;
+            }
+            if (enemyMech) {
+                enemyMech.torso.position = new BABYLON.Vector3(6, 3.5, 0);
+                enemyMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
+                enemyMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                enemyMech.currentHP = enemyMech.maxHP;
+            }
+
+            // Clear projectiles
+            projectiles.forEach(p => p.mesh.dispose());
+            projectiles = [];
+
+            // Clear laser beams
+            laserBeams.forEach(b => b.mesh.dispose());
+            laserBeams = [];
+
+            log('Scene reset!', 'info');
+        }
+
+        // Initialize when page loads
+        initEngine();
+    </script>
+</body>
+</html>

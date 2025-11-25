@@ -556,8 +556,14 @@
                     proj.target.currentHP -= proj.damage;
                     log(`HIT! ${proj.fromPlayer ? 'Enemy' : 'Player'} takes ${proj.damage} damage! (${proj.target.currentHP}/${proj.target.maxHP} HP)`, 'warn');
 
-                    // Create impact effect
+                    // Create impact effect at hit location
                     createImpactEffect(projPos.clone());
+
+                    // Flash the torso on hit
+                    flashMeshOnHit(proj.target.torso);
+
+                    // Shake the mech on hit
+                    shakeMechOnHit(proj.target, 0.15);
 
                     // Apply knockback force to target (use collision body position for physics)
                     const targetWorldPos = proj.target.collisionBody.position;
@@ -624,6 +630,12 @@
 
             // Create impact at target
             createImpactEffect(endPos.clone());
+
+            // Flash the torso on hit
+            flashMeshOnHit(toMech.torso);
+
+            // Shake the mech on hit
+            shakeMechOnHit(toMech, 0.1);
         }
 
         function updateLaserBeams() {
@@ -644,50 +656,107 @@
         }
 
         // === EFFECTS ===
+        function flashMeshOnHit(mesh) {
+            // Store original material properties
+            const material = mesh.material;
+            if (!material) return;
+
+            const originalEmissive = material.emissiveColor ? material.emissiveColor.clone() : new BABYLON.Color3(0, 0, 0);
+            const originalDiffuse = material.diffuseColor ? material.diffuseColor.clone() : new BABYLON.Color3(1, 1, 1);
+
+            // Flash bright red/white
+            material.emissiveColor = new BABYLON.Color3(1, 0.3, 0.3);
+            material.diffuseColor = new BABYLON.Color3(1.8, 0.8, 0.8);
+
+            // Quick fade back through orange to original
+            setTimeout(() => {
+                if (material) {
+                    material.emissiveColor = new BABYLON.Color3(1, 0.5, 0);
+                    material.diffuseColor = new BABYLON.Color3(1.5, 1, 0.8);
+                }
+            }, 50);
+
+            // Restore original colors after a short delay
+            setTimeout(() => {
+                if (material) {
+                    material.emissiveColor = originalEmissive;
+                    material.diffuseColor = originalDiffuse;
+                }
+            }, 150);
+        }
+
+        function shakeMechOnHit(mech, intensity = 0.1) {
+            // Store original position
+            const collisionBody = mech.collisionBody;
+            const originalPos = collisionBody.position.clone();
+
+            // Shake effect - small random displacement
+            let shakeCount = 0;
+            const maxShakes = 4;
+            const shakeInterval = setInterval(() => {
+                if (shakeCount >= maxShakes) {
+                    // Restore original position
+                    collisionBody.position = originalPos;
+                    clearInterval(shakeInterval);
+                } else {
+                    // Random shake
+                    collisionBody.position = new BABYLON.Vector3(
+                        originalPos.x + (Math.random() - 0.5) * intensity,
+                        originalPos.y + (Math.random() - 0.5) * intensity * 0.5,
+                        originalPos.z + (Math.random() - 0.5) * intensity
+                    );
+                    shakeCount++;
+                }
+            }, 30);
+        }
+
         function createImpactEffect(position) {
             // Create particle system for impact
-            const particleSystem = new BABYLON.ParticleSystem('impact_' + Date.now(), 50, scene);
+            const particleSystem = new BABYLON.ParticleSystem('impact_' + Date.now(), 100, scene);
 
             // Texture (procedural)
             particleSystem.particleTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/flare.png', scene);
 
             // Emitter
             particleSystem.emitter = position;
-            particleSystem.minEmitBox = new BABYLON.Vector3(-0.1, -0.1, -0.1);
-            particleSystem.maxEmitBox = new BABYLON.Vector3(0.1, 0.1, 0.1);
+            particleSystem.minEmitBox = new BABYLON.Vector3(-0.2, -0.2, -0.2);
+            particleSystem.maxEmitBox = new BABYLON.Vector3(0.2, 0.2, 0.2);
 
-            // Colors
-            particleSystem.color1 = new BABYLON.Color4(1, 0.5, 0, 1);
-            particleSystem.color2 = new BABYLON.Color4(1, 0.2, 0, 1);
-            particleSystem.colorDead = new BABYLON.Color4(0.2, 0.1, 0, 0);
+            // Colors - bright orange/yellow explosion
+            particleSystem.color1 = new BABYLON.Color4(1, 0.8, 0, 1);
+            particleSystem.color2 = new BABYLON.Color4(1, 0.3, 0, 1);
+            particleSystem.colorDead = new BABYLON.Color4(0.3, 0.1, 0, 0);
 
-            // Size
-            particleSystem.minSize = 0.1;
-            particleSystem.maxSize = 0.3;
+            // Size - larger particles
+            particleSystem.minSize = 0.15;
+            particleSystem.maxSize = 0.5;
 
             // Lifetime
-            particleSystem.minLifeTime = 0.1;
-            particleSystem.maxLifeTime = 0.3;
+            particleSystem.minLifeTime = 0.15;
+            particleSystem.maxLifeTime = 0.4;
 
-            // Emission
-            particleSystem.emitRate = 200;
-            particleSystem.manualEmitCount = 30;
+            // Emission - burst of particles
+            particleSystem.emitRate = 300;
+            particleSystem.manualEmitCount = 60;
 
-            // Speed
-            particleSystem.minEmitPower = 2;
-            particleSystem.maxEmitPower = 5;
-            particleSystem.updateSpeed = 0.02;
+            // Speed - faster explosion
+            particleSystem.minEmitPower = 3;
+            particleSystem.maxEmitPower = 8;
+            particleSystem.updateSpeed = 0.015;
 
-            // Direction
-            particleSystem.direction1 = new BABYLON.Vector3(-1, 1, -1);
+            // Direction - spherical burst
+            particleSystem.direction1 = new BABYLON.Vector3(-1, -0.5, -1);
             particleSystem.direction2 = new BABYLON.Vector3(1, 1, 1);
 
             // Gravity
-            particleSystem.gravity = new BABYLON.Vector3(0, -5, 0);
+            particleSystem.gravity = new BABYLON.Vector3(0, -8, 0);
+
+            // Add glow/blend mode for more dramatic effect
+            particleSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
 
             // Start and auto-dispose
             particleSystem.start();
-            particleSystem.targetStopDuration = 0.3;
+            particleSystem.targetStopDuration = 0.4;
             particleSystem.disposeOnStop = true;
         }
 

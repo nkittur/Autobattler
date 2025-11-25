@@ -286,11 +286,7 @@
                     width: 1.2, height: 1.5, depth: 0.8
                 }, scene);
                 torso.position = new BABYLON.Vector3(xPos, spawnY, 0);
-                if (isPlayer) {
-                    torso.rotation.y = 0;
-                } else {
-                    torso.rotation.y = Math.PI;
-                }
+                // Don't rotate physics bodies - causes constraint issues
                 torso.material = bodyMat;
 
                 // Add physics to torso
@@ -345,11 +341,7 @@
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
                 upperArm.position = new BABYLON.Vector3(xPos + xOffset, spawnY + 0.3, 0);
-                if (isPlayer) {
-                    upperArm.rotation.y = 0;
-                } else {
-                    upperArm.rotation.y = Math.PI;
-                }
+                // Don't rotate physics bodies - causes constraint issues
                 upperArm.material = darkMat;
 
                 // Add physics to arm
@@ -420,11 +412,7 @@
                     width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
                 upperLeg.position = new BABYLON.Vector3(xPos + xOffset, spawnY - 1.35, 0);
-                if (isPlayer) {
-                    upperLeg.rotation.y = 0;
-                } else {
-                    upperLeg.rotation.y = Math.PI;
-                }
+                // Don't rotate physics bodies - causes constraint issues
                 upperLeg.material = bodyMat;
 
                 // Add physics to leg
@@ -997,29 +985,24 @@
             // Reset player mech
             if (playerMech) {
                 playerMech.torso.position = new BABYLON.Vector3(-5, resetHeight, 0);
-                playerMech.torso.rotation.y = 0;
                 playerMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
                 // Reset arms
                 playerMech.leftArm.upperArm.position = new BABYLON.Vector3(-5 - 0.9, resetHeight + 0.3, 0);
-                playerMech.leftArm.upperArm.rotation.y = 0;
                 playerMech.leftArm.armAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.leftArm.armAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
                 playerMech.rightArm.upperArm.position = new BABYLON.Vector3(-5 + 0.9, resetHeight + 0.3, 0);
-                playerMech.rightArm.upperArm.rotation.y = 0;
                 playerMech.rightArm.armAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.rightArm.armAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
                 // Reset legs
                 playerMech.leftLeg.upperLeg.position = new BABYLON.Vector3(-5 - 0.4, resetHeight - 1.35, 0);
-                playerMech.leftLeg.upperLeg.rotation.y = 0;
                 playerMech.leftLeg.legAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.leftLeg.legAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
                 playerMech.rightLeg.upperLeg.position = new BABYLON.Vector3(-5 + 0.4, resetHeight - 1.35, 0);
-                playerMech.rightLeg.upperLeg.rotation.y = 0;
                 playerMech.rightLeg.legAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.rightLeg.legAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
@@ -1029,29 +1012,24 @@
             // Reset enemy mech
             if (enemyMech) {
                 enemyMech.torso.position = new BABYLON.Vector3(5, resetHeight, 0);
-                enemyMech.torso.rotation.y = Math.PI;
                 enemyMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
                 // Reset arms
                 enemyMech.leftArm.upperArm.position = new BABYLON.Vector3(5 - 0.9, resetHeight + 0.3, 0);
-                enemyMech.leftArm.upperArm.rotation.y = Math.PI;
                 enemyMech.leftArm.armAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.leftArm.armAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
                 enemyMech.rightArm.upperArm.position = new BABYLON.Vector3(5 + 0.9, resetHeight + 0.3, 0);
-                enemyMech.rightArm.upperArm.rotation.y = Math.PI;
                 enemyMech.rightArm.armAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.rightArm.armAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
                 // Reset legs
                 enemyMech.leftLeg.upperLeg.position = new BABYLON.Vector3(5 - 0.4, resetHeight - 1.35, 0);
-                enemyMech.leftLeg.upperLeg.rotation.y = Math.PI;
                 enemyMech.leftLeg.legAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.leftLeg.legAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 
                 enemyMech.rightLeg.upperLeg.position = new BABYLON.Vector3(5 + 0.4, resetHeight - 1.35, 0);
-                enemyMech.rightLeg.upperLeg.rotation.y = Math.PI;
                 enemyMech.rightLeg.legAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.rightLeg.legAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
 

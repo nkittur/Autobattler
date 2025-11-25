@@ -296,6 +296,14 @@
             // Collision center should be at: feet bottom (0) + half collision height
             const collisionSpawnHeight = collisionHeight / 2 + 0.2; // Slight offset to drop
             collisionBody.position = new BABYLON.Vector3(xPos, collisionSpawnHeight, 0);
+
+            // Make mechs face each other
+            if (isPlayer) {
+                collisionBody.rotation.y = 0; // Player faces right (positive X)
+            } else {
+                collisionBody.rotation.y = Math.PI; // Enemy faces left (negative X)
+            }
+
             collisionBody.visibility = 0.3; // Semi-transparent for debugging
 
             // Debug material for collision box
@@ -305,13 +313,18 @@
             debugMat.wireframe = true;
             collisionBody.material = debugMat;
 
-            // Add physics to collision body
+            // Add physics to collision body with higher mass and stability
             const torsoAggregate = new BABYLON.PhysicsAggregate(
                 collisionBody,
                 BABYLON.PhysicsShapeType.BOX,
-                { mass: 50, friction: 0.8, restitution: 0.1 },
+                { mass: 100, friction: 1.5, restitution: 0.05 },
                 scene
             );
+
+            // Lock rotation on X and Z axes for stability (can only rotate on Y axis to turn)
+            torsoAggregate.body.setMassProperties({
+                inertia: new BABYLON.Vector3(Infinity, 1, Infinity)
+            });
 
             // === TORSO (visual - parented to collision body) ===
             const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
@@ -486,7 +499,32 @@
             createProjectile(enemyMech, playerMech, 12);
         }
 
+        // Arm raising animation for firing
+        function raiseArmsToFire(mech) {
+            const leftArm = mech.leftArm.upperArm;
+            const rightArm = mech.rightArm.upperArm;
+
+            // Store original rotations if not already stored
+            if (!leftArm.originalRotation) {
+                leftArm.originalRotation = leftArm.rotation.clone();
+                rightArm.originalRotation = rightArm.rotation.clone();
+            }
+
+            // Raise arms forward to firing position
+            leftArm.rotation.z = -Math.PI / 3; // Raise left arm
+            rightArm.rotation.z = Math.PI / 3; // Raise right arm
+
+            // Lower arms back after a short delay
+            setTimeout(() => {
+                leftArm.rotation.z = leftArm.originalRotation.z;
+                rightArm.rotation.z = rightArm.originalRotation.z;
+            }, 300);
+        }
+
         function createProjectile(fromMech, toMech, damage) {
+            // Raise arms to firing position
+            raiseArmsToFire(fromMech);
+
             // Get world positions (torso is parented to collisionBody, so use absolute position)
             const startPos = fromMech.torso.getAbsolutePosition().clone();
             startPos.y += 0.3; // Fire from weapon height
@@ -584,14 +622,14 @@
                     // Flash the torso on hit
                     flashMeshOnHit(proj.target.torso);
 
-                    // Shake the mech on hit
-                    shakeMechOnHit(proj.target, 0.3);
+                    // Subtle shake on hit - legs provide stability
+                    shakeMechOnHit(proj.target, 0.15);
 
-                    // Apply strong knockback force to target (use collision body position for physics)
+                    // Apply moderate knockback force - heavier mechs with leg stabilization
                     const targetWorldPos = proj.target.collisionBody.position;
                     const knockbackDir = projPos.subtract(targetWorldPos).normalize().scale(-1);
                     proj.target.torsoAggregate.body.applyImpulse(
-                        knockbackDir.scale(15), // Stronger knockback for impactful hits
+                        knockbackDir.scale(8), // Moderate knockback - mechs have mass and stability
                         targetWorldPos
                     );
 
@@ -613,6 +651,9 @@
         function fireLaser(isPlayer) {
             const fromMech = isPlayer ? playerMech : enemyMech;
             const toMech = isPlayer ? enemyMech : playerMech;
+
+            // Raise arms to firing position
+            raiseArmsToFire(fromMech);
 
             // Get world positions (torso is parented to collisionBody, so use absolute position)
             const startPos = fromMech.torso.getAbsolutePosition().clone();
@@ -670,13 +711,13 @@
             // Flash the torso on hit
             flashMeshOnHit(toMech.torso);
 
-            // Shake the mech on hit
-            shakeMechOnHit(toMech, 0.25);
+            // Subtle shake on hit - legs provide stability
+            shakeMechOnHit(toMech, 0.12);
 
-            // Apply laser knockback
+            // Apply light laser knockback - continuous beam vs projectile impact
             const laserDir = endPos.subtract(startPos).normalize();
             toMech.torsoAggregate.body.applyImpulse(
-                laserDir.scale(8),
+                laserDir.scale(5),
                 toMech.collisionBody.position
             );
         }
@@ -732,27 +773,28 @@
         }
 
         function shakeMechOnHit(mech, intensity = 0.1) {
-            // Apply rapid impulses to create shake effect
+            // Reduced shake effect - legs provide stability
+            // Just a small nudge, not violent shaking
             const body = mech.torsoAggregate.body;
             const centerPos = mech.collisionBody.position;
 
-            // Apply 5 rapid impulses in random directions
+            // Apply 2 small impulses only
             let shakeCount = 0;
-            const maxShakes = 5;
+            const maxShakes = 2;
             const shakeInterval = setInterval(() => {
                 if (shakeCount >= maxShakes) {
                     clearInterval(shakeInterval);
                 } else {
-                    // Random impulse in X and Z directions
+                    // Small impulse - legs stabilize
                     const impulse = new BABYLON.Vector3(
-                        (Math.random() - 0.5) * intensity * 100,
+                        (Math.random() - 0.5) * intensity * 30,
                         0,
-                        (Math.random() - 0.5) * intensity * 100
+                        (Math.random() - 0.5) * intensity * 30
                     );
                     body.applyImpulse(impulse, centerPos);
                     shakeCount++;
                 }
-            }, 40);
+            }, 50);
         }
 
         function createImpactEffect(position) {

@@ -152,20 +152,28 @@
             camera.lowerRadiusLimit = 10;
             camera.upperRadiusLimit = 40;
 
-            // Lighting
+            // Lighting - make it much brighter
             const hemisphericLight = new BABYLON.HemisphericLight(
                 'hemiLight',
                 new BABYLON.Vector3(0, 1, 0),
                 scene
             );
-            hemisphericLight.intensity = 0.7;
+            hemisphericLight.intensity = 1.5; // Increased from 0.7
 
             const directionalLight = new BABYLON.DirectionalLight(
                 'dirLight',
                 new BABYLON.Vector3(-1, -2, 1),
                 scene
             );
-            directionalLight.intensity = 0.5;
+            directionalLight.intensity = 1.0; // Increased from 0.5
+
+            // Add point light for better visibility
+            const pointLight = new BABYLON.PointLight(
+                'pointLight',
+                new BABYLON.Vector3(0, 5, 0),
+                scene
+            );
+            pointLight.intensity = 1.0;
 
             // Create ground
             createGround(scene);
@@ -178,6 +186,11 @@
                 playerMech = createMech(scene, -5, true);
                 enemyMech = createMech(scene, 5, false);
                 log('Scene fully initialized with mechs!', 'info');
+
+                // DEBUG: Log scene info
+                log(`Scene has ${scene.meshes.length} meshes`, 'warn');
+                log(`Scene has ${scene.lights.length} lights`, 'warn');
+                log(`Camera position: (${camera.alpha.toFixed(2)}, ${camera.beta.toFixed(2)}, ${camera.radius.toFixed(2)})`, 'warn');
             } catch (error) {
                 log('CRITICAL ERROR creating mechs: ' + error.message, 'error');
                 console.error('Full error:', error);
@@ -193,6 +206,7 @@
 
             const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
             groundMat.diffuseColor = COLORS.ground;
+            groundMat.emissiveColor = COLORS.ground.scale(0.3); // Add emission for visibility
             groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
             ground.material = groundMat;
 
@@ -204,7 +218,18 @@
                 scene
             );
 
+            // DEBUG: Add a visible test sphere
+            const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', {
+                diameter: 2
+            }, scene);
+            testSphere.position = new BABYLON.Vector3(0, 5, 0);
+            const testMat = new BABYLON.StandardMaterial('testMat', scene);
+            testMat.diffuseColor = new BABYLON.Color3(1, 0, 0); // Bright red
+            testMat.emissiveColor = new BABYLON.Color3(1, 0, 0); // Self-illuminating
+            testSphere.material = testMat;
+
             log('Ground created with physics', 'info');
+            log('DEBUG: Red test sphere created at (0, 5, 0)', 'warn');
             return ground;
         }
 
@@ -265,14 +290,15 @@
                 const mechRoot = new BABYLON.TransformNode(`${mechName}_root`, scene);
                 mechRoot.position = new BABYLON.Vector3(xPos, 0, 0);
 
-                // Create materials
+                // Create materials with strong emission for visibility
                 const bodyMat = new BABYLON.StandardMaterial(`${mechName}_bodyMat`, scene);
                 bodyMat.diffuseColor = color;
                 bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
-                bodyMat.emissiveColor = color.scale(0.2);
+                bodyMat.emissiveColor = color.scale(0.5); // Increased from 0.2 for visibility
 
                 const darkMat = new BABYLON.StandardMaterial(`${mechName}_darkMat`, scene);
                 darkMat.diffuseColor = color.scale(0.5);
+                darkMat.emissiveColor = color.scale(0.3); // Add emission
 
                 const jointMat = new BABYLON.StandardMaterial(`${mechName}_jointMat`, scene);
                 jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);

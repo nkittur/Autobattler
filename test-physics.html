@@ -102,9 +102,11 @@
                 this.enemyMech = null;
                 this.projectiles = [];
                 this.impactEffects = [];  // Track impact animations
+                this.damageNumbers = [];  // Track floating damage numbers
                 this.projectileFired = 0;
                 this.projectileHit = 0;
                 this.projectileMissed = 0;
+                this.battleEnded = false;
 
                 log('Physics engine created');
                 this.createGround();
@@ -137,31 +139,38 @@
 
                         const other = bodyA === projectile ? bodyB : bodyA;
 
-                        log(`🎯 Collision detected! Projectile hit: ${other.label || 'unknown'}`);
+                        // Find which mech and component was hit
+                        const hitResult = this.findHitComponent(other);
 
-                        // Check if hit player or enemy mech
-                        if (this.playerMech && (other === this.playerMech.torso || other === this.playerMech.head)) {
-                            const part = other === this.playerMech.torso ? 'torso' : 'head';
-                            this.playerMech.currentHP = Math.max(0, this.playerMech.currentHP - projectile.damage);
+                        if (hitResult) {
+                            // HIT A MECH COMPONENT!
+                            const { mech, componentKey, component } = hitResult;
+
+                            // Calculate damage with armor reduction
+                            const rawDamage = projectile.damage;
+                            const actualDamage = Math.max(1, rawDamage - component.armor);
+
+                            // Apply damage
+                            component.health -= actualDamage;
                             this.projectileHit++;
-                            log(`💥 PLAYER ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.playerMech.currentHP)}/${this.playerMech.maxHP} HP (hits: ${this.projectileHit}/${this.projectileFired})`);
 
-                            // CREATE IMPACT EFFECT
+                            // Create impact effect
                             this.createImpactEffect(projectile.position.x, projectile.position.y, projectile.velocity);
 
+                            // Create floating damage number
+                            this.createDamageNumber(projectile.position.x, projectile.position.y, actualDamage, component.armor);
+
+                            log(`💥 ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} ${component.name} HIT! -${actualDamage} dmg (${rawDamage}-${component.armor} armor) → ${Math.floor(component.health)}/${component.maxHealth} HP`);
+
+                            // Check if component destroyed
+                            if (component.health <= 0) {
+                                this.destroyComponent(mech, componentKey, component);
+                            }
+
+                            // Remove projectile
                             Matter.World.remove(this.world, projectile);
                             this.projectiles = this.projectiles.filter(p => p !== projectile);
-                        } else if (this.enemyMech && (other === this.enemyMech.torso || other === this.enemyMech.head)) {
-                            const part = other === this.enemyMech.torso ? 'torso' : 'head';
-                            this.enemyMech.currentHP = Math.max(0, this.enemyMech.currentHP - projectile.damage);
-                            this.projectileHit++;
-                            log(`💥 ENEMY ${part} HIT! -${projectile.damage} dmg → ${Math.floor(this.enemyMech.currentHP)}/${this.enemyMech.maxHP} HP (hits: ${this.projectileHit}/${this.projectileFired})`);
 
-                            // CREATE IMPACT EFFECT
-                            this.createImpactEffect(projectile.position.x, projectile.position.y, projectile.velocity);
-
-                            Matter.World.remove(this.world, projectile);
-                            this.projectiles = this.projectiles.filter(p => p !== projectile);
                         } else {
                             // Hit ground or other object - EXPLODE AND DISAPPEAR
                             log(`💥 Projectile exploded on ${other.label || 'unknown'}`);
@@ -178,6 +187,108 @@
                 });
 
                 log('✅ Collision detection setup complete');
+            }
+
+            findHitComponent(body) {
+                // Check player mech components
+                if (this.playerMech && !this.playerMech.destroyed) {
+                    for (const [key, component] of Object.entries(this.playerMech.components)) {
+                        if (component.body === body && component.health > 0) {
+                            return { mech: this.playerMech, componentKey: key, component: component };
+                        }
+                    }
+                }
+
+                // Check enemy mech components
+                if (this.enemyMech && !this.enemyMech.destroyed) {
+                    for (const [key, component] of Object.entries(this.enemyMech.components)) {
+                        if (component.body === body && component.health > 0) {
+                            return { mech: this.enemyMech, componentKey: key, component: component };
+                        }
+                    }
+                }
+
+                return null;  // Not a mech component
+            }
+
+            destroyComponent(mech, componentKey, component) {
+                log(`🔥 ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} ${component.name} DESTROYED!`);
+
+                // Create large explosion effect
+                this.createImpactEffect(component.body.position.x, component.body.position.y, { x: 0, y: 0 });
+                this.createImpactEffect(component.body.position.x, component.body.position.y, { x: 0, y: 0 });  // Double explosion
+
+                // Remove component from world
+                Matter.World.remove(this.world, component.body);
+
+                // Mark as destroyed
+                mech.destroyedComponents.push(componentKey);
+
+                // If critical component (torso or head), destroy entire mech
+                if (component.critical) {
+                    this.destroyMech(mech);
+                }
+            }
+
+            destroyMech(mech) {
+                if (mech.destroyed) return;  // Already destroyed
+
+                log(`💀 ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} MECH DESTROYED!`);
+
+                mech.destroyed = true;
+
+                // Create massive explosion effects
+                const torsoPos = mech.components.torso.body.position;
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        this.createImpactEffect(
+                            torsoPos.x + (Math.random() - 0.5) * 40,
+                            torsoPos.y + (Math.random() - 0.5) * 40,
+                            { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 }
+                        );
+                    }, i * 100);
+                }
+
+                // Remove all remaining components from world
+                for (const [key, component] of Object.entries(mech.components)) {
+                    if (component.health > 0) {
+                        setTimeout(() => {
+                            Matter.World.remove(this.world, component.body);
+                        }, 500);
+                    }
+                }
+
+                // Check if battle should end
+                this.checkBattleEnd();
+            }
+
+            checkBattleEnd() {
+                if (this.battleEnded) return;
+
+                const playerAlive = this.playerMech && !this.playerMech.destroyed;
+                const enemyAlive = this.enemyMech && !this.enemyMech.destroyed;
+
+                if (!playerAlive && !enemyAlive) {
+                    this.battleEnded = true;
+                    log('⚔️ BATTLE ENDED: DRAW - Both mechs destroyed!');
+                } else if (!playerAlive) {
+                    this.battleEnded = true;
+                    log('💀 BATTLE ENDED: ENEMY WINS!');
+                } else if (!enemyAlive) {
+                    this.battleEnded = true;
+                    log('🎉 BATTLE ENDED: PLAYER WINS!');
+                }
+            }
+
+            createDamageNumber(x, y, damage, armorBlocked) {
+                this.damageNumbers.push({
+                    x: x,
+                    y: y,
+                    damage: damage,
+                    armorBlocked: armorBlocked,
+                    createdAt: Date.now(),
+                    life: 1.0  // Fades from 1 to 0
+                });
             }
 
             setupProjectileCleanup() {
@@ -354,26 +465,95 @@
                 Matter.World.add(this.world, [torso, head, leftArm, rightArm, leftLeg, rightLeg, leftFoot, rightFoot]);
                 Matter.World.add(this.world, constraints);
 
+                // COMPONENT-BASED HEALTH AND ARMOR SYSTEM
                 const mech = {
+                    // Components with individual health and armor
+                    components: {
+                        torso: {
+                            body: torso,
+                            health: 120,
+                            maxHealth: 120,
+                            armor: 25,
+                            name: 'Torso',
+                            critical: true  // Destroys mech when destroyed
+                        },
+                        head: {
+                            body: head,
+                            health: 60,
+                            maxHealth: 60,
+                            armor: 15,
+                            name: 'Head',
+                            critical: true  // Destroys mech when destroyed
+                        },
+                        leftArm: {
+                            body: leftArm,
+                            health: 50,
+                            maxHealth: 50,
+                            armor: 12,
+                            name: 'Left Arm',
+                            critical: false
+                        },
+                        rightArm: {
+                            body: rightArm,
+                            health: 50,
+                            maxHealth: 50,
+                            armor: 12,
+                            name: 'Right Arm',
+                            critical: false
+                        },
+                        leftLeg: {
+                            body: leftLeg,
+                            health: 60,
+                            maxHealth: 60,
+                            armor: 18,
+                            name: 'Left Leg',
+                            critical: false
+                        },
+                        rightLeg: {
+                            body: rightLeg,
+                            health: 60,
+                            maxHealth: 60,
+                            armor: 18,
+                            name: 'Right Leg',
+                            critical: false
+                        },
+                        leftFoot: {
+                            body: leftFoot,
+                            health: 40,
+                            maxHealth: 40,
+                            armor: 15,
+                            name: 'Left Foot',
+                            critical: false
+                        },
+                        rightFoot: {
+                            body: rightFoot,
+                            health: 40,
+                            maxHealth: 40,
+                            armor: 15,
+                            name: 'Right Foot',
+                            critical: false
+                        }
+                    },
+                    // Quick access to bodies (for backwards compatibility)
                     torso: torso,
                     head: head,
                     leftArm: leftArm,
                     rightArm: rightArm,
                     leftLeg: leftLeg,
                     rightLeg: rightLeg,
-                    leftFoot: leftFoot,  // NEW
-                    rightFoot: rightFoot,  // NEW
+                    leftFoot: leftFoot,
+                    rightFoot: rightFoot,
                     constraints: constraints,
                     color: isPlayer ? '#00ff88' : '#ff4444',
-                    currentHP: 0,
-                    maxHP: 0,
                     moveDirection: 0,
-                    moveSpeed: 0.002,  // REDUCED for stable walking
+                    moveSpeed: 0.002,
                     nextMoveChange: Date.now() + 1000,
-                    isPlayer: isPlayer
+                    isPlayer: isPlayer,
+                    destroyed: false,  // Full mech destroyed flag
+                    destroyedComponents: []  // Track destroyed component names
                 };
 
-                log(`Mad Cat mech created: torso ID=${torso.id} with wide stance`);
+                log(`Component-based mech created: Torso=${mech.components.torso.health}HP/${mech.components.torso.armor}Armor`);
                 return mech;
             }
 
@@ -466,7 +646,7 @@
                 const now = Date.now();
 
                 [this.playerMech, this.enemyMech].forEach(mech => {
-                    if (!mech || mech.currentHP <= 0) return;
+                    if (!mech || mech.destroyed) return;
 
                     // Change direction periodically
                     if (now > mech.nextMoveChange) {
@@ -566,18 +746,21 @@
                 // Render impact effects
                 this.renderImpactEffects(ctx);
 
-                // Render HP bars
-                if (this.playerMech && this.playerMech.currentHP > 0) {
-                    this.renderHPBar(this.playerMech);
+                // Render damage numbers
+                this.renderDamageNumbers(ctx);
+
+                // Render HP bars (component health)
+                if (this.playerMech && !this.playerMech.destroyed) {
+                    this.renderComponentHealth(this.playerMech, ctx);
                 }
-                if (this.enemyMech && this.enemyMech.currentHP > 0) {
-                    this.renderHPBar(this.enemyMech);
+                if (this.enemyMech && !this.enemyMech.destroyed) {
+                    this.renderComponentHealth(this.enemyMech, ctx);
                 }
 
                 // Debug info with V3 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V3.8 EXPLOSIONS', 10, 20);
+                ctx.fillText('V3.9 COMPONENTS', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';
@@ -1044,6 +1227,98 @@
                     return true;  // Keep effect
                 });
             }
+
+            renderDamageNumbers(ctx) {
+                const now = Date.now();
+                const duration = 1000;  // 1 second
+
+                this.damageNumbers = this.damageNumbers.filter(dmg => {
+                    const age = now - dmg.createdAt;
+                    if (age > duration) return false;  // Remove expired
+
+                    const progress = age / duration;
+                    dmg.life = 1 - progress;
+
+                    // Float upward
+                    const yOffset = -progress * 50;
+
+                    ctx.save();
+                    ctx.globalAlpha = dmg.life;
+                    ctx.font = 'bold 20px monospace';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 3;
+
+                    // Show damage in red
+                    const text = `-${dmg.damage}`;
+                    ctx.strokeText(text, dmg.x, dmg.y + yOffset);
+                    ctx.fillStyle = '#ff3300';
+                    ctx.fillText(text, dmg.x, dmg.y + yOffset);
+
+                    // Show armor blocked in small grey text below
+                    if (dmg.armorBlocked > 0) {
+                        ctx.font = 'bold 12px monospace';
+                        ctx.fillStyle = '#888';
+                        const armorText = `(${dmg.armorBlocked} blocked)`;
+                        ctx.fillText(armorText, dmg.x - 20, dmg.y + yOffset + 18);
+                    }
+
+                    ctx.restore();
+
+                    return true;  // Keep
+                });
+            }
+
+            renderComponentHealth(mech, ctx) {
+                const torso = mech.components.torso;
+                const x = torso.body.position.x;
+                const y = torso.body.position.y - 80;
+
+                // Torso health bar (main)
+                this.renderHealthBar(ctx, x, y, torso.health, torso.maxHealth, '#00ff88', 'Torso');
+
+                // Show damaged/destroyed components
+                let yOffset = 15;
+                for (const [key, component] of Object.entries(mech.components)) {
+                    if (key === 'torso') continue;  // Already showing torso
+
+                    if (component.health < component.maxHealth) {
+                        const percent = component.health / component.maxHealth;
+                        const color = percent > 0.5 ? '#ffaa00' : percent > 0 ? '#ff4444' : '#666';
+                        this.renderHealthBar(ctx, x, y + yOffset, component.health, component.maxHealth, color, component.name);
+                        yOffset += 12;
+                    }
+                }
+            }
+
+            renderHealthBar(ctx, x, y, current, max, color, label) {
+                const width = 100;
+                const height = 8;
+                const healthPercent = Math.max(0, current / max);
+
+                // Background
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - width/2, y, width, height);
+
+                // Health
+                ctx.fillStyle = color;
+                ctx.fillRect(x - width/2, y, width * healthPercent, height);
+
+                // Border
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x - width/2, y, width, height);
+
+                // Label
+                if (label) {
+                    ctx.font = 'bold 10px monospace';
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    const text = `${label}: ${Math.floor(current)}/${max}`;
+                    ctx.strokeText(text, x - width/2, y - 2);
+                    ctx.fillText(text, x - width/2, y - 2);
+                }
+            }
         }
 
         // Create physics engine
@@ -1052,16 +1327,11 @@
         // Create mechs
         log('Creating mechs...');
         physics.playerMech = physics.createMech(200, 300, true);
-        physics.playerMech.currentHP = testPlayer.currentHP;
-        physics.playerMech.maxHP = testPlayer.maxHP;
-
         physics.enemyMech = physics.createMech(600, 300, false);
-        physics.enemyMech.currentHP = testEnemy.currentHP;
-        physics.enemyMech.maxHP = testEnemy.maxHP;
 
-        log('Mechs created!');
-        log('Player HP: ' + physics.playerMech.currentHP);
-        log('Enemy HP: ' + physics.enemyMech.currentHP);
+        log('Mechs created with component-based health!');
+        log(`Player Torso: ${physics.playerMech.components.torso.health}HP (${physics.playerMech.components.torso.armor} armor)`);
+        log(`Enemy Torso: ${physics.enemyMech.components.torso.health}HP (${physics.enemyMech.components.torso.armor} armor)`);
 
         // Start physics
         physics.start();
@@ -1069,29 +1339,19 @@
 
         // Auto-fire test
         let shotCount = 0;
-        let battleOver = false;
         setInterval(() => {
-            if (physics.playerMech.currentHP > 0 && physics.enemyMech.currentHP > 0) {
+            if (!physics.battleEnded && !physics.playerMech.destroyed && !physics.enemyMech.destroyed) {
                 shotCount++;
                 log(`Round ${shotCount}: Player fires!`);
                 physics.fireProjectile(physics.playerMech, physics.enemyMech, testPlayer.damage);
 
                 // Enemy shoots back
                 setTimeout(() => {
-                    if (physics.enemyMech.currentHP > 0) {
+                    if (!physics.enemyMech.destroyed) {
                         log(`Round ${shotCount}: Enemy fires!`);
                         physics.fireProjectile(physics.enemyMech, physics.playerMech, testEnemy.damage);
                     }
                 }, 500);
-            } else if (!battleOver) {
-                battleOver = true;
-                log('=== BATTLE OVER ===');
-                if (physics.enemyMech.currentHP <= 0) {
-                    log('🎉 PLAYER WINS!');
-                } else {
-                    log('💀 PLAYER DEFEATED!');
-                }
-                log(`Final: Player ${Math.floor(physics.playerMech.currentHP)}HP, Enemy ${Math.floor(physics.enemyMech.currentHP)}HP`);
             }
         }, 1500);
 

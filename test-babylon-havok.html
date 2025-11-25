@@ -368,6 +368,14 @@
                 upperArm.parent = torso;
                 upperArm.material = darkMat;
 
+                // Add physics to upper arm for dynamic movement
+                const upperArmAggregate = new BABYLON.PhysicsAggregate(
+                    upperArm,
+                    BABYLON.PhysicsShapeType.BOX,
+                    { mass: 2, friction: 0.3, restitution: 0.1 },
+                    scene
+                );
+
                 // Shoulder joint
                 const shoulder = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
                     diameter: 0.3
@@ -393,7 +401,23 @@
                 barrel.parent = weapon;
                 barrel.material = jointMat;
 
-                return { upperArm, shoulder, weapon, barrel };
+                // Create flexible joint connecting arm to torso
+                const armJoint = new BABYLON.PhysicsConstraint(
+                    BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
+                    {
+                        pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),
+                        pivotB: new BABYLON.Vector3(0, 0.35, 0),
+                    },
+                    [
+                        { key: 'axisA', value: BABYLON.Vector3.Up() },
+                        { key: 'axisB', value: BABYLON.Vector3.Up() },
+                        { key: 'collision', value: false }
+                    ],
+                    scene
+                );
+                torsoAggregate.body.addConstraint(upperArmAggregate.body, armJoint);
+
+                return { upperArm, upperArmAggregate, shoulder, weapon, barrel, armJoint };
             };
 
             const leftArm = createArm('left');
@@ -419,6 +443,14 @@
                 upperLeg.parent = torso;
                 upperLeg.material = bodyMat;
 
+                // Add physics to upper leg for dynamic movement
+                const upperLegAggregate = new BABYLON.PhysicsAggregate(
+                    upperLeg,
+                    BABYLON.PhysicsShapeType.BOX,
+                    { mass: 3, friction: 0.5, restitution: 0.05 },
+                    scene
+                );
+
                 // Knee joint
                 const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
                     diameter: 0.2
@@ -443,7 +475,23 @@
                 foot.parent = lowerLeg;
                 foot.material = jointMat;
 
-                return { hip, upperLeg, knee, lowerLeg, foot };
+                // Create flexible joint connecting leg to torso
+                const legJoint = new BABYLON.PhysicsConstraint(
+                    BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
+                    {
+                        pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),
+                        pivotB: new BABYLON.Vector3(0, 0.5, 0),
+                    },
+                    [
+                        { key: 'axisA', value: BABYLON.Vector3.Up() },
+                        { key: 'axisB', value: BABYLON.Vector3.Up() },
+                        { key: 'collision', value: false }
+                    ],
+                    scene
+                );
+                torsoAggregate.body.addConstraint(upperLegAggregate.body, legJoint);
+
+                return { hip, upperLeg, upperLegAggregate, knee, lowerLeg, foot, legJoint };
             };
 
             const leftLeg = createLeg('left');
@@ -679,22 +727,35 @@
 
                     // Add recoil to limbs when hit
                     if (hitPartName !== 'torso') {
-                        const hitDir = projPos.subtract(hitPart.getAbsolutePosition());
+                        const hitDir = projPos.subtract(hitPart.getAbsolutePosition()).normalize();
                         recoilLimb(hitPart, hitDir);
+
+                        // Apply strong force to specific limb for ragdoll effect
+                        let limbAggregate = null;
+                        if (hitPartName === 'left arm') limbAggregate = proj.target.leftArm.upperArmAggregate;
+                        else if (hitPartName === 'right arm') limbAggregate = proj.target.rightArm.upperArmAggregate;
+                        else if (hitPartName === 'left leg') limbAggregate = proj.target.leftLeg.upperLegAggregate;
+                        else if (hitPartName === 'right leg') limbAggregate = proj.target.rightLeg.upperLegAggregate;
+
+                        if (limbAggregate) {
+                            // Strong impulse on limb - creates swinging motion
+                            const limbImpulse = hitDir.scale(12);
+                            limbAggregate.body.applyImpulse(limbImpulse, hitPart.getAbsolutePosition());
+                        }
                     }
 
                     // Subtle shake on hit - only for torso hits
                     if (hitPartName === 'torso') {
                         shakeMechOnHit(proj.target, 0.15);
-                    }
 
-                    // Apply moderate knockback force - heavier mechs with leg stabilization
-                    const targetWorldPos = proj.target.collisionBody.position;
-                    const knockbackDir = projPos.subtract(targetWorldPos).normalize().scale(-1);
-                    proj.target.torsoAggregate.body.applyImpulse(
-                        knockbackDir.scale(8), // Moderate knockback - mechs have mass and stability
-                        targetWorldPos
-                    );
+                        // Apply moderate knockback force to torso
+                        const targetWorldPos = proj.target.collisionBody.position;
+                        const knockbackDir = projPos.subtract(targetWorldPos).normalize().scale(-1);
+                        proj.target.torsoAggregate.body.applyImpulse(
+                            knockbackDir.scale(8), // Moderate knockback - mechs have mass and stability
+                            targetWorldPos
+                        );
+                    }
 
                     proj.mesh.dispose();
                     return false;
@@ -818,21 +879,34 @@
 
             // Add recoil to limbs when hit
             if (hitPartName !== 'torso') {
-                const hitDir = endPos.subtract(hitPart.getAbsolutePosition());
+                const hitDir = endPos.subtract(hitPart.getAbsolutePosition()).normalize();
                 recoilLimb(hitPart, hitDir);
+
+                // Apply force to specific limb for ragdoll effect
+                let limbAggregate = null;
+                if (hitPartName === 'left arm') limbAggregate = toMech.leftArm.upperArmAggregate;
+                else if (hitPartName === 'right arm') limbAggregate = toMech.rightArm.upperArmAggregate;
+                else if (hitPartName === 'left leg') limbAggregate = toMech.leftLeg.upperLegAggregate;
+                else if (hitPartName === 'right leg') limbAggregate = toMech.rightLeg.upperLegAggregate;
+
+                if (limbAggregate) {
+                    // Medium impulse on limb - laser is continuous vs projectile impact
+                    const limbImpulse = hitDir.scale(8);
+                    limbAggregate.body.applyImpulse(limbImpulse, hitPart.getAbsolutePosition());
+                }
             }
 
             // Subtle shake on hit - only for torso hits
             if (hitPartName === 'torso') {
                 shakeMechOnHit(toMech, 0.12);
-            }
 
-            // Apply light laser knockback - continuous beam vs projectile impact
-            const laserDir = endPos.subtract(startPos).normalize();
-            toMech.torsoAggregate.body.applyImpulse(
-                laserDir.scale(5),
-                toMech.collisionBody.position
-            );
+                // Apply light laser knockback to torso
+                const laserDir = endPos.subtract(startPos).normalize();
+                toMech.torsoAggregate.body.applyImpulse(
+                    laserDir.scale(5),
+                    toMech.collisionBody.position
+                );
+            }
         }
 
         function updateLaserBeams() {
@@ -857,22 +931,41 @@
 
         // === EFFECTS ===
         function recoilLimb(mesh, direction) {
-            // Add recoil animation to limb when hit
-            if (!mesh.originalPosition) {
-                mesh.originalPosition = mesh.position.clone();
+            // More dramatic recoil animation for limbs
+            if (!mesh.originalRotation) {
+                mesh.originalRotation = mesh.rotation.clone();
             }
 
-            // Push limb back slightly
-            const recoilAmount = 0.08;
-            const recoilDir = direction.normalize();
-            mesh.position.addInPlace(recoilDir.scale(recoilAmount));
+            // Rotate limb dramatically on impact
+            const recoilAngle = 0.4; // ~23 degrees
+            const axis = BABYLON.Vector3.Cross(BABYLON.Vector3.Up(), direction).normalize();
 
-            // Return to original position
-            setTimeout(() => {
-                if (mesh.originalPosition) {
-                    mesh.position = mesh.originalPosition.clone();
+            // Apply rotation based on hit direction
+            mesh.rotation.x += (Math.random() - 0.5) * recoilAngle;
+            mesh.rotation.y += (Math.random() - 0.5) * recoilAngle;
+            mesh.rotation.z += direction.x > 0 ? recoilAngle : -recoilAngle;
+
+            // Return to original rotation over time
+            const startRotation = mesh.rotation.clone();
+            const returnDuration = 200; // ms
+            const startTime = Date.now();
+
+            const animateReturn = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / returnDuration, 1);
+
+                if (progress < 1) {
+                    // Smooth interpolation back to original
+                    mesh.rotation.x = startRotation.x + (mesh.originalRotation.x - startRotation.x) * progress;
+                    mesh.rotation.y = startRotation.y + (mesh.originalRotation.y - startRotation.y) * progress;
+                    mesh.rotation.z = startRotation.z + (mesh.originalRotation.z - startRotation.z) * progress;
+                    setTimeout(animateReturn, 16); // ~60fps
+                } else {
+                    mesh.rotation = mesh.originalRotation.clone();
                 }
-            }, 100);
+            };
+
+            setTimeout(animateReturn, 50);
         }
 
         function flashMeshOnHit(mesh) {

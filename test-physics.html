@@ -568,7 +568,7 @@
                 // Debug info with V3 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V3.6 STABLE WALK', 10, 20);
+                ctx.fillText('V3.7 INDUSTRIAL', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';
@@ -609,123 +609,126 @@
             }
 
             renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                // SVG-INSPIRED INDUSTRIAL DESIGN
+                const armorBase = '#7c8a7c';  // Olive drab
+                const armorDark = '#4a524a';  // Dark olive
+                const mechGrey = '#555';      // Mechanical grey
+                const mechDark = '#333';      // Dark mech
+                const jointGrey = '#444';     // Joint color
+                const accentYellow = '#fc0';  // Yellow accent
+
                 const leftLeg = mech.leftLeg;
                 const rightLeg = mech.rightLeg;
 
-                // Render leg struts (thigh + lower leg)
+                // Render legs (thigh + shin)
                 [leftLeg, rightLeg].forEach((leg, index) => {
                     const legX = leg.position.x;
                     const legY = leg.position.y;
                     const angle = leg.angle;
+                    const isFront = index === 1;  // Second leg is front
 
                     ctx.save();
                     ctx.translate(legX, legY);
                     ctx.rotate(angle);
 
-                    // Upper thigh - angular armored with chamfered edges
-                    ctx.fillStyle = lightColor;
-                    ctx.strokeStyle = '#000';
+                    // Thigh - angular armored shape (trapezoid)
+                    ctx.fillStyle = isFront ? armorBase : mechGrey;
+                    ctx.strokeStyle = isFront ? '#333' : '#222';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.moveTo(-6 * scale, -12 * scale);
-                    ctx.lineTo(6 * scale, -12 * scale);
+                    ctx.moveTo(-8 * scale, -10 * scale);
                     ctx.lineTo(8 * scale, -10 * scale);
-                    ctx.lineTo(8 * scale, 8 * scale);
-                    ctx.lineTo(-8 * scale, 8 * scale);
-                    ctx.lineTo(-8 * scale, -10 * scale);
+                    ctx.lineTo(7 * scale, 18 * scale);
+                    ctx.lineTo(-7 * scale, 18 * scale);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
 
-                    // Panel lines on thigh
-                    ctx.strokeStyle = darkColor;
-                    ctx.lineWidth = 1;
+                    // Thigh armor panel (darker)
+                    ctx.fillStyle = isFront ? armorDark : mechDark;
                     ctx.beginPath();
-                    ctx.moveTo(-4 * scale, -6 * scale);
-                    ctx.lineTo(4 * scale, -6 * scale);
-                    ctx.stroke();
-
-                    // Knee joint - mechanical with glow
-                    ctx.fillStyle = '#1a1a1a';
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(0, 10 * scale, 5 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // Knee joint glow
-                    ctx.fillStyle = '#ff6b35';
-                    ctx.globalAlpha = 0.4;
-                    ctx.beginPath();
-                    ctx.arc(0, 10 * scale, 3 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-
-                    // Lower leg - wider, more stable design
-                    ctx.fillStyle = baseColor;
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(-7 * scale, 10 * scale);
-                    ctx.lineTo(-5 * scale, 14 * scale);
-                    ctx.lineTo(-5 * scale, 24 * scale);
-                    ctx.lineTo(5 * scale, 24 * scale);
-                    ctx.lineTo(5 * scale, 14 * scale);
-                    ctx.lineTo(7 * scale, 10 * scale);
+                    ctx.moveTo(-6 * scale, -5 * scale);
+                    ctx.lineTo(6 * scale, -5 * scale);
+                    ctx.lineTo(5 * scale, 10 * scale);
+                    ctx.lineTo(-5 * scale, 10 * scale);
                     ctx.closePath();
                     ctx.fill();
-                    ctx.stroke();
 
-                    // Ankle actuator
-                    ctx.fillStyle = darkColor;
+                    // Yellow accent strip (front leg only)
+                    if (isFront) {
+                        ctx.fillStyle = accentYellow;
+                        ctx.fillRect(-6 * scale, 5 * scale, 4 * scale, 8 * scale);
+                    }
+
+                    // Hip joint circle
+                    ctx.fillStyle = jointGrey;
+                    ctx.strokeStyle = isFront ? '#333' : '#222';
+                    ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(0, 24 * scale, 4 * scale, 0, Math.PI * 2);
+                    ctx.arc(0, 0, 5 * scale, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
 
-                    // Hydraulic pistons
-                    ctx.strokeStyle = '#404040';
-                    ctx.lineWidth = 2.5 * scale;
+                    // Inner joint detail
+                    ctx.fillStyle = '#222';
                     ctx.beginPath();
-                    ctx.moveTo(-3 * scale, -4 * scale);
-                    ctx.lineTo(-3 * scale, 18 * scale);
-                    ctx.stroke();
+                    ctx.arc(0, 0, 3 * scale, 0, Math.PI * 2);
+                    ctx.fill();
 
                     ctx.restore();
                 });
 
-                // Render separate FEET (Mad Cat wide stance)
+                // Render separate FEET
                 if (mech.leftFoot && mech.rightFoot) {
-                    [mech.leftFoot, mech.rightFoot].forEach((foot) => {
+                    [mech.leftFoot, mech.rightFoot].forEach((foot, index) => {
                         const footX = foot.position.x;
                         const footY = foot.position.y;
                         const angle = foot.angle;
+                        const isFront = index === 1;
 
                         ctx.save();
                         ctx.translate(footX, footY);
                         ctx.rotate(angle);
 
-                        // Wide, stable foot - Mad Cat style
-                        ctx.fillStyle = '#2a2a2a';
-                        ctx.strokeStyle = '#000';
+                        // Ankle joint circle
+                        ctx.fillStyle = jointGrey;
+                        ctx.strokeStyle = isFront ? '#333' : '#222';
                         ctx.lineWidth = 2;
                         ctx.beginPath();
-                        ctx.moveTo(-9 * scale, -3 * scale);
-                        ctx.lineTo(9 * scale, -3 * scale);
-                        ctx.lineTo(12 * scale, 4 * scale);
-                        ctx.lineTo(-12 * scale, 4 * scale);
+                        ctx.arc(0, -3 * scale, 4 * scale, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Foot - angular armored boot shape
+                        ctx.fillStyle = isFront ? armorBase : mechGrey;
+                        ctx.strokeStyle = isFront ? '#333' : '#222';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(-12 * scale, -2 * scale);
+                        ctx.lineTo(12 * scale, -2 * scale);
+                        ctx.lineTo(15 * scale, 4 * scale);
+                        ctx.lineTo(-15 * scale, 4 * scale);
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
 
-                        // Tread pattern for grip
-                        ctx.strokeStyle = '#1a1a1a';
+                        // Foot armor detail
+                        ctx.fillStyle = isFront ? armorDark : mechDark;
+                        ctx.beginPath();
+                        ctx.moveTo(-10 * scale, 0);
+                        ctx.lineTo(10 * scale, 0);
+                        ctx.lineTo(12 * scale, 3 * scale);
+                        ctx.lineTo(-12 * scale, 3 * scale);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        // Tread lines
+                        ctx.strokeStyle = '#222';
                         ctx.lineWidth = 1;
-                        for (let i = -8; i <= 8; i += 4) {
+                        for (let i = -10; i <= 10; i += 5) {
                             ctx.beginPath();
-                            ctx.moveTo(i * scale, 0);
-                            ctx.lineTo(i * scale, 3 * scale);
+                            ctx.moveTo(i * scale, 1 * scale);
+                            ctx.lineTo(i * scale, 3.5 * scale);
                             ctx.stroke();
                         }
 
@@ -735,6 +738,11 @@
             }
 
             renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                // SVG-INSPIRED COLORS
+                const armorBase = '#7c8a7c';
+                const armorDark = '#4a524a';
+                const mechGrey = '#555';
+
                 const torso = mech.torso;
                 const torsoX = torso.position.x;
                 const torsoY = torso.position.y;
@@ -744,113 +752,96 @@
                 ctx.translate(torsoX, torsoY);
                 ctx.rotate(angle);
 
-                // Main torso - angular aggressive shape
-                ctx.fillStyle = baseColor;
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2.5;
+                // Main torso - angular trapezoid (SVG style)
+                ctx.fillStyle = armorBase;
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(-20 * scale, -20 * scale);
-                ctx.lineTo(20 * scale, -20 * scale);
-                ctx.lineTo(22 * scale, -16 * scale);
-                ctx.lineTo(22 * scale, 18 * scale);
-                ctx.lineTo(16 * scale, 22 * scale);
-                ctx.lineTo(-16 * scale, 22 * scale);
-                ctx.lineTo(-22 * scale, 18 * scale);
-                ctx.lineTo(-22 * scale, -16 * scale);
+                ctx.moveTo(-25 * scale, -15 * scale);  // Top left
+                ctx.lineTo(25 * scale, -15 * scale);   // Top right
+                ctx.lineTo(20 * scale, 15 * scale);    // Bottom right
+                ctx.lineTo(-20 * scale, 15 * scale);   // Bottom left
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                // Cockpit canopy
-                ctx.fillStyle = lightColor;
+                // Inner mechanical panel
+                ctx.fillStyle = mechGrey;
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(-10 * scale, -18 * scale);
-                ctx.lineTo(10 * scale, -18 * scale);
-                ctx.lineTo(12 * scale, -14 * scale);
-                ctx.lineTo(12 * scale, -6 * scale);
-                ctx.lineTo(-12 * scale, -6 * scale);
-                ctx.lineTo(-12 * scale, -14 * scale);
+                ctx.moveTo(-15 * scale, -10 * scale);
+                ctx.lineTo(15 * scale, -10 * scale);
+                ctx.lineTo(10 * scale, 5 * scale);
+                ctx.lineTo(-10 * scale, 5 * scale);
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                // Viewport - glowing cyan gradient
-                const gradient = ctx.createLinearGradient(-6 * scale, -16 * scale, 6 * scale, -10 * scale);
-                gradient.addColorStop(0, '#00d9ff');
-                gradient.addColorStop(0.5, '#4dd2ff');
-                gradient.addColorStop(1, '#00d9ff');
+                // Cockpit viewport - glowing cyan (animated)
+                const gradient = ctx.createLinearGradient(0, -10 * scale, 0, -5 * scale);
+                gradient.addColorStop(0, '#00ffff');
+                gradient.addColorStop(1, '#0088ff');
                 ctx.fillStyle = gradient;
                 ctx.globalAlpha = 0.9;
-                ctx.beginPath();
-                ctx.moveTo(-6 * scale, -16 * scale);
-                ctx.lineTo(6 * scale, -16 * scale);
-                ctx.lineTo(8 * scale, -12 * scale);
-                ctx.lineTo(-8 * scale, -12 * scale);
-                ctx.closePath();
-                ctx.fill();
+                ctx.fillRect(-8 * scale, -10 * scale, 16 * scale, 4 * scale);
                 ctx.globalAlpha = 1;
-                ctx.stroke();
+                ctx.strokeStyle = '#0088ff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-8 * scale, -10 * scale, 16 * scale, 4 * scale);
 
-                // Armor panels
-                ctx.fillStyle = darkColor;
+                // Shoulder armor plates
+                ctx.fillStyle = armorBase;
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                // Left shoulder
                 ctx.beginPath();
-                ctx.moveTo(-22 * scale, -8 * scale);
-                ctx.lineTo(-16 * scale, -6 * scale);
-                ctx.lineTo(-16 * scale, 12 * scale);
-                ctx.lineTo(-22 * scale, 14 * scale);
+                ctx.moveTo(-35 * scale, -18 * scale);
+                ctx.lineTo(-20 * scale, -18 * scale);
+                ctx.lineTo(-20 * scale, -8 * scale);
+                ctx.lineTo(-30 * scale, -5 * scale);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // Right shoulder
+                ctx.beginPath();
+                ctx.moveTo(20 * scale, -18 * scale);
+                ctx.lineTo(35 * scale, -18 * scale);
+                ctx.lineTo(30 * scale, -5 * scale);
+                ctx.lineTo(20 * scale, -8 * scale);
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                ctx.beginPath();
-                ctx.moveTo(22 * scale, -8 * scale);
-                ctx.lineTo(16 * scale, -6 * scale);
-                ctx.lineTo(16 * scale, 12 * scale);
-                ctx.lineTo(22 * scale, 14 * scale);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Panel lines
-                ctx.strokeStyle = '#000';
+                // Panel lines for detail
+                ctx.strokeStyle = '#222';
                 ctx.lineWidth = 1;
-                for (let i = 0; i < 4; i++) {
+                for (let i = 0; i < 3; i++) {
+                    const y = (-6 + i * 6) * scale;
                     ctx.beginPath();
-                    ctx.moveTo(-12 * scale, (-8 + i * 6) * scale);
-                    ctx.lineTo(12 * scale, (-8 + i * 6) * scale);
+                    ctx.moveTo(-10 * scale, y);
+                    ctx.lineTo(10 * scale, y);
                     ctx.stroke();
                 }
-
-                // Power core - glowing
-                const coreGlow = ctx.createRadialGradient(0, 10 * scale, 0, 0, 10 * scale, 6 * scale);
-                coreGlow.addColorStop(0, '#ff6b35');
-                coreGlow.addColorStop(0.7, '#ff6b3588');
-                coreGlow.addColorStop(1, '#ff6b3500');
-                ctx.fillStyle = coreGlow;
-                ctx.globalAlpha = 0.9;
-                ctx.beginPath();
-                ctx.arc(0, 10 * scale, 6 * scale, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-
-                ctx.fillStyle = '#ff6b35';
-                ctx.beginPath();
-                ctx.arc(0, 10 * scale, 3 * scale, 0, Math.PI * 2);
-                ctx.fill();
 
                 // Vent ports
                 ctx.fillStyle = '#1a1a1a';
                 for (let i = 0; i < 3; i++) {
-                    ctx.beginPath();
-                    ctx.arc((-6 + i * 6) * scale, 4 * scale, 2 * scale, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.stroke();
+                    const x = (-6 + i * 6) * scale;
+                    ctx.fillRect(x - 1.5 * scale, 8 * scale, 3 * scale, 4 * scale);
                 }
 
                 ctx.restore();
             }
 
             renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                // SVG-INSPIRED COLORS
+                const armorBase = '#7c8a7c';
+                const mechGrey = '#555';
+                const mechDark = '#333';
+                const jointGrey = '#444';
+                const accentYellow = '#fc0';
+
                 const leftArm = mech.leftArm;
                 const rightArm = mech.rightArm;
 
@@ -858,53 +849,65 @@
                     const armX = arm.position.x;
                     const armY = arm.position.y;
                     const angle = arm.angle;
+                    const isRight = index === 1;
 
                     ctx.save();
                     ctx.translate(armX, armY);
                     ctx.rotate(angle);
 
-                    // Shoulder mount
-                    ctx.fillStyle = darkColor;
-                    ctx.strokeStyle = '#000';
+                    // Shoulder joint
+                    ctx.fillStyle = jointGrey;
+                    ctx.strokeStyle = '#333';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(0, -12 * scale, 6 * scale, 0, Math.PI * 2);
+                    ctx.arc(0, 0, 6 * scale, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
 
-                    // Upper arm
-                    ctx.fillStyle = baseColor;
+                    // Upper arm - angular armor
+                    ctx.fillStyle = isRight ? armorBase : mechGrey;
+                    ctx.strokeStyle = isRight ? '#333' : '#222';
+                    ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.rect(-4 * scale, -12 * scale, 8 * scale, 18 * scale);
+                    ctx.moveTo(-7 * scale, -5 * scale);
+                    ctx.lineTo(7 * scale, -5 * scale);
+                    ctx.lineTo(6 * scale, 12 * scale);
+                    ctx.lineTo(-6 * scale, 12 * scale);
+                    ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
 
-                    // Forearm
-                    ctx.fillStyle = lightColor;
-                    ctx.beginPath();
-                    ctx.rect(-5 * scale, 6 * scale, 10 * scale, 14 * scale);
-                    ctx.fill();
-                    ctx.stroke();
+                    // Weapon mount (forearm) - rectangular cannon
+                    ctx.fillStyle = mechGrey;
+                    ctx.strokeStyle = '#222';
+                    ctx.lineWidth = 2;
+                    ctx.fillRect(-6 * scale, 10 * scale, 12 * scale, 12 * scale);
+                    ctx.strokeRect(-6 * scale, 10 * scale, 12 * scale, 12 * scale);
 
                     // Weapon barrel
-                    ctx.fillStyle = '#666';
-                    ctx.beginPath();
-                    ctx.rect(-2 * scale, 18 * scale, 4 * scale, 8 * scale);
-                    ctx.fill();
-                    ctx.stroke();
+                    ctx.fillStyle = mechDark;
+                    ctx.strokeStyle = '#222';
+                    ctx.fillRect(-4 * scale, 22 * scale, 8 * scale, 6 * scale);
+                    ctx.strokeRect(-4 * scale, 22 * scale, 8 * scale, 6 * scale);
 
-                    // Muzzle
-                    ctx.fillStyle = '#333';
-                    ctx.beginPath();
-                    ctx.rect(-3 * scale, 25 * scale, 6 * scale, 3 * scale);
-                    ctx.fill();
-                    ctx.stroke();
+                    // Muzzle tip
+                    ctx.fillStyle = '#222';
+                    ctx.fillRect(-3 * scale, 28 * scale, 6 * scale, 2 * scale);
+
+                    // Yellow accent panel (right arm only)
+                    if (isRight) {
+                        ctx.fillStyle = accentYellow;
+                        ctx.fillRect(-8 * scale, 14 * scale, 3 * scale, 6 * scale);
+                    }
 
                     ctx.restore();
                 });
             }
 
             renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                // SVG-INSPIRED COLORS
+                const armorBase = '#7c8a7c';
+
                 const head = mech.head;
                 const headX = head.position.x;
                 const headY = head.position.y;
@@ -914,75 +917,38 @@
                 ctx.translate(headX, headY);
                 ctx.rotate(angle);
 
-                // Modern aggressive head - angular wedge
-                ctx.fillStyle = baseColor;
-                ctx.strokeStyle = '#000';
+                // Head - angular trapezoid (SVG style)
+                ctx.fillStyle = armorBase;
+                ctx.strokeStyle = '#333';
                 ctx.lineWidth = 2;
-
                 ctx.beginPath();
-                ctx.moveTo(0, -14 * scale);
-                ctx.lineTo(12 * scale, -10 * scale);
-                ctx.lineTo(14 * scale, -6 * scale);
-                ctx.lineTo(14 * scale, 4 * scale);
-                ctx.lineTo(10 * scale, 8 * scale);
-                ctx.lineTo(-10 * scale, 8 * scale);
-                ctx.lineTo(-14 * scale, 4 * scale);
-                ctx.lineTo(-14 * scale, -6 * scale);
-                ctx.lineTo(-12 * scale, -10 * scale);
+                ctx.moveTo(-8 * scale, 0);       // Bottom left
+                ctx.lineTo(8 * scale, 0);        // Bottom right
+                ctx.lineTo(6 * scale, -12 * scale);  // Top right
+                ctx.lineTo(-6 * scale, -12 * scale); // Top left
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
 
-                // Sensor pods - sleek angled
-                ctx.fillStyle = '#2a2a2a';
-                ctx.beginPath();
-                ctx.moveTo(-16 * scale, -8 * scale);
-                ctx.lineTo(-12 * scale, -10 * scale);
-                ctx.lineTo(-12 * scale, 2 * scale);
-                ctx.lineTo(-16 * scale, 4 * scale);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.moveTo(16 * scale, -8 * scale);
-                ctx.lineTo(12 * scale, -10 * scale);
-                ctx.lineTo(12 * scale, 2 * scale);
-                ctx.lineTo(16 * scale, 4 * scale);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
+                // Red visor - glowing sensor strip
+                ctx.fillStyle = '#ff3300';
+                ctx.strokeStyle = '#880000';
+                ctx.lineWidth = 1;
+                ctx.fillRect(-4 * scale, -8 * scale, 8 * scale, 3 * scale);
+                ctx.strokeRect(-4 * scale, -8 * scale, 8 * scale, 3 * scale);
 
                 // Visor glow effect
-                const visorGlow = ctx.createRadialGradient(0, -4 * scale, 0, 0, -4 * scale, 8 * scale);
-                visorGlow.addColorStop(0, '#ff0000');
-                visorGlow.addColorStop(0.6, '#ff000066');
-                visorGlow.addColorStop(1, '#ff000000');
-                ctx.fillStyle = visorGlow;
-                ctx.globalAlpha = 0.7;
-                ctx.fillRect(-10 * scale, -8 * scale, 20 * scale, 8 * scale);
+                ctx.fillStyle = '#ff3300';
+                ctx.globalAlpha = 0.3;
+                ctx.fillRect(-5 * scale, -9 * scale, 10 * scale, 5 * scale);
                 ctx.globalAlpha = 1;
 
-                // Main visor - angular slit
-                ctx.fillStyle = '#ff0000';
-                ctx.globalAlpha = 0.95;
+                // Neck connection joint
+                ctx.fillStyle = '#444';
                 ctx.beginPath();
-                ctx.moveTo(-8 * scale, -6 * scale);
-                ctx.lineTo(8 * scale, -6 * scale);
-                ctx.lineTo(10 * scale, -4 * scale);
-                ctx.lineTo(10 * scale, -2 * scale);
-                ctx.lineTo(-10 * scale, -2 * scale);
-                ctx.lineTo(-10 * scale, -4 * scale);
-                ctx.closePath();
+                ctx.arc(0, 2 * scale, 3 * scale, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.globalAlpha = 1;
-                ctx.stroke();
-
-                // Center camera/sensor
-                ctx.fillStyle = '#ff0000';
-                ctx.beginPath();
-                ctx.arc(0, -4 * scale, 2.5 * scale, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.strokeStyle = '#333';
                 ctx.stroke();
 
                 ctx.restore();

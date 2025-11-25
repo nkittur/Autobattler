@@ -497,29 +497,51 @@
 
             // Calculate direction
             const direction = targetPos.subtract(startPos).normalize();
+            const angle = Math.atan2(direction.x, direction.z);
 
-            // Create projectile mesh (larger for visibility)
-            const projectile = BABYLON.MeshBuilder.CreateSphere('projectile_' + Date.now(), {
-                diameter: 0.4
+            // Create elongated projectile (bullet/energy bolt shape)
+            const projectile = BABYLON.MeshBuilder.CreateCylinder('projectile_' + Date.now(), {
+                height: 0.8,
+                diameter: 0.25,
+                tessellation: 8
             }, scene);
             projectile.position = startPos.clone();
 
-            // Projectile material with glow
+            // Rotate to point in direction of travel
+            projectile.rotation.x = Math.PI / 2;
+            projectile.rotation.y = angle;
+
+            // Projectile material with intense glow
             const projMat = new BABYLON.StandardMaterial('projMat_' + Date.now(), scene);
             projMat.diffuseColor = COLORS.projectile;
-            projMat.emissiveColor = COLORS.projectile;
+            projMat.emissiveColor = COLORS.projectile.scale(1.5); // Brighter glow
+            projMat.specularColor = new BABYLON.Color3(1, 1, 1);
             projectile.material = projMat;
+
+            // Create glowing trail effect
+            const trail = BABYLON.MeshBuilder.CreateCylinder('trail_' + Date.now(), {
+                height: 1.5,
+                diameter: 0.15,
+                tessellation: 8
+            }, scene);
+            trail.position = new BABYLON.Vector3(0, -0.5, 0);
+            trail.parent = projectile;
+            const trailMat = new BABYLON.StandardMaterial('trailMat_' + Date.now(), scene);
+            trailMat.diffuseColor = COLORS.projectile;
+            trailMat.emissiveColor = COLORS.projectile;
+            trailMat.alpha = 0.6;
+            trail.material = trailMat;
 
             // Add physics to projectile
             const projAggregate = new BABYLON.PhysicsAggregate(
                 projectile,
                 BABYLON.PhysicsShapeType.SPHERE,
-                { mass: 0.5, friction: 0, restitution: 0.3 },
+                { mass: 0.3, friction: 0, restitution: 0.2 },
                 scene
             );
 
-            // Apply velocity
-            const speed = 15;
+            // Apply high velocity for fast, impactful shot
+            const speed = 45;
             const velocity = direction.scale(speed);
             projAggregate.body.setLinearVelocity(velocity);
 
@@ -563,13 +585,13 @@
                     flashMeshOnHit(proj.target.torso);
 
                     // Shake the mech on hit
-                    shakeMechOnHit(proj.target, 0.15);
+                    shakeMechOnHit(proj.target, 0.3);
 
-                    // Apply knockback force to target (use collision body position for physics)
+                    // Apply strong knockback force to target (use collision body position for physics)
                     const targetWorldPos = proj.target.collisionBody.position;
                     const knockbackDir = projPos.subtract(targetWorldPos).normalize().scale(-1);
                     proj.target.torsoAggregate.body.applyImpulse(
-                        knockbackDir.scale(5),
+                        knockbackDir.scale(15), // Stronger knockback for impactful hits
                         targetWorldPos
                     );
 
@@ -600,32 +622,46 @@
 
             log(`LASER: from (${startPos.x.toFixed(1)}, ${startPos.y.toFixed(1)}, ${startPos.z.toFixed(1)}) to (${endPos.x.toFixed(1)}, ${endPos.y.toFixed(1)}, ${endPos.z.toFixed(1)})`, 'info');
 
-            // Create laser beam (thicker for visibility)
+            // Create main laser beam (thick and bright)
             const points = [startPos, endPos];
             const laserBeam = BABYLON.MeshBuilder.CreateTube('laser_' + Date.now(), {
                 path: points,
-                radius: 0.15,
+                radius: 0.2,
                 updatable: false
             }, scene);
 
-            // Laser material with glow
+            // Laser material with intense glow
             const laserMat = new BABYLON.StandardMaterial('laserMat_' + Date.now(), scene);
             laserMat.diffuseColor = COLORS.laser;
-            laserMat.emissiveColor = COLORS.laser;
-            laserMat.alpha = 0.8;
+            laserMat.emissiveColor = COLORS.laser.scale(2); // Very bright
+            laserMat.alpha = 0.9;
             laserBeam.material = laserMat;
+
+            // Create outer glow layer
+            const glowBeam = BABYLON.MeshBuilder.CreateTube('laserGlow_' + Date.now(), {
+                path: points,
+                radius: 0.35,
+                updatable: false
+            }, scene);
+            const glowMat = new BABYLON.StandardMaterial('glowMat_' + Date.now(), scene);
+            glowMat.diffuseColor = COLORS.laser;
+            glowMat.emissiveColor = COLORS.laser.scale(0.8);
+            glowMat.alpha = 0.4;
+            glowBeam.material = glowMat;
 
             // Apply damage immediately (laser is instant)
             const damage = 10;
             toMech.currentHP -= damage;
             log(`LASER HIT! ${isPlayer ? 'Enemy' : 'Player'} takes ${damage} damage! (${toMech.currentHP}/${toMech.maxHP} HP)`, 'warn');
 
-            // Store for fadeout
+            // Store both beams for fadeout
             laserBeams.push({
                 mesh: laserBeam,
+                glowMesh: glowBeam,
                 material: laserMat,
+                glowMaterial: glowMat,
                 createdAt: Date.now(),
-                duration: 150 // ms
+                duration: 200 // ms
             });
 
             // Create impact at target
@@ -635,7 +671,14 @@
             flashMeshOnHit(toMech.torso);
 
             // Shake the mech on hit
-            shakeMechOnHit(toMech, 0.1);
+            shakeMechOnHit(toMech, 0.25);
+
+            // Apply laser knockback
+            const laserDir = endPos.subtract(startPos).normalize();
+            toMech.torsoAggregate.body.applyImpulse(
+                laserDir.scale(8),
+                toMech.collisionBody.position
+            );
         }
 
         function updateLaserBeams() {
@@ -646,11 +689,14 @@
 
                 if (age > beam.duration) {
                     beam.mesh.dispose();
+                    beam.glowMesh.dispose();
                     return false;
                 }
 
-                // Fade out
-                beam.material.alpha = 0.8 * (1 - age / beam.duration);
+                // Fade out both beams
+                const fadeProgress = age / beam.duration;
+                beam.material.alpha = 0.9 * (1 - fadeProgress);
+                beam.glowMaterial.alpha = 0.4 * (1 - fadeProgress);
                 return true;
             });
         }
@@ -686,28 +732,27 @@
         }
 
         function shakeMechOnHit(mech, intensity = 0.1) {
-            // Store original position
-            const collisionBody = mech.collisionBody;
-            const originalPos = collisionBody.position.clone();
+            // Apply rapid impulses to create shake effect
+            const body = mech.torsoAggregate.body;
+            const centerPos = mech.collisionBody.position;
 
-            // Shake effect - small random displacement
+            // Apply 5 rapid impulses in random directions
             let shakeCount = 0;
-            const maxShakes = 4;
+            const maxShakes = 5;
             const shakeInterval = setInterval(() => {
                 if (shakeCount >= maxShakes) {
-                    // Restore original position
-                    collisionBody.position = originalPos;
                     clearInterval(shakeInterval);
                 } else {
-                    // Random shake
-                    collisionBody.position = new BABYLON.Vector3(
-                        originalPos.x + (Math.random() - 0.5) * intensity,
-                        originalPos.y + (Math.random() - 0.5) * intensity * 0.5,
-                        originalPos.z + (Math.random() - 0.5) * intensity
+                    // Random impulse in X and Z directions
+                    const impulse = new BABYLON.Vector3(
+                        (Math.random() - 0.5) * intensity * 100,
+                        0,
+                        (Math.random() - 0.5) * intensity * 100
                     );
+                    body.applyImpulse(impulse, centerPos);
                     shakeCount++;
                 }
-            }, 30);
+            }, 40);
         }
 
         function createImpactEffect(position) {

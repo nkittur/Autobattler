@@ -371,7 +371,10 @@
                         {
                             pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Pivot on torso (shoulder position)
                             pivotB: new BABYLON.Vector3(0, 0.3, 0),  // Pivot on arm (top of arm, half-height)
-                            collision: false  // Disable collision between connected bodies
+                            collision: false,  // Disable collision between connected bodies
+                            axisA: new BABYLON.Vector3(0, 1, 0),
+                            axisB: new BABYLON.Vector3(0, 1, 0),
+                            maxAngle: Math.PI / 2  // Limit rotation to 90 degrees
                         },
                         scene
                     );
@@ -447,7 +450,10 @@
                         {
                             pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),  // Pivot on torso (hip position)
                             pivotB: new BABYLON.Vector3(0, 0.35, 0),  // Pivot on leg (top of leg, half-height)
-                            collision: false  // Disable collision between connected bodies
+                            collision: false,  // Disable collision between connected bodies
+                            axisA: new BABYLON.Vector3(0, 1, 0),
+                            axisB: new BABYLON.Vector3(0, 1, 0),
+                            maxAngle: Math.PI / 6  // Limit rotation to 30 degrees for stability
                         },
                         scene
                     );
@@ -957,8 +963,9 @@
 
                 // Only apply stabilization if torso is at reasonable height (not flying away)
                 if (torsoPos.y < 10 && torsoPos.y > -5) {
-                    // Apply upward force on legs to counter gravity and support torso
-                    const legSupportForce = 20; // Reduced force
+                    // Apply strong upward force on legs to counter gravity and support torso
+                    // Total mech mass ~102kg, gravity = 9.81, so need ~500N per leg
+                    const legSupportForce = 500;
                     leftLeg.legAggregate.body.applyForce(
                         new BABYLON.Vector3(0, legSupportForce, 0),
                         leftLegPos
@@ -969,20 +976,13 @@
                     );
                 }
 
-                // Apply corrective torque to legs to keep them vertical
-                const leftLegRotation = leftLeg.upperLeg.rotationQuaternion || BABYLON.Quaternion.Identity();
-                const rightLegRotation = rightLeg.upperLeg.rotationQuaternion || BABYLON.Quaternion.Identity();
-
-                // Calculate desired upright rotation (no tilt in X or Z)
-                const uprightQuat = BABYLON.Quaternion.Identity();
-
-                // Apply torque to correct leg rotation toward upright
+                // Apply strong corrective torque to legs to keep them vertical
                 const leftLegAngVel = leftLeg.legAggregate.body.getAngularVelocity();
                 const rightLegAngVel = rightLeg.legAggregate.body.getAngularVelocity();
 
-                // Damping torque to reduce angular velocity
-                leftLeg.legAggregate.body.applyTorque(leftLegAngVel.scale(-5));
-                rightLeg.legAggregate.body.applyTorque(rightLegAngVel.scale(-5));
+                // Strong damping torque to reduce angular velocity and prevent rotation
+                leftLeg.legAggregate.body.applyTorque(leftLegAngVel.scale(-20));
+                rightLeg.legAggregate.body.applyTorque(rightLegAngVel.scale(-20));
 
                 // Keep legs from drifting away from torso
                 const leftLegToTorso = torsoPos.subtract(leftLegPos);
@@ -992,16 +992,16 @@
                 leftLegToTorso.y = 0;
                 rightLegToTorso.y = 0;
 
-                // Apply centering force if legs drift too far
-                if (leftLegToTorso.length() > 0.5) {
+                // Apply strong centering force if legs drift
+                if (leftLegToTorso.length() > 0.3) {
                     leftLeg.legAggregate.body.applyForce(
-                        leftLegToTorso.normalize().scale(15),
+                        leftLegToTorso.normalize().scale(50),
                         leftLegPos
                     );
                 }
-                if (rightLegToTorso.length() > 0.5) {
+                if (rightLegToTorso.length() > 0.3) {
                     rightLeg.legAggregate.body.applyForce(
-                        rightLegToTorso.normalize().scale(15),
+                        rightLegToTorso.normalize().scale(50),
                         rightLegPos
                     );
                 }

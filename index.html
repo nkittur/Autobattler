@@ -623,9 +623,9 @@
         /* Physics Canvas Styles */
         #physics-canvas {
             width: 100%;
-            max-width: 800px;
-            height: auto;
-            aspect-ratio: 16 / 9;
+            max-width: 900px;
+            height: 55vh;  /* About 2/3 of viewport height, leaving room for UI */
+            max-height: 400px;
             background: linear-gradient(180deg, #1a1a3e 0%, #0d0d1f 100%);
             border: 3px solid #00ff88;
             border-radius: 8px;
@@ -1715,14 +1715,14 @@
                 this.camera = new BABYLON.ArcRotateCamera(
                     'camera',
                     -Math.PI / 2,      // Alpha: horizontal rotation (facing front)
-                    Math.PI / 3.5,     // Beta: vertical angle (elevated view)
-                    22,                // Radius: distance from target
-                    new BABYLON.Vector3(0, 2, 0),  // Target point
+                    Math.PI / 4,       // Beta: vertical angle (45 degrees - good isometric view)
+                    18,                // Radius: distance from target
+                    new BABYLON.Vector3(0, 3, 0),  // Target point (centered on mechs)
                     scene
                 );
-                this.camera.attachControl(this.canvas, false); // Disable user rotation
-                this.camera.lowerRadiusLimit = 15;
-                this.camera.upperRadiusLimit = 35;
+                this.camera.attachControl(this.canvas, true); // Enable user rotation for debugging
+                this.camera.lowerRadiusLimit = 10;
+                this.camera.upperRadiusLimit = 40;
                 this.cameraBasePosition = this.camera.position.clone();
 
                 // Lighting
@@ -1866,7 +1866,7 @@
                 // Convert 2D coordinates to 3D (x stays, y becomes height, z=0)
                 // Scale down from pixel coords to 3D world units
                 const worldX = (x - 400) / 50;  // Center around 0, scale down
-                const worldY = 2.5;  // Spawn height
+                const worldY = 4.5;  // Spawn height - high enough for legs to clear ground
                 const worldZ = 0;
 
                 // Size based on mech class
@@ -2439,14 +2439,14 @@
                     const shakeX = (Math.random() - 0.5) * this.cameraShake.intensity * 0.1;
                     const shakeY = (Math.random() - 0.5) * this.cameraShake.intensity * 0.1;
 
-                    this.camera.target = new BABYLON.Vector3(shakeX, 2 + shakeY, 0);
+                    this.camera.target = new BABYLON.Vector3(shakeX, 3 + shakeY, 0);
 
                     // Decay
                     this.cameraShake.intensity *= 0.92;
 
                     if (this.cameraShake.intensity < 0.1) {
                         this.cameraShake.intensity = 0;
-                        this.camera.target = new BABYLON.Vector3(0, 2, 0);
+                        this.camera.target = new BABYLON.Vector3(0, 3, 0);
                     }
                 }
             }

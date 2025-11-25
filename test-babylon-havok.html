@@ -16,7 +16,8 @@
         #renderCanvas {
             width: 100%;
             max-width: 900px;
-            height: 500px;
+            height: 50vh;
+            max-height: 350px;
             display: block;
             margin: 0 auto;
             border: 3px solid #00ff88;
@@ -165,14 +166,14 @@
             camera = new BABYLON.ArcRotateCamera(
                 'camera',
                 -Math.PI / 2,  // Alpha (horizontal rotation)
-                Math.PI / 3,   // Beta (vertical angle - more top-down)
-                25,            // Radius (distance)
-                new BABYLON.Vector3(0, 2, 0), // Target
+                Math.PI / 4,   // Beta (vertical angle - 45 degree isometric)
+                18,            // Radius (distance)
+                new BABYLON.Vector3(0, 3.5, 0), // Target (centered on mechs)
                 scene
             );
             camera.attachControl(document.getElementById('renderCanvas'), true);
             camera.lowerRadiusLimit = 10;
-            camera.upperRadiusLimit = 50;
+            camera.upperRadiusLimit = 40;
 
             // Lighting
             const hemisphericLight = new BABYLON.HemisphericLight(
@@ -195,9 +196,9 @@
             // Create boundary walls
             createWalls(scene);
 
-            // Create mechs
-            playerMech = createMech(scene, -6, true);
-            enemyMech = createMech(scene, 6, false);
+            // Create mechs (spawned at x position, they will drop to ground)
+            playerMech = createMech(scene, -5, true);
+            enemyMech = createMech(scene, 5, false);
 
             log('Scene fully initialized with mechs!', 'info');
             return scene;
@@ -297,7 +298,7 @@
             const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
                 width: 1.2, height: 1.5, depth: 0.8
             }, scene);
-            torso.position = new BABYLON.Vector3(xPos, 3.5, 0);
+            torso.position = new BABYLON.Vector3(xPos, 4.5, 0);
             torso.material = bodyMat;
 
             // Add physics to torso (main physics body)
@@ -668,13 +669,13 @@
         function resetScene() {
             // Reset mech positions
             if (playerMech) {
-                playerMech.torso.position = new BABYLON.Vector3(-6, 3.5, 0);
+                playerMech.torso.position = new BABYLON.Vector3(-5, 4.5, 0);
                 playerMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 playerMech.currentHP = playerMech.maxHP;
             }
             if (enemyMech) {
-                enemyMech.torso.position = new BABYLON.Vector3(6, 3.5, 0);
+                enemyMech.torso.position = new BABYLON.Vector3(5, 4.5, 0);
                 enemyMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 enemyMech.currentHP = enemyMech.maxHP;

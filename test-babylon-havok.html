@@ -11,7 +11,8 @@
             background: #1a1a2e;
             font-family: monospace;
             color: #00ff88;
-            overflow: hidden;
+            overflow: auto;
+            min-height: 100vh;
         }
         #renderCanvas {
             width: 100%;
@@ -294,20 +295,39 @@
             jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
             jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
 
-            // === TORSO (Main body with physics) ===
-            const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
-                width: 1.2, height: 1.5, depth: 0.8
-            }, scene);
-            torso.position = new BABYLON.Vector3(xPos, 4.5, 0);
-            torso.material = bodyMat;
+            // Calculate mech component heights
+            // From torso center down to feet bottom: upperLeg (-1.35) + lowerLeg (-0.85) + foot (-0.38) + foot half-height (-0.075)
+            const footBottomOffset = 1.35 + 0.85 + 0.38 + 0.075; // = 2.655 units below torso center
 
-            // Add physics to torso (main physics body)
+            // Create collision box: extends from torso center down to feet, plus some upward for torso top
+            const collisionBoxHeight = footBottomOffset + 1.0; // 2.655 down + 1.0 up = 3.655 total
+            const collisionBox = BABYLON.MeshBuilder.CreateBox(`${mechName}_collision`, {
+                width: 1.0, height: collisionBoxHeight, depth: 0.8
+            }, scene);
+            // Position so bottom of collision box aligns with feet at ground level
+            // Collision box center = ground + half height = 0 + collisionBoxHeight/2
+            const spawnHeight = collisionBoxHeight / 2 + 0.15; // Slight offset above ground to drop
+            collisionBox.position = new BABYLON.Vector3(xPos, spawnHeight, 0);
+            collisionBox.visibility = 0; // Invisible
+
+            // Add physics to collision box (main physics body for entire mech)
             const torsoAggregate = new BABYLON.PhysicsAggregate(
-                torso,
+                collisionBox,
                 BABYLON.PhysicsShapeType.BOX,
                 { mass: 50, friction: 0.8, restitution: 0.1 },
                 scene
             );
+
+            // === TORSO (visual only - parented to collision box) ===
+            const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
+                width: 1.2, height: 1.5, depth: 0.8
+            }, scene);
+            // Position torso: collision box bottom is at y=-collisionBoxHeight/2 locally
+            // We want torso center at: (collision box bottom + footBottomOffset)
+            // = -collisionBoxHeight/2 + footBottomOffset = -1.8275 + 2.655 = 0.8275
+            torso.position = new BABYLON.Vector3(0, -collisionBoxHeight/2 + footBottomOffset, 0);
+            torso.parent = collisionBox;
+            torso.material = bodyMat;
 
             // === HEAD ===
             const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
@@ -439,7 +459,8 @@
             // Store mech data
             const mechData = {
                 root: mechRoot,
-                torso: torso,
+                collisionBox: collisionBox,  // Physics body (invisible)
+                torso: torso,                 // Visual body
                 torsoAggregate: torsoAggregate,
                 head: head,
                 visor: visor,
@@ -667,15 +688,17 @@
         }
 
         function resetScene() {
-            // Reset mech positions
+            // Reset mech positions - use collisionBox since it has the physics
             if (playerMech) {
-                playerMech.torso.position = new BABYLON.Vector3(-5, 4.5, 0);
+                const resetHeight = (1.35 + 0.85 + 0.38 + 0.075 + 1.0) / 2 + 1.0; // Spawn height
+                playerMech.collisionBox.position = new BABYLON.Vector3(-5, resetHeight, 0);
                 playerMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 playerMech.currentHP = playerMech.maxHP;
             }
             if (enemyMech) {
-                enemyMech.torso.position = new BABYLON.Vector3(5, 4.5, 0);
+                const resetHeight = (1.35 + 0.85 + 0.38 + 0.075 + 1.0) / 2 + 1.0; // Spawn height
+                enemyMech.collisionBox.position = new BABYLON.Vector3(5, resetHeight, 0);
                 enemyMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 enemyMech.currentHP = enemyMech.maxHP;

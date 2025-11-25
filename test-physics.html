@@ -109,6 +109,131 @@
                 this.projectileMissed = 0;
                 this.battleEnded = false;
 
+                // WEAPON DEFINITIONS LIBRARY
+                this.weaponDefs = {
+                    // PROJECTILE WEAPONS
+                    autocannon: {
+                        type: 'projectile',
+                        name: 'Autocannon',
+                        damage: 18,
+                        cooldown: 1500,
+                        minRange: 150,
+                        maxRange: 400,
+                        visuals: {
+                            projectileColor: '#ffaa00',
+                            projectileSize: 8,
+                            speed: 35,
+                            trail: false
+                        }
+                    },
+                    heavyCannon: {
+                        type: 'projectile',
+                        name: 'Heavy Cannon',
+                        damage: 30,
+                        cooldown: 2500,
+                        minRange: 100,
+                        maxRange: 350,
+                        visuals: {
+                            projectileColor: '#ff4400',
+                            projectileSize: 12,
+                            speed: 25,
+                            trail: true,
+                            trailColor: '#ff6600'
+                        }
+                    },
+                    machineGun: {
+                        type: 'projectile',
+                        name: 'Machine Gun',
+                        damage: 8,
+                        cooldown: 600,
+                        minRange: 120,
+                        maxRange: 380,
+                        visuals: {
+                            projectileColor: '#ffff00',
+                            projectileSize: 5,
+                            speed: 45,
+                            trail: false
+                        }
+                    },
+                    missile: {
+                        type: 'projectile',
+                        name: 'Missile',
+                        damage: 25,
+                        cooldown: 2000,
+                        minRange: 200,
+                        maxRange: 500,
+                        visuals: {
+                            projectileColor: '#00ffff',
+                            projectileSize: 10,
+                            speed: 30,
+                            trail: true,
+                            trailColor: '#88ffff'
+                        }
+                    },
+
+                    // LASER WEAPONS
+                    laser: {
+                        type: 'laser',
+                        name: 'Laser',
+                        damage: 12,
+                        cooldown: 1200,
+                        minRange: 100,
+                        maxRange: 450,
+                        visuals: {
+                            beamColor: '#ff0000',
+                            glowColor: '#ff3333',
+                            coreColor: '#ffff00',
+                            width: 8,
+                            duration: 150
+                        }
+                    },
+                    pulseLaser: {
+                        type: 'laser',
+                        name: 'Pulse Laser',
+                        damage: 6,
+                        cooldown: 800,
+                        minRange: 80,
+                        maxRange: 400,
+                        visuals: {
+                            beamColor: '#00ff00',
+                            glowColor: '#00ff88',
+                            coreColor: '#ffffff',
+                            width: 6,
+                            duration: 100
+                        }
+                    },
+                    heavyLaser: {
+                        type: 'laser',
+                        name: 'Heavy Laser',
+                        damage: 20,
+                        cooldown: 2000,
+                        minRange: 150,
+                        maxRange: 500,
+                        visuals: {
+                            beamColor: '#ff0088',
+                            glowColor: '#ff00ff',
+                            coreColor: '#ffffff',
+                            width: 12,
+                            duration: 200
+                        }
+                    },
+                    blueBeam: {
+                        type: 'laser',
+                        name: 'Blue Beam',
+                        damage: 10,
+                        cooldown: 1000,
+                        minRange: 100,
+                        maxRange: 420,
+                        visuals: {
+                            beamColor: '#0088ff',
+                            glowColor: '#00ccff',
+                            coreColor: '#ffffff',
+                            width: 8,
+                            duration: 120
+                        }
+                    }
+                };
+
                 log('Physics engine created');
                 this.createGround();
                 this.setupCollisionDetection(); // Set up once
@@ -594,41 +719,32 @@
                     isPlayer: isPlayer,
                     destroyed: false,  // Full mech destroyed flag
                     destroyedComponents: [],  // Track destroyed component names
-                    // DUAL WEAPON SYSTEM
-                    weapons: [
-                        {
-                            type: 'projectile',
-                            damage: 20,
-                            cooldown: 1500,
-                            lastFired: 0,
-                            minRange: 150,
-                            maxRange: 400,
-                            name: 'Autocannon'
-                        },
-                        // Enemy gets a laser weapon in addition to projectile
-                        ...(isPlayer ? [] : [{
-                            type: 'laser',
-                            damage: 12,  // Weaker than projectile
-                            cooldown: 1200,  // Faster fire rate
-                            lastFired: 0,
-                            minRange: 100,
-                            maxRange: 450,  // Longer range
-                            name: 'Laser'
-                        }])
+                    // WEAPON LOADOUTS FROM LIBRARY
+                    weapons: isPlayer ? [
+                        // Player loadout: Machine Gun + Heavy Cannon
+                        { ...this.weaponDefs.machineGun, lastFired: 0 },
+                        { ...this.weaponDefs.heavyCannon, lastFired: 0 }
+                    ] : [
+                        // Enemy loadout: Autocannon + Pulse Laser + Blue Beam
+                        { ...this.weaponDefs.autocannon, lastFired: 0 },
+                        { ...this.weaponDefs.pulseLaser, lastFired: 0 },
+                        { ...this.weaponDefs.blueBeam, lastFired: 0 }
                     ],
-                    // Range for movement AI (use longest weapon range)
-                    weapon: {
-                        minRange: 150,
-                        maxRange: isPlayer ? 400 : 450,  // Enemy has longer range with laser
-                        optimalRange: 250
-                    }
+                    // Range for movement AI (calculated from weapons)
+                    weapon: (() => {
+                        const weapons = mech.weapons;
+                        const minRange = Math.min(...weapons.map(w => w.minRange));
+                        const maxRange = Math.max(...weapons.map(w => w.maxRange));
+                        const optimalRange = (minRange + maxRange) / 2;
+                        return { minRange, maxRange, optimalRange };
+                    })()
                 };
 
                 log(`Component-based mech created: Torso=${mech.components.torso.health}HP/${mech.components.torso.armor}Armor`);
                 return mech;
             }
 
-            fireProjectile(fromMech, toMech, damage) {
+            fireProjectile(fromMech, toMech, damage, visuals) {
                 const Bodies = Matter.Bodies;
                 const Body = Matter.Body;
 
@@ -637,7 +753,7 @@
                 let targetX = toMech.torso.position.x;
                 let targetY = toMech.torso.position.y;
 
-                const speed = 35;  // INCREASED from 20 for more force
+                const speed = visuals.speed || 35;
                 const tempStartX = fromMech.torso.position.x;
                 const tempStartY = fromMech.torso.position.y;
                 const distance = Math.sqrt((targetX - tempStartX) ** 2 + (targetY - tempStartY) ** 2);
@@ -657,16 +773,17 @@
 
                 const finalDistance = Math.sqrt((predictedX - startX) ** 2 + (predictedY - startY) ** 2);
 
-                // Create projectile OUTSIDE mech - heavier for more impact force
-                const projectile = Bodies.circle(startX, startY, 8, {
-                    density: 0.005,  // INCREASED mass for more impact
+                // Create projectile with custom size
+                const projectileSize = visuals.projectileSize || 8;
+                const projectile = Bodies.circle(startX, startY, projectileSize, {
+                    density: 0.005,
                     label: 'projectile',
                     restitution: 0.2,
-                    frictionAir: 0.008,  // Less drag
-                    isSensor: false,  // Allow collision
+                    frictionAir: 0.008,
+                    isSensor: false,
                     collisionFilter: {
-                        category: 0x0004,  // Projectile category
-                        mask: 0x0001 | 0x0002 | 0x0008  // Collide with player, enemy, and ground
+                        category: 0x0004,
+                        mask: 0x0001 | 0x0002 | 0x0008
                     }
                 });
 
@@ -675,9 +792,11 @@
                     y: Math.sin(angle) * speed
                 });
 
+                // Store custom properties for rendering
                 projectile.damage = damage;
                 projectile.targetMech = toMech;
                 projectile.firedAt = Date.now();
+                projectile.visuals = visuals;  // Store visual properties
 
                 Matter.World.add(this.world, projectile);
                 this.projectiles.push(projectile);
@@ -690,7 +809,7 @@
                 return projectile;
             }
 
-            fireLaser(fromMech, toMech, damage) {
+            fireLaser(fromMech, toMech, damage, visuals) {
                 // INSTANTANEOUS LASER - hits immediately with raycast
                 const fromPos = fromMech.torso.position;
                 const toPos = toMech.torso.position;
@@ -768,15 +887,16 @@
                     }
                 }
 
-                // Create visual beam effect
+                // Create visual beam effect with custom visuals
                 this.laserBeams.push({
                     startX: startX,
                     startY: startY,
                     endX: hitX,
                     endY: hitY,
                     createdAt: Date.now(),
-                    duration: 150,  // Beam visible for 150ms
-                    life: 1.0
+                    duration: visuals.duration || 150,
+                    life: 1.0,
+                    visuals: visuals  // Store visual properties for rendering
                 });
 
                 return true;
@@ -943,9 +1063,33 @@
                         }
                         ctx.closePath();
 
-                        // Color based on label
+                        // Color based on label and custom visuals
                         if (body.label === 'projectile') {
-                            ctx.fillStyle = '#ffaa00';
+                            const visuals = body.visuals || {};
+                            const color = visuals.projectileColor || '#ffaa00';
+
+                            // Draw trail if weapon has trail
+                            if (visuals.trail) {
+                                ctx.save();
+                                ctx.globalAlpha = 0.4;
+                                ctx.strokeStyle = visuals.trailColor || color;
+                                ctx.lineWidth = (visuals.projectileSize || 8) * 1.5;
+                                ctx.lineCap = 'round';
+
+                                // Draw trail behind projectile
+                                const vel = body.velocity;
+                                const trailLength = 20;
+                                ctx.beginPath();
+                                ctx.moveTo(vertices[0].x, vertices[0].y);
+                                ctx.lineTo(
+                                    vertices[0].x - vel.x * 0.5,
+                                    vertices[0].y - vel.y * 0.5
+                                );
+                                ctx.stroke();
+                                ctx.restore();
+                            }
+
+                            ctx.fillStyle = color;
                         } else {
                             ctx.fillStyle = '#4a4a6a';
                         }
@@ -985,7 +1129,7 @@
                 // Debug info with V4 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V4.3 LASER WEAPONS', 10, 20);
+                ctx.fillText('V4.4 WEAPON LIBRARY', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';
@@ -1505,13 +1649,18 @@
 
                     ctx.save();
 
-                    // Draw beam with glow effect
+                    // Draw beam with glow effect using custom colors
                     const alpha = beam.life;
+                    const visuals = beam.visuals || {};
+                    const beamColor = visuals.beamColor || '#ff0000';
+                    const glowColor = visuals.glowColor || '#ff3333';
+                    const coreColor = visuals.coreColor || '#ffff00';
+                    const width = visuals.width || 8;
 
                     // Outer glow (wider, dimmer)
                     ctx.globalAlpha = alpha * 0.3;
-                    ctx.strokeStyle = '#ff0000';
-                    ctx.lineWidth = 8;
+                    ctx.strokeStyle = beamColor;
+                    ctx.lineWidth = width;
                     ctx.lineCap = 'round';
                     ctx.beginPath();
                     ctx.moveTo(beam.startX, beam.startY);
@@ -1520,8 +1669,8 @@
 
                     // Middle glow
                     ctx.globalAlpha = alpha * 0.6;
-                    ctx.strokeStyle = '#ff3333';
-                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = glowColor;
+                    ctx.lineWidth = width * 0.5;
                     ctx.beginPath();
                     ctx.moveTo(beam.startX, beam.startY);
                     ctx.lineTo(beam.endX, beam.endY);
@@ -1529,8 +1678,8 @@
 
                     // Core beam (bright, thin)
                     ctx.globalAlpha = alpha;
-                    ctx.strokeStyle = '#ffff00';
-                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = coreColor;
+                    ctx.lineWidth = width * 0.25;
                     ctx.beginPath();
                     ctx.moveTo(beam.startX, beam.startY);
                     ctx.lineTo(beam.endX, beam.endY);
@@ -1638,10 +1787,10 @@
                     weapon.lastFired = now;
 
                     if (weapon.type === 'projectile') {
-                        physics.fireProjectile(mech, target, weapon.damage);
+                        physics.fireProjectile(mech, target, weapon.damage, weapon.visuals);
                         log(`🔫 ${mechName} ${weapon.name}: ${weapon.damage}dmg (range=${Math.floor(distance)})`);
                     } else if (weapon.type === 'laser') {
-                        physics.fireLaser(mech, target, weapon.damage);
+                        physics.fireLaser(mech, target, weapon.damage, weapon.visuals);
                         log(`⚡ ${mechName} ${weapon.name}: ${weapon.damage}dmg (range=${Math.floor(distance)})`);
                     }
                 });

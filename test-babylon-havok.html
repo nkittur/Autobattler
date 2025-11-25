@@ -519,6 +519,15 @@
                 color: color
             };
 
+                // Ensure all meshes are visible
+                torso.isVisible = true;
+                head.isVisible = true;
+                visor.isVisible = true;
+                leftArm.upperArm.isVisible = true;
+                rightArm.upperArm.isVisible = true;
+                leftLeg.upperLeg.isVisible = true;
+                rightLeg.upperLeg.isVisible = true;
+
                 log(`${isPlayer ? 'Player' : 'Enemy'} mech created at torso: (${torso.position.x.toFixed(1)}, ${torso.position.y.toFixed(1)}, ${torso.position.z.toFixed(1)})`, 'info');
                 return mechData;
             } catch (error) {
@@ -912,9 +921,28 @@
             });
         }
 
+        // Debug: Log mech positions periodically
+        let lastDebugTime = 0;
+        function debugMechPositions() {
+            const now = Date.now();
+            if (now - lastDebugTime < 3000) return; // Log every 3 seconds
+            lastDebugTime = now;
+
+            if (playerMech) {
+                const pos = playerMech.torso.getAbsolutePosition();
+                log(`Player at (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`, 'info');
+            }
+            if (enemyMech) {
+                const pos = enemyMech.torso.getAbsolutePosition();
+                log(`Enemy at (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`, 'info');
+            }
+        }
+
         // Active stabilization system to keep mechs standing upright
         function stabilizeMechs() {
             if (!playerMech || !enemyMech) return;
+
+            debugMechPositions();
 
             [playerMech, enemyMech].forEach(mech => {
                 // Apply corrective forces to legs to keep them vertical and supporting the torso
@@ -927,16 +955,19 @@
                 const rightLegPos = rightLeg.upperLeg.getAbsolutePosition();
                 const torsoPos = torso.getAbsolutePosition();
 
-                // Apply upward force on legs to counter gravity and support torso
-                const legSupportForce = 40; // Strong upward force
-                leftLeg.legAggregate.body.applyForce(
-                    new BABYLON.Vector3(0, legSupportForce, 0),
-                    leftLegPos
-                );
-                rightLeg.legAggregate.body.applyForce(
-                    new BABYLON.Vector3(0, legSupportForce, 0),
-                    rightLegPos
-                );
+                // Only apply stabilization if torso is at reasonable height (not flying away)
+                if (torsoPos.y < 10 && torsoPos.y > -5) {
+                    // Apply upward force on legs to counter gravity and support torso
+                    const legSupportForce = 20; // Reduced force
+                    leftLeg.legAggregate.body.applyForce(
+                        new BABYLON.Vector3(0, legSupportForce, 0),
+                        leftLegPos
+                    );
+                    rightLeg.legAggregate.body.applyForce(
+                        new BABYLON.Vector3(0, legSupportForce, 0),
+                        rightLegPos
+                    );
+                }
 
                 // Apply corrective torque to legs to keep them vertical
                 const leftLegRotation = leftLeg.upperLeg.rotationQuaternion || BABYLON.Quaternion.Identity();

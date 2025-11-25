@@ -120,7 +120,11 @@
                 const ground = Bodies.rectangle(400, 430, 800, 40, {
                     isStatic: true,
                     friction: 2.0,  // VERY high friction to prevent sliding
-                    label: 'ground'
+                    label: 'ground',
+                    collisionFilter: {
+                        category: 0x0008,  // Ground category
+                        mask: 0xFFFF  // Collide with everything
+                    }
                 });
                 Matter.World.add(this.world, ground);
                 log('Ground created with high friction');

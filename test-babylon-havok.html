@@ -296,7 +296,14 @@
             // Collision center should be at: feet bottom (0) + half collision height
             const collisionSpawnHeight = collisionHeight / 2 + 0.2; // Slight offset to drop
             collisionBody.position = new BABYLON.Vector3(xPos, collisionSpawnHeight, 0);
-            collisionBody.visibility = 0; // Invisible
+            collisionBody.visibility = 0.3; // Semi-transparent for debugging
+
+            // Debug material for collision box
+            const debugMat = new BABYLON.StandardMaterial(`${mechName}_debugMat`, scene);
+            debugMat.diffuseColor = isPlayer ? new BABYLON.Color3(0, 1, 0) : new BABYLON.Color3(1, 0, 0);
+            debugMat.alpha = 0.3;
+            debugMat.wireframe = true;
+            collisionBody.material = debugMat;
 
             // Add physics to collision body
             const torsoAggregate = new BABYLON.PhysicsAggregate(
@@ -462,7 +469,9 @@
                 color: color
             };
 
-            log(`${isPlayer ? 'Player' : 'Enemy'} mech created at x=${xPos}`, 'info');
+            log(`${isPlayer ? 'Player' : 'Enemy'} mech created:`, 'info');
+            log(`  Collision body at: (${collisionBody.position.x.toFixed(1)}, ${collisionBody.position.y.toFixed(1)}, ${collisionBody.position.z.toFixed(1)})`, 'info');
+            log(`  Torso world pos: (${torso.getAbsolutePosition().x.toFixed(1)}, ${torso.getAbsolutePosition().y.toFixed(1)}, ${torso.getAbsolutePosition().z.toFixed(1)})`, 'info');
             return mechData;
         }
 
@@ -484,12 +493,14 @@
 
             const targetPos = toMech.torso.getAbsolutePosition().clone();
 
+            log(`PROJECTILE: from (${startPos.x.toFixed(1)}, ${startPos.y.toFixed(1)}, ${startPos.z.toFixed(1)}) to (${targetPos.x.toFixed(1)}, ${targetPos.y.toFixed(1)}, ${targetPos.z.toFixed(1)})`, 'info');
+
             // Calculate direction
             const direction = targetPos.subtract(startPos).normalize();
 
-            // Create projectile mesh
+            // Create projectile mesh (larger for visibility)
             const projectile = BABYLON.MeshBuilder.CreateSphere('projectile_' + Date.now(), {
-                diameter: 0.2
+                diameter: 0.4
             }, scene);
             projectile.position = startPos.clone();
 
@@ -581,11 +592,13 @@
 
             const endPos = toMech.torso.getAbsolutePosition().clone();
 
-            // Create laser beam
+            log(`LASER: from (${startPos.x.toFixed(1)}, ${startPos.y.toFixed(1)}, ${startPos.z.toFixed(1)}) to (${endPos.x.toFixed(1)}, ${endPos.y.toFixed(1)}, ${endPos.z.toFixed(1)})`, 'info');
+
+            // Create laser beam (thicker for visibility)
             const points = [startPos, endPos];
             const laserBeam = BABYLON.MeshBuilder.CreateTube('laser_' + Date.now(), {
                 path: points,
-                radius: 0.08,
+                radius: 0.15,
                 updatable: false
             }, scene);
 

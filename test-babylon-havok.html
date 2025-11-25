@@ -120,6 +120,7 @@
                     scene.render();
                     updateProjectiles();
                     updateLaserBeams();
+                    stabilizeMechs();
                 }
             });
 
@@ -304,6 +305,10 @@
                     inertia: new BABYLON.Vector3(Infinity, 1, Infinity)
                 });
 
+                // Add damping to reduce oscillation
+                torsoAggregate.body.setLinearDamping(0.1);
+                torsoAggregate.body.setAngularDamping(0.5);
+
             // === HEAD ===
             const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
                 width: 0.6, height: 0.5, depth: 0.5
@@ -353,6 +358,10 @@
                     { mass: 3, friction: 0.3, restitution: 0.1 },
                     scene
                 );
+
+                // Add damping to arms
+                armAggregate.body.setLinearDamping(0.3);
+                armAggregate.body.setAngularDamping(0.5);
 
                 // Connect arm to torso with ball and socket joint
                 let armConstraint = null;
@@ -425,6 +434,10 @@
                     { mass: 8, friction: 0.8, restitution: 0.05 },
                     scene
                 );
+
+                // Add damping to legs for stability
+                legAggregate.body.setLinearDamping(0.2);
+                legAggregate.body.setAngularDamping(0.7);
 
                 // Connect leg to torso with ball and socket joint
                 let legConstraint = null;
@@ -896,6 +909,71 @@
                 beam.material.alpha = 0.9 * (1 - fadeProgress);
                 beam.glowMaterial.alpha = 0.4 * (1 - fadeProgress);
                 return true;
+            });
+        }
+
+        // Active stabilization system to keep mechs standing upright
+        function stabilizeMechs() {
+            if (!playerMech || !enemyMech) return;
+
+            [playerMech, enemyMech].forEach(mech => {
+                // Apply corrective forces to legs to keep them vertical and supporting the torso
+                const leftLeg = mech.leftLeg;
+                const rightLeg = mech.rightLeg;
+                const torso = mech.torso;
+
+                // Get leg positions relative to torso
+                const leftLegPos = leftLeg.upperLeg.getAbsolutePosition();
+                const rightLegPos = rightLeg.upperLeg.getAbsolutePosition();
+                const torsoPos = torso.getAbsolutePosition();
+
+                // Apply upward force on legs to counter gravity and support torso
+                const legSupportForce = 40; // Strong upward force
+                leftLeg.legAggregate.body.applyForce(
+                    new BABYLON.Vector3(0, legSupportForce, 0),
+                    leftLegPos
+                );
+                rightLeg.legAggregate.body.applyForce(
+                    new BABYLON.Vector3(0, legSupportForce, 0),
+                    rightLegPos
+                );
+
+                // Apply corrective torque to legs to keep them vertical
+                const leftLegRotation = leftLeg.upperLeg.rotationQuaternion || BABYLON.Quaternion.Identity();
+                const rightLegRotation = rightLeg.upperLeg.rotationQuaternion || BABYLON.Quaternion.Identity();
+
+                // Calculate desired upright rotation (no tilt in X or Z)
+                const uprightQuat = BABYLON.Quaternion.Identity();
+
+                // Apply torque to correct leg rotation toward upright
+                const leftLegAngVel = leftLeg.legAggregate.body.getAngularVelocity();
+                const rightLegAngVel = rightLeg.legAggregate.body.getAngularVelocity();
+
+                // Damping torque to reduce angular velocity
+                leftLeg.legAggregate.body.applyTorque(leftLegAngVel.scale(-5));
+                rightLeg.legAggregate.body.applyTorque(rightLegAngVel.scale(-5));
+
+                // Keep legs from drifting away from torso
+                const leftLegToTorso = torsoPos.subtract(leftLegPos);
+                const rightLegToTorso = torsoPos.subtract(rightLegPos);
+
+                // Only correct horizontal drift, not vertical
+                leftLegToTorso.y = 0;
+                rightLegToTorso.y = 0;
+
+                // Apply centering force if legs drift too far
+                if (leftLegToTorso.length() > 0.5) {
+                    leftLeg.legAggregate.body.applyForce(
+                        leftLegToTorso.normalize().scale(15),
+                        leftLegPos
+                    );
+                }
+                if (rightLegToTorso.length() > 0.5) {
+                    rightLeg.legAggregate.body.applyForce(
+                        rightLegToTorso.normalize().scale(15),
+                        rightLegPos
+                    );
+                }
             });
         }
 

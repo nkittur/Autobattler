@@ -368,14 +368,6 @@
                 upperArm.parent = torso;
                 upperArm.material = darkMat;
 
-                // Add physics to upper arm for dynamic movement
-                const upperArmAggregate = new BABYLON.PhysicsAggregate(
-                    upperArm,
-                    BABYLON.PhysicsShapeType.BOX,
-                    { mass: 2, friction: 0.3, restitution: 0.1 },
-                    scene
-                );
-
                 // Shoulder joint
                 const shoulder = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
                     diameter: 0.3
@@ -401,23 +393,7 @@
                 barrel.parent = weapon;
                 barrel.material = jointMat;
 
-                // Create flexible joint connecting arm to torso
-                const armJoint = new BABYLON.PhysicsConstraint(
-                    BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
-                    {
-                        pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),
-                        pivotB: new BABYLON.Vector3(0, 0.35, 0),
-                    },
-                    [
-                        { key: 'axisA', value: BABYLON.Vector3.Up() },
-                        { key: 'axisB', value: BABYLON.Vector3.Up() },
-                        { key: 'collision', value: false }
-                    ],
-                    scene
-                );
-                torsoAggregate.body.addConstraint(upperArmAggregate.body, armJoint);
-
-                return { upperArm, upperArmAggregate, shoulder, weapon, barrel, armJoint };
+                return { upperArm, shoulder, weapon, barrel };
             };
 
             const leftArm = createArm('left');
@@ -443,14 +419,6 @@
                 upperLeg.parent = torso;
                 upperLeg.material = bodyMat;
 
-                // Add physics to upper leg for dynamic movement
-                const upperLegAggregate = new BABYLON.PhysicsAggregate(
-                    upperLeg,
-                    BABYLON.PhysicsShapeType.BOX,
-                    { mass: 3, friction: 0.5, restitution: 0.05 },
-                    scene
-                );
-
                 // Knee joint
                 const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
                     diameter: 0.2
@@ -475,23 +443,7 @@
                 foot.parent = lowerLeg;
                 foot.material = jointMat;
 
-                // Create flexible joint connecting leg to torso
-                const legJoint = new BABYLON.PhysicsConstraint(
-                    BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
-                    {
-                        pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),
-                        pivotB: new BABYLON.Vector3(0, 0.5, 0),
-                    },
-                    [
-                        { key: 'axisA', value: BABYLON.Vector3.Up() },
-                        { key: 'axisB', value: BABYLON.Vector3.Up() },
-                        { key: 'collision', value: false }
-                    ],
-                    scene
-                );
-                torsoAggregate.body.addConstraint(upperLegAggregate.body, legJoint);
-
-                return { hip, upperLeg, upperLegAggregate, knee, lowerLeg, foot, legJoint };
+                return { hip, upperLeg, knee, lowerLeg, foot };
             };
 
             const leftLeg = createLeg('left');
@@ -725,23 +677,10 @@
                     // Flash the specific part that was hit
                     flashMeshOnHit(hitPart);
 
-                    // Add recoil to limbs when hit
+                    // Add dramatic recoil to limbs when hit
                     if (hitPartName !== 'torso') {
                         const hitDir = projPos.subtract(hitPart.getAbsolutePosition()).normalize();
-                        recoilLimb(hitPart, hitDir);
-
-                        // Apply strong force to specific limb for ragdoll effect
-                        let limbAggregate = null;
-                        if (hitPartName === 'left arm') limbAggregate = proj.target.leftArm.upperArmAggregate;
-                        else if (hitPartName === 'right arm') limbAggregate = proj.target.rightArm.upperArmAggregate;
-                        else if (hitPartName === 'left leg') limbAggregate = proj.target.leftLeg.upperLegAggregate;
-                        else if (hitPartName === 'right leg') limbAggregate = proj.target.rightLeg.upperLegAggregate;
-
-                        if (limbAggregate) {
-                            // Strong impulse on limb - creates swinging motion
-                            const limbImpulse = hitDir.scale(12);
-                            limbAggregate.body.applyImpulse(limbImpulse, hitPart.getAbsolutePosition());
-                        }
+                        recoilLimb(hitPart, hitDir, 0.6); // Strong recoil for projectile
                     }
 
                     // Subtle shake on hit - only for torso hits
@@ -880,20 +819,7 @@
             // Add recoil to limbs when hit
             if (hitPartName !== 'torso') {
                 const hitDir = endPos.subtract(hitPart.getAbsolutePosition()).normalize();
-                recoilLimb(hitPart, hitDir);
-
-                // Apply force to specific limb for ragdoll effect
-                let limbAggregate = null;
-                if (hitPartName === 'left arm') limbAggregate = toMech.leftArm.upperArmAggregate;
-                else if (hitPartName === 'right arm') limbAggregate = toMech.rightArm.upperArmAggregate;
-                else if (hitPartName === 'left leg') limbAggregate = toMech.leftLeg.upperLegAggregate;
-                else if (hitPartName === 'right leg') limbAggregate = toMech.rightLeg.upperLegAggregate;
-
-                if (limbAggregate) {
-                    // Medium impulse on limb - laser is continuous vs projectile impact
-                    const limbImpulse = hitDir.scale(8);
-                    limbAggregate.body.applyImpulse(limbImpulse, hitPart.getAbsolutePosition());
-                }
+                recoilLimb(hitPart, hitDir, 0.4); // Medium recoil for laser
             }
 
             // Subtle shake on hit - only for torso hits
@@ -930,15 +856,14 @@
         }
 
         // === EFFECTS ===
-        function recoilLimb(mesh, direction) {
-            // More dramatic recoil animation for limbs
+        function recoilLimb(mesh, direction, intensity = 0.4) {
+            // Dramatic recoil animation for limbs - purely visual
             if (!mesh.originalRotation) {
                 mesh.originalRotation = mesh.rotation.clone();
             }
 
             // Rotate limb dramatically on impact
-            const recoilAngle = 0.4; // ~23 degrees
-            const axis = BABYLON.Vector3.Cross(BABYLON.Vector3.Up(), direction).normalize();
+            const recoilAngle = intensity; // Variable intensity based on weapon type
 
             // Apply rotation based on hit direction
             mesh.rotation.x += (Math.random() - 0.5) * recoilAngle;
@@ -947,7 +872,7 @@
 
             // Return to original rotation over time
             const startRotation = mesh.rotation.clone();
-            const returnDuration = 200; // ms
+            const returnDuration = 300; // ms
             const startTime = Date.now();
 
             const animateReturn = () => {

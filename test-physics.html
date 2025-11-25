@@ -163,7 +163,16 @@
                             Matter.World.remove(this.world, projectile);
                             this.projectiles = this.projectiles.filter(p => p !== projectile);
                         } else {
-                            log(`⚠️ Projectile hit something else: ${other.label}`);
+                            // Hit ground or other object - EXPLODE AND DISAPPEAR
+                            log(`💥 Projectile exploded on ${other.label || 'unknown'}`);
+
+                            // CREATE IMPACT EFFECT
+                            this.createImpactEffect(projectile.position.x, projectile.position.y, projectile.velocity);
+
+                            // Remove projectile immediately
+                            Matter.World.remove(this.world, projectile);
+                            this.projectiles = this.projectiles.filter(p => p !== projectile);
+                            this.projectileMissed++;
                         }
                     });
                 });
@@ -568,7 +577,7 @@
                 // Debug info with V3 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V3.7 INDUSTRIAL', 10, 20);
+                ctx.fillText('V3.8 EXPLOSIONS', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';

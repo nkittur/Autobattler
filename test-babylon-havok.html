@@ -606,24 +606,87 @@
                     return false;
                 }
 
-                // Check for collision with target
+                // Check for collision with target - check all body parts
                 const projPos = proj.mesh.position;
-                const targetPos = proj.target.torso.getAbsolutePosition();
-                const distance = BABYLON.Vector3.Distance(projPos, targetPos);
 
-                if (distance < 1.5) {
-                    // Hit!
+                // Check which body part was hit
+                let hitPart = null;
+                let hitPartName = 'torso';
+                let minDist = Infinity;
+
+                // Check torso
+                const torsoPos = proj.target.torso.getAbsolutePosition();
+                let dist = BABYLON.Vector3.Distance(projPos, torsoPos);
+                if (dist < 1.2) {
+                    hitPart = proj.target.torso;
+                    hitPartName = 'torso';
+                    minDist = dist;
+                }
+
+                // Check head
+                const headPos = proj.target.head.getAbsolutePosition();
+                dist = BABYLON.Vector3.Distance(projPos, headPos);
+                if (dist < 0.6 && dist < minDist) {
+                    hitPart = proj.target.head;
+                    hitPartName = 'head';
+                    minDist = dist;
+                }
+
+                // Check arms
+                const leftArmPos = proj.target.leftArm.upperArm.getAbsolutePosition();
+                dist = BABYLON.Vector3.Distance(projPos, leftArmPos);
+                if (dist < 0.8 && dist < minDist) {
+                    hitPart = proj.target.leftArm.upperArm;
+                    hitPartName = 'left arm';
+                    minDist = dist;
+                }
+
+                const rightArmPos = proj.target.rightArm.upperArm.getAbsolutePosition();
+                dist = BABYLON.Vector3.Distance(projPos, rightArmPos);
+                if (dist < 0.8 && dist < minDist) {
+                    hitPart = proj.target.rightArm.upperArm;
+                    hitPartName = 'right arm';
+                    minDist = dist;
+                }
+
+                // Check legs
+                const leftLegPos = proj.target.leftLeg.upperLeg.getAbsolutePosition();
+                dist = BABYLON.Vector3.Distance(projPos, leftLegPos);
+                if (dist < 0.8 && dist < minDist) {
+                    hitPart = proj.target.leftLeg.upperLeg;
+                    hitPartName = 'left leg';
+                    minDist = dist;
+                }
+
+                const rightLegPos = proj.target.rightLeg.upperLeg.getAbsolutePosition();
+                dist = BABYLON.Vector3.Distance(projPos, rightLegPos);
+                if (dist < 0.8 && dist < minDist) {
+                    hitPart = proj.target.rightLeg.upperLeg;
+                    hitPartName = 'right leg';
+                    minDist = dist;
+                }
+
+                if (hitPart) {
+                    // Hit a body part!
                     proj.target.currentHP -= proj.damage;
-                    log(`HIT! ${proj.fromPlayer ? 'Enemy' : 'Player'} takes ${proj.damage} damage! (${proj.target.currentHP}/${proj.target.maxHP} HP)`, 'warn');
+                    log(`HIT ${hitPartName}! ${proj.fromPlayer ? 'Enemy' : 'Player'} takes ${proj.damage} damage! (${proj.target.currentHP}/${proj.target.maxHP} HP)`, 'warn');
 
                     // Create impact effect at hit location
                     createImpactEffect(projPos.clone());
 
-                    // Flash the torso on hit
-                    flashMeshOnHit(proj.target.torso);
+                    // Flash the specific part that was hit
+                    flashMeshOnHit(hitPart);
 
-                    // Subtle shake on hit - legs provide stability
-                    shakeMechOnHit(proj.target, 0.15);
+                    // Add recoil to limbs when hit
+                    if (hitPartName !== 'torso') {
+                        const hitDir = projPos.subtract(hitPart.getAbsolutePosition());
+                        recoilLimb(hitPart, hitDir);
+                    }
+
+                    // Subtle shake on hit - only for torso hits
+                    if (hitPartName === 'torso') {
+                        shakeMechOnHit(proj.target, 0.15);
+                    }
 
                     // Apply moderate knockback force - heavier mechs with leg stabilization
                     const targetWorldPos = proj.target.collisionBody.position;
@@ -690,10 +753,52 @@
             glowMat.alpha = 0.4;
             glowBeam.material = glowMat;
 
+            // Detect which body part was hit by checking end position
+            let hitPart = toMech.torso;
+            let hitPartName = 'torso';
+            let minDist = BABYLON.Vector3.Distance(endPos, toMech.torso.getAbsolutePosition());
+
+            // Check head
+            let dist = BABYLON.Vector3.Distance(endPos, toMech.head.getAbsolutePosition());
+            if (dist < minDist) {
+                hitPart = toMech.head;
+                hitPartName = 'head';
+                minDist = dist;
+            }
+
+            // Check arms
+            dist = BABYLON.Vector3.Distance(endPos, toMech.leftArm.upperArm.getAbsolutePosition());
+            if (dist < minDist) {
+                hitPart = toMech.leftArm.upperArm;
+                hitPartName = 'left arm';
+                minDist = dist;
+            }
+
+            dist = BABYLON.Vector3.Distance(endPos, toMech.rightArm.upperArm.getAbsolutePosition());
+            if (dist < minDist) {
+                hitPart = toMech.rightArm.upperArm;
+                hitPartName = 'right arm';
+                minDist = dist;
+            }
+
+            // Check legs
+            dist = BABYLON.Vector3.Distance(endPos, toMech.leftLeg.upperLeg.getAbsolutePosition());
+            if (dist < minDist) {
+                hitPart = toMech.leftLeg.upperLeg;
+                hitPartName = 'left leg';
+                minDist = dist;
+            }
+
+            dist = BABYLON.Vector3.Distance(endPos, toMech.rightLeg.upperLeg.getAbsolutePosition());
+            if (dist < minDist) {
+                hitPart = toMech.rightLeg.upperLeg;
+                hitPartName = 'right leg';
+            }
+
             // Apply damage immediately (laser is instant)
             const damage = 10;
             toMech.currentHP -= damage;
-            log(`LASER HIT! ${isPlayer ? 'Enemy' : 'Player'} takes ${damage} damage! (${toMech.currentHP}/${toMech.maxHP} HP)`, 'warn');
+            log(`LASER HIT ${hitPartName}! ${isPlayer ? 'Enemy' : 'Player'} takes ${damage} damage! (${toMech.currentHP}/${toMech.maxHP} HP)`, 'warn');
 
             // Store both beams for fadeout
             laserBeams.push({
@@ -708,11 +813,19 @@
             // Create impact at target
             createImpactEffect(endPos.clone());
 
-            // Flash the torso on hit
-            flashMeshOnHit(toMech.torso);
+            // Flash the specific part that was hit
+            flashMeshOnHit(hitPart);
 
-            // Subtle shake on hit - legs provide stability
-            shakeMechOnHit(toMech, 0.12);
+            // Add recoil to limbs when hit
+            if (hitPartName !== 'torso') {
+                const hitDir = endPos.subtract(hitPart.getAbsolutePosition());
+                recoilLimb(hitPart, hitDir);
+            }
+
+            // Subtle shake on hit - only for torso hits
+            if (hitPartName === 'torso') {
+                shakeMechOnHit(toMech, 0.12);
+            }
 
             // Apply light laser knockback - continuous beam vs projectile impact
             const laserDir = endPos.subtract(startPos).normalize();
@@ -743,6 +856,25 @@
         }
 
         // === EFFECTS ===
+        function recoilLimb(mesh, direction) {
+            // Add recoil animation to limb when hit
+            if (!mesh.originalPosition) {
+                mesh.originalPosition = mesh.position.clone();
+            }
+
+            // Push limb back slightly
+            const recoilAmount = 0.08;
+            const recoilDir = direction.normalize();
+            mesh.position.addInPlace(recoilDir.scale(recoilAmount));
+
+            // Return to original position
+            setTimeout(() => {
+                if (mesh.originalPosition) {
+                    mesh.position = mesh.originalPosition.clone();
+                }
+            }, 100);
+        }
+
         function flashMeshOnHit(mesh) {
             // Store original material properties
             const material = mesh.material;

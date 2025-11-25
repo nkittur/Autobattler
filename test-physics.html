@@ -550,7 +550,13 @@
                     nextMoveChange: Date.now() + 1000,
                     isPlayer: isPlayer,
                     destroyed: false,  // Full mech destroyed flag
-                    destroyedComponents: []  // Track destroyed component names
+                    destroyedComponents: [],  // Track destroyed component names
+                    // WEAPON RANGE SYSTEM
+                    weapon: {
+                        minRange: 150,  // Minimum effective range
+                        maxRange: 400,  // Maximum effective range
+                        optimalRange: 250  // Preferred combat distance
+                    }
                 };
 
                 log(`Component-based mech created: Torso=${mech.components.torso.health}HP/${mech.components.torso.armor}Armor`);
@@ -645,35 +651,72 @@
                 const Body = Matter.Body;
                 const now = Date.now();
 
-                [this.playerMech, this.enemyMech].forEach(mech => {
-                    if (!mech || mech.destroyed) return;
+                // Get both mechs
+                const mechs = [this.playerMech, this.enemyMech].filter(m => m && !m.destroyed);
+                if (mechs.length < 2) return;  // Need both mechs for range-based AI
 
-                    // Change direction periodically
-                    if (now > mech.nextMoveChange) {
-                        const rand = Math.random();
-                        if (rand < 0.3) {
-                            mech.moveDirection = -1; // Move left
-                        } else if (rand < 0.6) {
-                            mech.moveDirection = 1; // Move right
-                        } else {
-                            mech.moveDirection = 0; // Stay still
-                        }
-                        mech.nextMoveChange = now + 800 + Math.random() * 1200; // Random interval
+                mechs.forEach(mech => {
+                    const otherMech = mech === this.playerMech ? this.enemyMech : this.playerMech;
+                    if (!otherMech || otherMech.destroyed) return;
+
+                    const pos = mech.torso.position;
+                    const otherPos = otherMech.torso.position;
+
+                    // Calculate distance between mechs
+                    const distance = Math.abs(pos.x - otherPos.x);
+
+                    // RANGE-BASED MOVEMENT AI
+                    let desiredDirection = 0;
+
+                    if (distance > mech.weapon.maxRange) {
+                        // Too far - move closer
+                        desiredDirection = pos.x < otherPos.x ? 1 : -1;
+                    } else if (distance < mech.weapon.minRange) {
+                        // Too close - move away
+                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                    } else if (distance > mech.weapon.optimalRange + 30) {
+                        // Outside optimal range - move closer slowly
+                        desiredDirection = pos.x < otherPos.x ? 1 : -1;
+                    } else if (distance < mech.weapon.optimalRange - 30) {
+                        // Outside optimal range - move away slowly
+                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                    } else {
+                        // In optimal range - stay still
+                        desiredDirection = 0;
                     }
 
-                    // Apply movement force
-                    if (mech.moveDirection !== 0) {
-                        const pos = mech.torso.position;
+                    // SCREEN BOUNDARY PROTECTION - override movement near edges
+                    if (pos.x < 100 && desiredDirection < 0) {
+                        desiredDirection = 1;  // Force away from left edge
+                    } else if (pos.x > this.width - 100 && desiredDirection > 0) {
+                        desiredDirection = -1;  // Force away from right edge
+                    }
 
-                        // Keep mechs on screen
-                        if ((mech.moveDirection < 0 && pos.x > 50) ||
-                            (mech.moveDirection > 0 && pos.x < this.width - 50)) {
+                    // PREVENT MECH-TO-MECH COLLISION - repel if too close
+                    if (distance < 80) {
+                        // Mechs are colliding - push apart
+                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
 
-                            Body.applyForce(mech.torso, pos, {
-                                x: mech.moveDirection * mech.moveSpeed,
-                                y: 0
-                            });
-                        }
+                        // Apply strong repulsion force
+                        Body.applyForce(mech.torso, pos, {
+                            x: desiredDirection * mech.moveSpeed * 3,  // Triple force when too close
+                            y: 0
+                        });
+                    } else if (desiredDirection !== 0) {
+                        // Normal movement based on weapon range
+                        Body.applyForce(mech.torso, pos, {
+                            x: desiredDirection * mech.moveSpeed,
+                            y: 0
+                        });
+                    }
+
+                    // DAMPEN HORIZONTAL VELOCITY to prevent sliding
+                    const vel = mech.torso.velocity;
+                    if (Math.abs(vel.x) > 0.1) {
+                        Body.setVelocity(mech.torso, {
+                            x: vel.x * 0.85,  // Dampen horizontal movement
+                            y: vel.y
+                        });
                     }
                 });
             }
@@ -1337,19 +1380,34 @@
         physics.start();
         log('Physics running!');
 
-        // Auto-fire test
+        // Auto-fire test with RANGE CHECKING
         let shotCount = 0;
         setInterval(() => {
             if (!physics.battleEnded && !physics.playerMech.destroyed && !physics.enemyMech.destroyed) {
-                shotCount++;
-                log(`Round ${shotCount}: Player fires!`);
-                physics.fireProjectile(physics.playerMech, physics.enemyMech, testPlayer.damage);
+                // Calculate distance between mechs
+                const playerPos = physics.playerMech.torso.position;
+                const enemyPos = physics.enemyMech.torso.position;
+                const distance = Math.abs(playerPos.x - enemyPos.x);
+
+                // Player fires only if in weapon range
+                if (distance >= physics.playerMech.weapon.minRange && distance <= physics.playerMech.weapon.maxRange) {
+                    shotCount++;
+                    log(`Round ${shotCount}: Player fires! (range=${Math.floor(distance)})`);
+                    physics.fireProjectile(physics.playerMech, physics.enemyMech, testPlayer.damage);
+                } else {
+                    log(`Player out of range: ${Math.floor(distance)} (need ${physics.playerMech.weapon.minRange}-${physics.playerMech.weapon.maxRange})`);
+                }
 
                 // Enemy shoots back
                 setTimeout(() => {
                     if (!physics.enemyMech.destroyed) {
-                        log(`Round ${shotCount}: Enemy fires!`);
-                        physics.fireProjectile(physics.enemyMech, physics.playerMech, testEnemy.damage);
+                        // Enemy also checks range before firing
+                        if (distance >= physics.enemyMech.weapon.minRange && distance <= physics.enemyMech.weapon.maxRange) {
+                            log(`Round ${shotCount}: Enemy fires! (range=${Math.floor(distance)})`);
+                            physics.fireProjectile(physics.enemyMech, physics.playerMech, testEnemy.damage);
+                        } else {
+                            log(`Enemy out of range: ${Math.floor(distance)}`);
+                        }
                     }
                 }, 500);
             }

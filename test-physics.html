@@ -507,6 +507,7 @@
                 Matter.World.add(this.world, constraints);
 
                 // COMPONENT-BASED HEALTH AND ARMOR SYSTEM
+                // Armor is uniform (8) across all components - health is the differentiator
                 const mech = {
                     // Components with individual health and armor
                     components: {
@@ -514,7 +515,7 @@
                             body: torso,
                             health: 120,
                             maxHealth: 120,
-                            armor: 25,
+                            armor: 8,
                             name: 'Torso',
                             critical: true  // Destroys mech when destroyed
                         },
@@ -522,7 +523,7 @@
                             body: head,
                             health: 60,
                             maxHealth: 60,
-                            armor: 15,
+                            armor: 8,
                             name: 'Head',
                             critical: true  // Destroys mech when destroyed
                         },
@@ -530,7 +531,7 @@
                             body: leftArm,
                             health: 50,
                             maxHealth: 50,
-                            armor: 12,
+                            armor: 8,
                             name: 'Left Arm',
                             critical: false
                         },
@@ -538,7 +539,7 @@
                             body: rightArm,
                             health: 50,
                             maxHealth: 50,
-                            armor: 12,
+                            armor: 8,
                             name: 'Right Arm',
                             critical: false
                         },
@@ -546,7 +547,7 @@
                             body: leftLeg,
                             health: 60,
                             maxHealth: 60,
-                            armor: 18,
+                            armor: 8,
                             name: 'Left Leg',
                             critical: false
                         },
@@ -554,7 +555,7 @@
                             body: rightLeg,
                             health: 60,
                             maxHealth: 60,
-                            armor: 18,
+                            armor: 8,
                             name: 'Right Leg',
                             critical: false
                         },
@@ -562,7 +563,7 @@
                             body: leftFoot,
                             health: 40,
                             maxHealth: 40,
-                            armor: 15,
+                            armor: 8,
                             name: 'Left Foot',
                             critical: false
                         },
@@ -570,7 +571,7 @@
                             body: rightFoot,
                             health: 40,
                             maxHealth: 40,
-                            armor: 15,
+                            armor: 8,
                             name: 'Right Foot',
                             critical: false
                         }

@@ -115,9 +115,14 @@
             scene = createScene();
 
             // Start render loop
+            let frameCount = 0;
             engine.runRenderLoop(() => {
                 if (scene) {
                     scene.render();
+                    frameCount++;
+                    if (frameCount === 60) {
+                        log(`Render loop working: 60 frames rendered`, 'warn');
+                    }
                     updateProjectiles();
                     updateLaserBeams();
                     stabilizeMechs();
@@ -132,7 +137,7 @@
 
         function createScene() {
             const scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color3(0.05, 0.05, 0.12); // Dark background
+            scene.clearColor = new BABYLON.Color4(0.5, 0.5, 0.5, 1); // Changed to gray to verify rendering
 
             // Create Havok physics plugin
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
@@ -158,22 +163,18 @@
                 new BABYLON.Vector3(0, 1, 0),
                 scene
             );
-            hemisphericLight.intensity = 1.5; // Increased from 0.7
+            hemisphericLight.intensity = 2.0; // Very bright
 
-            const directionalLight = new BABYLON.DirectionalLight(
-                'dirLight',
-                new BABYLON.Vector3(-1, -2, 1),
-                scene
-            );
-            directionalLight.intensity = 1.0; // Increased from 0.5
-
-            // Add point light for better visibility
-            const pointLight = new BABYLON.PointLight(
-                'pointLight',
-                new BABYLON.Vector3(0, 5, 0),
-                scene
-            );
-            pointLight.intensity = 1.0;
+            // MINIMAL TEST: Just create a simple sphere, no physics
+            const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', {
+                diameter: 3
+            }, scene);
+            testSphere.position = new BABYLON.Vector3(0, 3.5, 0);
+            const testMat = new BABYLON.StandardMaterial('testMat', scene);
+            testMat.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            testMat.emissiveColor = new BABYLON.Color3(1, 0, 0);
+            testSphere.material = testMat;
+            log('TEST: Simple red sphere created at camera target', 'warn');
 
             // Create ground
             createGround(scene);

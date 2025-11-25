@@ -478,10 +478,11 @@
         }
 
         function createProjectile(fromMech, toMech, damage) {
-            const startPos = fromMech.torso.position.clone();
+            // Get world positions (torso is parented to collisionBody, so use absolute position)
+            const startPos = fromMech.torso.getAbsolutePosition().clone();
             startPos.y += 0.3; // Fire from weapon height
 
-            const targetPos = toMech.torso.position.clone();
+            const targetPos = toMech.torso.getAbsolutePosition().clone();
 
             // Calculate direction
             const direction = targetPos.subtract(startPos).normalize();
@@ -536,7 +537,7 @@
 
                 // Check for collision with target
                 const projPos = proj.mesh.position;
-                const targetPos = proj.target.torso.position;
+                const targetPos = proj.target.torso.getAbsolutePosition();
                 const distance = BABYLON.Vector3.Distance(projPos, targetPos);
 
                 if (distance < 1.5) {
@@ -547,11 +548,12 @@
                     // Create impact effect
                     createImpactEffect(projPos.clone());
 
-                    // Apply knockback force to target
-                    const knockbackDir = projPos.subtract(proj.target.torso.position).normalize().scale(-1);
+                    // Apply knockback force to target (use collision body position for physics)
+                    const targetWorldPos = proj.target.collisionBody.position;
+                    const knockbackDir = projPos.subtract(targetWorldPos).normalize().scale(-1);
                     proj.target.torsoAggregate.body.applyImpulse(
                         knockbackDir.scale(5),
-                        proj.target.torso.position
+                        targetWorldPos
                     );
 
                     proj.mesh.dispose();
@@ -573,10 +575,11 @@
             const fromMech = isPlayer ? playerMech : enemyMech;
             const toMech = isPlayer ? enemyMech : playerMech;
 
-            const startPos = fromMech.torso.position.clone();
+            // Get world positions (torso is parented to collisionBody, so use absolute position)
+            const startPos = fromMech.torso.getAbsolutePosition().clone();
             startPos.y += 0.3;
 
-            const endPos = toMech.torso.position.clone();
+            const endPos = toMech.torso.getAbsolutePosition().clone();
 
             // Create laser beam
             const points = [startPos, endPos];

@@ -316,6 +316,11 @@
 
                 const size = 30;
 
+                // COLLISION CATEGORIES - prevent mechs from physically pushing each other!
+                // Category bits: Player=0x0001, Enemy=0x0002, Projectile=0x0004, Ground=0x0008
+                const mechCategory = isPlayer ? 0x0001 : 0x0002;
+                const mechCollisionMask = 0x0004 | 0x0008;  // Only collide with projectiles and ground
+
                 // MAD CAT DESIGN: Wide, low, stable base for maximum stability
                 // WIDE TORSO - low center of gravity, wide base
                 const torso = Bodies.rectangle(x, y, size * 2.0, size * 1.0, {
@@ -324,14 +329,22 @@
                     frictionAir: 0.08,  // High air resistance prevents sliding
                     restitution: 0.0,
                     inertia: Infinity,  // PREVENT ROTATION - stays upright!
-                    label: isPlayer ? 'player_torso' : 'enemy_torso'
+                    label: isPlayer ? 'player_torso' : 'enemy_torso',
+                    collisionFilter: {
+                        category: mechCategory,
+                        mask: mechCollisionMask
+                    }
                 });
 
                 const head = Bodies.circle(x, y - size * 0.8, size * 0.5, {
                     density: 0.004,
                     friction: 0.8,
                     frictionAir: 0.01,
-                    label: isPlayer ? 'player_head' : 'enemy_head'
+                    label: isPlayer ? 'player_head' : 'enemy_head',
+                    collisionFilter: {
+                        category: mechCategory,
+                        mask: mechCollisionMask
+                    }
                 });
 
                 // Arms mounted on sides of wide torso
@@ -339,14 +352,22 @@
                     density: 0.004,
                     friction: 0.8,
                     frictionAir: 0.01,
-                    label: isPlayer ? 'player_arm' : 'enemy_arm'
+                    label: isPlayer ? 'player_arm' : 'enemy_arm',
+                    collisionFilter: {
+                        category: mechCategory,
+                        mask: mechCollisionMask
+                    }
                 });
 
                 const rightArm = Bodies.rectangle(x + size * 1.1, y, size * 0.3, size, {
                     density: 0.004,
                     friction: 0.8,
                     frictionAir: 0.01,
-                    label: isPlayer ? 'player_arm' : 'enemy_arm'
+                    label: isPlayer ? 'player_arm' : 'enemy_arm',
+                    collisionFilter: {
+                        category: mechCategory,
+                        mask: mechCollisionMask
+                    }
                 });
 
                 // MAD CAT LEGS: WIDE STANCE at outer edges of torso
@@ -357,7 +378,11 @@
                     frictionAir: 0.05,
                     restitution: 0.0,
                     inertia: Infinity,  // Legs don't rotate - stay vertical
-                    label: isPlayer ? 'player_leg' : 'enemy_leg'
+                    label: isPlayer ? 'player_leg' : 'enemy_leg',
+                    collisionFilter: {
+                        category: mechCategory,
+                        mask: mechCollisionMask
+                    }
                 });
 
                 const rightLeg = Bodies.rectangle(x + size * 0.9, y + size * 0.85, size * 0.5, size * 0.6, {
@@ -366,7 +391,11 @@
                     frictionAir: 0.05,
                     restitution: 0.0,
                     inertia: Infinity,  // Legs don't rotate - stay vertical
-                    label: isPlayer ? 'player_leg' : 'enemy_leg'
+                    label: isPlayer ? 'player_leg' : 'enemy_leg',
+                    collisionFilter: {
+                        category: mechCategory,
+                        mask: mechCollisionMask
+                    }
                 });
 
                 // SEPARATE FEET for maximum ground contact and stability
@@ -376,7 +405,11 @@
                     frictionAir: 0.05,
                     restitution: 0.0,
                     inertia: Infinity,  // Feet stay flat on ground
-                    label: isPlayer ? 'player_foot' : 'enemy_foot'
+                    label: isPlayer ? 'player_foot' : 'enemy_foot',
+                    collisionFilter: {
+                        category: mechCategory,
+                        mask: mechCollisionMask
+                    }
                 });
 
                 const rightFoot = Bodies.rectangle(x + size * 0.9, y + size * 1.35, size * 1.0, size * 0.3, {
@@ -385,7 +418,11 @@
                     frictionAir: 0.05,
                     restitution: 0.0,
                     inertia: Infinity,  // Feet stay flat on ground
-                    label: isPlayer ? 'player_foot' : 'enemy_foot'
+                    label: isPlayer ? 'player_foot' : 'enemy_foot',
+                    collisionFilter: {
+                        category: mechCategory,
+                        mask: mechCollisionMask
+                    }
                 });
 
                 // EXTREMELY RIGID CONSTRAINTS - welded together
@@ -598,7 +635,11 @@
                     label: 'projectile',
                     restitution: 0.2,
                     frictionAir: 0.008,  // Less drag
-                    isSensor: false  // Allow collision
+                    isSensor: false,  // Allow collision
+                    collisionFilter: {
+                        category: 0x0004,  // Projectile category
+                        mask: 0x0001 | 0x0002 | 0x0008  // Collide with player, enemy, and ground
+                    }
                 });
 
                 Body.setVelocity(projectile, {
@@ -661,58 +702,76 @@
 
                     const pos = mech.torso.position;
                     const otherPos = otherMech.torso.position;
+                    const vel = mech.torso.velocity;
 
                     // Calculate distance between mechs
                     const distance = Math.abs(pos.x - otherPos.x);
 
+                    // Track if we need emergency forces
+                    let needsEmergencyForce = false;
+                    let emergencyForce = 0;
+
                     // RANGE-BASED MOVEMENT AI
                     let desiredDirection = 0;
+                    let forceMultiplier = 1;
 
                     if (distance > mech.weapon.maxRange) {
                         // Too far - move closer
                         desiredDirection = pos.x < otherPos.x ? 1 : -1;
                     } else if (distance < mech.weapon.minRange) {
-                        // Too close - move away
+                        // Too close - move away with STRONG force
                         desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        forceMultiplier = 50;  // 50x force when below minimum range!
                     } else if (distance > mech.weapon.optimalRange + 30) {
-                        // Outside optimal range - move closer slowly
+                        // Outside optimal range - move closer
                         desiredDirection = pos.x < otherPos.x ? 1 : -1;
+                        forceMultiplier = 2;
                     } else if (distance < mech.weapon.optimalRange - 30) {
-                        // Outside optimal range - move away slowly
+                        // Outside optimal range - move away
                         desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        forceMultiplier = 2;
                     } else {
                         // In optimal range - stay still
                         desiredDirection = 0;
                     }
 
-                    // SCREEN BOUNDARY PROTECTION - override movement near edges
-                    if (pos.x < 100 && desiredDirection < 0) {
-                        desiredDirection = 1;  // Force away from left edge
-                    } else if (pos.x > this.width - 100 && desiredDirection > 0) {
-                        desiredDirection = -1;  // Force away from right edge
+                    // ACTIVE SCREEN BOUNDARY FORCES - PUSH AWAY FROM EDGES!
+                    if (pos.x < 100) {
+                        // Near left edge - EMERGENCY push right
+                        needsEmergencyForce = true;
+                        emergencyForce = (100 - pos.x) * 0.01;  // Stronger the closer to edge
+                        desiredDirection = 1;
+                        forceMultiplier = 100;  // MASSIVE force near boundaries
+                    } else if (pos.x > this.width - 100) {
+                        // Near right edge - EMERGENCY push left
+                        needsEmergencyForce = true;
+                        emergencyForce = (pos.x - (this.width - 100)) * 0.01;
+                        desiredDirection = -1;
+                        forceMultiplier = 100;
                     }
 
-                    // PREVENT MECH-TO-MECH COLLISION - repel if too close
-                    if (distance < 80) {
-                        // Mechs are colliding - push apart
+                    // EXTREME REPULSION when mechs are too close (override everything)
+                    if (distance < 120) {
+                        // Mechs are colliding - MASSIVE repulsion
                         desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        forceMultiplier = 200;  // 200x force when colliding!
+                        needsEmergencyForce = true;
+                    }
 
-                        // Apply strong repulsion force
+                    // Apply movement forces
+                    if (desiredDirection !== 0) {
+                        const force = needsEmergencyForce ?
+                            (mech.moveSpeed * forceMultiplier + emergencyForce) :
+                            (mech.moveSpeed * forceMultiplier);
+
                         Body.applyForce(mech.torso, pos, {
-                            x: desiredDirection * mech.moveSpeed * 3,  // Triple force when too close
-                            y: 0
-                        });
-                    } else if (desiredDirection !== 0) {
-                        // Normal movement based on weapon range
-                        Body.applyForce(mech.torso, pos, {
-                            x: desiredDirection * mech.moveSpeed,
+                            x: desiredDirection * force,
                             y: 0
                         });
                     }
 
-                    // DAMPEN HORIZONTAL VELOCITY to prevent sliding
-                    const vel = mech.torso.velocity;
-                    if (Math.abs(vel.x) > 0.1) {
+                    // SMART VELOCITY DAMPENING - only dampen when NOT in emergency
+                    if (!needsEmergencyForce && Math.abs(vel.x) > 0.1) {
                         Body.setVelocity(mech.torso, {
                             x: vel.x * 0.85,  // Dampen horizontal movement
                             y: vel.y

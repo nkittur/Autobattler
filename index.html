@@ -1722,41 +1722,47 @@
                 const baseSize = 30;
                 const size = baseSize * scale;
 
-                // Create body parts
+                // Create body parts with MUCH higher density for stability
                 const torso = Bodies.rectangle(x, y, size * 1.2, size * 1.5, {
-                    density: 0.002,
-                    friction: 0.8,
-                    restitution: 0.1,
+                    density: 0.008,  // 4x heavier - main anchor
+                    friction: 1.0,
+                    frictionAir: 0.01,  // Air resistance for stability
+                    restitution: 0.05,  // Low bounce
                     label: isPlayer ? 'player_torso' : 'enemy_torso'
                 });
 
                 const head = Bodies.circle(x, y - size, size * 0.5, {
-                    density: 0.001,
-                    friction: 0.5,
+                    density: 0.004,  // 4x heavier
+                    friction: 0.8,
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_head' : 'enemy_head'
                 });
 
                 const leftArm = Bodies.rectangle(x - size * 0.8, y, size * 0.3, size, {
-                    density: 0.001,
-                    friction: 0.5,
+                    density: 0.004,  // 4x heavier
+                    friction: 0.8,
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_arm' : 'enemy_arm'
                 });
 
                 const rightArm = Bodies.rectangle(x + size * 0.8, y, size * 0.3, size, {
-                    density: 0.001,
-                    friction: 0.5,
+                    density: 0.004,  // 4x heavier
+                    friction: 0.8,
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_arm' : 'enemy_arm'
                 });
 
                 const leftLeg = Bodies.rectangle(x - size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.002,
-                    friction: 0.9,
+                    density: 0.006,  // 3x heavier - legs need weight
+                    friction: 1.2,   // High friction for ground contact
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
                 const rightLeg = Bodies.rectangle(x + size * 0.3, y + size * 1.2, size * 0.35, size * 0.8, {
-                    density: 0.002,
-                    friction: 0.9,
+                    density: 0.006,  // 3x heavier
+                    friction: 1.2,
+                    frictionAir: 0.01,
                     label: isPlayer ? 'player_leg' : 'enemy_leg'
                 });
 
@@ -1766,25 +1772,27 @@
                 // Add parts
                 Composite.add(mech, [torso, head, leftArm, rightArm, leftLeg, rightLeg]);
 
-                // Constraints (joints) - can be broken for ragdoll
+                // Constraints (joints) - MUCH stiffer for stability
                 const constraints = [
-                    // Head to torso
+                    // Head to torso - very stiff
                     Constraint.create({
                         bodyA: head,
                         bodyB: torso,
                         pointA: { x: 0, y: size * 0.3 },
                         pointB: { x: 0, y: -size * 0.7 },
-                        stiffness: 0.7,
+                        stiffness: 0.95,  // Much stiffer
+                        damping: 0.1,     // Add damping
                         length: 0,
                         label: 'neck'
                     }),
-                    // Left arm
+                    // Left arm - stiff but some movement
                     Constraint.create({
                         bodyA: leftArm,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: -size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.5,
+                        stiffness: 0.85,
+                        damping: 0.1,
                         length: 0,
                         label: 'left_shoulder'
                     }),
@@ -1794,17 +1802,19 @@
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: size * 0.5, y: -size * 0.3 },
-                        stiffness: 0.5,
+                        stiffness: 0.85,
+                        damping: 0.1,
                         length: 0,
                         label: 'right_shoulder'
                     }),
-                    // Left leg
+                    // Left leg - very stiff for standing
                     Constraint.create({
                         bodyA: leftLeg,
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: -size * 0.2, y: size * 0.7 },
-                        stiffness: 0.6,
+                        stiffness: 0.9,
+                        damping: 0.1,
                         length: 0,
                         label: 'left_hip'
                     }),
@@ -1814,7 +1824,8 @@
                         bodyB: torso,
                         pointA: { x: 0, y: -size * 0.4 },
                         pointB: { x: size * 0.2, y: size * 0.7 },
-                        stiffness: 0.6,
+                        stiffness: 0.9,
+                        damping: 0.1,
                         length: 0,
                         label: 'right_hip'
                     })
@@ -2233,38 +2244,632 @@
             }
 
             renderMech(mech, ctx) {
-                const parts = [mech.torso, mech.head, mech.leftArm, mech.rightArm, mech.leftLeg, mech.rightLeg];
+                // Save context
+                ctx.save();
 
-                ctx.fillStyle = mech.color;
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
+                const scale = mech.scale || 1;
+                const baseColor = mech.color;
+                const darkColor = this.darkenColor(baseColor, 0.6);
+                const lightColor = this.lightenColor(baseColor, 1.3);
 
-                parts.forEach(part => {
-                    const vertices = part.vertices;
-                    ctx.beginPath();
-                    ctx.moveTo(vertices[0].x, vertices[0].y);
+                // Render mech components in proper order (back to front)
+                this.renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor);
+                this.renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor);
 
-                    for (let i = 1; i < vertices.length; i++) {
-                        ctx.lineTo(vertices[i].x, vertices[i].y);
+                ctx.restore();
+            }
+
+            renderMechLegs(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const leftLeg = mech.leftLeg;
+                const rightLeg = mech.rightLeg;
+                const loadout = mech.loadout || {};
+                const legsComponent = loadout.legs;
+                const mechClass = mech.mechClass || 'Medium';
+
+                [leftLeg, rightLeg].forEach((leg, index) => {
+                    const isLeft = index === 0;
+                    const legX = leg.position.x;
+                    const legY = leg.position.y;
+                    const angle = leg.angle;
+
+                    ctx.save();
+                    ctx.translate(legX, legY);
+                    ctx.rotate(angle);
+
+                    let sizeMultiplier = 1;
+                    let legThickness = 12;
+                    if (mechClass === 'Light') {
+                        sizeMultiplier = 0.85;
+                        legThickness = 10;
+                    }
+                    if (mechClass === 'Heavy') {
+                        sizeMultiplier = 1.2;
+                        legThickness = 14;
                     }
 
+                    // Upper thigh - angular armored with chamfered edges
+                    ctx.fillStyle = lightColor;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-legThickness/2 * scale, -14 * scale * sizeMultiplier);
+                    ctx.lineTo(legThickness/2 * scale, -14 * scale * sizeMultiplier);
+                    ctx.lineTo(legThickness/2 * scale + 2 * scale, -12 * scale * sizeMultiplier);
+                    ctx.lineTo(legThickness/2 * scale + 2 * scale, 2 * scale * sizeMultiplier);
+                    ctx.lineTo(-legThickness/2 * scale - 2 * scale, 2 * scale * sizeMultiplier);
+                    ctx.lineTo(-legThickness/2 * scale - 2 * scale, -12 * scale * sizeMultiplier);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
-                });
 
-                // Render constraints (joints)
-                mech.constraints.forEach(constraint => {
-                    const posA = constraint.bodyA.position;
-                    const posB = constraint.bodyB.position;
-
-                    ctx.strokeStyle = mech.color;
-                    ctx.lineWidth = 3;
+                    // Panel lines on thigh
+                    ctx.strokeStyle = darkColor;
+                    ctx.lineWidth = 1;
                     ctx.beginPath();
-                    ctx.moveTo(posA.x, posA.y);
-                    ctx.lineTo(posB.x, posB.y);
+                    ctx.moveTo(-4 * scale, -10 * scale * sizeMultiplier);
+                    ctx.lineTo(4 * scale, -10 * scale * sizeMultiplier);
                     ctx.stroke();
+
+                    // Knee joint - larger, mechanical with glow
+                    const kneeSize = mechClass === 'Heavy' ? 7 : 6;
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.beginPath();
+                    ctx.arc(0, 4 * scale * sizeMultiplier, kneeSize * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Knee joint glow
+                    ctx.fillStyle = '#ff6b35';
+                    ctx.globalAlpha = 0.4;
+                    ctx.beginPath();
+                    ctx.arc(0, 4 * scale * sizeMultiplier, (kneeSize - 2) * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+
+                    // Lower leg - sleek reverse-joint design
+                    ctx.fillStyle = baseColor;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-6 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
+                    ctx.lineTo(-4 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
+                    ctx.lineTo(-4 * scale * sizeMultiplier, 18 * scale * sizeMultiplier);
+                    ctx.lineTo(4 * scale * sizeMultiplier, 18 * scale * sizeMultiplier);
+                    ctx.lineTo(4 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
+                    ctx.lineTo(6 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Ankle actuator
+                    ctx.fillStyle = darkColor;
+                    ctx.beginPath();
+                    ctx.arc(0, 18 * scale * sizeMultiplier, 3 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Foot - aggressive angular design
+                    const footWidth = mechClass === 'Heavy' ? 18 : mechClass === 'Light' ? 14 : 16;
+                    ctx.fillStyle = '#2a2a2a';
+                    ctx.beginPath();
+                    ctx.moveTo(-footWidth/2 * scale * sizeMultiplier, 20 * scale * sizeMultiplier);
+                    ctx.lineTo(footWidth/2 * scale * sizeMultiplier, 20 * scale * sizeMultiplier);
+                    ctx.lineTo((footWidth/2 + 3) * scale * sizeMultiplier, 24 * scale * sizeMultiplier);
+                    ctx.lineTo(-(footWidth/2 + 3) * scale * sizeMultiplier, 24 * scale * sizeMultiplier);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Thrusters for Light mechs
+                    if (mechClass === 'Light' || (legsComponent && legsComponent.name && legsComponent.name.includes('Boost'))) {
+                        ctx.fillStyle = '#00d9ff';
+                        ctx.globalAlpha = 0.7;
+                        for (let i = 0; i < 2; i++) {
+                            ctx.beginPath();
+                            ctx.arc((-2 + i * 4) * scale, 12 * scale * sizeMultiplier, 1.5 * scale, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
+                    }
+
+                    // Hydraulic pistons
+                    ctx.strokeStyle = '#404040';
+                    ctx.lineWidth = 2.5 * scale;
+                    const hydraulicCount = mechClass === 'Heavy' ? 2 : 1;
+                    for (let i = 0; i < hydraulicCount; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo((-3 + i * 6) * scale, -8 * scale * sizeMultiplier);
+                        ctx.lineTo((-3 + i * 6) * scale, 14 * scale * sizeMultiplier);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
                 });
+            }
+
+            renderMechTorso(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const torso = mech.torso;
+                const torsoX = torso.position.x;
+                const torsoY = torso.position.y;
+                const angle = torso.angle;
+                const loadout = mech.loadout || {};
+                const torsoComponent = loadout.torso;
+                const mechClass = mech.mechClass || 'Medium';
+
+                ctx.save();
+                ctx.translate(torsoX, torsoY);
+                ctx.rotate(angle);
+
+                let sizeMultiplier = 1;
+                if (mechClass === 'Light') sizeMultiplier = 0.9;
+                if (mechClass === 'Heavy') sizeMultiplier = 1.15;
+
+                // Main torso chassis - angular, aggressive shape
+                ctx.fillStyle = baseColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-20 * scale * sizeMultiplier, -20 * scale * sizeMultiplier);
+                ctx.lineTo(20 * scale * sizeMultiplier, -20 * scale * sizeMultiplier);
+                ctx.lineTo(22 * scale * sizeMultiplier, -16 * scale * sizeMultiplier);
+                ctx.lineTo(22 * scale * sizeMultiplier, 18 * scale * sizeMultiplier);
+                ctx.lineTo(16 * scale * sizeMultiplier, 22 * scale * sizeMultiplier);
+                ctx.lineTo(-16 * scale * sizeMultiplier, 22 * scale * sizeMultiplier);
+                ctx.lineTo(-22 * scale * sizeMultiplier, 18 * scale * sizeMultiplier);
+                ctx.lineTo(-22 * scale * sizeMultiplier, -16 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Cockpit canopy - sleek angular design
+                ctx.fillStyle = lightColor;
+                ctx.beginPath();
+                ctx.moveTo(-10 * scale * sizeMultiplier, -18 * scale * sizeMultiplier);
+                ctx.lineTo(10 * scale * sizeMultiplier, -18 * scale * sizeMultiplier);
+                ctx.lineTo(12 * scale * sizeMultiplier, -14 * scale * sizeMultiplier);
+                ctx.lineTo(12 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
+                ctx.lineTo(-12 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
+                ctx.lineTo(-12 * scale * sizeMultiplier, -14 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Viewport - glowing cyan
+                const gradient = ctx.createLinearGradient(-6 * scale * sizeMultiplier, -16 * scale * sizeMultiplier,
+                                                          6 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
+                gradient.addColorStop(0, '#00d9ff');
+                gradient.addColorStop(0.5, '#4dd2ff');
+                gradient.addColorStop(1, '#00d9ff');
+                ctx.fillStyle = gradient;
+                ctx.globalAlpha = 0.9;
+                ctx.beginPath();
+                ctx.moveTo(-6 * scale * sizeMultiplier, -16 * scale * sizeMultiplier);
+                ctx.lineTo(6 * scale * sizeMultiplier, -16 * scale * sizeMultiplier);
+                ctx.lineTo(8 * scale * sizeMultiplier, -12 * scale * sizeMultiplier);
+                ctx.lineTo(-8 * scale * sizeMultiplier, -12 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.stroke();
+
+                // Armor panels with improved design
+                const armorColor = torsoComponent && torsoComponent.name && torsoComponent.name.includes('Heavy') ? '#3a3a3a' : darkColor;
+                const armorThickness = torsoComponent && torsoComponent.armor > 10 ? 7 : 5;
+
+                // Left side armor - layered plates
+                ctx.fillStyle = armorColor;
+                ctx.beginPath();
+                ctx.moveTo(-22 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
+                ctx.lineTo(-16 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
+                ctx.lineTo(-16 * scale * sizeMultiplier, 12 * scale * sizeMultiplier);
+                ctx.lineTo(-22 * scale * sizeMultiplier, 14 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Right side armor
+                ctx.beginPath();
+                ctx.moveTo(22 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
+                ctx.lineTo(16 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
+                ctx.lineTo(16 * scale * sizeMultiplier, 12 * scale * sizeMultiplier);
+                ctx.lineTo(22 * scale * sizeMultiplier, 14 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Panel lines and details
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 4; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(-12 * scale * sizeMultiplier, (-8 + i * 6) * scale);
+                    ctx.lineTo(12 * scale * sizeMultiplier, (-8 + i * 6) * scale);
+                    ctx.stroke();
+                }
+
+                // Power core - glowing reactor
+                const coreColor = mechClass === 'Light' ? '#00ffff' : mechClass === 'Heavy' ? '#ff3333' : '#ff6b35';
+                const coreGlow = ctx.createRadialGradient(0, 10 * scale, 0, 0, 10 * scale, 6 * scale * sizeMultiplier);
+                coreGlow.addColorStop(0, coreColor);
+                coreGlow.addColorStop(0.7, coreColor + '88');
+                coreGlow.addColorStop(1, coreColor + '00');
+                ctx.fillStyle = coreGlow;
+                ctx.globalAlpha = 0.9;
+                ctx.beginPath();
+                ctx.arc(0, 10 * scale, 6 * scale * sizeMultiplier, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+
+                // Core center
+                ctx.fillStyle = coreColor;
+                ctx.beginPath();
+                ctx.arc(0, 10 * scale, 3 * scale * sizeMultiplier, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Vent ports
+                ctx.fillStyle = '#1a1a1a';
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.arc((-6 + i * 6) * scale * sizeMultiplier, 4 * scale, 2 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+
+            renderMechArms(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const leftArm = mech.leftArm;
+                const rightArm = mech.rightArm;
+                const loadout = mech.loadout || {};
+
+                [leftArm, rightArm].forEach((arm, index) => {
+                    const isLeft = index === 0;
+                    const armX = arm.position.x;
+                    const armY = arm.position.y;
+                    const angle = arm.angle;
+
+                    // Get equipped components for this side
+                    const armSlot = isLeft ? 'leftArm' : 'rightArm';
+                    const shoulderSlot = isLeft ? 'leftShoulder' : 'rightShoulder';
+                    const armComponent = loadout[armSlot];
+                    const shoulderComponent = loadout[shoulderSlot];
+
+                    ctx.save();
+                    ctx.translate(armX, armY);
+                    ctx.rotate(angle);
+
+                    // Shoulder mount - varies based on equipped shoulder component
+                    if (shoulderComponent) {
+                        this.renderShoulderWeapon(ctx, scale, shoulderComponent, darkColor);
+                    } else {
+                        // Default shoulder mount
+                        ctx.fillStyle = darkColor;
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(0, -12 * scale, 6 * scale, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+
+                    // Upper arm
+                    ctx.fillStyle = baseColor;
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.rect(-4 * scale, -12 * scale, 8 * scale, 18 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Forearm/weapon mount - varies based on equipped arm component
+                    if (armComponent) {
+                        this.renderArmWeapon(ctx, scale, armComponent, lightColor, darkColor);
+                    } else {
+                        // Default forearm
+                        ctx.fillStyle = lightColor;
+                        ctx.beginPath();
+                        ctx.rect(-5 * scale, 6 * scale, 10 * scale, 14 * scale);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Default actuator
+                        ctx.fillStyle = '#666';
+                        ctx.beginPath();
+                        ctx.rect(-2 * scale, 18 * scale, 4 * scale, 8 * scale);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                });
+            }
+
+            renderShoulderWeapon(ctx, scale, component, darkColor) {
+                const weaponColor = this.getWeaponColor(component);
+
+                // Larger shoulder mount for weapons
+                ctx.fillStyle = darkColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, -12 * scale, 8 * scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Weapon pod based on type
+                if (component.name && component.name.includes('Missile')) {
+                    // Missile pods
+                    ctx.fillStyle = weaponColor;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.rect((i - 1) * 4 * scale - 2 * scale, -16 * scale, 3 * scale, 6 * scale);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                } else if (component.name && component.name.includes('Laser')) {
+                    // Laser emitter
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-3 * scale, -18 * scale, 6 * scale, 10 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Emitter tip
+                    ctx.fillStyle = '#ff0000';
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath();
+                    ctx.arc(0, -19 * scale, 2 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                } else {
+                    // Generic weapon pod
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-4 * scale, -18 * scale, 8 * scale, 8 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            renderArmWeapon(ctx, scale, component, lightColor, darkColor) {
+                const weaponColor = this.getWeaponColor(component);
+
+                // Forearm mount
+                ctx.fillStyle = lightColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.rect(-5 * scale, 6 * scale, 10 * scale, 14 * scale);
+                ctx.fill();
+                ctx.stroke();
+
+                // Weapon based on type
+                if (component.name && (component.name.includes('Cannon') || component.name.includes('Rifle'))) {
+                    // Ballistic weapon - long barrel
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-3 * scale, 18 * scale, 6 * scale, 12 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Muzzle brake
+                    ctx.fillStyle = '#333';
+                    ctx.beginPath();
+                    ctx.rect(-4 * scale, 28 * scale, 8 * scale, 2 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (component.name && component.name.includes('Blade')) {
+                    // Melee weapon - blade
+                    ctx.fillStyle = '#c0c0c0';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 18 * scale);
+                    ctx.lineTo(-4 * scale, 28 * scale);
+                    ctx.lineTo(0, 32 * scale);
+                    ctx.lineTo(4 * scale, 28 * scale);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (component.name && component.name.includes('Plasma')) {
+                    // Energy weapon - glowing
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-3 * scale, 18 * scale, 6 * scale, 10 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Energy glow
+                    ctx.fillStyle = '#00ffff';
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath();
+                    ctx.arc(0, 28 * scale, 3 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                } else {
+                    // Default weapon
+                    ctx.fillStyle = weaponColor;
+                    ctx.beginPath();
+                    ctx.rect(-2 * scale, 18 * scale, 4 * scale, 10 * scale);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+
+            getWeaponColor(component) {
+                if (!component || !component.damageType) return '#666';
+
+                switch(component.damageType) {
+                    case 'ENERGY': return '#00bfff';
+                    case 'KINETIC': return '#808080';
+                    case 'EXPLOSIVE': return '#ff6b35';
+                    default: return '#666';
+                }
+            }
+
+            renderMechHead(mech, ctx, scale, baseColor, darkColor, lightColor) {
+                const head = mech.head;
+                const headX = head.position.x;
+                const headY = head.position.y;
+                const angle = head.angle;
+                const loadout = mech.loadout || {};
+                const headComponent = loadout.head;
+                const mechClass = mech.mechClass || 'Medium';
+
+                ctx.save();
+                ctx.translate(headX, headY);
+                ctx.rotate(angle);
+
+                let sizeMultiplier = 1;
+                if (mechClass === 'Light') sizeMultiplier = 0.85;
+                if (mechClass === 'Heavy') sizeMultiplier = 1.2;
+
+                // Modern aggressive head - angular wedge shape
+                ctx.fillStyle = baseColor;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+
+                // Main head structure - aggressive forward-swept design
+                ctx.beginPath();
+                ctx.moveTo(0, -14 * scale * sizeMultiplier);  // Top point
+                ctx.lineTo(12 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
+                ctx.lineTo(14 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
+                ctx.lineTo(14 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
+                ctx.lineTo(10 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
+                ctx.lineTo(-10 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
+                ctx.lineTo(-14 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
+                ctx.lineTo(-14 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
+                ctx.lineTo(-12 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Sensor pods - sleek angled design
+                const earSize = headComponent && headComponent.name && headComponent.name.includes('Sensor') ? 6 : 5;
+                ctx.fillStyle = '#2a2a2a';
+
+                // Left sensor pod
+                ctx.beginPath();
+                ctx.moveTo(-16 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
+                ctx.lineTo(-12 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
+                ctx.lineTo(-12 * scale * sizeMultiplier, 2 * scale * sizeMultiplier);
+                ctx.lineTo(-16 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Right sensor pod
+                ctx.beginPath();
+                ctx.moveTo(16 * scale * sizeMultiplier, -8 * scale * sizeMultiplier);
+                ctx.lineTo(12 * scale * sizeMultiplier, -10 * scale * sizeMultiplier);
+                ctx.lineTo(12 * scale * sizeMultiplier, 2 * scale * sizeMultiplier);
+                ctx.lineTo(16 * scale * sizeMultiplier, 4 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Sensor lights on pods
+                if (headComponent && headComponent.name && headComponent.name.includes('Sensor')) {
+                    ctx.fillStyle = '#00d9ff';
+                    ctx.globalAlpha = 0.8;
+                    [-14, 14].forEach(x => {
+                        ctx.beginPath();
+                        ctx.arc(x * scale * sizeMultiplier, -4 * scale * sizeMultiplier, 2 * scale, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.globalAlpha = 1;
+                }
+
+                // Main visor - aggressive angular design with glow
+                const eyeColor = headComponent && headComponent.name && headComponent.name.includes('Advanced') ? '#00ff00' : '#ff0000';
+
+                // Visor glow
+                const visorGlow = ctx.createRadialGradient(0, -4 * scale * sizeMultiplier, 0, 0, -4 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
+                visorGlow.addColorStop(0, eyeColor);
+                visorGlow.addColorStop(0.6, eyeColor + '66');
+                visorGlow.addColorStop(1, eyeColor + '00');
+                ctx.fillStyle = visorGlow;
+                ctx.globalAlpha = 0.7;
+                ctx.fillRect(-10 * scale * sizeMultiplier, -8 * scale * sizeMultiplier,
+                            20 * scale * sizeMultiplier, 8 * scale * sizeMultiplier);
+                ctx.globalAlpha = 1;
+
+                // Visor shape - angular slit
+                ctx.fillStyle = eyeColor;
+                ctx.globalAlpha = 0.95;
+                ctx.beginPath();
+                ctx.moveTo(-8 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
+                ctx.lineTo(8 * scale * sizeMultiplier, -6 * scale * sizeMultiplier);
+                ctx.lineTo(10 * scale * sizeMultiplier, -4 * scale * sizeMultiplier);
+                ctx.lineTo(10 * scale * sizeMultiplier, -2 * scale * sizeMultiplier);
+                ctx.lineTo(-10 * scale * sizeMultiplier, -2 * scale * sizeMultiplier);
+                ctx.lineTo(-10 * scale * sizeMultiplier, -4 * scale * sizeMultiplier);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                ctx.stroke();
+
+                // Center camera/sensor
+                ctx.fillStyle = eyeColor;
+                ctx.beginPath();
+                ctx.arc(0, -4 * scale * sizeMultiplier, 2.5 * scale * sizeMultiplier, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Antenna/communication array
+                if (headComponent && headComponent.name && headComponent.name.includes('Comm')) {
+                    ctx.strokeStyle = '#404040';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -14 * scale * sizeMultiplier);
+                    ctx.lineTo(0, -18 * scale * sizeMultiplier);
+                    ctx.stroke();
+
+                    // Antenna tip with glow
+                    const antennaGlow = ctx.createRadialGradient(0, -18 * scale * sizeMultiplier, 0,
+                                                                  0, -18 * scale * sizeMultiplier, 3 * scale);
+                    antennaGlow.addColorStop(0, '#ff6b35');
+                    antennaGlow.addColorStop(0.7, '#ff6b3588');
+                    antennaGlow.addColorStop(1, '#ff6b3500');
+                    ctx.fillStyle = antennaGlow;
+                    ctx.beginPath();
+                    ctx.arc(0, -18 * scale * sizeMultiplier, 3 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#ff6b35';
+                    ctx.beginPath();
+                    ctx.arc(0, -18 * scale * sizeMultiplier, 1.5 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Panel lines for detail
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-8 * scale * sizeMultiplier, 2 * scale * sizeMultiplier);
+                ctx.lineTo(8 * scale * sizeMultiplier, 2 * scale * sizeMultiplier);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            darkenColor(color, factor) {
+                // Simple color darkening
+                const hex = color.replace('#', '');
+                const r = Math.max(0, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
+                const g = Math.max(0, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
+                const b = Math.max(0, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
+                return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+            }
+
+            lightenColor(color, factor) {
+                // Simple color lightening
+                const hex = color.replace('#', '');
+                const r = Math.min(255, Math.floor(parseInt(hex.substr(0, 2), 16) * factor));
+                const g = Math.min(255, Math.floor(parseInt(hex.substr(2, 2), 16) * factor));
+                const b = Math.min(255, Math.floor(parseInt(hex.substr(4, 2), 16) * factor));
+                return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
             }
 
             renderParticles(ctx) {
@@ -2417,6 +3022,8 @@
                 this.playerPhysMech.stats = this.playerStats;
                 this.playerPhysMech.battleSystem = this;
                 this.playerPhysMech.isPlayer = true;
+                this.playerPhysMech.loadout = this.playerMechData.loadout;
+                this.playerPhysMech.mechClass = this.playerMechData.class;
 
                 this.enemyPhysMech.currentHP = this.monsterData.currentHP;
                 this.enemyPhysMech.maxHP = this.monsterData.maxHP;
@@ -2428,6 +3035,8 @@
                 this.enemyPhysMech.battleSystem = this;
                 this.enemyPhysMech.isPlayer = false;
                 this.enemyPhysMech.special = this.monsterData.special;
+                this.enemyPhysMech.loadout = this.monsterData.loadout || {};
+                this.enemyPhysMech.mechClass = this.monsterData.class || 'Medium';
 
                 // Apply start of battle effects
                 this.applyStartOfBattleAbilities();

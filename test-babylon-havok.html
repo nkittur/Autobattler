@@ -94,6 +94,14 @@
         async function initEngine() {
             const canvas = document.getElementById('renderCanvas');
 
+            // Check WebGL support
+            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+            if (!gl) {
+                log('ERROR: WebGL not supported!', 'error');
+                return;
+            }
+            log('WebGL context obtained', 'info');
+
             // Create Babylon engine
             engine = new BABYLON.Engine(canvas, true, {
                 preserveDrawingBuffer: true,
@@ -101,6 +109,8 @@
             });
 
             log('Babylon Engine created', 'info');
+            log(`Canvas size: ${canvas.width}x${canvas.height}`, 'info');
+            log(`Rendering size: ${engine.getRenderWidth()}x${engine.getRenderHeight()}`, 'info');
 
             // Initialize Havok Physics
             try {
@@ -149,13 +159,17 @@
                 'camera',
                 -Math.PI / 2,  // Alpha (horizontal rotation)
                 Math.PI / 4,   // Beta (vertical angle - 45 degree isometric)
-                18,            // Radius (distance)
-                new BABYLON.Vector3(0, 3.5, 0), // Target (centered on mechs)
+                25,            // Radius - increased from 18 to see more
+                new BABYLON.Vector3(0, 3, 0), // Target
                 scene
             );
             camera.attachControl(document.getElementById('renderCanvas'), true);
-            camera.lowerRadiusLimit = 10;
-            camera.upperRadiusLimit = 40;
+            camera.lowerRadiusLimit = 5;
+            camera.upperRadiusLimit = 50;
+
+            // Ensure proper clipping planes
+            camera.minZ = 0.1;
+            camera.maxZ = 1000;
 
             // Lighting - make it much brighter
             const hemisphericLight = new BABYLON.HemisphericLight(
@@ -165,16 +179,35 @@
             );
             hemisphericLight.intensity = 2.0; // Very bright
 
-            // MINIMAL TEST: Just create a simple sphere, no physics
-            const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', {
-                diameter: 3
+            // MINIMAL TEST: Create multiple test objects at different positions
+            const testSphere1 = BABYLON.MeshBuilder.CreateSphere('testSphere1', {
+                diameter: 2
             }, scene);
-            testSphere.position = new BABYLON.Vector3(0, 3.5, 0);
-            const testMat = new BABYLON.StandardMaterial('testMat', scene);
-            testMat.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            testMat.emissiveColor = new BABYLON.Color3(1, 0, 0);
-            testSphere.material = testMat;
-            log('TEST: Simple red sphere created at camera target', 'warn');
+            testSphere1.position = new BABYLON.Vector3(0, 3, 0);
+            const testMat1 = new BABYLON.StandardMaterial('testMat1', scene);
+            testMat1.diffuseColor = new BABYLON.Color3(1, 0, 0);
+            testMat1.emissiveColor = new BABYLON.Color3(1, 0, 0);
+            testSphere1.material = testMat1;
+
+            const testBox = BABYLON.MeshBuilder.CreateBox('testBox', {
+                size: 3
+            }, scene);
+            testBox.position = new BABYLON.Vector3(-5, 2, 0);
+            const testMat2 = new BABYLON.StandardMaterial('testMat2', scene);
+            testMat2.diffuseColor = new BABYLON.Color3(0, 1, 0);
+            testMat2.emissiveColor = new BABYLON.Color3(0, 1, 0);
+            testBox.material = testMat2;
+
+            const testBox2 = BABYLON.MeshBuilder.CreateBox('testBox2', {
+                size: 3
+            }, scene);
+            testBox2.position = new BABYLON.Vector3(5, 2, 0);
+            const testMat3 = new BABYLON.StandardMaterial('testMat3', scene);
+            testMat3.diffuseColor = new BABYLON.Color3(0, 0, 1);
+            testMat3.emissiveColor = new BABYLON.Color3(0, 0, 1);
+            testBox2.material = testMat3;
+
+            log('TEST: Created red sphere at (0,3,0), green box at (-5,2,0), blue box at (5,2,0)', 'warn');
 
             // Create ground
             createGround(scene);
@@ -191,7 +224,14 @@
                 // DEBUG: Log scene info
                 log(`Scene has ${scene.meshes.length} meshes`, 'warn');
                 log(`Scene has ${scene.lights.length} lights`, 'warn');
-                log(`Camera position: (${camera.alpha.toFixed(2)}, ${camera.beta.toFixed(2)}, ${camera.radius.toFixed(2)})`, 'warn');
+                log(`Camera alpha: ${camera.alpha.toFixed(2)}, beta: ${camera.beta.toFixed(2)}, radius: ${camera.radius.toFixed(2)}`, 'warn');
+                log(`Camera position: ${camera.position.toString()}`, 'warn');
+                log(`Camera target: ${camera.target.toString()}`, 'warn');
+
+                // List all meshes
+                scene.meshes.forEach(mesh => {
+                    log(`Mesh: ${mesh.name} at ${mesh.position.toString()}, visible: ${mesh.isVisible}`, 'info');
+                });
             } catch (error) {
                 log('CRITICAL ERROR creating mechs: ' + error.message, 'error');
                 console.error('Full error:', error);

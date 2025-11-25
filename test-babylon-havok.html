@@ -101,21 +101,18 @@
         async function initEngine() {
             const canvas = document.getElementById('renderCanvas');
 
-            // Check WebGL support
-            const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-            if (!gl) {
-                log('ERROR: WebGL not supported!', 'error');
+            // Create Babylon engine (it will handle WebGL internally)
+            try {
+                engine = new BABYLON.Engine(canvas, true, {
+                    preserveDrawingBuffer: true,
+                    stencil: true
+                });
+                log('Babylon Engine created', 'info');
+            } catch (error) {
+                log('ERROR: Failed to create Babylon engine (WebGL may not be supported): ' + error.message, 'error');
                 return;
             }
-            log('WebGL context obtained', 'info');
 
-            // Create Babylon engine
-            engine = new BABYLON.Engine(canvas, true, {
-                preserveDrawingBuffer: true,
-                stencil: true
-            });
-
-            log('Babylon Engine created', 'info');
             log(`Canvas size: ${canvas.width}x${canvas.height}`, 'info');
             log(`Rendering size: ${engine.getRenderWidth()}x${engine.getRenderHeight()}`, 'info');
 

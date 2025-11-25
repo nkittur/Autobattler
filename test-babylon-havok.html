@@ -362,10 +362,9 @@
                         {
                             pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Pivot on torso (shoulder position)
                             pivotB: new BABYLON.Vector3(0, 0.3, 0),  // Pivot on arm (top of arm, half-height)
+                            collision: false  // Disable collision between connected bodies
                         },
-                        [
-                            { key: 'collision', value: false }  // Disable collision between connected bodies
-                        ]
+                        scene
                     );
                     torsoAggregate.body.addConstraint(armAggregate.body, armConstraint);
                     log(`${side} arm constraint created`, 'info');
@@ -435,10 +434,9 @@
                         {
                             pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),  // Pivot on torso (hip position)
                             pivotB: new BABYLON.Vector3(0, 0.35, 0),  // Pivot on leg (top of leg, half-height)
+                            collision: false  // Disable collision between connected bodies
                         },
-                        [
-                            { key: 'collision', value: false }  // Disable collision between connected bodies
-                        ]
+                        scene
                     );
                     torsoAggregate.body.addConstraint(legAggregate.body, legConstraint);
                     log(`${side} leg constraint created`, 'info');

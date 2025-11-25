@@ -101,6 +101,7 @@
                 this.playerMech = null;
                 this.enemyMech = null;
                 this.projectiles = [];
+                this.laserBeams = [];  // Track active laser beams for rendering
                 this.impactEffects = [];  // Track impact animations
                 this.damageNumbers = [];  // Track floating damage numbers
                 this.projectileFired = 0;
@@ -593,11 +594,33 @@
                     isPlayer: isPlayer,
                     destroyed: false,  // Full mech destroyed flag
                     destroyedComponents: [],  // Track destroyed component names
-                    // WEAPON RANGE SYSTEM
+                    // DUAL WEAPON SYSTEM
+                    weapons: [
+                        {
+                            type: 'projectile',
+                            damage: 20,
+                            cooldown: 1500,
+                            lastFired: 0,
+                            minRange: 150,
+                            maxRange: 400,
+                            name: 'Autocannon'
+                        },
+                        // Enemy gets a laser weapon in addition to projectile
+                        ...(isPlayer ? [] : [{
+                            type: 'laser',
+                            damage: 12,  // Weaker than projectile
+                            cooldown: 1200,  // Faster fire rate
+                            lastFired: 0,
+                            minRange: 100,
+                            maxRange: 450,  // Longer range
+                            name: 'Laser'
+                        }])
+                    ],
+                    // Range for movement AI (use longest weapon range)
                     weapon: {
-                        minRange: 150,  // Minimum effective range
-                        maxRange: 400,  // Maximum effective range
-                        optimalRange: 250  // Preferred combat distance
+                        minRange: 150,
+                        maxRange: isPlayer ? 400 : 450,  // Enemy has longer range with laser
+                        optimalRange: 250
                     }
                 };
 
@@ -665,6 +688,98 @@
                 log(`🚀 Projectile #${this.projectileFired}: ${damage} dmg, dist=${Math.floor(finalDistance)}u, lead=${leadDistance}u (vel=${velMag.toFixed(1)})`);
 
                 return projectile;
+            }
+
+            fireLaser(fromMech, toMech, damage) {
+                // INSTANTANEOUS LASER - hits immediately with raycast
+                const fromPos = fromMech.torso.position;
+                const toPos = toMech.torso.position;
+
+                // Calculate laser beam direction
+                const dx = toPos.x - fromPos.x;
+                const dy = toPos.y - fromPos.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+
+                // Spawn laser from front of mech
+                const spawnOffset = 40;
+                const startX = fromPos.x + Math.cos(angle) * spawnOffset;
+                const startY = fromPos.y + Math.sin(angle) * spawnOffset;
+
+                // RAYCAST to find which component is hit
+                // Check all components of target mech for intersection
+                let hitComponent = null;
+                let hitComponentKey = null;
+                let closestDist = Infinity;
+
+                for (const [key, component] of Object.entries(toMech.components)) {
+                    if (component.health <= 0) continue;  // Skip destroyed components
+
+                    const compPos = component.body.position;
+                    const compBounds = component.body.bounds;
+
+                    // Simple AABB ray intersection check
+                    // Check if ray passes through component bounding box
+                    const inBoundsX = compPos.x >= Math.min(startX, toPos.x) - 30 &&
+                                     compPos.x <= Math.max(startX, toPos.x) + 30;
+                    const inBoundsY = compPos.y >= Math.min(startY, toPos.y) - 30 &&
+                                     compPos.y <= Math.max(startY, toPos.y) + 30;
+
+                    if (inBoundsX && inBoundsY) {
+                        const distToComp = Math.sqrt(
+                            Math.pow(compPos.x - startX, 2) +
+                            Math.pow(compPos.y - startY, 2)
+                        );
+                        if (distToComp < closestDist) {
+                            closestDist = distToComp;
+                            hitComponent = component;
+                            hitComponentKey = key;
+                        }
+                    }
+                }
+
+                // Default to torso if no specific component hit
+                if (!hitComponent && toMech.components.torso.health > 0) {
+                    hitComponent = toMech.components.torso;
+                    hitComponentKey = 'torso';
+                }
+
+                let hitX = toPos.x;
+                let hitY = toPos.y;
+
+                // Apply damage if hit
+                if (hitComponent) {
+                    const rawDamage = damage;
+                    const actualDamage = Math.max(1, rawDamage - hitComponent.armor);
+                    hitComponent.health -= actualDamage;
+
+                    hitX = hitComponent.body.position.x;
+                    hitY = hitComponent.body.position.y;
+
+                    // Create impact effect at hit location
+                    this.createImpactEffect(hitX, hitY, { x: 0, y: 0 });
+                    this.createDamageNumber(hitX, hitY, actualDamage, hitComponent.armor);
+
+                    log(`⚡ LASER HIT ${toMech.isPlayer ? 'PLAYER' : 'ENEMY'} ${hitComponent.name}: ${actualDamage} dmg (${hitComponent.health}HP left)`);
+
+                    // Check if component destroyed
+                    if (hitComponent.health <= 0) {
+                        this.destroyComponent(toMech, hitComponentKey, hitComponent);
+                    }
+                }
+
+                // Create visual beam effect
+                this.laserBeams.push({
+                    startX: startX,
+                    startY: startY,
+                    endX: hitX,
+                    endY: hitY,
+                    createdAt: Date.now(),
+                    duration: 150,  // Beam visible for 150ms
+                    life: 1.0
+                });
+
+                return true;
             }
 
             createImpactEffect(x, y, velocity) {
@@ -856,6 +971,9 @@
                 // Render damage numbers
                 this.renderDamageNumbers(ctx);
 
+                // Render laser beams
+                this.renderLaserBeams(ctx);
+
                 // Render HP bars (component health)
                 if (this.playerMech && !this.playerMech.destroyed) {
                     this.renderComponentHealth(this.playerMech, ctx);
@@ -864,10 +982,10 @@
                     this.renderComponentHealth(this.enemyMech, ctx);
                 }
 
-                // Debug info with V3 STATUS
+                // Debug info with V4 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V3.9 COMPONENTS', 10, 20);
+                ctx.fillText('V4.3 LASER WEAPONS', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';
@@ -1375,6 +1493,55 @@
                 });
             }
 
+            renderLaserBeams(ctx) {
+                const now = Date.now();
+
+                this.laserBeams = this.laserBeams.filter(beam => {
+                    const age = now - beam.createdAt;
+                    if (age > beam.duration) return false;  // Remove expired
+
+                    const progress = age / beam.duration;
+                    beam.life = 1 - progress;
+
+                    ctx.save();
+
+                    // Draw beam with glow effect
+                    const alpha = beam.life;
+
+                    // Outer glow (wider, dimmer)
+                    ctx.globalAlpha = alpha * 0.3;
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 8;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(beam.startX, beam.startY);
+                    ctx.lineTo(beam.endX, beam.endY);
+                    ctx.stroke();
+
+                    // Middle glow
+                    ctx.globalAlpha = alpha * 0.6;
+                    ctx.strokeStyle = '#ff3333';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(beam.startX, beam.startY);
+                    ctx.lineTo(beam.endX, beam.endY);
+                    ctx.stroke();
+
+                    // Core beam (bright, thin)
+                    ctx.globalAlpha = alpha;
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(beam.startX, beam.startY);
+                    ctx.lineTo(beam.endX, beam.endY);
+                    ctx.stroke();
+
+                    ctx.restore();
+
+                    return true;  // Keep
+                });
+            }
+
             renderComponentHealth(mech, ctx) {
                 const torso = mech.components.torso;
                 const x = torso.body.position.x;
@@ -1444,40 +1611,44 @@
         physics.start();
         log('Physics running!');
 
-        // Auto-fire test with RANGE CHECKING
-        let shotCount = 0;
+        // Auto-fire test with DUAL WEAPON SYSTEM and RANGE CHECKING
+        // Run weapon firing every 100ms to check cooldowns
         setInterval(() => {
-            if (!physics.battleEnded && !physics.playerMech.destroyed && !physics.enemyMech.destroyed) {
-                // Calculate distance between mechs
-                const playerPos = physics.playerMech.torso.position;
-                const enemyPos = physics.enemyMech.torso.position;
-                const distance = Math.abs(playerPos.x - enemyPos.x);
+            if (physics.battleEnded) return;
+            if (physics.playerMech.destroyed || physics.enemyMech.destroyed) return;
 
-                // Player fires only if in weapon range
-                if (distance >= physics.playerMech.weapon.minRange && distance <= physics.playerMech.weapon.maxRange) {
-                    shotCount++;
-                    log(`Round ${shotCount}: Player fires! (range=${Math.floor(distance)})`);
-                    physics.fireProjectile(physics.playerMech, physics.enemyMech, testPlayer.damage);
-                } else {
-                    log(`Player out of range: ${Math.floor(distance)} (need ${physics.playerMech.weapon.minRange}-${physics.playerMech.weapon.maxRange})`);
-                }
+            const now = Date.now();
+            const playerPos = physics.playerMech.torso.position;
+            const enemyPos = physics.enemyMech.torso.position;
+            const distance = Math.abs(playerPos.x - enemyPos.x);
 
-                // Enemy shoots back
-                setTimeout(() => {
-                    if (!physics.enemyMech.destroyed) {
-                        // Enemy also checks range before firing
-                        if (distance >= physics.enemyMech.weapon.minRange && distance <= physics.enemyMech.weapon.maxRange) {
-                            log(`Round ${shotCount}: Enemy fires! (range=${Math.floor(distance)})`);
-                            physics.fireProjectile(physics.enemyMech, physics.playerMech, testEnemy.damage);
-                        } else {
-                            log(`Enemy out of range: ${Math.floor(distance)}`);
-                        }
+            // Check each mech's weapons
+            [physics.playerMech, physics.enemyMech].forEach(mech => {
+                const target = mech === physics.playerMech ? physics.enemyMech : physics.playerMech;
+                const mechName = mech.isPlayer ? 'PLAYER' : 'ENEMY';
+
+                mech.weapons.forEach(weapon => {
+                    // Check if weapon is off cooldown
+                    if (now - weapon.lastFired < weapon.cooldown) return;
+
+                    // Check if target is in weapon range
+                    if (distance < weapon.minRange || distance > weapon.maxRange) return;
+
+                    // Fire weapon!
+                    weapon.lastFired = now;
+
+                    if (weapon.type === 'projectile') {
+                        physics.fireProjectile(mech, target, weapon.damage);
+                        log(`🔫 ${mechName} ${weapon.name}: ${weapon.damage}dmg (range=${Math.floor(distance)})`);
+                    } else if (weapon.type === 'laser') {
+                        physics.fireLaser(mech, target, weapon.damage);
+                        log(`⚡ ${mechName} ${weapon.name}: ${weapon.damage}dmg (range=${Math.floor(distance)})`);
                     }
-                }, 500);
-            }
-        }, 1500);
+                });
+            });
+        }, 100);  // Check every 100ms
 
-        log('Auto-fire started - shots every 1.5 seconds');
+        log('Auto-fire started - dual weapon system active!');
         log('Watch the canvas and logs!');
     </script>
 </body>

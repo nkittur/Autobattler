@@ -274,6 +274,10 @@
                 scene
             );
 
+            // Set collision group (group 4 = ground)
+            groundAggregate.shape.filterMembershipMask = 4;
+            groundAggregate.shape.filterCollideMask = 1 | 2; // Collide with mechs and projectiles
+
             log('Ground created with physics', 'info');
             return ground;
         }
@@ -371,6 +375,10 @@
 
                 log(`${mechName} torso created with physics`, 'info');
 
+                // Set collision group (group 1 = mechs)
+                torsoAggregate.shape.filterMembershipMask = 1;
+                torsoAggregate.shape.filterCollideMask = 1 | 2 | 4; // Collide with mechs, projectiles, ground
+
                 // Lock X/Z rotation for upright stability
                 torsoAggregate.body.setMassProperties({
                     inertia: new BABYLON.Vector3(Infinity, 1, Infinity)
@@ -427,6 +435,10 @@
                     scene
                 );
 
+                // Set collision group (group 1 = mechs)
+                armAggregate.shape.filterMembershipMask = 1;
+                armAggregate.shape.filterCollideMask = 1 | 2 | 4; // Collide with mechs, projectiles, ground
+
                 // Add damping to arms
                 armAggregate.body.setLinearDamping(0.3);
                 armAggregate.body.setAngularDamping(0.5);
@@ -448,18 +460,18 @@
                     );
                     torsoAggregate.body.addConstraint(armAggregate.body, armConstraint);
 
-                    // Set motor target (keep arm pointing down)
+                    // Set motor target (raise arms forward for firing stance)
                     armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
-                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0);
-                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 50);
+                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, Math.PI / 3); // Raise arms forward
+                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 80);
 
                     armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
                     armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
-                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 50);
+                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 80);
 
                     armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
-                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
-                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 50);
+                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, xSign * Math.PI / 6); // Slightly outward
+                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 80);
 
                     log(`${side} arm constraint with motors created`, 'info');
                 } catch (e) {
@@ -516,6 +528,10 @@
                     { mass: 5, friction: 0.5, restitution: 0.1 },
                     scene
                 );
+
+                // Set collision group (group 1 = mechs)
+                legAggregate.shape.filterMembershipMask = 1;
+                legAggregate.shape.filterCollideMask = 1 | 2 | 4; // Collide with mechs, projectiles, ground
 
                 // Add damping to legs
                 legAggregate.body.setLinearDamping(0.3);
@@ -637,31 +653,15 @@
             createProjectile(enemyMech, playerMech, 12);
         }
 
-        // Arm raising animation for firing
+        // Arm raising animation for firing - no longer needed with motor-controlled arms
         function raiseArmsToFire(mech) {
-            const leftArm = mech.leftArm.upperArm;
-            const rightArm = mech.rightArm.upperArm;
-
-            // Store original rotations if not already stored
-            if (!leftArm.originalRotation) {
-                leftArm.originalRotation = leftArm.rotation.clone();
-                rightArm.originalRotation = rightArm.rotation.clone();
-            }
-
-            // Raise arms forward to firing position
-            leftArm.rotation.z = -Math.PI / 3; // Raise left arm
-            rightArm.rotation.z = Math.PI / 3; // Raise right arm
-
-            // Lower arms back after a short delay
-            setTimeout(() => {
-                leftArm.rotation.z = leftArm.originalRotation.z;
-                rightArm.rotation.z = rightArm.originalRotation.z;
-            }, 300);
+            // Arms are now controlled by motors and already in firing position
+            // No manual animation needed
         }
 
         function createProjectile(fromMech, toMech, damage) {
-            // Raise arms to firing position
-            raiseArmsToFire(fromMech);
+            // Arms are already raised by motors, no animation needed
+            // raiseArmsToFire(fromMech);
 
             // Get world positions (torso is parented to collisionBody, so use absolute position)
             const startPos = fromMech.torso.getAbsolutePosition().clone();
@@ -715,6 +715,14 @@
                 { mass: 0.3, friction: 0, restitution: 0.2 },
                 scene
             );
+
+            // Set collision filter so projectiles don't collide with each other
+            // Group 1 = mechs, Group 2 = projectiles, Group 4 = ground
+            // Projectiles collide with mechs (1) and ground (4), but not other projectiles (2)
+            const projectileGroup = 2;
+            const projectileMask = 1 | 4; // Collide with groups 1 (mechs) and 4 (ground)
+            projAggregate.shape.filterMembershipMask = projectileGroup;
+            projAggregate.shape.filterCollideMask = projectileMask;
 
             // Apply high velocity for fast, impactful shot
             const speed = 45;
@@ -815,11 +823,30 @@
                     // Flash the specific part that was hit
                     flashMeshOnHit(hitPart);
 
-                    // Apply knockback to the whole mech (single physics body)
-                    const targetWorldPos = proj.target.torso.getAbsolutePosition();
-                    const knockbackDir = projPos.subtract(targetWorldPos).normalize();
-                    proj.target.torsoAggregate.body.applyImpulse(
-                        knockbackDir.scale(8), // Knockback force
+                    // Apply impact force to the specific limb that was hit
+                    let targetAggregate = proj.target.torsoAggregate; // Default to torso
+                    let impactForce = 8; // Base impact force
+
+                    // Determine which aggregate to apply force to based on what was hit
+                    if (hitPartName === 'left arm' && proj.target.leftArm.armAggregate) {
+                        targetAggregate = proj.target.leftArm.armAggregate;
+                        impactForce = 15; // Stronger impact on limbs
+                    } else if (hitPartName === 'right arm' && proj.target.rightArm.armAggregate) {
+                        targetAggregate = proj.target.rightArm.armAggregate;
+                        impactForce = 15;
+                    } else if (hitPartName === 'left leg' && proj.target.leftLeg.legAggregate) {
+                        targetAggregate = proj.target.leftLeg.legAggregate;
+                        impactForce = 15;
+                    } else if (hitPartName === 'right leg' && proj.target.rightLeg.legAggregate) {
+                        targetAggregate = proj.target.rightLeg.legAggregate;
+                        impactForce = 15;
+                    }
+
+                    // Apply impulse to the hit part
+                    const hitPartPos = hitPart.getAbsolutePosition();
+                    const impactDir = projPos.subtract(hitPartPos).normalize();
+                    targetAggregate.body.applyImpulse(
+                        impactDir.scale(impactForce),
                         projPos // Apply at hit point for realistic rotation
                     );
 
@@ -842,8 +869,8 @@
             const fromMech = isPlayer ? playerMech : enemyMech;
             const toMech = isPlayer ? enemyMech : playerMech;
 
-            // Raise arms to firing position
-            raiseArmsToFire(fromMech);
+            // Arms are already raised by motors, no animation needed
+            // raiseArmsToFire(fromMech);
 
             // Get world positions (torso is parented to collisionBody, so use absolute position)
             const startPos = fromMech.torso.getAbsolutePosition().clone();
@@ -943,10 +970,29 @@
             // Flash the specific part that was hit
             flashMeshOnHit(hitPart);
 
-            // Apply knockback to the whole mech (single physics body)
+            // Apply impact force to the specific limb that was hit
+            let targetAggregate = toMech.torsoAggregate; // Default to torso
+            let impactForce = 5; // Base laser impact force
+
+            // Determine which aggregate to apply force to based on what was hit
+            if (hitPartName === 'left arm' && toMech.leftArm.armAggregate) {
+                targetAggregate = toMech.leftArm.armAggregate;
+                impactForce = 10; // Stronger impact on limbs
+            } else if (hitPartName === 'right arm' && toMech.rightArm.armAggregate) {
+                targetAggregate = toMech.rightArm.armAggregate;
+                impactForce = 10;
+            } else if (hitPartName === 'left leg' && toMech.leftLeg.legAggregate) {
+                targetAggregate = toMech.leftLeg.legAggregate;
+                impactForce = 10;
+            } else if (hitPartName === 'right leg' && toMech.rightLeg.legAggregate) {
+                targetAggregate = toMech.rightLeg.legAggregate;
+                impactForce = 10;
+            }
+
+            // Apply impulse to the hit part
             const laserDir = endPos.subtract(startPos).normalize();
-            toMech.torsoAggregate.body.applyImpulse(
-                laserDir.scale(5), // Laser knockback
+            targetAggregate.body.applyImpulse(
+                laserDir.scale(impactForce),
                 endPos // Apply at hit point
             );
         }

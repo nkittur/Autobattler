@@ -786,7 +786,9 @@
             mech.root.position.x += moveAmountX;
 
             // Move slightly forward and back (Z axis) for more dynamic movement
-            mech.root.position.z = Math.sin(mech.walkTime * 0.5) * 1.5;
+            // Give each mech different phase so they're at different Z depths
+            const zPhase = mech.isPlayer ? 0 : Math.PI; // 180° phase difference
+            mech.root.position.z = Math.sin(mech.walkTime * 0.5 + zPhase) * 1.5;
 
             // Reverse direction at boundaries
             if (Math.abs(mech.root.position.x) > 6) {

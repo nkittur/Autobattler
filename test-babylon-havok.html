@@ -131,24 +131,29 @@
 
             // Start render loop
             let frameCount = 0;
+            let diagnosticsLogged = false;
             engine.runRenderLoop(() => {
                 if (scene) {
                     scene.render();
                     frameCount++;
-                    if (frameCount === 60) {
-                        log(`Render loop working: 60 frames rendered`, 'warn');
+
+                    // Log diagnostics at 3 seconds (180 frames) so they appear after mesh logs
+                    if (frameCount === 180 && !diagnosticsLogged) {
+                        diagnosticsLogged = true;
+                        log(`=== RENDER DIAGNOSTICS ===`, 'warn');
+                        log(`Frames rendered: ${frameCount}`, 'warn');
                         log(`Active meshes: ${scene.getActiveMeshes().length}`, 'warn');
                         log(`Total vertices: ${scene.getTotalVertices()}`, 'warn');
                         log(`Draw calls: ${engine.drawCalls}`, 'warn');
-                        log(`Engine is ready: ${engine.isReady}`, 'warn');
+                        log(`Draw calls per frame: ${engine.drawCallsPerfCounter ? engine.drawCallsPerfCounter.current : 'N/A'}`, 'warn');
 
-                        // Check if any mesh is actually being rendered
-                        const activeMeshes = scene.getActiveMeshes();
-                        log(`First 5 active meshes:`, 'warn');
-                        activeMeshes.data.slice(0, 5).forEach(mesh => {
-                            log(`  - ${mesh.name}: ready=${mesh.isReady()}, enabled=${mesh.isEnabled()}, visible=${mesh.isVisible}`, 'info');
-                        });
+                        // Check first test sphere
+                        const testSphere1 = scene.getMeshByName('testSphere1');
+                        if (testSphere1) {
+                            log(`Test sphere: ready=${testSphere1.isReady()}, enabled=${testSphere1.isEnabled()}, visible=${testSphere1.isVisible}, inFrustum=${testSphere1.isInFrustum(camera)}`, 'warn');
+                        }
                     }
+
                     updateProjectiles();
                     updateLaserBeams();
                     stabilizeMechs();

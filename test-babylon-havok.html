@@ -429,55 +429,41 @@
                 const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
                     width: 1.2, height: 1.5, depth: 0.8
                 }, scene);
-                torso.position = new BABYLON.Vector3(xPos, spawnY, 0);
                 torso.material = bodyMat;
-                torso.skeleton = skeleton;
 
-                // Right arm mesh (linked to rightArm bone)
+                // Right arm mesh (will be attached to rightArm bone)
                 const rightArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
-                rightArm.parent = mechRoot;
                 rightArm.material = darkMat;
-                rightArm.skeleton = skeleton;
 
-                // Left arm mesh (linked to leftArm bone)
+                // Left arm mesh (will be attached to leftArm bone)
                 const leftArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
-                leftArm.parent = mechRoot;
                 leftArm.material = darkMat;
-                leftArm.skeleton = skeleton;
 
                 // Right leg meshes
                 const rightUpperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightUpperLeg`, {
                     width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
-                rightUpperLeg.parent = mechRoot;
                 rightUpperLeg.material = darkMat;
-                rightUpperLeg.skeleton = skeleton;
 
                 const rightLowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightLowerLeg`, {
                     width: 0.25, height: 0.7, depth: 0.25
                 }, scene);
-                rightLowerLeg.parent = mechRoot;
                 rightLowerLeg.material = darkMat;
-                rightLowerLeg.skeleton = skeleton;
 
                 // Left leg meshes
                 const leftUpperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftUpperLeg`, {
                     width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
-                leftUpperLeg.parent = mechRoot;
                 leftUpperLeg.material = darkMat;
-                leftUpperLeg.skeleton = skeleton;
 
                 const leftLowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftLowerLeg`, {
                     width: 0.25, height: 0.7, depth: 0.25
                 }, scene);
-                leftLowerLeg.parent = mechRoot;
                 leftLowerLeg.material = darkMat;
-                leftLowerLeg.skeleton = skeleton;
 
                 // Head (parented to torso for now)
                 const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
@@ -486,6 +472,24 @@
                 head.position = new BABYLON.Vector3(0, 1.2, 0);
                 head.parent = torso;
                 head.material = bodyMat;
+
+                // === ATTACH MESHES TO BONES ===
+                log(`Attaching meshes to bones...`, 'info');
+
+                // Attach torso to torso bone
+                torso.attachToBone(torsoBone, mechRoot);
+
+                // Attach arms to arm bones
+                rightArm.attachToBone(rightArmBone, mechRoot);
+                leftArm.attachToBone(leftArmBone, mechRoot);
+
+                // Attach legs to leg bones
+                rightUpperLeg.attachToBone(rightUpperLegBone, mechRoot);
+                rightLowerLeg.attachToBone(rightLowerLegBone, mechRoot);
+                leftUpperLeg.attachToBone(leftUpperLegBone, mechRoot);
+                leftLowerLeg.attachToBone(leftLowerLegBone, mechRoot);
+
+                log(`Meshes attached to bones`, 'info');
 
                 // === RAGDOLL CONFIGURATION ===
                 const ragdollConfig = [

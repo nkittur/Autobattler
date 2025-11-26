@@ -729,7 +729,8 @@
                     color: color,
                     walkTime: 0, // For walking animation
                     walkSpeed: 1.5, // Units per second
-                    walkDirection: isPlayer ? 1 : -1 // Player walks right, enemy walks left
+                    walkDirection: isPlayer ? 1 : -1, // Player walks right, enemy walks left
+                    currentRotationY: isPlayer ? 0 : Math.PI // Track current root rotation for smooth transitions
                 };
 
                 // No ragdoll physics - using kinematic animation
@@ -785,9 +786,26 @@
             }
 
             // LEGS face the walk direction (root rotation)
-            // If walking right (+X), face right (0). If walking left (-X), face left (PI)
+            // Smoothly rotate to face walk direction instead of instant snap
             const targetRootRotation = mech.walkDirection > 0 ? 0 : Math.PI;
-            mech.root.rotation.y = targetRootRotation;
+
+            // Smooth rotation transition (rotate at 720°/sec = 4π rad/sec)
+            const rotationSpeed = 4 * Math.PI; // radians per second
+            const maxRotationThisFrame = rotationSpeed * deltaTime;
+
+            // Calculate shortest rotation direction
+            let rotationDiff = targetRootRotation - mech.currentRotationY;
+            // Normalize to -PI to PI range
+            while (rotationDiff > Math.PI) rotationDiff -= 2 * Math.PI;
+            while (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI;
+
+            // Clamp rotation to max speed
+            if (Math.abs(rotationDiff) > maxRotationThisFrame) {
+                rotationDiff = Math.sign(rotationDiff) * maxRotationThisFrame;
+            }
+
+            mech.currentRotationY += rotationDiff;
+            mech.root.rotation.y = mech.currentRotationY;
 
             // TORSO rotates independently to face enemy
             const otherMech = mech.isPlayer ? enemyMech : playerMech;

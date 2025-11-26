@@ -168,7 +168,7 @@
                     try {
                         updateProjectiles();
                         updateLaserBeams();
-                        stabilizeMechs();
+                        debugMechPositions();
                     } catch (e) {
                         if (!diagnosticsLogged) {
                             log(`ERROR in update functions: ${e.message}`, 'error');
@@ -412,50 +412,15 @@
                 shoulder.parent = torso;
                 shoulder.material = jointMat;
 
-                // Upper arm (HAS PHYSICS - not parented!)
+                // Upper arm (VISUAL ONLY - parented to torso)
                 const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
-                // Position so top of arm aligns with shoulder at spawnY + 0.65
-                // Arm is 0.6 tall, so center should be at 0.65 - 0.3 = 0.35 above spawnY
-                upperArm.position = new BABYLON.Vector3(xPos + xOffset, spawnY + 0.35, 0);
-                // Don't rotate physics bodies - causes constraint issues
+                upperArm.position = new BABYLON.Vector3(xOffset, 0.35, 0);
+                upperArm.parent = torso;
                 upperArm.material = darkMat;
 
-                // Add physics to arm
-                const armAggregate = new BABYLON.PhysicsAggregate(
-                    upperArm,
-                    BABYLON.PhysicsShapeType.BOX,
-                    { mass: 3, friction: 0.3, restitution: 0.1 },
-                    scene
-                );
-
-                // Add damping to arms
-                armAggregate.body.setLinearDamping(0.3);
-                armAggregate.body.setAngularDamping(0.5);
-
-                // Connect arm to torso with ball and socket joint
-                let armConstraint = null;
-                try {
-                    armConstraint = new BABYLON.PhysicsConstraint(
-                        BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
-                        {
-                            pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Pivot on torso (shoulder position)
-                            pivotB: new BABYLON.Vector3(0, 0.3, 0),  // Pivot on arm (top of arm, half-height)
-                            collision: false,  // Disable collision between connected bodies
-                            axisA: new BABYLON.Vector3(0, 1, 0),
-                            axisB: new BABYLON.Vector3(0, 1, 0),
-                            maxAngle: Math.PI / 2  // Limit rotation to 90 degrees
-                        },
-                        scene
-                    );
-                    torsoAggregate.body.addConstraint(armAggregate.body, armConstraint);
-                    log(`${side} arm constraint created`, 'info');
-                } catch (e) {
-                    log(`Error creating ${side} arm constraint: ${e.message}`, 'error');
-                }
-
-                // Lower arm / weapon (parented to upper arm for simplicity)
+                // Lower arm / weapon (parented to upper arm)
                 const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
                     width: 0.2, height: 0.8, depth: 0.2
                 }, scene);
@@ -472,7 +437,7 @@
                 barrel.parent = weapon;
                 barrel.material = jointMat;
 
-                return { upperArm, armAggregate, armConstraint, shoulder, weapon, barrel };
+                return { upperArm, shoulder, weapon, barrel };
             };
 
             const leftArm = createArm('left');
@@ -491,48 +456,13 @@
                 hip.parent = torso;
                 hip.material = jointMat;
 
-                // Upper leg (HAS PHYSICS - not parented!)
+                // Upper leg (VISUAL ONLY - parented to torso)
                 const upperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperLeg`, {
                     width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
-                // Position so top of leg aligns with hip at spawnY - 0.85
-                // Leg is 0.7 tall, so center should be at -0.85 - 0.35 = -1.2 from spawnY
-                upperLeg.position = new BABYLON.Vector3(xPos + xOffset, spawnY - 1.2, 0);
-                // Don't rotate physics bodies - causes constraint issues
+                upperLeg.position = new BABYLON.Vector3(xOffset, -1.2, 0);
+                upperLeg.parent = torso;
                 upperLeg.material = bodyMat;
-
-                // Add physics to leg
-                const legAggregate = new BABYLON.PhysicsAggregate(
-                    upperLeg,
-                    BABYLON.PhysicsShapeType.BOX,
-                    { mass: 8, friction: 0.8, restitution: 0.05 },
-                    scene
-                );
-
-                // Add damping to legs for stability
-                legAggregate.body.setLinearDamping(0.2);
-                legAggregate.body.setAngularDamping(0.7);
-
-                // Connect leg to torso with ball and socket joint
-                let legConstraint = null;
-                try {
-                    legConstraint = new BABYLON.PhysicsConstraint(
-                        BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
-                        {
-                            pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),  // Pivot on torso (hip position)
-                            pivotB: new BABYLON.Vector3(0, 0.35, 0),  // Pivot on leg (top of leg, half-height)
-                            collision: false,  // Disable collision between connected bodies
-                            axisA: new BABYLON.Vector3(0, 1, 0),
-                            axisB: new BABYLON.Vector3(0, 1, 0),
-                            maxAngle: Math.PI / 6  // Limit rotation to 30 degrees for stability
-                        },
-                        scene
-                    );
-                    torsoAggregate.body.addConstraint(legAggregate.body, legConstraint);
-                    log(`${side} leg constraint created`, 'info');
-                } catch (e) {
-                    log(`Error creating ${side} leg constraint: ${e.message}`, 'error');
-                }
 
                 // Knee joint (visual, parented to upper leg)
                 const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
@@ -558,7 +488,7 @@
                 foot.parent = lowerLeg;
                 foot.material = jointMat;
 
-                return { hip, upperLeg, legAggregate, legConstraint, knee, lowerLeg, foot };
+                return { hip, upperLeg, knee, lowerLeg, foot };
             };
 
             const leftLeg = createLeg('left');
@@ -595,15 +525,6 @@
                 maxHP: 100,
                 color: color
             };
-
-                // Ensure all meshes are visible
-                torso.isVisible = true;
-                head.isVisible = true;
-                visor.isVisible = true;
-                leftArm.upperArm.isVisible = true;
-                rightArm.upperArm.isVisible = true;
-                leftLeg.upperLeg.isVisible = true;
-                rightLeg.upperLeg.isVisible = true;
 
                 log(`${isPlayer ? 'Player' : 'Enemy'} mech created at torso: (${torso.position.x.toFixed(1)}, ${torso.position.y.toFixed(1)}, ${torso.position.z.toFixed(1)})`, 'info');
                 return mechData;
@@ -803,33 +724,13 @@
                     // Flash the specific part that was hit
                     flashMeshOnHit(hitPart);
 
-                    // Apply force to specific body part
-                    if (hitPartName !== 'torso' && hitPartName !== 'head') {
-                        const hitDir = projPos.subtract(hitPart.getAbsolutePosition()).normalize();
-
-                        // Apply impulse to the specific limb's physics body
-                        let limbAggregate = null;
-                        if (hitPartName === 'left arm') limbAggregate = proj.target.leftArm.armAggregate;
-                        else if (hitPartName === 'right arm') limbAggregate = proj.target.rightArm.armAggregate;
-                        else if (hitPartName === 'left leg') limbAggregate = proj.target.leftLeg.legAggregate;
-                        else if (hitPartName === 'right leg') limbAggregate = proj.target.rightLeg.legAggregate;
-
-                        if (limbAggregate) {
-                            const limbImpulse = hitDir.scale(20); // Strong impulse for dramatic swing
-                            limbAggregate.body.applyImpulse(limbImpulse, hitPart.getAbsolutePosition());
-                            log(`Applied impulse to ${hitPartName}`, 'info');
-                        }
-                    }
-
-                    // Torso hit - apply knockback
-                    if (hitPartName === 'torso') {
-                        const targetWorldPos = proj.target.torso.position;
-                        const knockbackDir = projPos.subtract(targetWorldPos).normalize().scale(-1);
-                        proj.target.torsoAggregate.body.applyImpulse(
-                            knockbackDir.scale(6), // Moderate knockback
-                            targetWorldPos
-                        );
-                    }
+                    // Apply knockback to the whole mech (single physics body)
+                    const targetWorldPos = proj.target.torso.getAbsolutePosition();
+                    const knockbackDir = projPos.subtract(targetWorldPos).normalize();
+                    proj.target.torsoAggregate.body.applyImpulse(
+                        knockbackDir.scale(8), // Knockback force
+                        projPos // Apply at hit point for realistic rotation
+                    );
 
                     proj.mesh.dispose();
                     return false;
@@ -951,31 +852,12 @@
             // Flash the specific part that was hit
             flashMeshOnHit(hitPart);
 
-            // Apply force to specific body part
-            if (hitPartName !== 'torso' && hitPartName !== 'head') {
-                const hitDir = endPos.subtract(hitPart.getAbsolutePosition()).normalize();
-
-                // Apply impulse to the specific limb's physics body
-                let limbAggregate = null;
-                if (hitPartName === 'left arm') limbAggregate = toMech.leftArm.armAggregate;
-                else if (hitPartName === 'right arm') limbAggregate = toMech.rightArm.armAggregate;
-                else if (hitPartName === 'left leg') limbAggregate = toMech.leftLeg.legAggregate;
-                else if (hitPartName === 'right leg') limbAggregate = toMech.rightLeg.legAggregate;
-
-                if (limbAggregate) {
-                    const limbImpulse = hitDir.scale(12); // Medium impulse for laser
-                    limbAggregate.body.applyImpulse(limbImpulse, hitPart.getAbsolutePosition());
-                }
-            }
-
-            // Torso hit - apply knockback
-            if (hitPartName === 'torso') {
-                const laserDir = endPos.subtract(startPos).normalize();
-                toMech.torsoAggregate.body.applyImpulse(
-                    laserDir.scale(4),
-                    toMech.torso.position
-                );
-            }
+            // Apply knockback to the whole mech (single physics body)
+            const laserDir = endPos.subtract(startPos).normalize();
+            toMech.torsoAggregate.body.applyImpulse(
+                laserDir.scale(5), // Laser knockback
+                endPos // Apply at hit point
+            );
         }
 
         function updateLaserBeams() {
@@ -1015,83 +897,7 @@
             }
         }
 
-        // Active stabilization system to keep mechs standing upright
-        function stabilizeMechs() {
-            if (!playerMech || !enemyMech) return;
-
-            debugMechPositions();
-
-            [playerMech, enemyMech].forEach(mech => {
-                // Apply corrective forces to legs to keep them vertical and supporting the torso
-                const leftLeg = mech.leftLeg;
-                const rightLeg = mech.rightLeg;
-                const torso = mech.torso;
-
-                // Get leg positions relative to torso
-                const leftLegPos = leftLeg.upperLeg.getAbsolutePosition();
-                const rightLegPos = rightLeg.upperLeg.getAbsolutePosition();
-                const torsoPos = torso.getAbsolutePosition();
-
-                // Apply stabilization forces based on velocity (damped spring system)
-                const torsoVel = mech.torsoAggregate.body.getLinearVelocity();
-                const targetHeight = 3.5; // Target torso height
-                const heightError = targetHeight - torsoPos.y;
-
-                // Only stabilize if at reasonable height and not already stable
-                if (torsoPos.y < 10 && torsoPos.y > -5 && Math.abs(heightError) < 5) {
-                    // Proportional force based on height error (spring)
-                    const springForce = heightError * 100;
-
-                    // Damping force based on vertical velocity
-                    const dampingForce = -torsoVel.y * 50;
-
-                    // Total upward force per leg (distributed to legs, not torso)
-                    const legSupportForce = (springForce + dampingForce) / 2;
-
-                    // Only apply if force is upward (don't push down)
-                    if (legSupportForce > 0) {
-                        leftLeg.legAggregate.body.applyForce(
-                            new BABYLON.Vector3(0, legSupportForce, 0),
-                            leftLegPos
-                        );
-                        rightLeg.legAggregate.body.applyForce(
-                            new BABYLON.Vector3(0, legSupportForce, 0),
-                            rightLegPos
-                        );
-                    }
-                }
-
-                // Apply strong corrective torque to legs to keep them vertical
-                const leftLegAngVel = leftLeg.legAggregate.body.getAngularVelocity();
-                const rightLegAngVel = rightLeg.legAggregate.body.getAngularVelocity();
-
-                // Strong damping torque to reduce angular velocity and prevent rotation
-                leftLeg.legAggregate.body.applyTorque(leftLegAngVel.scale(-20));
-                rightLeg.legAggregate.body.applyTorque(rightLegAngVel.scale(-20));
-
-                // Keep legs from drifting away from torso
-                const leftLegToTorso = torsoPos.subtract(leftLegPos);
-                const rightLegToTorso = torsoPos.subtract(rightLegPos);
-
-                // Only correct horizontal drift, not vertical
-                leftLegToTorso.y = 0;
-                rightLegToTorso.y = 0;
-
-                // Apply strong centering force if legs drift
-                if (leftLegToTorso.length() > 0.3) {
-                    leftLeg.legAggregate.body.applyForce(
-                        leftLegToTorso.normalize().scale(50),
-                        leftLegPos
-                    );
-                }
-                if (rightLegToTorso.length() > 0.3) {
-                    rightLeg.legAggregate.body.applyForce(
-                        rightLegToTorso.normalize().scale(50),
-                        rightLegPos
-                    );
-                }
-            });
-        }
+        // No active stabilization needed - using single physics body per mech
 
         // === EFFECTS ===
 
@@ -1183,25 +989,6 @@
                 playerMech.torso.position = new BABYLON.Vector3(-5, resetHeight, 0);
                 playerMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
-                // Reset arms
-                playerMech.leftArm.upperArm.position = new BABYLON.Vector3(-5 - 0.9, resetHeight + 0.35, 0);
-                playerMech.leftArm.armAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                playerMech.leftArm.armAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
-                playerMech.rightArm.upperArm.position = new BABYLON.Vector3(-5 + 0.9, resetHeight + 0.35, 0);
-                playerMech.rightArm.armAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                playerMech.rightArm.armAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
-                // Reset legs
-                playerMech.leftLeg.upperLeg.position = new BABYLON.Vector3(-5 - 0.4, resetHeight - 1.2, 0);
-                playerMech.leftLeg.legAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                playerMech.leftLeg.legAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
-                playerMech.rightLeg.upperLeg.position = new BABYLON.Vector3(-5 + 0.4, resetHeight - 1.2, 0);
-                playerMech.rightLeg.legAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                playerMech.rightLeg.legAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
                 playerMech.currentHP = playerMech.maxHP;
             }
 
@@ -1210,25 +997,6 @@
                 enemyMech.torso.position = new BABYLON.Vector3(5, resetHeight, 0);
                 enemyMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
-                // Reset arms
-                enemyMech.leftArm.upperArm.position = new BABYLON.Vector3(5 - 0.9, resetHeight + 0.35, 0);
-                enemyMech.leftArm.armAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                enemyMech.leftArm.armAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
-                enemyMech.rightArm.upperArm.position = new BABYLON.Vector3(5 + 0.9, resetHeight + 0.35, 0);
-                enemyMech.rightArm.armAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                enemyMech.rightArm.armAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
-                // Reset legs
-                enemyMech.leftLeg.upperLeg.position = new BABYLON.Vector3(5 - 0.4, resetHeight - 1.2, 0);
-                enemyMech.leftLeg.legAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                enemyMech.leftLeg.legAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
-                enemyMech.rightLeg.upperLeg.position = new BABYLON.Vector3(5 + 0.4, resetHeight - 1.2, 0);
-                enemyMech.rightLeg.legAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                enemyMech.rightLeg.legAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-
                 enemyMech.currentHP = enemyMech.maxHP;
             }
 
@@ -1237,7 +1005,10 @@
             projectiles = [];
 
             // Clear laser beams
-            laserBeams.forEach(b => b.mesh.dispose());
+            laserBeams.forEach(b => {
+                b.mesh.dispose();
+                if (b.glowMesh) b.glowMesh.dispose();
+            });
             laserBeams = [];
 
             log('Scene reset!', 'info');

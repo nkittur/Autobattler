@@ -412,13 +412,59 @@
                 shoulder.parent = torso;
                 shoulder.material = jointMat;
 
-                // Upper arm (VISUAL ONLY - parented to torso)
+                // Upper arm (HAS PHYSICS - not parented!)
                 const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
-                upperArm.position = new BABYLON.Vector3(xOffset, 0.35, 0);
-                upperArm.parent = torso;
+                upperArm.position = new BABYLON.Vector3(xPos + xOffset, spawnY + 0.35, 0);
                 upperArm.material = darkMat;
+
+                // Add physics to arm
+                const armAggregate = new BABYLON.PhysicsAggregate(
+                    upperArm,
+                    BABYLON.PhysicsShapeType.BOX,
+                    { mass: 3, friction: 0.3, restitution: 0.1 },
+                    scene
+                );
+
+                // Add damping to arms
+                armAggregate.body.setLinearDamping(0.3);
+                armAggregate.body.setAngularDamping(0.5);
+
+                // Connect arm to torso with 6DOF constraint (allows motors)
+                let armConstraint = null;
+                try {
+                    armConstraint = new BABYLON.PhysicsConstraint(
+                        BABYLON.PhysicsConstraintType.SIX_DOF,
+                        {
+                            pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),
+                            pivotB: new BABYLON.Vector3(0, 0.3, 0),
+                            collision: false,
+                            // Motor to hold arm in place
+                            axisA: new BABYLON.Vector3(0, 1, 0),
+                            axisB: new BABYLON.Vector3(0, 1, 0)
+                        },
+                        scene
+                    );
+                    torsoAggregate.body.addConstraint(armAggregate.body, armConstraint);
+
+                    // Set motor target (keep arm pointing down)
+                    armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
+                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0);
+                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 50);
+
+                    armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
+                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
+                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 50);
+
+                    armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
+                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
+                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 50);
+
+                    log(`${side} arm constraint with motors created`, 'info');
+                } catch (e) {
+                    log(`Error creating ${side} arm constraint: ${e.message}`, 'error');
+                }
 
                 // Lower arm / weapon (parented to upper arm)
                 const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
@@ -437,7 +483,7 @@
                 barrel.parent = weapon;
                 barrel.material = jointMat;
 
-                return { upperArm, shoulder, weapon, barrel };
+                return { upperArm, shoulder, weapon, barrel, armAggregate };
             };
 
             const leftArm = createArm('left');
@@ -456,13 +502,58 @@
                 hip.parent = torso;
                 hip.material = jointMat;
 
-                // Upper leg (VISUAL ONLY - parented to torso)
+                // Upper leg (HAS PHYSICS - not parented!)
                 const upperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperLeg`, {
                     width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
-                upperLeg.position = new BABYLON.Vector3(xOffset, -1.2, 0);
-                upperLeg.parent = torso;
+                upperLeg.position = new BABYLON.Vector3(xPos + xOffset, spawnY - 1.2, 0);
                 upperLeg.material = bodyMat;
+
+                // Add physics to leg
+                const legAggregate = new BABYLON.PhysicsAggregate(
+                    upperLeg,
+                    BABYLON.PhysicsShapeType.BOX,
+                    { mass: 5, friction: 0.5, restitution: 0.1 },
+                    scene
+                );
+
+                // Add damping to legs
+                legAggregate.body.setLinearDamping(0.3);
+                legAggregate.body.setAngularDamping(0.5);
+
+                // Connect leg to torso with 6DOF constraint (allows motors)
+                let legConstraint = null;
+                try {
+                    legConstraint = new BABYLON.PhysicsConstraint(
+                        BABYLON.PhysicsConstraintType.SIX_DOF,
+                        {
+                            pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),
+                            pivotB: new BABYLON.Vector3(0, 0.35, 0),
+                            collision: false,
+                            axisA: new BABYLON.Vector3(0, 1, 0),
+                            axisB: new BABYLON.Vector3(0, 1, 0)
+                        },
+                        scene
+                    );
+                    torsoAggregate.body.addConstraint(legAggregate.body, legConstraint);
+
+                    // Set motor target (keep leg pointing down)
+                    legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
+                    legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0);
+                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 100);
+
+                    legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
+                    legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
+                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 100);
+
+                    legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
+                    legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
+                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 100);
+
+                    log(`${side} leg constraint with motors created`, 'info');
+                } catch (e) {
+                    log(`Error creating ${side} leg constraint: ${e.message}`, 'error');
+                }
 
                 // Knee joint (visual, parented to upper leg)
                 const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
@@ -488,7 +579,7 @@
                 foot.parent = lowerLeg;
                 foot.material = jointMat;
 
-                return { hip, upperLeg, knee, lowerLeg, foot };
+                return { hip, upperLeg, knee, lowerLeg, foot, legAggregate };
             };
 
             const leftLeg = createLeg('left');

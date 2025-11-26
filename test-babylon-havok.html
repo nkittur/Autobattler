@@ -710,44 +710,41 @@
             const walkCycle = Math.sin(mech.walkTime);
             const walkCycleAlt = Math.sin(mech.walkTime + Math.PI); // Opposite phase
 
-            // Calculate movement direction (includes both X and Z movement)
+            // Move mech side-to-side
             const moveAmountX = mech.walkSpeed * deltaTime * mech.walkDirection;
-            const oldZ = mech.root.position.z;
-
-            // Move mech in a circular/side-to-side pattern
             mech.root.position.x += moveAmountX;
 
             // Move slightly forward and back (Z axis) for more dynamic movement
-            const newZ = Math.sin(mech.walkTime * 0.5) * 1.5;
-            mech.root.position.z = newZ;
-            const moveAmountZ = newZ - oldZ;
+            mech.root.position.z = Math.sin(mech.walkTime * 0.5) * 1.5;
 
             // Reverse direction at boundaries
             if (Math.abs(mech.root.position.x) > 6) {
                 mech.walkDirection *= -1;
             }
 
-            // ROOT faces movement direction (legs follow)
-            // Calculate direction of movement
-            const movementAngle = Math.atan2(moveAmountZ, moveAmountX);
-            // Smoothly rotate root to face movement direction
-            if (Math.abs(moveAmountX) > 0.001 || Math.abs(moveAmountZ) > 0.001) {
-                mech.root.rotation.y = movementAngle;
-            }
+            // LEGS face the walk direction (root rotation)
+            // If walking right (+X), face right (0). If walking left (-X), face left (PI)
+            const targetRootRotation = mech.walkDirection > 0 ? 0 : Math.PI;
+            mech.root.rotation.y = targetRootRotation;
 
             // TORSO rotates independently to face enemy
-            // Get positions to calculate facing angle
             const otherMech = mech.isPlayer ? enemyMech : playerMech;
             if (otherMech) {
-                const mechPos = mech.root.position;
-                const targetPos = otherMech.root.position;
+                const mechPos = mech.root.getAbsolutePosition();
+                const targetPos = otherMech.root.getAbsolutePosition();
                 const dx = targetPos.x - mechPos.x;
                 const dz = targetPos.z - mechPos.z;
+
+                // Calculate world angle to target
                 const angleToTarget = Math.atan2(dz, dx);
 
-                // Torso rotation is relative to root rotation
+                // Torso rotation is relative to root rotation (in root's local space)
                 const relativeAngle = angleToTarget - mech.root.rotation.y;
-                mech.torsoBone.setRotation(new BABYLON.Vector3(0, relativeAngle, 0), BABYLON.Space.LOCAL);
+
+                // Clamp torso rotation to reasonable limits (can't twist 360)
+                const clampedAngle = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, relativeAngle));
+
+                mech.torsoBone.setRotation(new BABYLON.Vector3(0, clampedAngle, 0), BABYLON.Space.LOCAL);
             }
 
             // Animate legs - alternating walking motion

@@ -132,7 +132,16 @@
             // Start render loop
             let frameCount = 0;
             let diagnosticsLogged = false;
+            let firstFrameLogged = false;
+
+            log('Starting render loop...', 'error');
+
             engine.runRenderLoop(() => {
+                if (!firstFrameLogged) {
+                    log('RENDER LOOP FRAME 1 EXECUTING', 'error');
+                    firstFrameLogged = true;
+                }
+
                 if (scene) {
                     scene.render();
                     frameCount++;
@@ -142,20 +151,17 @@
                         diagnosticsLogged = true;
                         log(`=== RENDER DIAGNOSTICS (Frame ${frameCount}) ===`, 'error');
                         log(`Active meshes: ${scene.getActiveMeshes().length} / Total: ${scene.meshes.length}`, 'error');
-                        log(`Total vertices: ${scene.getTotalVertices()}`, 'error');
                         log(`Draw calls: ${scene.getEngine().drawCalls}`, 'error');
-
-                        // Check debug box
-                        const debugBox = scene.getMeshByName('debugBox');
-                        if (debugBox) {
-                            log(`Debug box: ready=${debugBox.isReady()}, enabled=${debugBox.isEnabled()}, visible=${debugBox.isVisible}`, 'error');
-                            log(`Debug box in frustum: ${debugBox.isInFrustum(camera)}`, 'error');
-                        }
                     }
 
                     updateProjectiles();
                     updateLaserBeams();
                     stabilizeMechs();
+                } else {
+                    if (!diagnosticsLogged) {
+                        log('ERROR: scene is null/undefined in render loop!', 'error');
+                        diagnosticsLogged = true;
+                    }
                 }
             });
 

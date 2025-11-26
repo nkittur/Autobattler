@@ -431,9 +431,9 @@
                 let armAggregate = null;
 
                 if (usePhysics) {
-                    // PHYSICS ARM: Position in world space, attach via constraint
-                    // Shoulder is at torsoY + 0.65
-                    // Arm center needs to be armHeight/2 below shoulder
+                    // PHYSICS ARM: Position so TOP of arm aligns with shoulder
+                    // Shoulder world position: (xPos + xOffset, spawnY + 0.65, 0)
+                    // Arm center = shoulder - armHeight/2 in Y
                     upperArm.position = new BABYLON.Vector3(
                         xPos + xOffset,
                         spawnY + 0.65 - (armHeight / 2),
@@ -441,13 +441,17 @@
                     );
                     upperArm.material = darkMat;
 
-                    log(`Creating RIGHT arm with PHYSICS at (${upperArm.position.x.toFixed(2)}, ${upperArm.position.y.toFixed(2)}, ${upperArm.position.z.toFixed(2)})`, 'info');
+                    log(`=== RIGHT ARM PHYSICS SETUP ===`, 'warn');
+                    log(`Torso at: (${xPos}, ${spawnY}, 0)`, 'info');
+                    log(`Arm center: (${upperArm.position.x.toFixed(2)}, ${upperArm.position.y.toFixed(2)}, ${upperArm.position.z.toFixed(2)})`, 'info');
+                    log(`Arm top: (${upperArm.position.x.toFixed(2)}, ${(upperArm.position.y + armHeight/2).toFixed(2)}, 0) [should be shoulder]`, 'info');
+                    log(`Shoulder: (${xPos + xOffset}, ${spawnY + 0.65}, 0)`, 'info');
 
-                    // Create physics aggregate
+                    // Create physics - VERY LIGHT for testing
                     armAggregate = new BABYLON.PhysicsAggregate(
                         upperArm,
                         BABYLON.PhysicsShapeType.BOX,
-                        { mass: 5, friction: 0.5, restitution: 0.1 },
+                        { mass: 1, friction: 0.8, restitution: 0.01 }, // Lighter!
                         scene
                     );
 
@@ -455,73 +459,38 @@
                     armAggregate.shape.filterMembershipMask = 1;
                     armAggregate.shape.filterCollideMask = 2 | 4;
 
-                    // High damping for stability
-                    armAggregate.body.setLinearDamping(0.5);
-                    armAggregate.body.setAngularDamping(0.7);
+                    // MAXIMUM damping
+                    armAggregate.body.setLinearDamping(0.95);
+                    armAggregate.body.setAngularDamping(0.95);
 
-                    // Create 6DOF constraint with ANGULAR LIMITS (the missing piece!)
+                    // Try BALL_AND_SOCKET (simpler than 6DOF)
                     try {
                         const constraint = new BABYLON.PhysicsConstraint(
-                            BABYLON.PhysicsConstraintType.SIX_DOF,
+                            BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
                             {
-                                pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Shoulder in torso space
-                                pivotB: new BABYLON.Vector3(0, armHeight / 2, 0), // Top of arm in arm space
-                                collision: false,
-                                axisA: new BABYLON.Vector3(0, 1, 0),
-                                axisB: new BABYLON.Vector3(0, 1, 0)
+                                pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Shoulder in torso LOCAL space
+                                pivotB: new BABYLON.Vector3(0, armHeight / 2, 0), // Top of arm in arm LOCAL space
+                                collision: false
                             },
                             scene
                         );
 
                         torsoAggregate.body.addConstraint(armAggregate.body, constraint);
 
-                        // **CRITICAL: Lock linear movement (prevents separation)**
-                        constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_X, 0, 0);
-                        constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 0, 0);
-                        constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Z, 0, 0);
+                        log(`BALL_AND_SOCKET constraint created`, 'info');
+                        log(`  pivotA (torso local): (${xOffset}, 0.65, 0)`, 'info');
+                        log(`  pivotB (arm local): (0, ${armHeight/2}, 0)`, 'info');
 
-                        // **NEW: Set angular limits (prevents wild spinning)**
-                        // X axis = pitch (forward/back swing)
-                        constraint.setLimit(
-                            BABYLON.PhysicsConstraintAxis.ANGULAR_X,
-                            -Math.PI / 2,  // Can raise to horizontal
-                            Math.PI / 3    // Can drop to 60° down
-                        );
+                        // Calculate if pivots align in world space
+                        const shoulderWorld = torso.position.add(new BABYLON.Vector3(xOffset, 0.65, 0));
+                        const armTopWorld = upperArm.position.add(new BABYLON.Vector3(0, armHeight/2, 0));
+                        const dist = BABYLON.Vector3.Distance(shoulderWorld, armTopWorld);
+                        log(`  Pivot distance: ${dist.toFixed(6)} (should be ~0)`, dist < 0.01 ? 'info' : 'error');
 
-                        // Y axis = yaw (left/right twist)
-                        constraint.setLimit(
-                            BABYLON.PhysicsConstraintAxis.ANGULAR_Y,
-                            -Math.PI / 4,  // 45° left
-                            Math.PI / 4    // 45° right
-                        );
-
-                        // Z axis = roll (spin around arm length)
-                        constraint.setLimit(
-                            BABYLON.PhysicsConstraintAxis.ANGULAR_Z,
-                            -Math.PI / 6,  // 30° either way
-                            Math.PI / 6
-                        );
-
-                        // **NEW: Much stronger motor forces (like ragdoll example)**
-                        // X axis motor - hold arm pointing slightly down
-                        constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
-                        constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, Math.PI / 6); // Slightly down
-                        constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 300);
-
-                        // Y axis motor - no twist
-                        constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
-                        constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
-                        constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 300);
-
-                        // Z axis motor - no roll
-                        constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
-                        constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
-                        constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 300);
-
-                        log(`RIGHT arm: Physics constraint created with ANGULAR LIMITS and strong motors`, 'info');
+                        log(`Constraint added successfully`, 'info');
                     } catch (e) {
-                        log(`ERROR creating RIGHT arm constraint: ${e.message}`, 'error');
-                        console.error('Right arm constraint error:', e);
+                        log(`ERROR creating constraint: ${e.message}`, 'error');
+                        console.error('Constraint error:', e);
                     }
                 } else {
                     // VISUAL ONLY ARM (left arm for now)

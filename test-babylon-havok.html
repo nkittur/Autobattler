@@ -772,9 +772,12 @@
             const zPhase = mech.isPlayer ? 0 : Math.PI; // 180° phase difference
             mech.root.position.z = Math.sin(mech.walkTime * 0.5 + zPhase) * 1.5;
 
-            // Reverse direction at boundaries
-            if (Math.abs(mech.root.position.x) > 6) {
+            // Reverse direction at boundaries and clamp position
+            const boundary = 6;
+            if (Math.abs(mech.root.position.x) > boundary) {
                 mech.walkDirection *= -1;
+                // Clamp position to boundary to prevent escaping
+                mech.root.position.x = Math.sign(mech.root.position.x) * boundary;
             }
 
             // LEGS face the walk direction (root rotation)

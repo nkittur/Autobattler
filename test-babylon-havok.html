@@ -562,27 +562,26 @@
 
                 // === POSE BONES FOR FIRING STANCE ===
                 // Rotate bones to create articulated, ready-to-fire pose
+                // CRITICAL: Use setRotation() API, not direct .rotation assignment
 
                 // Raise right arm forward and out (ready to fire)
-                rightArmBone.rotation = new BABYLON.Vector3(Math.PI / 3, 0, -Math.PI / 6); // Forward and slightly out
+                rightArmBone.setRotation(new BABYLON.Vector3(Math.PI / 3, 0, -Math.PI / 6), BABYLON.Space.LOCAL);
                 // Bend right elbow
-                rightForearmBone.rotation = new BABYLON.Vector3(-Math.PI / 4, 0, 0); // Bent elbow
+                rightForearmBone.setRotation(new BABYLON.Vector3(-Math.PI / 4, 0, 0), BABYLON.Space.LOCAL);
 
                 // Raise left arm forward and out (ready to fire)
-                leftArmBone.rotation = new BABYLON.Vector3(Math.PI / 3, 0, Math.PI / 6); // Forward and slightly out
+                leftArmBone.setRotation(new BABYLON.Vector3(Math.PI / 3, 0, Math.PI / 6), BABYLON.Space.LOCAL);
                 // Bend left elbow
-                leftForearmBone.rotation = new BABYLON.Vector3(-Math.PI / 4, 0, 0); // Bent elbow
+                leftForearmBone.setRotation(new BABYLON.Vector3(-Math.PI / 4, 0, 0), BABYLON.Space.LOCAL);
 
-                // Bend right knee slightly for stable stance
-                rightUpperLegBone.rotation = new BABYLON.Vector3(Math.PI / 12, 0, 0); // Slight forward bend
-                rightLowerLegBone.rotation = new BABYLON.Vector3(-Math.PI / 12, 0, 0); // Knee bend
-
-                // Bend left knee slightly for stable stance
-                leftUpperLegBone.rotation = new BABYLON.Vector3(Math.PI / 12, 0, 0); // Slight forward bend
-                leftLowerLegBone.rotation = new BABYLON.Vector3(-Math.PI / 12, 0, 0); // Knee bend
+                // Legs start with slight bends (will be overridden by walking animation)
+                rightUpperLegBone.setRotation(new BABYLON.Vector3(Math.PI / 12, 0, 0), BABYLON.Space.LOCAL);
+                rightLowerLegBone.setRotation(new BABYLON.Vector3(-Math.PI / 12, 0, 0), BABYLON.Space.LOCAL);
+                leftUpperLegBone.setRotation(new BABYLON.Vector3(Math.PI / 12, 0, 0), BABYLON.Space.LOCAL);
+                leftLowerLegBone.setRotation(new BABYLON.Vector3(-Math.PI / 12, 0, 0), BABYLON.Space.LOCAL);
 
                 skeleton.prepare(); // Recompute after rotations
-                log(`Bones posed for firing stance`, 'info');
+                log(`Bones posed for firing stance using setRotation()`, 'info');
 
                 // === RAGDOLL CONFIGURATION ===
                 const ragdollConfig = [
@@ -735,21 +734,31 @@
             const legSwing = walkCycle * 0.6; // Maximum swing angle
             const kneeSwing = Math.max(0, -walkCycle * 0.4); // Knee bends only forward
 
+            // CRITICAL: Use proper Babylon.js Bone API
+            // Bones need setRotation(), not direct .rotation assignment
+
             // Right leg (forward when walkCycle positive)
-            mech.rightUpperLeg.bone.rotation.x = Math.PI / 12 + legSwing;
-            mech.rightLowerLeg.bone.rotation.x = -Math.PI / 12 - kneeSwing * 2;
+            const rightUpperLegAngle = Math.PI / 12 + legSwing;
+            const rightLowerLegAngle = -Math.PI / 12 - kneeSwing * 2;
+
+            mech.rightUpperLeg.bone.setRotation(new BABYLON.Vector3(rightUpperLegAngle, 0, 0), BABYLON.Space.LOCAL);
+            mech.rightLowerLeg.bone.setRotation(new BABYLON.Vector3(rightLowerLegAngle, 0, 0), BABYLON.Space.LOCAL);
 
             // Left leg (forward when walkCycle negative)
             const legSwingAlt = walkCycleAlt * 0.6;
             const kneeSwingAlt = Math.max(0, -walkCycleAlt * 0.4);
-            mech.leftUpperLeg.bone.rotation.x = Math.PI / 12 + legSwingAlt;
-            mech.leftLowerLeg.bone.rotation.x = -Math.PI / 12 - kneeSwingAlt * 2;
+
+            const leftUpperLegAngle = Math.PI / 12 + legSwingAlt;
+            const leftLowerLegAngle = -Math.PI / 12 - kneeSwingAlt * 2;
+
+            mech.leftUpperLeg.bone.setRotation(new BABYLON.Vector3(leftUpperLegAngle, 0, 0), BABYLON.Space.LOCAL);
+            mech.leftLowerLeg.bone.setRotation(new BABYLON.Vector3(leftLowerLegAngle, 0, 0), BABYLON.Space.LOCAL);
 
             // Slight torso bob for natural walking
             const bob = Math.abs(walkCycle) * 0.08;
             mech.root.position.y = bob;
 
-            // Update skeleton
+            // Update skeleton - CRITICAL for bones to update
             mech.skeleton.prepare();
         }
 

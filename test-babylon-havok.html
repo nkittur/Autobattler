@@ -130,6 +130,11 @@
             scene = createScene();
 
             // Start render loop
+            // CRITICAL FIX DOCUMENTATION:
+            // The update functions (especially stabilizeMechs) MUST be wrapped in try-catch.
+            // Without this, errors during mech initialization (accessing undefined physics properties)
+            // would silently kill the entire render loop, causing a gray screen with no rendering.
+            // The try-catch allows the render loop to continue even if update functions throw errors.
             let frameCount = 0;
             let diagnosticsLogged = false;
             let firstFrameLogged = false;
@@ -187,7 +192,7 @@
 
         function createScene() {
             const scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color4(0.5, 0.5, 0.5, 1); // Changed to gray to verify rendering
+            scene.clearColor = new BABYLON.Color3(0.05, 0.05, 0.12); // Dark background
 
             // Create Havok physics plugin
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
@@ -211,19 +216,6 @@
             camera.minZ = 0.1;
             camera.maxZ = 1000;
 
-            // CRITICAL DEBUG: Create a box DIRECTLY in front of camera, impossible to miss
-            const debugBox = BABYLON.MeshBuilder.CreateBox('debugBox', { size: 5 }, scene);
-            // Place it exactly where camera is looking: at the target point
-            debugBox.position = new BABYLON.Vector3(0, 3, 0);
-            const debugMat = new BABYLON.StandardMaterial('debugMat', scene);
-            debugMat.diffuseColor = new BABYLON.Color3(1, 1, 0); // Yellow
-            debugMat.emissiveColor = new BABYLON.Color3(1, 1, 0); // Self-lit
-            debugMat.wireframe = false;
-            debugBox.material = debugMat;
-            debugBox.isVisible = true;
-            debugBox.setEnabled(true);
-            log('CRITICAL DEBUG: Yellow box at camera target (0,3,0)', 'error');
-
             // Lighting - make it much brighter
             const hemisphericLight = new BABYLON.HemisphericLight(
                 'hemiLight',
@@ -231,36 +223,6 @@
                 scene
             );
             hemisphericLight.intensity = 2.0; // Very bright
-
-            // MINIMAL TEST: Create multiple test objects at different positions
-            const testSphere1 = BABYLON.MeshBuilder.CreateSphere('testSphere1', {
-                diameter: 2
-            }, scene);
-            testSphere1.position = new BABYLON.Vector3(0, 3, 0);
-            const testMat1 = new BABYLON.StandardMaterial('testMat1', scene);
-            testMat1.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            testMat1.emissiveColor = new BABYLON.Color3(1, 0, 0);
-            testSphere1.material = testMat1;
-
-            const testBox = BABYLON.MeshBuilder.CreateBox('testBox', {
-                size: 3
-            }, scene);
-            testBox.position = new BABYLON.Vector3(-5, 2, 0);
-            const testMat2 = new BABYLON.StandardMaterial('testMat2', scene);
-            testMat2.diffuseColor = new BABYLON.Color3(0, 1, 0);
-            testMat2.emissiveColor = new BABYLON.Color3(0, 1, 0);
-            testBox.material = testMat2;
-
-            const testBox2 = BABYLON.MeshBuilder.CreateBox('testBox2', {
-                size: 3
-            }, scene);
-            testBox2.position = new BABYLON.Vector3(5, 2, 0);
-            const testMat3 = new BABYLON.StandardMaterial('testMat3', scene);
-            testMat3.diffuseColor = new BABYLON.Color3(0, 0, 1);
-            testMat3.emissiveColor = new BABYLON.Color3(0, 0, 1);
-            testBox2.material = testMat3;
-
-            log('TEST: Created red sphere at (0,3,0), green box at (-5,2,0), blue box at (5,2,0)', 'warn');
 
             // Create ground
             createGround(scene);
@@ -312,18 +274,7 @@
                 scene
             );
 
-            // DEBUG: Add a visible test sphere
-            const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', {
-                diameter: 2
-            }, scene);
-            testSphere.position = new BABYLON.Vector3(0, 5, 0);
-            const testMat = new BABYLON.StandardMaterial('testMat', scene);
-            testMat.diffuseColor = new BABYLON.Color3(1, 0, 0); // Bright red
-            testMat.emissiveColor = new BABYLON.Color3(1, 0, 0); // Self-illuminating
-            testSphere.material = testMat;
-
             log('Ground created with physics', 'info');
-            log('DEBUG: Red test sphere created at (0, 5, 0)', 'warn');
             return ground;
         }
 
@@ -1081,19 +1032,33 @@
                 const rightLegPos = rightLeg.upperLeg.getAbsolutePosition();
                 const torsoPos = torso.getAbsolutePosition();
 
-                // Only apply stabilization if torso is at reasonable height (not flying away)
-                if (torsoPos.y < 10 && torsoPos.y > -5) {
-                    // Apply strong upward force on legs to counter gravity and support torso
-                    // Total mech mass ~102kg, gravity = 9.81, so need ~500N per leg
-                    const legSupportForce = 500;
-                    leftLeg.legAggregate.body.applyForce(
-                        new BABYLON.Vector3(0, legSupportForce, 0),
-                        leftLegPos
-                    );
-                    rightLeg.legAggregate.body.applyForce(
-                        new BABYLON.Vector3(0, legSupportForce, 0),
-                        rightLegPos
-                    );
+                // Apply stabilization forces based on velocity (damped spring system)
+                const torsoVel = mech.torsoAggregate.body.getLinearVelocity();
+                const targetHeight = 3.5; // Target torso height
+                const heightError = targetHeight - torsoPos.y;
+
+                // Only stabilize if at reasonable height and not already stable
+                if (torsoPos.y < 10 && torsoPos.y > -5 && Math.abs(heightError) < 5) {
+                    // Proportional force based on height error (spring)
+                    const springForce = heightError * 100;
+
+                    // Damping force based on vertical velocity
+                    const dampingForce = -torsoVel.y * 50;
+
+                    // Total upward force per leg (distributed to legs, not torso)
+                    const legSupportForce = (springForce + dampingForce) / 2;
+
+                    // Only apply if force is upward (don't push down)
+                    if (legSupportForce > 0) {
+                        leftLeg.legAggregate.body.applyForce(
+                            new BABYLON.Vector3(0, legSupportForce, 0),
+                            leftLegPos
+                        );
+                        rightLeg.legAggregate.body.applyForce(
+                            new BABYLON.Vector3(0, legSupportForce, 0),
+                            rightLegPos
+                        );
+                    }
                 }
 
                 // Apply strong corrective torque to legs to keep them vertical

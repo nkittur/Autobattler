@@ -113,8 +113,10 @@
                 return;
             }
 
-            log(`Canvas size: ${canvas.width}x${canvas.height}`, 'info');
-            log(`Rendering size: ${engine.getRenderWidth()}x${engine.getRenderHeight()}`, 'info');
+            log(`Canvas element CSS size: ${canvas.clientWidth}x${canvas.clientHeight}`, 'info');
+            log(`Canvas buffer size: ${canvas.width}x${canvas.height}`, 'info');
+            log(`Engine rendering size: ${engine.getRenderWidth()}x${engine.getRenderHeight()}`, 'info');
+            log(`Aspect ratio: ${engine.getAspectRatio(camera)}`, 'info');
 
             // Initialize Havok Physics
             try {
@@ -136,6 +138,17 @@
                     frameCount++;
                     if (frameCount === 60) {
                         log(`Render loop working: 60 frames rendered`, 'warn');
+                        log(`Active meshes: ${scene.getActiveMeshes().length}`, 'warn');
+                        log(`Total vertices: ${scene.getTotalVertices()}`, 'warn');
+                        log(`Draw calls: ${engine.drawCalls}`, 'warn');
+                        log(`Engine is ready: ${engine.isReady}`, 'warn');
+
+                        // Check if any mesh is actually being rendered
+                        const activeMeshes = scene.getActiveMeshes();
+                        log(`First 5 active meshes:`, 'warn');
+                        activeMeshes.data.slice(0, 5).forEach(mesh => {
+                            log(`  - ${mesh.name}: ready=${mesh.isReady()}, enabled=${mesh.isEnabled()}, visible=${mesh.isVisible}`, 'info');
+                        });
                     }
                     updateProjectiles();
                     updateLaserBeams();

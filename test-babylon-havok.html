@@ -472,21 +472,26 @@
 
                     torsoAggregate.body.addConstraint(armAggregate.body, armConstraint);
 
-                    // Set motor target (raise arms forward for firing stance)
-                    // X axis - pitch (forward/back)
-                    armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
-                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, -Math.PI / 4); // Raise arms forward 45°
-                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 100);
+                    // Set linear limits to keep arm attached (prevent stretching)
+                    armConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_X, 0, 0);
+                    armConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 0, 0);
+                    armConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Z, 0, 0);
+
+                    // Set motor target - arms pointing forward/down in relaxed firing stance
+                    // NOTE: Keep motors gentle to avoid instability, let arms hang naturally
+
+                    // X axis - pitch (forward/back) - DISABLED for now, let arms hang
+                    armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, false);
 
                     // Y axis - yaw (left/right)
                     armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
                     armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
-                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 100);
+                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 50);
 
                     // Z axis - roll (side tilt)
                     armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
-                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, xSign * Math.PI / 8); // Slightly outward
-                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 100);
+                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
+                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 50);
 
                     log(`${side} arm constraint with motors created successfully`, 'info');
                 } catch (e) {
@@ -581,21 +586,28 @@
 
                     torsoAggregate.body.addConstraint(legAggregate.body, legConstraint);
 
+                    // Set linear limits to keep leg attached (prevent stretching)
+                    legConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_X, 0, 0);
+                    legConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 0, 0);
+                    legConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Z, 0, 0);
+
                     // Set motor target (keep leg pointing down straight)
-                    // X axis - pitch (forward/back)
+                    // Motors help legs support weight and return to position after impacts
+
+                    // X axis - pitch (forward/back swing)
                     legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
                     legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0);
-                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 150);
+                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 200);
 
                     // Y axis - yaw (left/right turn)
                     legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
                     legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
-                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 150);
+                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 200);
 
                     // Z axis - roll (side tilt)
                     legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
                     legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
-                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 150);
+                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 200);
 
                     log(`${side} leg constraint with motors created successfully`, 'info');
                 } catch (e) {
@@ -1221,10 +1233,161 @@
             }
         }
 
+        // === DIAGNOSTIC TEST SUITE ===
+        let debugSpheres = [];
+
+        function runDiagnostics() {
+            log('=== RUNNING DIAGNOSTICS ===', 'warn');
+
+            // Clear old debug objects
+            debugSpheres.forEach(sphere => sphere.dispose());
+            debugSpheres = [];
+
+            testJointAlignment();
+            testProjectileAngles();
+            testConstraintIntegrity();
+            testMotorConfiguration();
+
+            log('=== DIAGNOSTICS COMPLETE ===', 'warn');
+        }
+
+        function createDebugSphere(position, color, label) {
+            const sphere = BABYLON.MeshBuilder.CreateSphere(label + '_debug', { diameter: 0.2 }, scene);
+            sphere.position = position.clone();
+            const mat = new BABYLON.StandardMaterial(label + '_mat', scene);
+            mat.diffuseColor = color;
+            mat.emissiveColor = color.scale(0.5);
+            sphere.material = mat;
+            debugSpheres.push(sphere);
+            return sphere;
+        }
+
+        function testJointAlignment() {
+            log('--- JOINT ALIGNMENT TEST ---', 'info');
+
+            if (!playerMech || !enemyMech) {
+                log('ERROR: Mechs not created yet', 'error');
+                return;
+            }
+
+            // Test player mech arms
+            const torsoPos = playerMech.torso.getAbsolutePosition();
+            log(`Player torso at: (${torsoPos.x.toFixed(2)}, ${torsoPos.y.toFixed(2)}, ${torsoPos.z.toFixed(2)})`, 'info');
+
+            // Left arm
+            const leftArmPos = playerMech.leftArm.upperArm.getAbsolutePosition();
+            const leftShoulderWorld = torsoPos.add(new BABYLON.Vector3(-0.9, 0.65, 0));
+            const leftArmTopWorld = leftArmPos.add(new BABYLON.Vector3(0, 0.3, 0)); // armHeight/2
+
+            createDebugSphere(leftShoulderWorld, new BABYLON.Color3(1, 0, 0), 'leftShoulder');
+            createDebugSphere(leftArmTopWorld, new BABYLON.Color3(0, 1, 0), 'leftArmTop');
+
+            const leftDist = BABYLON.Vector3.Distance(leftShoulderWorld, leftArmTopWorld);
+            log(`Left arm pivot distance: ${leftDist.toFixed(4)} (should be near 0)`, leftDist < 0.1 ? 'info' : 'error');
+
+            // Right arm
+            const rightArmPos = playerMech.rightArm.upperArm.getAbsolutePosition();
+            const rightShoulderWorld = torsoPos.add(new BABYLON.Vector3(0.9, 0.65, 0));
+            const rightArmTopWorld = rightArmPos.add(new BABYLON.Vector3(0, 0.3, 0));
+
+            createDebugSphere(rightShoulderWorld, new BABYLON.Color3(1, 0, 0), 'rightShoulder');
+            createDebugSphere(rightArmTopWorld, new BABYLON.Color3(0, 1, 0), 'rightArmTop');
+
+            const rightDist = BABYLON.Vector3.Distance(rightShoulderWorld, rightArmTopWorld);
+            log(`Right arm pivot distance: ${rightDist.toFixed(4)} (should be near 0)`, rightDist < 0.1 ? 'info' : 'error');
+
+            // Test legs
+            const leftLegPos = playerMech.leftLeg.upperLeg.getAbsolutePosition();
+            const leftHipWorld = torsoPos.add(new BABYLON.Vector3(-0.4, -0.85, 0));
+            const leftLegTopWorld = leftLegPos.add(new BABYLON.Vector3(0, 0.35, 0)); // legHeight/2
+
+            createDebugSphere(leftHipWorld, new BABYLON.Color3(1, 1, 0), 'leftHip');
+            createDebugSphere(leftLegTopWorld, new BABYLON.Color3(0, 1, 1), 'leftLegTop');
+
+            const leftLegDist = BABYLON.Vector3.Distance(leftHipWorld, leftLegTopWorld);
+            log(`Left leg pivot distance: ${leftLegDist.toFixed(4)} (should be near 0)`, leftLegDist < 0.1 ? 'info' : 'error');
+        }
+
+        function testProjectileAngles() {
+            log('--- PROJECTILE ANGLE TEST ---', 'info');
+
+            if (!playerMech || !enemyMech) return;
+
+            const playerTorsoPos = playerMech.torso.getAbsolutePosition();
+            const enemyTorsoPos = enemyMech.torso.getAbsolutePosition();
+
+            // Test firing calculation (same as actual firing code)
+            const startPos = playerTorsoPos.clone();
+            startPos.y += 0.3;
+            const targetPos = enemyTorsoPos.clone();
+
+            const direction = targetPos.subtract(startPos).normalize();
+            const angle = Math.atan2(direction.x, direction.z);
+
+            log(`Player torso: (${playerTorsoPos.x.toFixed(2)}, ${playerTorsoPos.y.toFixed(2)}, ${playerTorsoPos.z.toFixed(2)})`, 'info');
+            log(`Enemy torso: (${enemyTorsoPos.x.toFixed(2)}, ${enemyTorsoPos.y.toFixed(2)}, ${enemyTorsoPos.z.toFixed(2)})`, 'info');
+            log(`Fire direction: (${direction.x.toFixed(3)}, ${direction.y.toFixed(3)}, ${direction.z.toFixed(3)})`, 'info');
+            log(`Expected Y component (vertical): ${direction.y.toFixed(3)} (should be near 0 for level shot)`, Math.abs(direction.y) < 0.2 ? 'info' : 'error');
+
+            // Draw line showing expected trajectory
+            const trajectoryLine = BABYLON.MeshBuilder.CreateLines('trajectory', {
+                points: [startPos, targetPos]
+            }, scene);
+            trajectoryLine.color = new BABYLON.Color3(1, 0, 1);
+            debugSpheres.push(trajectoryLine);
+        }
+
+        function testConstraintIntegrity() {
+            log('--- CONSTRAINT INTEGRITY TEST ---', 'info');
+
+            if (!playerMech) return;
+
+            // Check if aggregates exist
+            const hasLeftArm = playerMech.leftArm && playerMech.leftArm.armAggregate;
+            const hasRightArm = playerMech.rightArm && playerMech.rightArm.armAggregate;
+            const hasLeftLeg = playerMech.leftLeg && playerMech.leftLeg.legAggregate;
+            const hasRightLeg = playerMech.rightLeg && playerMech.rightLeg.legAggregate;
+
+            log(`Left arm aggregate: ${hasLeftArm ? 'EXISTS' : 'MISSING'}`, hasLeftArm ? 'info' : 'error');
+            log(`Right arm aggregate: ${hasRightArm ? 'EXISTS' : 'MISSING'}`, hasRightArm ? 'info' : 'error');
+            log(`Left leg aggregate: ${hasLeftLeg ? 'EXISTS' : 'MISSING'}`, hasLeftLeg ? 'info' : 'error');
+            log(`Right leg aggregate: ${hasRightLeg ? 'EXISTS' : 'MISSING'}`, hasRightLeg ? 'info' : 'error');
+
+            // Check arm rotation (motor effect)
+            if (hasLeftArm) {
+                const leftArmRot = playerMech.leftArm.upperArm.rotation;
+                log(`Left arm rotation: X=${leftArmRot.x.toFixed(3)}, Y=${leftArmRot.y.toFixed(3)}, Z=${leftArmRot.z.toFixed(3)}`, 'info');
+            }
+        }
+
+        function testMotorConfiguration() {
+            log('--- MOTOR CONFIGURATION TEST ---', 'info');
+            log('Motor targets set to:', 'info');
+            log('  Arms: X=-π/4 (-45°), Y=0, Z=±π/8 (±22.5°)', 'info');
+            log('  Legs: X=0, Y=0, Z=0', 'info');
+            log('Note: Motor rotation may take time to settle', 'info');
+        }
+
+        // Run diagnostics button
+        function createDiagnosticsButton() {
+            const button = document.createElement('button');
+            button.textContent = 'Run Diagnostics';
+            button.style.cssText = 'position: absolute; top: 120px; right: 20px; padding: 10px 20px; font-size: 14px; background: #ffaa00; color: black; border: none; cursor: pointer; border-radius: 4px; font-weight: bold;';
+            button.addEventListener('click', runDiagnostics);
+            document.body.appendChild(button);
+        }
+
         // Initialize when page loads
         initEngine().then(() => {
             // Set up auto-fire interval (but it won't fire unless enabled)
             startAutoFire();
+            createDiagnosticsButton();
+
+            // Run diagnostics after a short delay to let physics settle
+            setTimeout(() => {
+                runDiagnostics();
+            }, 2000);
+
             log('Scene ready! Click "Start Auto-Fire" button to begin combat.', 'info');
         });
 

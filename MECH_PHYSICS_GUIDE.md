@@ -163,12 +163,12 @@ const armAggregate = new BABYLON.PhysicsAggregate(
 );
 
 // 3. Set collision group
-armAggregate.shape.filterMembershipMask = 1;      // Group 1 = mechs
-armAggregate.shape.filterCollideMask = 1 | 2 | 4; // Collide with mechs, projectiles, ground
+armAggregate.shape.filterMembershipMask = 1;  // Group 1 = mechs
+armAggregate.shape.filterCollideMask = 2 | 4; // Collide with projectiles and ground only
 
 // 4. Add damping
-armAggregate.body.setLinearDamping(0.3);
-armAggregate.body.setAngularDamping(0.5);
+armAggregate.body.setLinearDamping(0.4);
+armAggregate.body.setAngularDamping(0.6);
 
 // 5. Create 6DOF constraint
 const constraint = new BABYLON.PhysicsConstraint(
@@ -186,22 +186,25 @@ const constraint = new BABYLON.PhysicsConstraint(
 // 6. Add constraint to parent body
 torsoAggregate.body.addConstraint(armAggregate.body, constraint);
 
-// 7. Configure motors for desired pose
-constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
-constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, Math.PI / 3); // Raise forward
-constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 80);
+// 7. **CRITICAL** Set linear limits to lock the joint (prevent separation)
+constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_X, 0, 0);
+constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 0, 0);
+constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Z, 0, 0);
 
+// 8. Configure motors for desired pose (be conservative to avoid instability)
 constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
 constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
-constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 80);
+constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 50);
 
 constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
-constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, sideOffset); // Slight outward
-constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 80);
+constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
+constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 50);
 
-// 8. Parent visual children (weapons, etc) to physics body
+// 9. Parent visual children (weapons, etc) to physics body
 weapon.parent = upperArm; // Visual parenting is fine
 ```
+
+**CRITICAL FIX**: Always set linear limits to (0, 0) on all three axes. This locks the pivot point and prevents limbs from separating. Without this, 6DOF constraints can allow linear movement which causes limbs to fall off.
 
 ## Debugging Checklist
 

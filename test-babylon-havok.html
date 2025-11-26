@@ -137,20 +137,19 @@
                     scene.render();
                     frameCount++;
 
-                    // Log diagnostics at 3 seconds (180 frames) so they appear after mesh logs
-                    if (frameCount === 180 && !diagnosticsLogged) {
+                    // Log diagnostics immediately at frame 10 (about 0.16 seconds)
+                    if (frameCount === 10 && !diagnosticsLogged) {
                         diagnosticsLogged = true;
-                        log(`=== RENDER DIAGNOSTICS ===`, 'warn');
-                        log(`Frames rendered: ${frameCount}`, 'warn');
-                        log(`Active meshes: ${scene.getActiveMeshes().length}`, 'warn');
-                        log(`Total vertices: ${scene.getTotalVertices()}`, 'warn');
-                        log(`Draw calls: ${engine.drawCalls}`, 'warn');
-                        log(`Draw calls per frame: ${engine.drawCallsPerfCounter ? engine.drawCallsPerfCounter.current : 'N/A'}`, 'warn');
+                        log(`=== RENDER DIAGNOSTICS (Frame ${frameCount}) ===`, 'error');
+                        log(`Active meshes: ${scene.getActiveMeshes().length} / Total: ${scene.meshes.length}`, 'error');
+                        log(`Total vertices: ${scene.getTotalVertices()}`, 'error');
+                        log(`Draw calls: ${scene.getEngine().drawCalls}`, 'error');
 
-                        // Check first test sphere
-                        const testSphere1 = scene.getMeshByName('testSphere1');
-                        if (testSphere1) {
-                            log(`Test sphere: ready=${testSphere1.isReady()}, enabled=${testSphere1.isEnabled()}, visible=${testSphere1.isVisible}, inFrustum=${testSphere1.isInFrustum(camera)}`, 'warn');
+                        // Check debug box
+                        const debugBox = scene.getMeshByName('debugBox');
+                        if (debugBox) {
+                            log(`Debug box: ready=${debugBox.isReady()}, enabled=${debugBox.isEnabled()}, visible=${debugBox.isVisible}`, 'error');
+                            log(`Debug box in frustum: ${debugBox.isInFrustum(camera)}`, 'error');
                         }
                     }
 

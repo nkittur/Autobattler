@@ -658,6 +658,7 @@
                 const mechData = {
                     root: mechRoot,
                     torso: torso,
+                    torsoBone: torsoBone, // Store torso bone for rotation
                     skeleton: skeleton,
                     ragdoll: ragdoll,
                     rightArm: { mesh: rightArm, bone: rightArmBone },
@@ -709,25 +710,44 @@
             const walkCycle = Math.sin(mech.walkTime);
             const walkCycleAlt = Math.sin(mech.walkTime + Math.PI); // Opposite phase
 
+            // Calculate movement direction (includes both X and Z movement)
+            const moveAmountX = mech.walkSpeed * deltaTime * mech.walkDirection;
+            const oldZ = mech.root.position.z;
+
             // Move mech in a circular/side-to-side pattern
-            const moveAmount = mech.walkSpeed * deltaTime * mech.walkDirection;
-            mech.root.position.x += moveAmount;
+            mech.root.position.x += moveAmountX;
 
             // Move slightly forward and back (Z axis) for more dynamic movement
-            mech.root.position.z = Math.sin(mech.walkTime * 0.5) * 1.5;
+            const newZ = Math.sin(mech.walkTime * 0.5) * 1.5;
+            mech.root.position.z = newZ;
+            const moveAmountZ = newZ - oldZ;
 
             // Reverse direction at boundaries
             if (Math.abs(mech.root.position.x) > 6) {
                 mech.walkDirection *= -1;
             }
 
-            // Always face towards the other mech (toward center)
-            if (mech.isPlayer) {
-                // Player faces right (towards positive X where enemy is)
-                mech.root.rotation.y = 0;
-            } else {
-                // Enemy faces left (towards negative X where player is)
-                mech.root.rotation.y = Math.PI;
+            // ROOT faces movement direction (legs follow)
+            // Calculate direction of movement
+            const movementAngle = Math.atan2(moveAmountZ, moveAmountX);
+            // Smoothly rotate root to face movement direction
+            if (Math.abs(moveAmountX) > 0.001 || Math.abs(moveAmountZ) > 0.001) {
+                mech.root.rotation.y = movementAngle;
+            }
+
+            // TORSO rotates independently to face enemy
+            // Get positions to calculate facing angle
+            const otherMech = mech.isPlayer ? enemyMech : playerMech;
+            if (otherMech) {
+                const mechPos = mech.root.position;
+                const targetPos = otherMech.root.position;
+                const dx = targetPos.x - mechPos.x;
+                const dz = targetPos.z - mechPos.z;
+                const angleToTarget = Math.atan2(dz, dx);
+
+                // Torso rotation is relative to root rotation
+                const relativeAngle = angleToTarget - mech.root.rotation.y;
+                mech.torsoBone.setRotation(new BABYLON.Vector3(0, relativeAngle, 0), BABYLON.Space.LOCAL);
             }
 
             // Animate legs - alternating walking motion

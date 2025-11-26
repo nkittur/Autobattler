@@ -192,6 +192,19 @@
             camera.minZ = 0.1;
             camera.maxZ = 1000;
 
+            // CRITICAL DEBUG: Create a box DIRECTLY in front of camera, impossible to miss
+            const debugBox = BABYLON.MeshBuilder.CreateBox('debugBox', { size: 5 }, scene);
+            // Place it exactly where camera is looking: at the target point
+            debugBox.position = new BABYLON.Vector3(0, 3, 0);
+            const debugMat = new BABYLON.StandardMaterial('debugMat', scene);
+            debugMat.diffuseColor = new BABYLON.Color3(1, 1, 0); // Yellow
+            debugMat.emissiveColor = new BABYLON.Color3(1, 1, 0); // Self-lit
+            debugMat.wireframe = false;
+            debugBox.material = debugMat;
+            debugBox.isVisible = true;
+            debugBox.setEnabled(true);
+            log('CRITICAL DEBUG: Yellow box at camera target (0,3,0)', 'error');
+
             // Lighting - make it much brighter
             const hemisphericLight = new BABYLON.HemisphericLight(
                 'hemiLight',

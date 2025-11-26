@@ -166,6 +166,11 @@
                     }
 
                     try {
+                        // Update walking animations
+                        const deltaTime = engine.getDeltaTime() / 1000;
+                        if (playerMech) updateMechWalking(playerMech, deltaTime);
+                        if (enemyMech) updateMechWalking(enemyMech, deltaTime);
+
                         updateProjectiles();
                         updateLaserBeams();
                         debugMechPositions();
@@ -617,19 +622,22 @@
                     torso: torso,
                     skeleton: skeleton,
                     ragdoll: ragdoll,
-                    rightArm: { mesh: rightArm },
-                    rightForearm: { mesh: rightForearm },
-                    leftArm: { mesh: leftArm },
-                    leftForearm: { mesh: leftForearm },
-                    rightUpperLeg: { mesh: rightUpperLeg },
-                    rightLowerLeg: { mesh: rightLowerLeg },
-                    leftUpperLeg: { mesh: leftUpperLeg },
-                    leftLowerLeg: { mesh: leftLowerLeg },
+                    rightArm: { mesh: rightArm, bone: rightArmBone },
+                    rightForearm: { mesh: rightForearm, bone: rightForearmBone },
+                    leftArm: { mesh: leftArm, bone: leftArmBone },
+                    leftForearm: { mesh: leftForearm, bone: leftForearmBone },
+                    rightUpperLeg: { mesh: rightUpperLeg, bone: rightUpperLegBone },
+                    rightLowerLeg: { mesh: rightLowerLeg, bone: rightLowerLegBone },
+                    leftUpperLeg: { mesh: leftUpperLeg, bone: leftUpperLegBone },
+                    leftLowerLeg: { mesh: leftLowerLeg, bone: leftLowerLegBone },
                     head: head,
                     isPlayer: isPlayer,
                     currentHP: 100,
                     maxHP: 100,
-                    color: color
+                    color: color,
+                    walkTime: 0, // For walking animation
+                    walkSpeed: 1.5, // Units per second
+                    walkDirection: isPlayer ? 1 : -1 // Player walks right, enemy walks left
                 };
 
                 // The ragdoll creates physics bodies for each bone
@@ -651,6 +659,60 @@
                 console.error('Mech creation error:', error);
                 throw error;
             }
+        }
+
+        // === WALKING ANIMATION ===
+        function updateMechWalking(mech, deltaTime) {
+            if (!mech || !mech.skeleton) return;
+
+            // Update walk cycle time
+            mech.walkTime += deltaTime * 3; // Speed up animation cycle
+
+            // Calculate walking animation (sine wave for smooth motion)
+            const walkCycle = Math.sin(mech.walkTime);
+            const walkCycleAlt = Math.sin(mech.walkTime + Math.PI); // Opposite phase
+
+            // Move mech in a circular/side-to-side pattern
+            const moveAmount = mech.walkSpeed * deltaTime * mech.walkDirection;
+            mech.root.position.x += moveAmount;
+
+            // Move slightly forward and back (Z axis) for more dynamic movement
+            mech.root.position.z = Math.sin(mech.walkTime * 0.5) * 1.5;
+
+            // Reverse direction at boundaries
+            if (Math.abs(mech.root.position.x) > 6) {
+                mech.walkDirection *= -1;
+            }
+
+            // Always face towards the other mech (toward center)
+            if (mech.isPlayer) {
+                // Player faces right (towards positive X where enemy is)
+                mech.root.rotation.y = 0;
+            } else {
+                // Enemy faces left (towards negative X where player is)
+                mech.root.rotation.y = Math.PI;
+            }
+
+            // Animate legs - alternating walking motion
+            const legSwing = walkCycle * 0.6; // Maximum swing angle
+            const kneeSwing = Math.max(0, -walkCycle * 0.4); // Knee bends only forward
+
+            // Right leg (forward when walkCycle positive)
+            mech.rightUpperLeg.bone.rotation.x = Math.PI / 12 + legSwing;
+            mech.rightLowerLeg.bone.rotation.x = -Math.PI / 12 - kneeSwing * 2;
+
+            // Left leg (forward when walkCycle negative)
+            const legSwingAlt = walkCycleAlt * 0.6;
+            const kneeSwingAlt = Math.max(0, -walkCycleAlt * 0.4);
+            mech.leftUpperLeg.bone.rotation.x = Math.PI / 12 + legSwingAlt;
+            mech.leftLowerLeg.bone.rotation.x = -Math.PI / 12 - kneeSwingAlt * 2;
+
+            // Slight torso bob for natural walking
+            const bob = Math.abs(walkCycle) * 0.08;
+            mech.root.position.y = bob;
+
+            // Update skeleton
+            mech.skeleton.prepare();
         }
 
         // === PROJECTILE SYSTEM ===

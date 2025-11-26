@@ -30,22 +30,6 @@
             color: #00ff88;
             text-shadow: 0 0 10px #00ff88;
         }
-        #status {
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 10px;
-            background: rgba(0,0,0,0.5);
-            border: 2px solid #00ff88;
-            border-radius: 8px;
-        }
-        .log {
-            font-size: 12px;
-            margin: 2px 0;
-            padding: 2px 5px;
-        }
-        .log.info { color: #00ff88; }
-        .log.warn { color: #ffaa00; }
-        .log.error { color: #ff4444; }
         #debugLogs {
             max-width: 900px;
             margin: 20px auto;
@@ -92,11 +76,8 @@
         </button>
     </div>
     <canvas id="renderCanvas"></canvas>
-    <div id="status">
-        <div id="logs"></div>
-    </div>
     <div id="debugLogs">
-        <h3 style="margin-top: 0; color: #ffaa00;">Torso Rotation Debug Logs</h3>
+        <h3 style="margin-top: 0; color: #ffaa00;">Debug Logs - Torso Rotation & Mech State</h3>
         <div id="debugLogContent">Waiting for logs...</div>
         <button class="copyBtn" onclick="copyDebugLogs()">📋 Copy All Logs</button>
     </div>
@@ -107,30 +88,31 @@
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
 
     <script>
-        // Logging system
-        const logs = [];
-        const debugLogs = []; // For torso rotation debugging
+        // Unified logging system
+        const allLogs = [];
 
         function log(msg, type = 'info') {
             console.log(msg);
-            logs.push({ msg, type });
-            const logsDiv = document.getElementById('logs');
-            logsDiv.innerHTML = logs.slice(-15).map(l =>
-                `<div class="log ${l.type}">${l.msg}</div>`
-            ).join('');
+            const timestamp = new Date().toLocaleTimeString();
+            allLogs.push(`[${timestamp}] [${type.toUpperCase()}] ${msg}`);
+            updateLogDisplay();
         }
 
         function addDebugLog(msg) {
             console.log(msg);
-            debugLogs.push(msg);
+            allLogs.push(msg);
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
             const debugLogDiv = document.getElementById('debugLogContent');
-            debugLogDiv.textContent = debugLogs.join('\n');
+            debugLogDiv.textContent = allLogs.join('\n');
             // Auto-scroll to bottom
             debugLogDiv.scrollTop = debugLogDiv.scrollHeight;
         }
 
         function copyDebugLogs() {
-            const text = debugLogs.join('\n');
+            const text = allLogs.join('\n');
             navigator.clipboard.writeText(text).then(() => {
                 const btn = event.target;
                 const originalText = btn.textContent;
@@ -818,6 +800,10 @@
                 while (relativeAngle > Math.PI) relativeAngle -= 2 * Math.PI;
                 while (relativeAngle < -Math.PI) relativeAngle += 2 * Math.PI;
 
+                // Clamp torso rotation to ±100° to prevent unnatural backward twisting
+                const MAX_TORSO_ROTATION = (100 * Math.PI) / 180; // 100 degrees in radians
+                const clampedAngle = Math.max(-MAX_TORSO_ROTATION, Math.min(MAX_TORSO_ROTATION, relativeAngle));
+
                 // DEBUG: Always log for first few seconds to diagnose
                 if (mech.walkTime < 10) { // Log for first 10/3 ≈ 3.3 seconds
                     const logMsg = `[${mech.walkTime.toFixed(1)}s] ${mech.isPlayer ? 'Player' : 'Enemy'} torso: ` +
@@ -826,12 +812,13 @@
                         `dx=${dx.toFixed(2)} dz=${dz.toFixed(2)} ` +
                         `angleToTarget=${(angleToTarget * 180/Math.PI).toFixed(0)}° ` +
                         `rootRot=${(mech.root.rotation.y * 180/Math.PI).toFixed(0)}° ` +
-                        `relativeAngle=${(relativeAngle * 180/Math.PI).toFixed(0)}°`;
+                        `relativeAngle=${(relativeAngle * 180/Math.PI).toFixed(0)}° ` +
+                        `clamped=${(clampedAngle * 180/Math.PI).toFixed(0)}°`;
                     addDebugLog(logMsg);
                 }
 
-                // Torso smoothly rotates to face enemy (no clamp - full range)
-                mech.torsoBone.setRotation(new BABYLON.Vector3(0, relativeAngle, 0), BABYLON.Space.LOCAL);
+                // Torso rotates to face enemy (clamped to ±100° to prevent over-rotation)
+                mech.torsoBone.setRotation(new BABYLON.Vector3(0, clampedAngle, 0), BABYLON.Space.LOCAL);
             }
 
             // Animate legs - alternating walking motion

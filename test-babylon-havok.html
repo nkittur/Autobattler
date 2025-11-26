@@ -431,17 +431,27 @@
                 }, scene);
                 torso.material = bodyMat;
 
-                // Right arm mesh (will be attached to rightArm bone)
+                // Right arm meshes (upper arm and forearm)
                 const rightArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
                 rightArm.material = darkMat;
 
-                // Left arm mesh (will be attached to leftArm bone)
+                const rightForearm = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightForearm`, {
+                    width: 0.2, height: 0.5, depth: 0.2
+                }, scene);
+                rightForearm.material = darkMat;
+
+                // Left arm meshes (upper arm and forearm)
                 const leftArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
                 leftArm.material = darkMat;
+
+                const leftForearm = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftForearm`, {
+                    width: 0.2, height: 0.5, depth: 0.2
+                }, scene);
+                leftForearm.material = darkMat;
 
                 // Right leg meshes
                 const rightUpperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightUpperLeg`, {
@@ -479,9 +489,11 @@
                 // Attach torso to torso bone
                 torso.attachToBone(torsoBone, mechRoot);
 
-                // Attach arms to arm bones
+                // Attach arms and forearms to arm bones
                 rightArm.attachToBone(rightArmBone, mechRoot);
+                rightForearm.attachToBone(rightForearmBone, mechRoot);
                 leftArm.attachToBone(leftArmBone, mechRoot);
+                leftForearm.attachToBone(leftForearmBone, mechRoot);
 
                 // Attach legs to leg bones
                 rightUpperLeg.attachToBone(rightUpperLegBone, mechRoot);
@@ -582,7 +594,9 @@
                     skeleton: skeleton,
                     ragdoll: ragdoll,
                     rightArm: { mesh: rightArm },
+                    rightForearm: { mesh: rightForearm },
                     leftArm: { mesh: leftArm },
+                    leftForearm: { mesh: leftForearm },
                     rightUpperLeg: { mesh: rightUpperLeg },
                     rightLowerLeg: { mesh: rightLowerLeg },
                     leftUpperLeg: { mesh: leftUpperLeg },
@@ -657,43 +671,24 @@
             log(`PROJECTILE direction: (${direction.x.toFixed(2)}, ${direction.y.toFixed(2)}, ${direction.z.toFixed(2)})`, 'info');
             const angle = Math.atan2(direction.x, direction.z);
 
-            // Create elongated projectile (bullet/energy bolt shape)
-            const projectile = BABYLON.MeshBuilder.CreateCylinder('projectile_' + Date.now(), {
-                height: 0.8,
-                diameter: 0.25,
-                tessellation: 8
+            // Create large, visible projectile (energy bolt shape)
+            const projectile = BABYLON.MeshBuilder.CreateSphere('projectile_' + Date.now(), {
+                diameter: 0.4,
+                segments: 8
             }, scene);
             projectile.position = startPos.clone();
 
-            // Rotate to point in direction of travel
-            projectile.rotation.x = Math.PI / 2;
-            projectile.rotation.y = angle;
-
-            // Projectile material with intense glow
+            // Projectile material with VERY intense glow
             const projMat = new BABYLON.StandardMaterial('projMat_' + Date.now(), scene);
             projMat.diffuseColor = COLORS.projectile;
-            projMat.emissiveColor = COLORS.projectile.scale(1.5); // Brighter glow
+            projMat.emissiveColor = COLORS.projectile.scale(3); // VERY bright glow
             projMat.specularColor = new BABYLON.Color3(1, 1, 1);
             projectile.material = projMat;
-
-            // Create glowing trail effect
-            const trail = BABYLON.MeshBuilder.CreateCylinder('trail_' + Date.now(), {
-                height: 1.5,
-                diameter: 0.15,
-                tessellation: 8
-            }, scene);
-            trail.position = new BABYLON.Vector3(0, -0.5, 0);
-            trail.parent = projectile;
-            const trailMat = new BABYLON.StandardMaterial('trailMat_' + Date.now(), scene);
-            trailMat.diffuseColor = COLORS.projectile;
-            trailMat.emissiveColor = COLORS.projectile;
-            trailMat.alpha = 0.6;
-            trail.material = trailMat;
 
             // NO PHYSICS - use kinematic movement for fast, reliable projectiles
             // Physics at high speeds causes tunneling and instability
 
-            const speed = 100; // Units per second - fast but controllable
+            const speed = 30; // Units per second - visible but still fast
             const velocity = direction.scale(speed);
 
             log(`PROJECTILE velocity: (${velocity.x.toFixed(1)}, ${velocity.y.toFixed(1)}, ${velocity.z.toFixed(1)})`, 'info');

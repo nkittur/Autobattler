@@ -353,8 +353,13 @@
                 darkMat.diffuseColor = color.scale(0.5);
                 darkMat.emissiveColor = color.scale(0.3);
 
+                const veryDarkMat = new BABYLON.StandardMaterial(`${mechName}_veryDarkMat`, scene);
+                veryDarkMat.diffuseColor = color.scale(0.3);
+                veryDarkMat.emissiveColor = color.scale(0.15);
+
                 const jointMat = new BABYLON.StandardMaterial(`${mechName}_jointMat`, scene);
-                jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                jointMat.diffuseColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+                jointMat.emissiveColor = new BABYLON.Color3(0.3, 0.3, 0.3);
 
                 const spawnY = 2.5;
 
@@ -436,7 +441,7 @@
                 }, scene);
                 torso.material = bodyMat;
 
-                // Right arm meshes (upper arm and forearm)
+                // Right arm meshes (upper arm and forearm with different colors)
                 const rightArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
@@ -445,9 +450,9 @@
                 const rightForearm = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightForearm`, {
                     width: 0.2, height: 0.5, depth: 0.2
                 }, scene);
-                rightForearm.material = darkMat;
+                rightForearm.material = veryDarkMat; // Darker for contrast
 
-                // Left arm meshes (upper arm and forearm)
+                // Left arm meshes (upper arm and forearm with different colors)
                 const leftArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
@@ -456,9 +461,9 @@
                 const leftForearm = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftForearm`, {
                     width: 0.2, height: 0.5, depth: 0.2
                 }, scene);
-                leftForearm.material = darkMat;
+                leftForearm.material = veryDarkMat; // Darker for contrast
 
-                // Right leg meshes
+                // Right leg meshes with different colors
                 const rightUpperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightUpperLeg`, {
                     width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
@@ -467,9 +472,9 @@
                 const rightLowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightLowerLeg`, {
                     width: 0.25, height: 0.7, depth: 0.25
                 }, scene);
-                rightLowerLeg.material = darkMat;
+                rightLowerLeg.material = veryDarkMat; // Darker for contrast
 
-                // Left leg meshes
+                // Left leg meshes with different colors
                 const leftUpperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftUpperLeg`, {
                     width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
@@ -478,7 +483,36 @@
                 const leftLowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftLowerLeg`, {
                     width: 0.25, height: 0.7, depth: 0.25
                 }, scene);
-                leftLowerLeg.material = darkMat;
+                leftLowerLeg.material = veryDarkMat; // Darker for contrast
+
+                // Add visible joint spheres at elbows and knees
+                const rightElbow = BABYLON.MeshBuilder.CreateSphere(`${mechName}_rightElbow`, {
+                    diameter: 0.15
+                }, scene);
+                rightElbow.material = jointMat;
+                rightElbow.position = new BABYLON.Vector3(0, 0, 0); // At joint
+                rightElbow.attachToBone(rightForearmBone, mechRoot);
+
+                const leftElbow = BABYLON.MeshBuilder.CreateSphere(`${mechName}_leftElbow`, {
+                    diameter: 0.15
+                }, scene);
+                leftElbow.material = jointMat;
+                leftElbow.position = new BABYLON.Vector3(0, 0, 0);
+                leftElbow.attachToBone(leftForearmBone, mechRoot);
+
+                const rightKnee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_rightKnee`, {
+                    diameter: 0.2
+                }, scene);
+                rightKnee.material = jointMat;
+                rightKnee.position = new BABYLON.Vector3(0, 0, 0);
+                rightKnee.attachToBone(rightLowerLegBone, mechRoot);
+
+                const leftKnee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_leftKnee`, {
+                    diameter: 0.2
+                }, scene);
+                leftKnee.material = jointMat;
+                leftKnee.position = new BABYLON.Vector3(0, 0, 0);
+                leftKnee.attachToBone(leftLowerLegBone, mechRoot);
 
                 // Head (parented to torso for now)
                 const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
@@ -494,16 +528,30 @@
                 // Attach torso to torso bone
                 torso.attachToBone(torsoBone, mechRoot);
 
-                // Attach arms and forearms to arm bones
+                // Position and attach arms - offset so mesh extends DOWN from joint
+                // Upper arms extend down from shoulder
+                rightArm.position = new BABYLON.Vector3(0, -0.3, 0); // Half the mesh height
                 rightArm.attachToBone(rightArmBone, mechRoot);
-                rightForearm.attachToBone(rightForearmBone, mechRoot);
+                leftArm.position = new BABYLON.Vector3(0, -0.3, 0);
                 leftArm.attachToBone(leftArmBone, mechRoot);
+
+                // Forearms extend down from elbow
+                rightForearm.position = new BABYLON.Vector3(0, -0.25, 0); // Half the mesh height
+                rightForearm.attachToBone(rightForearmBone, mechRoot);
+                leftForearm.position = new BABYLON.Vector3(0, -0.25, 0);
                 leftForearm.attachToBone(leftForearmBone, mechRoot);
 
-                // Attach legs to leg bones
+                // Position and attach legs - offset so mesh extends DOWN from joint
+                // Upper legs extend down from hip
+                rightUpperLeg.position = new BABYLON.Vector3(0, -0.35, 0); // Half the mesh height
                 rightUpperLeg.attachToBone(rightUpperLegBone, mechRoot);
-                rightLowerLeg.attachToBone(rightLowerLegBone, mechRoot);
+                leftUpperLeg.position = new BABYLON.Vector3(0, -0.35, 0);
                 leftUpperLeg.attachToBone(leftUpperLegBone, mechRoot);
+
+                // Lower legs extend down from knee
+                rightLowerLeg.position = new BABYLON.Vector3(0, -0.35, 0); // Half the mesh height
+                rightLowerLeg.attachToBone(rightLowerLegBone, mechRoot);
+                leftLowerLeg.position = new BABYLON.Vector3(0, -0.35, 0);
                 leftLowerLeg.attachToBone(leftLowerLegBone, mechRoot);
 
                 log(`Meshes attached to bones`, 'info');

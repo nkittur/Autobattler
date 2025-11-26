@@ -491,6 +491,10 @@
 
                 log(`Meshes attached to bones`, 'info');
 
+                // Prepare skeleton (compute bone matrices)
+                skeleton.prepare();
+                log(`Skeleton prepared`, 'info');
+
                 // === RAGDOLL CONFIGURATION ===
                 const ragdollConfig = [
                     // Torso - main physics body
@@ -559,6 +563,17 @@
                 const ragdoll = new BABYLON.Ragdoll(skeleton, mechRoot, ragdollConfig);
 
                 log(`Ragdoll created successfully!`, 'info');
+                log(`Ragdoll object keys: ${Object.keys(ragdoll).join(', ')}`, 'info');
+
+                // Check if ragdoll has physics impostors
+                if (ragdoll.physicsImpostors) {
+                    log(`Ragdoll has ${ragdoll.physicsImpostors.length} physics impostors`, 'info');
+                } else if (ragdoll.imposters) {
+                    log(`Ragdoll has ${ragdoll.imposters.length} imposters`, 'info');
+                } else {
+                    log(`Ragdoll structure unknown - check console`, 'warn');
+                    console.log('Ragdoll object:', ragdoll);
+                }
 
                 // Store mech data
                 const mechData = {

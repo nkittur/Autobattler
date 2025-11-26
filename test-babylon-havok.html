@@ -776,13 +776,9 @@
             // Reverse direction at boundaries and clamp position
             const boundary = 6;
             if (Math.abs(mech.root.position.x) > boundary) {
-                const oldX = mech.root.position.x;
                 mech.walkDirection *= -1;
                 // Clamp position to boundary to prevent escaping
                 mech.root.position.x = Math.sign(mech.root.position.x) * boundary;
-
-                // Debug log boundary hits
-                addDebugLog(`${mech.isPlayer ? 'Player' : 'Enemy'} hit boundary: oldX=${oldX.toFixed(2)} newX=${mech.root.position.x.toFixed(2)} direction=${mech.walkDirection > 0 ? 'RIGHT' : 'LEFT'}`);
             }
 
             // LEGS face the walk direction (root rotation)

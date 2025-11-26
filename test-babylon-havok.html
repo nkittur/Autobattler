@@ -690,40 +690,18 @@
             trailMat.alpha = 0.6;
             trail.material = trailMat;
 
-            // Add physics to projectile
-            const projAggregate = new BABYLON.PhysicsAggregate(
-                projectile,
-                BABYLON.PhysicsShapeType.SPHERE,
-                { mass: 0.3, friction: 0, restitution: 0.2 },
-                scene
-            );
+            // NO PHYSICS - use kinematic movement for fast, reliable projectiles
+            // Physics at high speeds causes tunneling and instability
 
-            // CRITICAL: Disable gravity on projectiles so they fly straight
-            projAggregate.body.setGravityFactor(0);
-
-            // Disable damping so projectile maintains full speed
-            projAggregate.body.setLinearDamping(0);
-            projAggregate.body.setAngularDamping(0);
-
-            // Set collision filter so projectiles don't collide with each other
-            // Group 1 = mechs, Group 2 = projectiles, Group 4 = ground
-            // Projectiles collide with mechs (1) and ground (4), but not other projectiles (2)
-            const projectileGroup = 2;
-            const projectileMask = 1 | 4; // Collide with groups 1 (mechs) and 4 (ground)
-            projAggregate.shape.filterMembershipMask = projectileGroup;
-            projAggregate.shape.filterCollideMask = projectileMask;
-
-            // Apply very high velocity for fast, impactful shot (10x faster)
-            const speed = 450;
+            const speed = 100; // Units per second - fast but controllable
             const velocity = direction.scale(speed);
-            projAggregate.body.setLinearVelocity(velocity);
 
             log(`PROJECTILE velocity: (${velocity.x.toFixed(1)}, ${velocity.y.toFixed(1)}, ${velocity.z.toFixed(1)})`, 'info');
 
-            // Store projectile data
+            // Store projectile data (no aggregate - kinematic movement)
             projectiles.push({
                 mesh: projectile,
-                aggregate: projAggregate,
+                velocity: velocity, // Store velocity for manual movement
                 damage: damage,
                 target: toMech,
                 firedAt: Date.now(),
@@ -735,8 +713,13 @@
 
         function updateProjectiles() {
             const now = Date.now();
+            const deltaTime = engine.getDeltaTime() / 1000; // Convert to seconds
 
             projectiles = projectiles.filter(proj => {
+                // Move projectile manually (kinematic)
+                const movement = proj.velocity.scale(deltaTime);
+                proj.mesh.position.addInPlace(movement);
+
                 // Remove old projectiles (after 5 seconds)
                 if (now - proj.firedAt > 5000) {
                     proj.mesh.dispose();
@@ -822,12 +805,18 @@
                     // Flash the specific part that was hit
                     flashMeshOnHit(hitPart);
 
-                    // Apply impact force to torso at hit location
-                    const impactDir = projPos.subtract(proj.target.torso.getAbsolutePosition()).normalize();
-                    proj.target.torsoAggregate.body.applyImpulse(
-                        impactDir.scale(12), // Stronger than before since no separate limb physics
-                        projPos // Apply at hit point for realistic rotation
-                    );
+                    // Apply impact force to torso (if physics body exists)
+                    try {
+                        if (proj.target.torsoAggregate && proj.target.torsoAggregate.body && proj.target.torsoAggregate.body.applyImpulse) {
+                            const impactDir = projPos.subtract(proj.target.torso.getAbsolutePosition()).normalize();
+                            proj.target.torsoAggregate.body.applyImpulse(
+                                impactDir.scale(12),
+                                projPos
+                            );
+                        }
+                    } catch (e) {
+                        // Ragdoll physics might not support direct impulse - that's OK
+                    }
 
                     proj.mesh.dispose();
                     return false;
@@ -958,12 +947,18 @@
             // Flash the specific part that was hit
             flashMeshOnHit(hitPart);
 
-            // Apply impact force to torso at hit location
-            const laserDir = endPos.subtract(startPos).normalize();
-            toMech.torsoAggregate.body.applyImpulse(
-                laserDir.scale(8), // Laser impact
-                endPos // Apply at hit point
-            );
+            // Apply impact force to torso (if physics body exists)
+            try {
+                if (toMech.torsoAggregate && toMech.torsoAggregate.body && toMech.torsoAggregate.body.applyImpulse) {
+                    const laserDir = endPos.subtract(startPos).normalize();
+                    toMech.torsoAggregate.body.applyImpulse(
+                        laserDir.scale(8),
+                        endPos
+                    );
+                }
+            } catch (e) {
+                // Ragdoll physics might not support direct impulse - that's OK
+            }
         }
 
         function updateLaserBeams() {

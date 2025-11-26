@@ -649,20 +649,11 @@
                 log(`Creating Ragdoll with ${ragdollConfig.length} parts...`, 'info');
 
                 // === CREATE RAGDOLL ===
-                const ragdoll = new BABYLON.Ragdoll(skeleton, mechRoot, ragdollConfig);
+                // DISABLED: Ragdoll physics locks bones and prevents animation
+                // Using kinematic bone animation instead
+                const ragdoll = null; // new BABYLON.Ragdoll(skeleton, mechRoot, ragdollConfig);
 
-                log(`Ragdoll created successfully!`, 'info');
-                log(`Ragdoll object keys: ${Object.keys(ragdoll).join(', ')}`, 'info');
-
-                // Check if ragdoll has physics impostors
-                if (ragdoll.physicsImpostors) {
-                    log(`Ragdoll has ${ragdoll.physicsImpostors.length} physics impostors`, 'info');
-                } else if (ragdoll.imposters) {
-                    log(`Ragdoll has ${ragdoll.imposters.length} imposters`, 'info');
-                } else {
-                    log(`Ragdoll structure unknown - check console`, 'warn');
-                    console.log('Ragdoll object:', ragdoll);
-                }
+                log(`Ragdoll DISABLED - using kinematic animation`, 'info');
 
                 // Store mech data
                 const mechData = {
@@ -688,11 +679,10 @@
                     walkDirection: isPlayer ? 1 : -1 // Player walks right, enemy walks left
                 };
 
-                // The ragdoll creates physics bodies for each bone
-                // Access them through ragdoll.physicsImpostors or similar
-                // For now, use the ragdoll object to access physics
+                // No ragdoll physics - using kinematic animation
+                // Create placeholder for backward compatibility
                 mechData.torsoAggregate = {
-                    body: ragdoll.physicsImpostors ? ragdoll.physicsImpostors[0] : {
+                    body: {
                         setLinearVelocity: () => {},
                         setAngularVelocity: () => {},
                         applyImpulse: () => {}

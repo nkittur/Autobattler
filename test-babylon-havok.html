@@ -333,287 +333,270 @@
                 const color = isPlayer ? COLORS.player : COLORS.enemy;
                 const mechName = isPlayer ? 'player' : 'enemy';
 
-                log(`Creating ${mechName} mech...`, 'info');
+                log(`Creating ${mechName} mech with SKELETON...`, 'warn');
 
-                // Create parent transform node (non-physics, just for grouping)
+                // Create parent transform node
                 const mechRoot = new BABYLON.TransformNode(`${mechName}_root`, scene);
                 mechRoot.position = new BABYLON.Vector3(xPos, 0, 0);
 
-                // Create materials with strong emission for visibility
+                // Create materials
                 const bodyMat = new BABYLON.StandardMaterial(`${mechName}_bodyMat`, scene);
                 bodyMat.diffuseColor = color;
-                bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
-                bodyMat.emissiveColor = color.scale(0.5); // Increased from 0.2 for visibility
+                bodyMat.emissiveColor = color.scale(0.5);
 
                 const darkMat = new BABYLON.StandardMaterial(`${mechName}_darkMat`, scene);
                 darkMat.diffuseColor = color.scale(0.5);
-                darkMat.emissiveColor = color.scale(0.3); // Add emission
+                darkMat.emissiveColor = color.scale(0.3);
 
                 const jointMat = new BABYLON.StandardMaterial(`${mechName}_jointMat`, scene);
                 jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
-                jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
 
-                const spawnY = 3.5; // Spawn height
+                const spawnY = 2.5;
 
-                log(`Creating ${mechName} torso...`, 'info');
+                // === CREATE SKELETON ===
+                const skeleton = new BABYLON.Skeleton(`${mechName}Skeleton`, `${mechName}`, scene);
 
-                // === TORSO (Main physics body) ===
+                // Root bone (at mech base)
+                const rootBone = new BABYLON.Bone("root", skeleton);
+                const rootMatrix = BABYLON.Matrix.Translation(0, 0, 0);
+                rootBone.setBindPose(rootMatrix);
+                rootBone.setAbsolutePosition(new BABYLON.Vector3(xPos, 0, 0), scene);
+
+                // Torso bone (main body)
+                const torsoBone = new BABYLON.Bone("torso", skeleton, rootBone);
+                const torsoMatrix = BABYLON.Matrix.Translation(0, spawnY, 0);
+                torsoBone.setBindPose(torsoMatrix);
+
+                log(`Skeleton created: ${skeleton.bones.length} bones`, 'info');
+
+                // Right arm bones
+                const rightShoulderBone = new BABYLON.Bone("rightShoulder", skeleton, torsoBone);
+                const rightShoulderMatrix = BABYLON.Matrix.Translation(0.9, 0.65, 0); // Relative to torso
+                rightShoulderBone.setBindPose(rightShoulderMatrix);
+
+                const rightArmBone = new BABYLON.Bone("rightArm", skeleton, rightShoulderBone);
+                const rightArmMatrix = BABYLON.Matrix.Translation(0, -0.3, 0); // Relative to shoulder, down
+                rightArmBone.setBindPose(rightArmMatrix);
+
+                const rightForearmBone = new BABYLON.Bone("rightForearm", skeleton, rightArmBone);
+                const rightForearmMatrix = BABYLON.Matrix.Translation(0, -0.4, 0); // Relative to arm
+                rightForearmBone.setBindPose(rightForearmMatrix);
+
+                // Left arm bones (mirror of right)
+                const leftShoulderBone = new BABYLON.Bone("leftShoulder", skeleton, torsoBone);
+                const leftShoulderMatrix = BABYLON.Matrix.Translation(-0.9, 0.65, 0);
+                leftShoulderBone.setBindPose(leftShoulderMatrix);
+
+                const leftArmBone = new BABYLON.Bone("leftArm", skeleton, leftShoulderBone);
+                const leftArmMatrix = BABYLON.Matrix.Translation(0, -0.3, 0);
+                leftArmBone.setBindPose(leftArmMatrix);
+
+                const leftForearmBone = new BABYLON.Bone("leftForearm", skeleton, leftArmBone);
+                const leftForearmMatrix = BABYLON.Matrix.Translation(0, -0.4, 0);
+                leftForearmBone.setBindPose(leftForearmMatrix);
+
+                // Right leg bones
+                const rightHipBone = new BABYLON.Bone("rightHip", skeleton, torsoBone);
+                const rightHipMatrix = BABYLON.Matrix.Translation(0.3, -0.75, 0);
+                rightHipBone.setBindPose(rightHipMatrix);
+
+                const rightUpperLegBone = new BABYLON.Bone("rightUpperLeg", skeleton, rightHipBone);
+                const rightUpperLegMatrix = BABYLON.Matrix.Translation(0, -0.35, 0);
+                rightUpperLegBone.setBindPose(rightUpperLegMatrix);
+
+                const rightLowerLegBone = new BABYLON.Bone("rightLowerLeg", skeleton, rightUpperLegBone);
+                const rightLowerLegMatrix = BABYLON.Matrix.Translation(0, -0.35, 0);
+                rightLowerLegBone.setBindPose(rightLowerLegMatrix);
+
+                // Left leg bones (mirror of right)
+                const leftHipBone = new BABYLON.Bone("leftHip", skeleton, torsoBone);
+                const leftHipMatrix = BABYLON.Matrix.Translation(-0.3, -0.75, 0);
+                leftHipBone.setBindPose(leftHipMatrix);
+
+                const leftUpperLegBone = new BABYLON.Bone("leftUpperLeg", skeleton, leftHipBone);
+                const leftUpperLegMatrix = BABYLON.Matrix.Translation(0, -0.35, 0);
+                leftUpperLegBone.setBindPose(leftUpperLegMatrix);
+
+                const leftLowerLegBone = new BABYLON.Bone("leftLowerLeg", skeleton, leftUpperLegBone);
+                const leftLowerLegMatrix = BABYLON.Matrix.Translation(0, -0.35, 0);
+                leftLowerLegBone.setBindPose(leftLowerLegMatrix);
+
+                log(`Skeleton bones: ${skeleton.bones.map(b => b.name).join(', ')}`, 'info');
+
+                // === CREATE VISUAL MESHES ===
+
+                // Torso mesh
                 const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
                     width: 1.2, height: 1.5, depth: 0.8
                 }, scene);
                 torso.position = new BABYLON.Vector3(xPos, spawnY, 0);
-                // Don't rotate physics bodies - causes constraint issues
                 torso.material = bodyMat;
+                torso.skeleton = skeleton;
 
-                // Add physics to torso
-                const torsoAggregate = new BABYLON.PhysicsAggregate(
-                    torso,
-                    BABYLON.PhysicsShapeType.BOX,
-                    { mass: 80, friction: 1.0, restitution: 0.05 },
-                    scene
-                );
-
-                log(`${mechName} torso created with physics`, 'info');
-
-                // Set collision group (group 1 = mechs)
-                // Don't collide with own limbs (they have collision:false in constraints)
-                torsoAggregate.shape.filterMembershipMask = 1;
-                torsoAggregate.shape.filterCollideMask = 2 | 4; // Only projectiles and ground
-
-                // Lock X/Z rotation for upright stability
-                torsoAggregate.body.setMassProperties({
-                    inertia: new BABYLON.Vector3(Infinity, 1, Infinity)
-                });
-
-                // Add damping to reduce oscillation
-                torsoAggregate.body.setLinearDamping(0.1);
-                torsoAggregate.body.setAngularDamping(0.5);
-
-            // === HEAD ===
-            const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
-                width: 0.6, height: 0.5, depth: 0.5
-            }, scene);
-            head.position = new BABYLON.Vector3(0, 1.2, 0);
-            head.parent = torso;
-            head.material = bodyMat;
-
-            // Visor
-            const visor = BABYLON.MeshBuilder.CreateBox(`${mechName}_visor`, {
-                width: 0.5, height: 0.15, depth: 0.1
-            }, scene);
-            visor.position = new BABYLON.Vector3(0, 0.1, 0.25);
-            visor.parent = head;
-            const visorMat = new BABYLON.StandardMaterial(`${mechName}_visorMat`, scene);
-            visorMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0);
-            visorMat.emissiveColor = new BABYLON.Color3(1, 0.2, 0);
-            visor.material = visorMat;
-
-            // === ARMS ===
-            const createArm = (side) => {
-                const xSign = side === 'left' ? -1 : 1;
-                const xOffset = xSign * 0.9;
-                const armHeight = 0.6;
-                const usePhysics = (side === 'right'); // Only right arm has physics for testing
-
-                // Shoulder joint (visual only, parented to torso)
-                const shoulder = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
-                    diameter: 0.3
-                }, scene);
-                shoulder.position = new BABYLON.Vector3(xOffset, 0.65, 0);
-                shoulder.parent = torso;
-                shoulder.material = jointMat;
-
-                // Upper arm
-                const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperArm`, {
-                    width: 0.25, height: armHeight, depth: 0.25
-                }, scene);
-
-                let armAggregate = null;
-
-                if (usePhysics) {
-                    // PHYSICS ARM: Position so TOP of arm aligns with shoulder
-                    // Shoulder world position: (xPos + xOffset, spawnY + 0.65, 0)
-                    // Arm center = shoulder - armHeight/2 in Y
-                    upperArm.position = new BABYLON.Vector3(
-                        xPos + xOffset,
-                        spawnY + 0.65 - (armHeight / 2),
-                        0
-                    );
-                    upperArm.material = darkMat;
-
-                    log(`=== RIGHT ARM PHYSICS SETUP ===`, 'warn');
-                    log(`Torso at: (${xPos}, ${spawnY}, 0)`, 'info');
-                    log(`Arm center: (${upperArm.position.x.toFixed(2)}, ${upperArm.position.y.toFixed(2)}, ${upperArm.position.z.toFixed(2)})`, 'info');
-                    log(`Arm top: (${upperArm.position.x.toFixed(2)}, ${(upperArm.position.y + armHeight/2).toFixed(2)}, 0) [should be shoulder]`, 'info');
-                    log(`Shoulder: (${xPos + xOffset}, ${spawnY + 0.65}, 0)`, 'info');
-
-                    // Create physics - VERY LIGHT for testing
-                    armAggregate = new BABYLON.PhysicsAggregate(
-                        upperArm,
-                        BABYLON.PhysicsShapeType.BOX,
-                        { mass: 1, friction: 0.8, restitution: 0.01 }, // Lighter!
-                        scene
-                    );
-
-                    // Collision filtering
-                    armAggregate.shape.filterMembershipMask = 1;
-                    armAggregate.shape.filterCollideMask = 2 | 4;
-
-                    // MAXIMUM damping
-                    armAggregate.body.setLinearDamping(0.95);
-                    armAggregate.body.setAngularDamping(0.95);
-
-                    // Try BALL_AND_SOCKET (simpler than 6DOF)
-                    try {
-                        const constraint = new BABYLON.PhysicsConstraint(
-                            BABYLON.PhysicsConstraintType.BALL_AND_SOCKET,
-                            {
-                                pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Shoulder in torso LOCAL space
-                                pivotB: new BABYLON.Vector3(0, armHeight / 2, 0), // Top of arm in arm LOCAL space
-                                collision: false
-                            },
-                            scene
-                        );
-
-                        torsoAggregate.body.addConstraint(armAggregate.body, constraint);
-
-                        log(`BALL_AND_SOCKET constraint created`, 'info');
-                        log(`  pivotA (torso local): (${xOffset}, 0.65, 0)`, 'info');
-                        log(`  pivotB (arm local): (0, ${armHeight/2}, 0)`, 'info');
-
-                        // Calculate if pivots align in world space
-                        const shoulderWorld = torso.position.add(new BABYLON.Vector3(xOffset, 0.65, 0));
-                        const armTopWorld = upperArm.position.add(new BABYLON.Vector3(0, armHeight/2, 0));
-                        const dist = BABYLON.Vector3.Distance(shoulderWorld, armTopWorld);
-                        log(`  Pivot distance: ${dist.toFixed(6)} (should be ~0)`, dist < 0.01 ? 'info' : 'error');
-
-                        log(`Constraint added successfully`, 'info');
-                    } catch (e) {
-                        log(`ERROR creating constraint: ${e.message}`, 'error');
-                        console.error('Constraint error:', e);
-                    }
-                } else {
-                    // VISUAL ONLY ARM (left arm for now)
-                    upperArm.position = new BABYLON.Vector3(xOffset, 0.35, 0);
-                    upperArm.parent = torso;
-                    upperArm.material = darkMat;
-                    log(`Creating LEFT arm as VISUAL ONLY (parented to torso)`, 'info');
-                }
-
-                // Lower arm / weapon (parented to upper arm)
-                const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
-                    width: 0.2, height: 0.8, depth: 0.2
-                }, scene);
-                weapon.position = new BABYLON.Vector3(0, -0.5, 0);
-                weapon.parent = upperArm;
-                weapon.material = jointMat;
-
-                // Weapon barrel
-                const barrel = BABYLON.MeshBuilder.CreateCylinder(`${mechName}_${side}Barrel`, {
-                    height: 0.4, diameter: 0.12
-                }, scene);
-                barrel.rotation.x = Math.PI / 2;
-                barrel.position = new BABYLON.Vector3(0, -0.3, 0.25);
-                barrel.parent = weapon;
-                barrel.material = jointMat;
-
-                return { upperArm, shoulder, weapon, barrel, armAggregate };
-            };
-
-            const leftArm = createArm('left');
-            const rightArm = createArm('right');
-
-            // === LEGS ===
-            const createLeg = (side) => {
-                const xSign = side === 'left' ? -1 : 1;
-                const xOffset = xSign * 0.4;
-
-                // Hip joint (visual only, parented to torso)
-                const hip = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Hip`, {
-                    diameter: 0.25
-                }, scene);
-                hip.position = new BABYLON.Vector3(xOffset, -0.85, 0);
-                hip.parent = torso;
-                hip.material = jointMat;
-
-                // Upper leg (VISUAL ONLY - parented to torso for now)
-                const upperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperLeg`, {
-                    width: 0.3, height: 0.7, depth: 0.3
-                }, scene);
-                upperLeg.position = new BABYLON.Vector3(xOffset, -1.2, 0);
-                upperLeg.parent = torso;
-                upperLeg.material = bodyMat;
-
-                // Knee joint (visual, parented to upper leg)
-                const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
-                    diameter: 0.2
-                }, scene);
-                knee.position = new BABYLON.Vector3(0, -0.45, 0);
-                knee.parent = upperLeg;
-                knee.material = jointMat;
-
-                // Lower leg (parented to upper leg)
-                const lowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}LowerLeg`, {
+                // Right arm mesh (linked to rightArm bone)
+                const rightArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightArm`, {
                     width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
-                lowerLeg.position = new BABYLON.Vector3(0, -0.85, 0);
-                lowerLeg.parent = upperLeg;
-                lowerLeg.material = darkMat;
+                rightArm.parent = mechRoot;
+                rightArm.material = darkMat;
+                rightArm.skeleton = skeleton;
 
-                // Foot (parented to lower leg)
-                const foot = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Foot`, {
-                    width: 0.35, height: 0.15, depth: 0.5
+                // Left arm mesh (linked to leftArm bone)
+                const leftArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftArm`, {
+                    width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
-                foot.position = new BABYLON.Vector3(0, -0.38, 0.1);
-                foot.parent = lowerLeg;
-                foot.material = jointMat;
+                leftArm.parent = mechRoot;
+                leftArm.material = darkMat;
+                leftArm.skeleton = skeleton;
 
-                return { hip, upperLeg, knee, lowerLeg, foot };
-            };
-
-            const leftLeg = createLeg('left');
-            const rightLeg = createLeg('right');
-
-            // === SHOULDER ARMOR ===
-            const createShoulderArmor = (side) => {
-                const xOffset = side === 'left' ? -0.85 : 0.85;
-                const shoulderArmor = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}ShoulderArmor`, {
-                    width: 0.5, height: 0.35, depth: 0.6
+                // Right leg meshes
+                const rightUpperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightUpperLeg`, {
+                    width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
-                shoulderArmor.position = new BABYLON.Vector3(xOffset, 0.8, 0);
-                shoulderArmor.parent = torso;
-                shoulderArmor.material = bodyMat;
-                return shoulderArmor;
-            };
+                rightUpperLeg.parent = mechRoot;
+                rightUpperLeg.material = darkMat;
+                rightUpperLeg.skeleton = skeleton;
 
-            createShoulderArmor('left');
-            createShoulderArmor('right');
+                const rightLowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_rightLowerLeg`, {
+                    width: 0.25, height: 0.7, depth: 0.25
+                }, scene);
+                rightLowerLeg.parent = mechRoot;
+                rightLowerLeg.material = darkMat;
+                rightLowerLeg.skeleton = skeleton;
 
-            // Store mech data
-            const mechData = {
-                root: mechRoot,
-                torso: torso,
-                torsoAggregate: torsoAggregate,
-                head: head,
-                visor: visor,
-                leftArm: leftArm,
-                rightArm: rightArm,
-                leftLeg: leftLeg,
-                rightLeg: rightLeg,
-                isPlayer: isPlayer,
-                currentHP: 100,
-                maxHP: 100,
-                color: color
-            };
+                // Left leg meshes
+                const leftUpperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftUpperLeg`, {
+                    width: 0.3, height: 0.7, depth: 0.3
+                }, scene);
+                leftUpperLeg.parent = mechRoot;
+                leftUpperLeg.material = darkMat;
+                leftUpperLeg.skeleton = skeleton;
 
-                log(`${isPlayer ? 'Player' : 'Enemy'} mech created at torso: (${torso.position.x.toFixed(1)}, ${torso.position.y.toFixed(1)}, ${torso.position.z.toFixed(1)})`, 'info');
+                const leftLowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_leftLowerLeg`, {
+                    width: 0.25, height: 0.7, depth: 0.25
+                }, scene);
+                leftLowerLeg.parent = mechRoot;
+                leftLowerLeg.material = darkMat;
+                leftLowerLeg.skeleton = skeleton;
+
+                // Head (parented to torso for now)
+                const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
+                    width: 0.6, height: 0.5, depth: 0.5
+                }, scene);
+                head.position = new BABYLON.Vector3(0, 1.2, 0);
+                head.parent = torso;
+                head.material = bodyMat;
+
+                // === RAGDOLL CONFIGURATION ===
+                const ragdollConfig = [
+                    // Torso - main physics body
+                    {
+                        bones: ["torso"],
+                        size: 0.75,  // Half-height
+                        mass: 80,
+                        boxOffset: 0.01
+                    },
+                    // Arms - upper arms (no limits = free rotation at shoulder)
+                    {
+                        bones: ["rightArm", "leftArm"],
+                        depth: 0.25,
+                        size: 0.3,
+                        width: 0.25,
+                        mass: 4,
+                        rotationAxis: BABYLON.Axis.Y,
+                        // No min/max = free rotation like walking example
+                        boxOffset: 0.15,
+                        boneOffsetAxis: BABYLON.Axis.Y
+                    },
+                    // Forearms (elbows have limits)
+                    {
+                        bones: ["rightForearm", "leftForearm"],
+                        depth: 0.2,
+                        size: 0.2,
+                        width: 0.2,
+                        mass: 2,
+                        rotationAxis: BABYLON.Axis.Y,
+                        min: -1,  // Elbow bends one way
+                        max: 1,
+                        boxOffset: 0.1,
+                        boneOffsetAxis: BABYLON.Axis.Y
+                    },
+                    // Upper legs (hips)
+                    {
+                        bones: ["rightUpperLeg", "leftUpperLeg"],
+                        depth: 0.3,
+                        size: 0.35,
+                        width: 0.3,
+                        mass: 6,
+                        rotationAxis: BABYLON.Axis.Y,
+                        min: -1,
+                        max: 1,
+                        boxOffset: 0.175,
+                        boneOffsetAxis: BABYLON.Axis.Y
+                    },
+                    // Lower legs (knees)
+                    {
+                        bones: ["rightLowerLeg", "leftLowerLeg"],
+                        depth: 0.25,
+                        size: 0.35,
+                        width: 0.25,
+                        mass: 4,
+                        rotationAxis: BABYLON.Axis.Y,
+                        min: -1,
+                        max: 1,
+                        boxOffset: 0.175,
+                        boneOffsetAxis: BABYLON.Axis.Y
+                    }
+                ];
+
+                log(`Creating Ragdoll with ${ragdollConfig.length} parts...`, 'info');
+
+                // === CREATE RAGDOLL ===
+                const ragdoll = new BABYLON.Ragdoll(skeleton, mechRoot, ragdollConfig);
+
+                log(`Ragdoll created successfully!`, 'info');
+
+                // Store mech data
+                const mechData = {
+                    root: mechRoot,
+                    torso: torso,
+                    skeleton: skeleton,
+                    ragdoll: ragdoll,
+                    rightArm: { mesh: rightArm },
+                    leftArm: { mesh: leftArm },
+                    rightUpperLeg: { mesh: rightUpperLeg },
+                    rightLowerLeg: { mesh: rightLowerLeg },
+                    leftUpperLeg: { mesh: leftUpperLeg },
+                    leftLowerLeg: { mesh: leftLowerLeg },
+                    head: head,
+                    isPlayer: isPlayer,
+                    currentHP: 100,
+                    maxHP: 100,
+                    color: color
+                };
+
+                // The ragdoll creates physics bodies for each bone
+                // Access them through ragdoll.physicsImpostors or similar
+                // For now, use the ragdoll object to access physics
+                mechData.torsoAggregate = {
+                    body: ragdoll.physicsImpostors ? ragdoll.physicsImpostors[0] : {
+                        setLinearVelocity: () => {},
+                        setAngularVelocity: () => {},
+                        applyImpulse: () => {}
+                    }
+                };
+
+                log(`${isPlayer ? 'Player' : 'Enemy'} SKELETAL mech created at (${xPos}, ${spawnY}, 0)`, 'info');
                 return mechData;
+
             } catch (error) {
                 log(`ERROR creating ${isPlayer ? 'player' : 'enemy'} mech: ${error.message}`, 'error');
                 console.error('Mech creation error:', error);
                 throw error;
             }
         }
+
+        // === PROJECTILE SYSTEM ===
 
         // === PROJECTILE SYSTEM ===
         function firePlayerProjectile() {

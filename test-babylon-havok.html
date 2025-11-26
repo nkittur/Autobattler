@@ -564,6 +564,9 @@
                 // Rotate bones to create articulated, ready-to-fire pose
                 // CRITICAL: Use setRotation() API, not direct .rotation assignment
 
+                // Initialize torso rotation (will be updated during animation)
+                torsoBone.setRotation(new BABYLON.Vector3(0, 0, 0), BABYLON.Space.LOCAL);
+
                 // Raise right arm forward and out (ready to fire)
                 rightArmBone.setRotation(new BABYLON.Vector3(Math.PI / 3, 0, -Math.PI / 6), BABYLON.Space.LOCAL);
                 // Bend right elbow
@@ -729,7 +732,7 @@
 
             // TORSO rotates independently to face enemy
             const otherMech = mech.isPlayer ? enemyMech : playerMech;
-            if (otherMech) {
+            if (otherMech && mech.torsoBone) {
                 const mechPos = mech.root.getAbsolutePosition();
                 const targetPos = otherMech.root.getAbsolutePosition();
                 const dx = targetPos.x - mechPos.x;
@@ -744,6 +747,17 @@
                 // Normalize angle to -PI to PI range for smooth rotation
                 while (relativeAngle > Math.PI) relativeAngle -= 2 * Math.PI;
                 while (relativeAngle < -Math.PI) relativeAngle += 2 * Math.PI;
+
+                // DEBUG: Always log for first few seconds to diagnose
+                if (mech.walkTime < 10) { // Log for first 10/3 ≈ 3.3 seconds
+                    console.log(`[${mech.walkTime.toFixed(1)}s] ${mech.isPlayer ? 'Player' : 'Enemy'} torso:`,
+                        `mechX=${mechPos.x.toFixed(1)} mechZ=${mechPos.z.toFixed(1)}`,
+                        `targetX=${targetPos.x.toFixed(1)} targetZ=${targetPos.z.toFixed(1)}`,
+                        `dx=${dx.toFixed(2)} dz=${dz.toFixed(2)}`,
+                        `angleToTarget=${(angleToTarget * 180/Math.PI).toFixed(0)}°`,
+                        `rootRot=${(mech.root.rotation.y * 180/Math.PI).toFixed(0)}°`,
+                        `relativeAngle=${(relativeAngle * 180/Math.PI).toFixed(0)}°`);
+                }
 
                 // Torso smoothly rotates to face enemy (no clamp - full range)
                 mech.torsoBone.setRotation(new BABYLON.Vector3(0, relativeAngle, 0), BABYLON.Space.LOCAL);

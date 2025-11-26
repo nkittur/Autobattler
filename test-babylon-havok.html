@@ -638,11 +638,17 @@
             // Arms are already raised by motors, no animation needed
             // raiseArmsToFire(fromMech);
 
-            // Get world positions (torso is parented to collisionBody, so use absolute position)
-            const startPos = fromMech.torso.getAbsolutePosition().clone();
+            // Get world positions
+            const fromTorsoPos = fromMech.torso.getAbsolutePosition().clone();
+            const toTorsoPos = toMech.torso.getAbsolutePosition().clone();
+
+            log(`From torso at (${fromTorsoPos.x.toFixed(1)}, ${fromTorsoPos.y.toFixed(1)}, ${fromTorsoPos.z.toFixed(1)})`, 'info');
+            log(`To torso at (${toTorsoPos.x.toFixed(1)}, ${toTorsoPos.y.toFixed(1)}, ${toTorsoPos.z.toFixed(1)})`, 'info');
+
+            const startPos = fromTorsoPos.clone();
             startPos.y += 0.3; // Fire from weapon height
 
-            const targetPos = toMech.torso.getAbsolutePosition().clone();
+            const targetPos = toTorsoPos.clone();
 
             log(`PROJECTILE: from (${startPos.x.toFixed(1)}, ${startPos.y.toFixed(1)}, ${startPos.z.toFixed(1)}) to (${targetPos.x.toFixed(1)}, ${targetPos.y.toFixed(1)}, ${targetPos.z.toFixed(1)})`, 'info');
 

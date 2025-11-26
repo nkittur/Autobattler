@@ -412,7 +412,6 @@
             const createArm = (side) => {
                 const xSign = side === 'left' ? -1 : 1;
                 const xOffset = xSign * 0.9;
-                const armHeight = 0.6;
 
                 // Shoulder joint (visual only, parented to torso)
                 const shoulder = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
@@ -422,84 +421,15 @@
                 shoulder.parent = torso;
                 shoulder.material = jointMat;
 
-                // Calculate arm position in world space
-                // Shoulder is at torso + (xOffset, 0.65, 0)
-                // Arm center should be armHeight/2 below shoulder
-                const armWorldX = xPos + xOffset;
-                const armWorldY = spawnY + 0.65 - (armHeight / 2);
-                const armWorldZ = 0;
-
-                // Upper arm (HAS PHYSICS - not parented!)
+                // Upper arm (VISUAL ONLY - parented to torso for now)
                 const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperArm`, {
-                    width: 0.25, height: armHeight, depth: 0.25
+                    width: 0.25, height: 0.6, depth: 0.25
                 }, scene);
-                upperArm.position = new BABYLON.Vector3(armWorldX, armWorldY, armWorldZ);
+                upperArm.position = new BABYLON.Vector3(xOffset, 0.35, 0);
+                upperArm.parent = torso;
                 upperArm.material = darkMat;
 
-                log(`Creating ${side} arm at world pos (${armWorldX.toFixed(2)}, ${armWorldY.toFixed(2)}, ${armWorldZ.toFixed(2)})`, 'info');
-
-                // Add physics to arm
-                const armAggregate = new BABYLON.PhysicsAggregate(
-                    upperArm,
-                    BABYLON.PhysicsShapeType.BOX,
-                    { mass: 4, friction: 0.3, restitution: 0.1 },
-                    scene
-                );
-
-                // Set collision group (group 1 = mechs)
-                // Don't collide with own mech parts, only other mechs and projectiles
-                armAggregate.shape.filterMembershipMask = 1;
-                armAggregate.shape.filterCollideMask = 2 | 4; // Only projectiles and ground
-
-                // Add damping to arms
-                armAggregate.body.setLinearDamping(0.4);
-                armAggregate.body.setAngularDamping(0.6);
-
-                // Connect arm to torso with 6DOF constraint (allows motors)
-                let armConstraint = null;
-                try {
-                    armConstraint = new BABYLON.PhysicsConstraint(
-                        BABYLON.PhysicsConstraintType.SIX_DOF,
-                        {
-                            pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Shoulder in torso space
-                            pivotB: new BABYLON.Vector3(0, armHeight / 2, 0), // Top of arm in arm space
-                            collision: false, // Don't collide connected bodies
-                            axisA: new BABYLON.Vector3(0, 1, 0),
-                            axisB: new BABYLON.Vector3(0, 1, 0)
-                        },
-                        scene
-                    );
-
-                    torsoAggregate.body.addConstraint(armAggregate.body, armConstraint);
-
-                    // Set linear limits to keep arm attached (prevent stretching)
-                    armConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_X, 0, 0);
-                    armConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 0, 0);
-                    armConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Z, 0, 0);
-
-                    // Set motor target - arms pointing forward/down in relaxed firing stance
-                    // NOTE: Keep motors gentle to avoid instability, let arms hang naturally
-
-                    // X axis - pitch (forward/back) - DISABLED for now, let arms hang
-                    armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, false);
-
-                    // Y axis - yaw (left/right)
-                    armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
-                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
-                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 50);
-
-                    // Z axis - roll (side tilt)
-                    armConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
-                    armConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
-                    armConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 50);
-
-                    log(`${side} arm constraint with motors created successfully`, 'info');
-                } catch (e) {
-                    log(`ERROR creating ${side} arm constraint: ${e.message}`, 'error');
-                    console.error(`${side} arm constraint error:`, e);
-                }
-
-                // Lower arm / weapon (parented to upper arm - visual only)
+                // Lower arm / weapon (parented to upper arm)
                 const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
                     width: 0.2, height: 0.8, depth: 0.2
                 }, scene);
@@ -516,7 +446,7 @@
                 barrel.parent = weapon;
                 barrel.material = jointMat;
 
-                return { upperArm, shoulder, weapon, barrel, armAggregate };
+                return { upperArm, shoulder, weapon, barrel };
             };
 
             const leftArm = createArm('left');
@@ -526,7 +456,6 @@
             const createLeg = (side) => {
                 const xSign = side === 'left' ? -1 : 1;
                 const xOffset = xSign * 0.4;
-                const legHeight = 0.7;
 
                 // Hip joint (visual only, parented to torso)
                 const hip = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Hip`, {
@@ -536,84 +465,13 @@
                 hip.parent = torso;
                 hip.material = jointMat;
 
-                // Calculate leg position in world space
-                // Hip is at torso + (xOffset, -0.85, 0)
-                // Leg center should be legHeight/2 below hip
-                const legWorldX = xPos + xOffset;
-                const legWorldY = spawnY - 0.85 - (legHeight / 2);
-                const legWorldZ = 0;
-
-                // Upper leg (HAS PHYSICS - not parented!)
+                // Upper leg (VISUAL ONLY - parented to torso for now)
                 const upperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperLeg`, {
-                    width: 0.3, height: legHeight, depth: 0.3
+                    width: 0.3, height: 0.7, depth: 0.3
                 }, scene);
-                upperLeg.position = new BABYLON.Vector3(legWorldX, legWorldY, legWorldZ);
+                upperLeg.position = new BABYLON.Vector3(xOffset, -1.2, 0);
+                upperLeg.parent = torso;
                 upperLeg.material = bodyMat;
-
-                log(`Creating ${side} leg at world pos (${legWorldX.toFixed(2)}, ${legWorldY.toFixed(2)}, ${legWorldZ.toFixed(2)})`, 'info');
-
-                // Add physics to leg
-                const legAggregate = new BABYLON.PhysicsAggregate(
-                    upperLeg,
-                    BABYLON.PhysicsShapeType.BOX,
-                    { mass: 6, friction: 0.8, restitution: 0.1 },
-                    scene
-                );
-
-                // Set collision group (group 1 = mechs)
-                // Don't collide with own mech parts, only other mechs and projectiles
-                legAggregate.shape.filterMembershipMask = 1;
-                legAggregate.shape.filterCollideMask = 2 | 4; // Only projectiles and ground
-
-                // Add damping to legs (higher for stability)
-                legAggregate.body.setLinearDamping(0.4);
-                legAggregate.body.setAngularDamping(0.6);
-
-                // Connect leg to torso with 6DOF constraint (allows motors)
-                let legConstraint = null;
-                try {
-                    legConstraint = new BABYLON.PhysicsConstraint(
-                        BABYLON.PhysicsConstraintType.SIX_DOF,
-                        {
-                            pivotA: new BABYLON.Vector3(xOffset, -0.85, 0),   // Hip in torso space
-                            pivotB: new BABYLON.Vector3(0, legHeight / 2, 0), // Top of leg in leg space
-                            collision: false, // Don't collide connected bodies
-                            axisA: new BABYLON.Vector3(0, 1, 0),
-                            axisB: new BABYLON.Vector3(0, 1, 0)
-                        },
-                        scene
-                    );
-
-                    torsoAggregate.body.addConstraint(legAggregate.body, legConstraint);
-
-                    // Set linear limits to keep leg attached (prevent stretching)
-                    legConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_X, 0, 0);
-                    legConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 0, 0);
-                    legConstraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Z, 0, 0);
-
-                    // Set motor target (keep leg pointing down straight)
-                    // Motors help legs support weight and return to position after impacts
-
-                    // X axis - pitch (forward/back swing)
-                    legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
-                    legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 0);
-                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 200);
-
-                    // Y axis - yaw (left/right turn)
-                    legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
-                    legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
-                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 200);
-
-                    // Z axis - roll (side tilt)
-                    legConstraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
-                    legConstraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
-                    legConstraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 200);
-
-                    log(`${side} leg constraint with motors created successfully`, 'info');
-                } catch (e) {
-                    log(`ERROR creating ${side} leg constraint: ${e.message}`, 'error');
-                    console.error(`${side} leg constraint error:`, e);
-                }
 
                 // Knee joint (visual, parented to upper leg)
                 const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
@@ -639,7 +497,7 @@
                 foot.parent = lowerLeg;
                 foot.material = jointMat;
 
-                return { hip, upperLeg, knee, lowerLeg, foot, legAggregate };
+                return { hip, upperLeg, knee, lowerLeg, foot };
             };
 
             const leftLeg = createLeg('left');
@@ -867,30 +725,10 @@
                     // Flash the specific part that was hit
                     flashMeshOnHit(hitPart);
 
-                    // Apply impact force to the specific limb that was hit
-                    let targetAggregate = proj.target.torsoAggregate; // Default to torso
-                    let impactForce = 8; // Base impact force
-
-                    // Determine which aggregate to apply force to based on what was hit
-                    if (hitPartName === 'left arm' && proj.target.leftArm.armAggregate) {
-                        targetAggregate = proj.target.leftArm.armAggregate;
-                        impactForce = 15; // Stronger impact on limbs
-                    } else if (hitPartName === 'right arm' && proj.target.rightArm.armAggregate) {
-                        targetAggregate = proj.target.rightArm.armAggregate;
-                        impactForce = 15;
-                    } else if (hitPartName === 'left leg' && proj.target.leftLeg.legAggregate) {
-                        targetAggregate = proj.target.leftLeg.legAggregate;
-                        impactForce = 15;
-                    } else if (hitPartName === 'right leg' && proj.target.rightLeg.legAggregate) {
-                        targetAggregate = proj.target.rightLeg.legAggregate;
-                        impactForce = 15;
-                    }
-
-                    // Apply impulse to the hit part
-                    const hitPartPos = hitPart.getAbsolutePosition();
-                    const impactDir = projPos.subtract(hitPartPos).normalize();
-                    targetAggregate.body.applyImpulse(
-                        impactDir.scale(impactForce),
+                    // Apply impact force to torso at hit location
+                    const impactDir = projPos.subtract(proj.target.torso.getAbsolutePosition()).normalize();
+                    proj.target.torsoAggregate.body.applyImpulse(
+                        impactDir.scale(12), // Stronger than before since no separate limb physics
                         projPos // Apply at hit point for realistic rotation
                     );
 
@@ -1014,29 +852,10 @@
             // Flash the specific part that was hit
             flashMeshOnHit(hitPart);
 
-            // Apply impact force to the specific limb that was hit
-            let targetAggregate = toMech.torsoAggregate; // Default to torso
-            let impactForce = 5; // Base laser impact force
-
-            // Determine which aggregate to apply force to based on what was hit
-            if (hitPartName === 'left arm' && toMech.leftArm.armAggregate) {
-                targetAggregate = toMech.leftArm.armAggregate;
-                impactForce = 10; // Stronger impact on limbs
-            } else if (hitPartName === 'right arm' && toMech.rightArm.armAggregate) {
-                targetAggregate = toMech.rightArm.armAggregate;
-                impactForce = 10;
-            } else if (hitPartName === 'left leg' && toMech.leftLeg.legAggregate) {
-                targetAggregate = toMech.leftLeg.legAggregate;
-                impactForce = 10;
-            } else if (hitPartName === 'right leg' && toMech.rightLeg.legAggregate) {
-                targetAggregate = toMech.rightLeg.legAggregate;
-                impactForce = 10;
-            }
-
-            // Apply impulse to the hit part
+            // Apply impact force to torso at hit location
             const laserDir = endPos.subtract(startPos).normalize();
-            targetAggregate.body.applyImpulse(
-                laserDir.scale(impactForce),
+            toMech.torsoAggregate.body.applyImpulse(
+                laserDir.scale(8), // Laser impact
                 endPos // Apply at hit point
             );
         }
@@ -1338,26 +1157,23 @@
         }
 
         function testConstraintIntegrity() {
-            log('--- CONSTRAINT INTEGRITY TEST ---', 'info');
+            log('--- MECH STRUCTURE TEST ---', 'info');
 
             if (!playerMech) return;
 
-            // Check if aggregates exist
-            const hasLeftArm = playerMech.leftArm && playerMech.leftArm.armAggregate;
-            const hasRightArm = playerMech.rightArm && playerMech.rightArm.armAggregate;
-            const hasLeftLeg = playerMech.leftLeg && playerMech.leftLeg.legAggregate;
-            const hasRightLeg = playerMech.rightLeg && playerMech.rightLeg.legAggregate;
+            // Check if limbs exist
+            const hasLeftArm = playerMech.leftArm && playerMech.leftArm.upperArm;
+            const hasRightArm = playerMech.rightArm && playerMech.rightArm.upperArm;
+            const hasLeftLeg = playerMech.leftLeg && playerMech.leftLeg.upperLeg;
+            const hasRightLeg = playerMech.rightLeg && playerMech.rightLeg.upperLeg;
 
-            log(`Left arm aggregate: ${hasLeftArm ? 'EXISTS' : 'MISSING'}`, hasLeftArm ? 'info' : 'error');
-            log(`Right arm aggregate: ${hasRightArm ? 'EXISTS' : 'MISSING'}`, hasRightArm ? 'info' : 'error');
-            log(`Left leg aggregate: ${hasLeftLeg ? 'EXISTS' : 'MISSING'}`, hasLeftLeg ? 'info' : 'error');
-            log(`Right leg aggregate: ${hasRightLeg ? 'EXISTS' : 'MISSING'}`, hasRightLeg ? 'info' : 'error');
+            log(`Left arm: ${hasLeftArm ? 'EXISTS' : 'MISSING'}`, hasLeftArm ? 'info' : 'error');
+            log(`Right arm: ${hasRightArm ? 'EXISTS' : 'MISSING'}`, hasRightArm ? 'info' : 'error');
+            log(`Left leg: ${hasLeftLeg ? 'EXISTS' : 'MISSING'}`, hasLeftLeg ? 'info' : 'error');
+            log(`Right leg: ${hasRightLeg ? 'EXISTS' : 'MISSING'}`, hasRightLeg ? 'info' : 'error');
 
-            // Check arm rotation (motor effect)
-            if (hasLeftArm) {
-                const leftArmRot = playerMech.leftArm.upperArm.rotation;
-                log(`Left arm rotation: X=${leftArmRot.x.toFixed(3)}, Y=${leftArmRot.y.toFixed(3)}, Z=${leftArmRot.z.toFixed(3)}`, 'info');
-            }
+            log('Note: All limbs are currently VISUAL ONLY (parented to torso)', 'info');
+            log('No constraints or motors (simplified to diagnose issues)', 'info');
         }
 
         function testMotorConfiguration() {

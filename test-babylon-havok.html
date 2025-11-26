@@ -143,7 +143,13 @@
                 }
 
                 if (scene) {
-                    scene.render();
+                    try {
+                        scene.render();
+                    } catch (e) {
+                        log(`ERROR in scene.render(): ${e.message}`, 'error');
+                        console.error(e);
+                    }
+
                     frameCount++;
 
                     // Log diagnostics immediately at frame 10 (about 0.16 seconds)
@@ -154,9 +160,17 @@
                         log(`Draw calls: ${scene.getEngine().drawCalls}`, 'error');
                     }
 
-                    updateProjectiles();
-                    updateLaserBeams();
-                    stabilizeMechs();
+                    try {
+                        updateProjectiles();
+                        updateLaserBeams();
+                        stabilizeMechs();
+                    } catch (e) {
+                        if (!diagnosticsLogged) {
+                            log(`ERROR in update functions: ${e.message}`, 'error');
+                            console.error(e);
+                            diagnosticsLogged = true;
+                        }
+                    }
                 } else {
                     if (!diagnosticsLogged) {
                         log('ERROR: scene is null/undefined in render loop!', 'error');

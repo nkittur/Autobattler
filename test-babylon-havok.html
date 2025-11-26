@@ -528,30 +528,32 @@
                 // Attach torso to torso bone
                 torso.attachToBone(torsoBone, mechRoot);
 
-                // Position and attach arms - offset so mesh extends DOWN from joint
-                // Upper arms extend down from shoulder
-                rightArm.position = new BABYLON.Vector3(0, -0.3, 0); // Half the mesh height
+                // Position and attach arms - offset so mesh extends UP from joint to parent joint
+                // CRITICAL: Bones are at LOWER joints (elbow, wrist), meshes extend UPWARD
+
+                // Upper arms: attached to elbow bone, extend UP to shoulder
+                rightArm.position = new BABYLON.Vector3(0, 0.3, 0); // POSITIVE - extends upward
                 rightArm.attachToBone(rightArmBone, mechRoot);
-                leftArm.position = new BABYLON.Vector3(0, -0.3, 0);
+                leftArm.position = new BABYLON.Vector3(0, 0.3, 0);
                 leftArm.attachToBone(leftArmBone, mechRoot);
 
-                // Forearms extend down from elbow
-                rightForearm.position = new BABYLON.Vector3(0, -0.25, 0); // Half the mesh height
+                // Forearms: attached to wrist bone, extend UP to elbow
+                rightForearm.position = new BABYLON.Vector3(0, 0.25, 0); // POSITIVE - extends upward
                 rightForearm.attachToBone(rightForearmBone, mechRoot);
-                leftForearm.position = new BABYLON.Vector3(0, -0.25, 0);
+                leftForearm.position = new BABYLON.Vector3(0, 0.25, 0);
                 leftForearm.attachToBone(leftForearmBone, mechRoot);
 
-                // Position and attach legs - offset so mesh extends DOWN from joint
-                // Upper legs extend down from hip
-                rightUpperLeg.position = new BABYLON.Vector3(0, -0.35, 0); // Half the mesh height
+                // Position and attach legs - offset so mesh extends UP from joint to parent joint
+                // Upper legs: attached to knee bone, extend UP to hip
+                rightUpperLeg.position = new BABYLON.Vector3(0, 0.35, 0); // POSITIVE - extends upward
                 rightUpperLeg.attachToBone(rightUpperLegBone, mechRoot);
-                leftUpperLeg.position = new BABYLON.Vector3(0, -0.35, 0);
+                leftUpperLeg.position = new BABYLON.Vector3(0, 0.35, 0);
                 leftUpperLeg.attachToBone(leftUpperLegBone, mechRoot);
 
-                // Lower legs extend down from knee
-                rightLowerLeg.position = new BABYLON.Vector3(0, -0.35, 0); // Half the mesh height
+                // Lower legs: attached to ankle bone, extend UP to knee
+                rightLowerLeg.position = new BABYLON.Vector3(0, 0.35, 0); // POSITIVE - extends upward
                 rightLowerLeg.attachToBone(rightLowerLegBone, mechRoot);
-                leftLowerLeg.position = new BABYLON.Vector3(0, -0.35, 0);
+                leftLowerLeg.position = new BABYLON.Vector3(0, 0.35, 0);
                 leftLowerLeg.attachToBone(leftLowerLegBone, mechRoot);
 
                 log(`Meshes attached to bones`, 'info');

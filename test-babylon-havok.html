@@ -739,12 +739,14 @@
                 const angleToTarget = Math.atan2(dz, dx);
 
                 // Torso rotation is relative to root rotation (in root's local space)
-                const relativeAngle = angleToTarget - mech.root.rotation.y;
+                let relativeAngle = angleToTarget - mech.root.rotation.y;
 
-                // Clamp torso rotation to reasonable limits (can't twist 360)
-                const clampedAngle = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, relativeAngle));
+                // Normalize angle to -PI to PI range for smooth rotation
+                while (relativeAngle > Math.PI) relativeAngle -= 2 * Math.PI;
+                while (relativeAngle < -Math.PI) relativeAngle += 2 * Math.PI;
 
-                mech.torsoBone.setRotation(new BABYLON.Vector3(0, clampedAngle, 0), BABYLON.Space.LOCAL);
+                // Torso smoothly rotates to face enemy (no clamp - full range)
+                mech.torsoBone.setRotation(new BABYLON.Vector3(0, relativeAngle, 0), BABYLON.Space.LOCAL);
             }
 
             // Animate legs - alternating walking motion

@@ -412,6 +412,8 @@
             const createArm = (side) => {
                 const xSign = side === 'left' ? -1 : 1;
                 const xOffset = xSign * 0.9;
+                const armHeight = 0.6;
+                const usePhysics = (side === 'right'); // Only right arm has physics for testing
 
                 // Shoulder joint (visual only, parented to torso)
                 const shoulder = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
@@ -421,13 +423,113 @@
                 shoulder.parent = torso;
                 shoulder.material = jointMat;
 
-                // Upper arm (VISUAL ONLY - parented to torso for now)
+                // Upper arm
                 const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperArm`, {
-                    width: 0.25, height: 0.6, depth: 0.25
+                    width: 0.25, height: armHeight, depth: 0.25
                 }, scene);
-                upperArm.position = new BABYLON.Vector3(xOffset, 0.35, 0);
-                upperArm.parent = torso;
-                upperArm.material = darkMat;
+
+                let armAggregate = null;
+
+                if (usePhysics) {
+                    // PHYSICS ARM: Position in world space, attach via constraint
+                    // Shoulder is at torsoY + 0.65
+                    // Arm center needs to be armHeight/2 below shoulder
+                    upperArm.position = new BABYLON.Vector3(
+                        xPos + xOffset,
+                        spawnY + 0.65 - (armHeight / 2),
+                        0
+                    );
+                    upperArm.material = darkMat;
+
+                    log(`Creating RIGHT arm with PHYSICS at (${upperArm.position.x.toFixed(2)}, ${upperArm.position.y.toFixed(2)}, ${upperArm.position.z.toFixed(2)})`, 'info');
+
+                    // Create physics aggregate
+                    armAggregate = new BABYLON.PhysicsAggregate(
+                        upperArm,
+                        BABYLON.PhysicsShapeType.BOX,
+                        { mass: 5, friction: 0.5, restitution: 0.1 },
+                        scene
+                    );
+
+                    // Collision filtering
+                    armAggregate.shape.filterMembershipMask = 1;
+                    armAggregate.shape.filterCollideMask = 2 | 4;
+
+                    // High damping for stability
+                    armAggregate.body.setLinearDamping(0.5);
+                    armAggregate.body.setAngularDamping(0.7);
+
+                    // Create 6DOF constraint with ANGULAR LIMITS (the missing piece!)
+                    try {
+                        const constraint = new BABYLON.PhysicsConstraint(
+                            BABYLON.PhysicsConstraintType.SIX_DOF,
+                            {
+                                pivotA: new BABYLON.Vector3(xOffset, 0.65, 0),  // Shoulder in torso space
+                                pivotB: new BABYLON.Vector3(0, armHeight / 2, 0), // Top of arm in arm space
+                                collision: false,
+                                axisA: new BABYLON.Vector3(0, 1, 0),
+                                axisB: new BABYLON.Vector3(0, 1, 0)
+                            },
+                            scene
+                        );
+
+                        torsoAggregate.body.addConstraint(armAggregate.body, constraint);
+
+                        // **CRITICAL: Lock linear movement (prevents separation)**
+                        constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_X, 0, 0);
+                        constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 0, 0);
+                        constraint.setLimit(BABYLON.PhysicsConstraintAxis.LINEAR_Z, 0, 0);
+
+                        // **NEW: Set angular limits (prevents wild spinning)**
+                        // X axis = pitch (forward/back swing)
+                        constraint.setLimit(
+                            BABYLON.PhysicsConstraintAxis.ANGULAR_X,
+                            -Math.PI / 2,  // Can raise to horizontal
+                            Math.PI / 3    // Can drop to 60° down
+                        );
+
+                        // Y axis = yaw (left/right twist)
+                        constraint.setLimit(
+                            BABYLON.PhysicsConstraintAxis.ANGULAR_Y,
+                            -Math.PI / 4,  // 45° left
+                            Math.PI / 4    // 45° right
+                        );
+
+                        // Z axis = roll (spin around arm length)
+                        constraint.setLimit(
+                            BABYLON.PhysicsConstraintAxis.ANGULAR_Z,
+                            -Math.PI / 6,  // 30° either way
+                            Math.PI / 6
+                        );
+
+                        // **NEW: Much stronger motor forces (like ragdoll example)**
+                        // X axis motor - hold arm pointing slightly down
+                        constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_X, true);
+                        constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_X, Math.PI / 6); // Slightly down
+                        constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_X, 300);
+
+                        // Y axis motor - no twist
+                        constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, true);
+                        constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 0);
+                        constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Y, 300);
+
+                        // Z axis motor - no roll
+                        constraint.setMotorEnabled(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, true);
+                        constraint.setMotorTarget(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 0);
+                        constraint.setMotorMaxForce(BABYLON.PhysicsConstraintAxis.ANGULAR_Z, 300);
+
+                        log(`RIGHT arm: Physics constraint created with ANGULAR LIMITS and strong motors`, 'info');
+                    } catch (e) {
+                        log(`ERROR creating RIGHT arm constraint: ${e.message}`, 'error');
+                        console.error('Right arm constraint error:', e);
+                    }
+                } else {
+                    // VISUAL ONLY ARM (left arm for now)
+                    upperArm.position = new BABYLON.Vector3(xOffset, 0.35, 0);
+                    upperArm.parent = torso;
+                    upperArm.material = darkMat;
+                    log(`Creating LEFT arm as VISUAL ONLY (parented to torso)`, 'info');
+                }
 
                 // Lower arm / weapon (parented to upper arm)
                 const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
@@ -446,7 +548,7 @@
                 barrel.parent = weapon;
                 barrel.material = jointMat;
 
-                return { upperArm, shoulder, weapon, barrel };
+                return { upperArm, shoulder, weapon, barrel, armAggregate };
             };
 
             const leftArm = createArm('left');

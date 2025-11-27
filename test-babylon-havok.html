@@ -773,12 +773,25 @@
             const zPhase = mech.isPlayer ? 0 : Math.PI; // 180° phase difference
             mech.root.position.z = Math.sin(mech.walkTime * 0.5 + zPhase) * 1.5;
 
+            // CRITICAL: Synchronize skeleton root bone with mechRoot position
+            // The skeleton bones are positioned absolutely in world space, not relative to mechRoot
+            // So we need to update the root bone position after all mechRoot position changes
+            const rootBone = mech.skeleton.bones[0]; // First bone is the root
+            if (rootBone) {
+                rootBone.setAbsolutePosition(mech.root.position, scene);
+            }
+
             // Reverse direction at boundaries and clamp position
             const boundary = 6;
             if (Math.abs(mech.root.position.x) > boundary) {
                 mech.walkDirection *= -1;
                 // Clamp position to boundary to prevent escaping
                 mech.root.position.x = Math.sign(mech.root.position.x) * boundary;
+
+                // Re-synchronize bone position after boundary clamping
+                if (rootBone) {
+                    rootBone.setAbsolutePosition(mech.root.position, scene);
+                }
             }
 
             // LEGS face the walk direction (root rotation)
@@ -1218,12 +1231,16 @@
             lastDebugTime = now;
 
             if (playerMech) {
-                const pos = playerMech.torso.getAbsolutePosition();
-                log(`Player at (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`, 'info');
+                const rootPos = playerMech.root.position;
+                const torsoPos = playerMech.torso.getAbsolutePosition();
+                log(`Player root: (${rootPos.x.toFixed(1)}, ${rootPos.y.toFixed(1)}, ${rootPos.z.toFixed(1)}) | ` +
+                    `torso: (${torsoPos.x.toFixed(1)}, ${torsoPos.y.toFixed(1)}, ${torsoPos.z.toFixed(1)})`, 'info');
             }
             if (enemyMech) {
-                const pos = enemyMech.torso.getAbsolutePosition();
-                log(`Enemy at (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`, 'info');
+                const rootPos = enemyMech.root.position;
+                const torsoPos = enemyMech.torso.getAbsolutePosition();
+                log(`Enemy root: (${rootPos.x.toFixed(1)}, ${rootPos.y.toFixed(1)}, ${rootPos.z.toFixed(1)}) | ` +
+                    `torso: (${torsoPos.x.toFixed(1)}, ${torsoPos.y.toFixed(1)}, ${torsoPos.z.toFixed(1)})`, 'info');
             }
         }
 

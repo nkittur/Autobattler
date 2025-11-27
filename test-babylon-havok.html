@@ -291,6 +291,11 @@
                 enemyMech = createMech(scene, 5, false);
                 log('Scene fully initialized with mechs!', 'info');
 
+                // DEBUG: Verify mechs have distinct objects
+                log(`Player root ID: ${playerMech.root.uniqueId}, Enemy root ID: ${enemyMech.root.uniqueId}`, 'warn');
+                log(`Player skeleton ID: ${playerMech.skeleton.uniqueId}, Enemy skeleton ID: ${enemyMech.skeleton.uniqueId}`, 'warn');
+                log(`Player root bone: ${playerMech.skeleton.bones[0].name}, Enemy root bone: ${enemyMech.skeleton.bones[0].name}`, 'warn');
+
                 // DEBUG: Log scene info
                 log(`Scene has ${scene.meshes.length} meshes`, 'warn');
                 log(`Scene has ${scene.lights.length} lights`, 'warn');
@@ -778,7 +783,17 @@
             // So we need to update the root bone position after all mechRoot position changes
             const rootBone = mech.skeleton.bones[0]; // First bone is the root
             if (rootBone) {
-                rootBone.setAbsolutePosition(mech.root.position, scene);
+                const beforePos = rootBone.getAbsolutePosition().clone();
+                rootBone.setAbsolutePosition(new BABYLON.Vector3(mech.root.position.x, mech.root.position.y, mech.root.position.z), scene);
+                const afterPos = rootBone.getAbsolutePosition();
+
+                // Debug log for first few seconds
+                if (mech.walkTime < 10) {
+                    addDebugLog(`[${mech.walkTime.toFixed(1)}s] ${mech.isPlayer ? 'Player' : 'Enemy'} bone sync: ` +
+                        `mechRoot=(${mech.root.position.x.toFixed(1)}, ${mech.root.position.z.toFixed(1)}) ` +
+                        `boneBefore=(${beforePos.x.toFixed(1)}, ${beforePos.z.toFixed(1)}) ` +
+                        `boneAfter=(${afterPos.x.toFixed(1)}, ${afterPos.z.toFixed(1)})`);
+                }
             }
 
             // Reverse direction at boundaries and clamp position
@@ -788,9 +803,14 @@
                 // Clamp position to boundary to prevent escaping
                 mech.root.position.x = Math.sign(mech.root.position.x) * boundary;
 
+                addDebugLog(`[${mech.walkTime.toFixed(1)}s] ${mech.isPlayer ? 'Player' : 'Enemy'} HIT BOUNDARY! ` +
+                    `Clamped to (${mech.root.position.x.toFixed(1)}, ${mech.root.position.z.toFixed(1)}) ` +
+                    `Direction now: ${mech.walkDirection}`);
+
                 // Re-synchronize bone position after boundary clamping
                 if (rootBone) {
-                    rootBone.setAbsolutePosition(mech.root.position, scene);
+                    rootBone.setAbsolutePosition(new BABYLON.Vector3(mech.root.position.x, mech.root.position.y, mech.root.position.z), scene);
+                    addDebugLog(`  -> Bone re-synced to (${rootBone.getAbsolutePosition().x.toFixed(1)}, ${rootBone.getAbsolutePosition().z.toFixed(1)})`);
                 }
             }
 

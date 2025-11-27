@@ -421,11 +421,11 @@
                 // === CREATE SKELETON ===
                 const skeleton = new BABYLON.Skeleton(`${mechName}Skeleton`, `${mechName}`, scene);
 
-                // Root bone (at mech base)
+                // Root bone (at mech base, relative to mechRoot which is at xPos)
+                // NO absolute positioning - the bone stays at (0,0,0) and mechRoot handles all movement
                 const rootBone = new BABYLON.Bone("root", skeleton);
                 const rootMatrix = BABYLON.Matrix.Translation(0, 0, 0);
                 rootBone.setBindPose(rootMatrix);
-                rootBone.setAbsolutePosition(new BABYLON.Vector3(xPos, 0, 0), scene);
 
                 // Torso bone (main body)
                 const torsoBone = new BABYLON.Bone("torso", skeleton, rootBone);
@@ -778,23 +778,8 @@
             const zPhase = mech.isPlayer ? 0 : Math.PI; // 180° phase difference
             mech.root.position.z = Math.sin(mech.walkTime * 0.5 + zPhase) * 1.5;
 
-            // CRITICAL: Synchronize skeleton root bone with mechRoot position
-            // The skeleton bones are positioned absolutely in world space, not relative to mechRoot
-            // So we need to update the root bone position after all mechRoot position changes
-            const rootBone = mech.skeleton.bones[0]; // First bone is the root
-            if (rootBone) {
-                const beforePos = rootBone.getAbsolutePosition().clone();
-                rootBone.setAbsolutePosition(new BABYLON.Vector3(mech.root.position.x, mech.root.position.y, mech.root.position.z), scene);
-                const afterPos = rootBone.getAbsolutePosition();
-
-                // Debug log for first few seconds
-                if (mech.walkTime < 10) {
-                    addDebugLog(`[${mech.walkTime.toFixed(1)}s] ${mech.isPlayer ? 'Player' : 'Enemy'} bone sync: ` +
-                        `mechRoot=(${mech.root.position.x.toFixed(1)}, ${mech.root.position.z.toFixed(1)}) ` +
-                        `boneBefore=(${beforePos.x.toFixed(1)}, ${beforePos.z.toFixed(1)}) ` +
-                        `boneAfter=(${afterPos.x.toFixed(1)}, ${afterPos.z.toFixed(1)})`);
-                }
-            }
+            // NO bone synchronization needed! Meshes are attached to bones with mechRoot as parent,
+            // so they automatically follow mechRoot's position. Moving mechRoot moves everything.
 
             // Reverse direction at boundaries and clamp position
             const boundary = 6;
@@ -806,12 +791,6 @@
                 addDebugLog(`[${mech.walkTime.toFixed(1)}s] ${mech.isPlayer ? 'Player' : 'Enemy'} HIT BOUNDARY! ` +
                     `Clamped to (${mech.root.position.x.toFixed(1)}, ${mech.root.position.z.toFixed(1)}) ` +
                     `Direction now: ${mech.walkDirection}`);
-
-                // Re-synchronize bone position after boundary clamping
-                if (rootBone) {
-                    rootBone.setAbsolutePosition(new BABYLON.Vector3(mech.root.position.x, mech.root.position.y, mech.root.position.z), scene);
-                    addDebugLog(`  -> Bone re-synced to (${rootBone.getAbsolutePosition().x.toFixed(1)}, ${rootBone.getAbsolutePosition().z.toFixed(1)})`);
-                }
             }
 
             // LEGS face the walk direction (root rotation)

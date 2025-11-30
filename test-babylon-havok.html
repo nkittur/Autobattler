@@ -274,7 +274,7 @@
             moveForce: 150,         // Normal movement force (increased significantly)
             strafeForce: 60,        // Lateral movement force (increased significantly)
             decisionInterval: 0.2,  // How often AI makes decisions (faster for responsiveness)
-            strafeChance: 0.15,     // Chance to start strafing each decision
+            strafeChance: 0.6,      // Higher chance to strafe at optimal range for more dynamic combat
             strafeDuration: 1.5     // How long to strafe before reconsidering
         };
 
@@ -505,9 +505,9 @@
             chromeMat.specularColor = new BABYLON.Color3(0.8, 0.8, 0.8);
             chromeMat.specularPower = 128;
 
-            // === PELVIS / CENTER (Physics body) ===
+            // === PELVIS / CENTER (Physics body) - Wide stance for stability ===
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
-                width: 1.1, height: 0.5, depth: 0.9
+                width: 1.8, height: 0.5, depth: 0.9  // Wider pelvis
             }, scene);
             pelvis.position = new BABYLON.Vector3(xPos, 3.5, 0);  // Spawn height
             pelvis.material = darkMat;
@@ -517,7 +517,7 @@
             const pelvisShape = new BABYLON.PhysicsShapeBox(
                 new BABYLON.Vector3(0, -1.5, 0),  // Center offset (shift down to cover legs)
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.1, 3.5, 0.9),  // Full standing height
+                new BABYLON.Vector3(1.8, 3.5, 0.9),  // Full standing height (wider)
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
@@ -944,13 +944,13 @@
                 const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', {
                     diameter: 0.42
                 }, scene);
-                hip.position = new BABYLON.Vector3(xOff * 0.45, -0.3, -0.1);
+                hip.position = new BABYLON.Vector3(xOff * 0.8, -0.3, -0.1);  // Wider stance
                 hip.parent = pelvis;
                 hip.material = chromeMat;
 
                 // Leg group for rotation (parent of all leg parts below hip)
                 const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
-                legGroup.position = new BABYLON.Vector3(xOff * 0.45, -0.3, -0.1);
+                legGroup.position = new BABYLON.Vector3(xOff * 0.8, -0.3, -0.1);  // Match hip
                 legGroup.parent = pelvis;
 
                 // Upper leg (thigh) - angled forward significantly for chicken-walk stance
@@ -1034,10 +1034,10 @@
                 footGroup.position = new BABYLON.Vector3(0, -0.12, 0);
                 footGroup.parent = ankle;
 
-                // === MAD CAT STYLE FOOT - Balanced forward/backward ===
+                // === MAD CAT STYLE FOOT - Y-Fork Design ===
                 // Main foot body (centered under ankle for balance)
                 const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
-                    width: 0.5, height: 0.18, depth: 0.5
+                    width: 0.5, height: 0.18, depth: 0.4
                 }, scene);
                 foot.position = new BABYLON.Vector3(0, 0, 0);  // Centered under ankle
                 foot.parent = footGroup;
@@ -1045,112 +1045,107 @@
 
                 // Foot armor top
                 const footTop = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FootTop', {
-                    width: 0.45, height: 0.1, depth: 0.45
+                    width: 0.45, height: 0.1, depth: 0.35
                 }, scene);
                 footTop.position = new BABYLON.Vector3(0, 0.1, 0);
                 footTop.parent = foot;
                 footTop.material = primaryMat;
 
-                // === FORWARD CLAWS (3) - Bird-like digitigrade ===
-                // Center front claw (longest)
-                const frontClawCenter = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawC', {
-                    width: 0.18, height: 0.12, depth: 0.7
+                // === FRONT Y-FORK ===
+                // Y-fork stem (center piece going forward)
+                const forkStem = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ForkStem', {
+                    width: 0.18, height: 0.12, depth: 0.45
                 }, scene);
-                frontClawCenter.position = new BABYLON.Vector3(0, -0.03, 0.5);
-                frontClawCenter.rotation.x = -0.1;
-                frontClawCenter.parent = foot;
-                frontClawCenter.material = primaryMat;
+                forkStem.position = new BABYLON.Vector3(0, -0.03, 0.35);
+                forkStem.rotation.x = -0.08;
+                forkStem.parent = foot;
+                forkStem.material = primaryMat;
 
-                // Center claw tip
-                const frontTipC = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipC', {
-                    width: 0.12, height: 0.08, depth: 0.25
+                // Y-fork left prong
+                const forkProngL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ForkProngL', {
+                    width: 0.12, height: 0.1, depth: 0.5
                 }, scene);
-                frontTipC.position = new BABYLON.Vector3(0, -0.02, 0.4);
-                frontTipC.rotation.x = -0.2;
-                frontTipC.parent = frontClawCenter;
-                frontTipC.material = metalMat;
+                forkProngL.position = new BABYLON.Vector3(-0.18, -0.02, 0.35);
+                forkProngL.rotation.x = -0.1;
+                forkProngL.rotation.y = 0.35;  // Angled outward for Y shape
+                forkProngL.parent = forkStem;
+                forkProngL.material = primaryMat;
 
-                // Left front claw
-                const frontClawL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawL', {
-                    width: 0.14, height: 0.1, depth: 0.55
+                // Left prong tip
+                const prongTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ProngTipL', {
+                    width: 0.08, height: 0.06, depth: 0.18
                 }, scene);
-                frontClawL.position = new BABYLON.Vector3(-0.22, -0.04, 0.4);
-                frontClawL.rotation.x = -0.1;
-                frontClawL.rotation.y = 0.25;  // Angled outward
-                frontClawL.parent = foot;
-                frontClawL.material = primaryMat;
+                prongTipL.position = new BABYLON.Vector3(0, -0.02, 0.28);
+                prongTipL.rotation.x = -0.15;
+                prongTipL.parent = forkProngL;
+                prongTipL.material = metalMat;
 
-                const frontTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipL', {
-                    width: 0.1, height: 0.06, depth: 0.2
+                // Y-fork right prong
+                const forkProngR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ForkProngR', {
+                    width: 0.12, height: 0.1, depth: 0.5
                 }, scene);
-                frontTipL.position = new BABYLON.Vector3(0, -0.02, 0.32);
-                frontTipL.rotation.x = -0.2;
-                frontTipL.parent = frontClawL;
-                frontTipL.material = metalMat;
+                forkProngR.position = new BABYLON.Vector3(0.18, -0.02, 0.35);
+                forkProngR.rotation.x = -0.1;
+                forkProngR.rotation.y = -0.35;  // Angled outward for Y shape
+                forkProngR.parent = forkStem;
+                forkProngR.material = primaryMat;
 
-                // Right front claw
-                const frontClawR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawR', {
-                    width: 0.14, height: 0.1, depth: 0.55
+                // Right prong tip
+                const prongTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ProngTipR', {
+                    width: 0.08, height: 0.06, depth: 0.18
                 }, scene);
-                frontClawR.position = new BABYLON.Vector3(0.22, -0.04, 0.4);
-                frontClawR.rotation.x = -0.1;
-                frontClawR.rotation.y = -0.25;  // Angled outward
-                frontClawR.parent = foot;
-                frontClawR.material = primaryMat;
+                prongTipR.position = new BABYLON.Vector3(0, -0.02, 0.28);
+                prongTipR.rotation.x = -0.15;
+                prongTipR.parent = forkProngR;
+                prongTipR.material = metalMat;
 
-                const frontTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipR', {
-                    width: 0.1, height: 0.06, depth: 0.2
+                // === REAR Y-FORK (Mirror of front for balance) ===
+                // Rear Y-fork stem
+                const rearForkStem = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearForkStem', {
+                    width: 0.16, height: 0.1, depth: 0.4
                 }, scene);
-                frontTipR.position = new BABYLON.Vector3(0, -0.02, 0.32);
-                frontTipR.rotation.x = -0.2;
-                frontTipR.parent = frontClawR;
-                frontTipR.material = metalMat;
+                rearForkStem.position = new BABYLON.Vector3(0, -0.04, -0.35);
+                rearForkStem.rotation.x = 0.1;
+                rearForkStem.parent = foot;
+                rearForkStem.material = primaryMat;
 
-                // === REAR CLAWS (2) - Critical for balance ===
-                // Left rear claw
-                const rearClawL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearClawL', {
-                    width: 0.14, height: 0.1, depth: 0.6
+                // Rear left prong
+                const rearProngL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearProngL', {
+                    width: 0.1, height: 0.08, depth: 0.4
                 }, scene);
-                rearClawL.position = new BABYLON.Vector3(-0.18, -0.04, -0.45);
-                rearClawL.rotation.x = 0.15;  // Angled down at back
-                rearClawL.rotation.y = -0.2;  // Angled outward
-                rearClawL.parent = foot;
-                rearClawL.material = primaryMat;
+                rearProngL.position = new BABYLON.Vector3(-0.15, -0.01, -0.3);
+                rearProngL.rotation.x = 0.12;
+                rearProngL.rotation.y = -0.3;  // Angled outward
+                rearProngL.parent = rearForkStem;
+                rearProngL.material = primaryMat;
 
+                // Rear left tip
                 const rearTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearTipL', {
-                    width: 0.1, height: 0.06, depth: 0.2
+                    width: 0.06, height: 0.05, depth: 0.15
                 }, scene);
-                rearTipL.position = new BABYLON.Vector3(0, -0.02, -0.35);
-                rearTipL.rotation.x = 0.2;
-                rearTipL.parent = rearClawL;
+                rearTipL.position = new BABYLON.Vector3(0, -0.01, -0.22);
+                rearTipL.rotation.x = 0.15;
+                rearTipL.parent = rearProngL;
                 rearTipL.material = metalMat;
 
-                // Right rear claw
-                const rearClawR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearClawR', {
-                    width: 0.14, height: 0.1, depth: 0.6
+                // Rear right prong
+                const rearProngR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearProngR', {
+                    width: 0.1, height: 0.08, depth: 0.4
                 }, scene);
-                rearClawR.position = new BABYLON.Vector3(0.18, -0.04, -0.45);
-                rearClawR.rotation.x = 0.15;
-                rearClawR.rotation.y = 0.2;  // Angled outward
-                rearClawR.parent = foot;
-                rearClawR.material = primaryMat;
+                rearProngR.position = new BABYLON.Vector3(0.15, -0.01, -0.3);
+                rearProngR.rotation.x = 0.12;
+                rearProngR.rotation.y = 0.3;  // Angled outward
+                rearProngR.parent = rearForkStem;
+                rearProngR.material = primaryMat;
 
+                // Rear right tip
                 const rearTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearTipR', {
-                    width: 0.1, height: 0.06, depth: 0.2
+                    width: 0.06, height: 0.05, depth: 0.15
                 }, scene);
-                rearTipR.position = new BABYLON.Vector3(0, -0.02, -0.35);
-                rearTipR.rotation.x = 0.2;
-                rearTipR.parent = rearClawR;
+                rearTipR.position = new BABYLON.Vector3(0, -0.01, -0.22);
+                rearTipR.rotation.x = 0.15;
+                rearTipR.parent = rearProngR;
                 rearTipR.material = metalMat;
-
-                // Center rear spur (for extra stability)
-                const rearSpur = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearSpur', {
-                    width: 0.12, height: 0.08, depth: 0.35
-                }, scene);
-                rearSpur.position = new BABYLON.Vector3(0, -0.05, -0.5);
-                rearSpur.rotation.x = 0.25;
-                rearSpur.parent = foot;
-                rearSpur.material = metalMat;
 
                 return { hip, upperLeg, knee, lowerLeg, ankle, foot, legGroup, footGroup };
             }
@@ -1215,9 +1210,9 @@
 
             const scale = 1.15; // Bigger mech
 
-            // === PELVIS ===
+            // === PELVIS - Wide stance for stability ===
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
-                width: 1.3 * scale, height: 0.55 * scale, depth: 1.0 * scale
+                width: 2.0 * scale, height: 0.55 * scale, depth: 1.0 * scale  // Wider pelvis
             }, scene);
             pelvis.position = new BABYLON.Vector3(xPos, 3.8, 0);  // Spawn height
             pelvis.material = darkMat;
@@ -1227,7 +1222,7 @@
             const pelvisShape = new BABYLON.PhysicsShapeBox(
                 new BABYLON.Vector3(0, -1.7 * scale, 0),  // Center offset (shift down to cover legs)
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.3 * scale, 4.0 * scale, 1.0 * scale),  // Full standing height
+                new BABYLON.Vector3(2.0 * scale, 4.0 * scale, 1.0 * scale),  // Full standing height (wider)
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
@@ -1516,17 +1511,17 @@
             function createLeg(side) {
                 const xOff = side === 'left' ? -1 : 1;
 
-                // Hip joint - moved slightly back for better balance
+                // Hip joint - wider stance for stability
                 const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', {
                     diameter: 0.46 * scale
                 }, scene);
-                hip.position = new BABYLON.Vector3(xOff * 0.5 * scale, -0.32 * scale, -0.1 * scale);
+                hip.position = new BABYLON.Vector3(xOff * 0.9 * scale, -0.32 * scale, -0.1 * scale);  // Wider stance
                 hip.parent = pelvis;
                 hip.material = chromeMat;
 
                 // Leg group for rotation (parent of all leg parts below hip)
                 const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
-                legGroup.position = new BABYLON.Vector3(xOff * 0.5 * scale, -0.32 * scale, -0.1 * scale);
+                legGroup.position = new BABYLON.Vector3(xOff * 0.9 * scale, -0.32 * scale, -0.1 * scale);  // Match hip
                 legGroup.parent = pelvis;
 
                 // Upper leg (thigh) - angled forward for chicken-walk stance
@@ -1592,10 +1587,10 @@
                 footGroup.position = new BABYLON.Vector3(0, -0.14 * scale, 0);
                 footGroup.parent = ankle;
 
-                // === DIRE WOLF STYLE FOOT - Balanced forward/backward (heavier than Mad Cat) ===
+                // === DIRE WOLF STYLE FOOT - Y-Fork Design (heavier than Mad Cat) ===
                 // Main foot body (centered under ankle for balance)
                 const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
-                    width: 0.6 * scale, height: 0.2 * scale, depth: 0.6 * scale
+                    width: 0.6 * scale, height: 0.2 * scale, depth: 0.5 * scale
                 }, scene);
                 foot.position = new BABYLON.Vector3(0, 0, 0);  // Centered under ankle
                 foot.parent = footGroup;
@@ -1603,112 +1598,107 @@
 
                 // Foot armor top
                 const footArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FootArmor', {
-                    width: 0.55 * scale, height: 0.12 * scale, depth: 0.55 * scale
+                    width: 0.55 * scale, height: 0.12 * scale, depth: 0.45 * scale
                 }, scene);
                 footArmor.position = new BABYLON.Vector3(0, 0.12 * scale, 0);
                 footArmor.parent = foot;
                 footArmor.material = primaryMat;
 
-                // === FORWARD CLAWS (3) - Heavy digitigrade style ===
-                // Center front claw (longest)
-                const frontClawC = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawC', {
-                    width: 0.2 * scale, height: 0.14 * scale, depth: 0.8 * scale
+                // === FRONT Y-FORK (Heavy) ===
+                // Y-fork stem (center piece going forward)
+                const forkStem = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ForkStem', {
+                    width: 0.2 * scale, height: 0.14 * scale, depth: 0.5 * scale
                 }, scene);
-                frontClawC.position = new BABYLON.Vector3(0, -0.03 * scale, 0.55 * scale);
-                frontClawC.rotation.x = -0.1;
-                frontClawC.parent = foot;
-                frontClawC.material = primaryMat;
+                forkStem.position = new BABYLON.Vector3(0, -0.03 * scale, 0.4 * scale);
+                forkStem.rotation.x = -0.08;
+                forkStem.parent = foot;
+                forkStem.material = primaryMat;
 
-                // Center claw tip
-                const frontTipC = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipC', {
-                    width: 0.14 * scale, height: 0.1 * scale, depth: 0.3 * scale
+                // Y-fork left prong
+                const forkProngL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ForkProngL', {
+                    width: 0.14 * scale, height: 0.12 * scale, depth: 0.55 * scale
                 }, scene);
-                frontTipC.position = new BABYLON.Vector3(0, -0.02 * scale, 0.45 * scale);
-                frontTipC.rotation.x = -0.2;
-                frontTipC.parent = frontClawC;
-                frontTipC.material = metalMat;
+                forkProngL.position = new BABYLON.Vector3(-0.2 * scale, -0.02 * scale, 0.38 * scale);
+                forkProngL.rotation.x = -0.1;
+                forkProngL.rotation.y = 0.35;  // Angled outward for Y shape
+                forkProngL.parent = forkStem;
+                forkProngL.material = primaryMat;
 
-                // Left front claw
-                const frontClawL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawL', {
-                    width: 0.16 * scale, height: 0.12 * scale, depth: 0.65 * scale
+                // Left prong tip
+                const prongTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ProngTipL', {
+                    width: 0.1 * scale, height: 0.08 * scale, depth: 0.2 * scale
                 }, scene);
-                frontClawL.position = new BABYLON.Vector3(-0.25 * scale, -0.04 * scale, 0.45 * scale);
-                frontClawL.rotation.x = -0.1;
-                frontClawL.rotation.y = 0.25;  // Angled outward
-                frontClawL.parent = foot;
-                frontClawL.material = primaryMat;
+                prongTipL.position = new BABYLON.Vector3(0, -0.02 * scale, 0.32 * scale);
+                prongTipL.rotation.x = -0.15;
+                prongTipL.parent = forkProngL;
+                prongTipL.material = metalMat;
 
-                const frontTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipL', {
-                    width: 0.12 * scale, height: 0.08 * scale, depth: 0.22 * scale
+                // Y-fork right prong
+                const forkProngR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ForkProngR', {
+                    width: 0.14 * scale, height: 0.12 * scale, depth: 0.55 * scale
                 }, scene);
-                frontTipL.position = new BABYLON.Vector3(0, -0.02 * scale, 0.36 * scale);
-                frontTipL.rotation.x = -0.2;
-                frontTipL.parent = frontClawL;
-                frontTipL.material = metalMat;
+                forkProngR.position = new BABYLON.Vector3(0.2 * scale, -0.02 * scale, 0.38 * scale);
+                forkProngR.rotation.x = -0.1;
+                forkProngR.rotation.y = -0.35;  // Angled outward for Y shape
+                forkProngR.parent = forkStem;
+                forkProngR.material = primaryMat;
 
-                // Right front claw
-                const frontClawR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawR', {
-                    width: 0.16 * scale, height: 0.12 * scale, depth: 0.65 * scale
+                // Right prong tip
+                const prongTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ProngTipR', {
+                    width: 0.1 * scale, height: 0.08 * scale, depth: 0.2 * scale
                 }, scene);
-                frontClawR.position = new BABYLON.Vector3(0.25 * scale, -0.04 * scale, 0.45 * scale);
-                frontClawR.rotation.x = -0.1;
-                frontClawR.rotation.y = -0.25;  // Angled outward
-                frontClawR.parent = foot;
-                frontClawR.material = primaryMat;
+                prongTipR.position = new BABYLON.Vector3(0, -0.02 * scale, 0.32 * scale);
+                prongTipR.rotation.x = -0.15;
+                prongTipR.parent = forkProngR;
+                prongTipR.material = metalMat;
 
-                const frontTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipR', {
-                    width: 0.12 * scale, height: 0.08 * scale, depth: 0.22 * scale
+                // === REAR Y-FORK (Mirror of front for balance) ===
+                // Rear Y-fork stem
+                const rearForkStem = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearForkStem', {
+                    width: 0.18 * scale, height: 0.12 * scale, depth: 0.45 * scale
                 }, scene);
-                frontTipR.position = new BABYLON.Vector3(0, -0.02 * scale, 0.36 * scale);
-                frontTipR.rotation.x = -0.2;
-                frontTipR.parent = frontClawR;
-                frontTipR.material = metalMat;
+                rearForkStem.position = new BABYLON.Vector3(0, -0.04 * scale, -0.4 * scale);
+                rearForkStem.rotation.x = 0.1;
+                rearForkStem.parent = foot;
+                rearForkStem.material = primaryMat;
 
-                // === REAR CLAWS (2) - Critical for balance ===
-                // Left rear claw
-                const rearClawL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearClawL', {
-                    width: 0.16 * scale, height: 0.12 * scale, depth: 0.7 * scale
+                // Rear left prong
+                const rearProngL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearProngL', {
+                    width: 0.12 * scale, height: 0.1 * scale, depth: 0.45 * scale
                 }, scene);
-                rearClawL.position = new BABYLON.Vector3(-0.2 * scale, -0.04 * scale, -0.5 * scale);
-                rearClawL.rotation.x = 0.15;  // Angled down at back
-                rearClawL.rotation.y = -0.2;  // Angled outward
-                rearClawL.parent = foot;
-                rearClawL.material = primaryMat;
+                rearProngL.position = new BABYLON.Vector3(-0.17 * scale, -0.01 * scale, -0.32 * scale);
+                rearProngL.rotation.x = 0.12;
+                rearProngL.rotation.y = -0.3;  // Angled outward
+                rearProngL.parent = rearForkStem;
+                rearProngL.material = primaryMat;
 
+                // Rear left tip
                 const rearTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearTipL', {
-                    width: 0.12 * scale, height: 0.08 * scale, depth: 0.22 * scale
+                    width: 0.08 * scale, height: 0.06 * scale, depth: 0.18 * scale
                 }, scene);
-                rearTipL.position = new BABYLON.Vector3(0, -0.02 * scale, -0.4 * scale);
-                rearTipL.rotation.x = 0.2;
-                rearTipL.parent = rearClawL;
+                rearTipL.position = new BABYLON.Vector3(0, -0.01 * scale, -0.25 * scale);
+                rearTipL.rotation.x = 0.15;
+                rearTipL.parent = rearProngL;
                 rearTipL.material = metalMat;
 
-                // Right rear claw
-                const rearClawR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearClawR', {
-                    width: 0.16 * scale, height: 0.12 * scale, depth: 0.7 * scale
+                // Rear right prong
+                const rearProngR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearProngR', {
+                    width: 0.12 * scale, height: 0.1 * scale, depth: 0.45 * scale
                 }, scene);
-                rearClawR.position = new BABYLON.Vector3(0.2 * scale, -0.04 * scale, -0.5 * scale);
-                rearClawR.rotation.x = 0.15;
-                rearClawR.rotation.y = 0.2;  // Angled outward
-                rearClawR.parent = foot;
-                rearClawR.material = primaryMat;
+                rearProngR.position = new BABYLON.Vector3(0.17 * scale, -0.01 * scale, -0.32 * scale);
+                rearProngR.rotation.x = 0.12;
+                rearProngR.rotation.y = 0.3;  // Angled outward
+                rearProngR.parent = rearForkStem;
+                rearProngR.material = primaryMat;
 
+                // Rear right tip
                 const rearTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearTipR', {
-                    width: 0.12 * scale, height: 0.08 * scale, depth: 0.22 * scale
+                    width: 0.08 * scale, height: 0.06 * scale, depth: 0.18 * scale
                 }, scene);
-                rearTipR.position = new BABYLON.Vector3(0, -0.02 * scale, -0.4 * scale);
-                rearTipR.rotation.x = 0.2;
-                rearTipR.parent = rearClawR;
+                rearTipR.position = new BABYLON.Vector3(0, -0.01 * scale, -0.25 * scale);
+                rearTipR.rotation.x = 0.15;
+                rearTipR.parent = rearProngR;
                 rearTipR.material = metalMat;
-
-                // Center rear spur (for extra stability)
-                const rearSpur = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearSpur', {
-                    width: 0.14 * scale, height: 0.1 * scale, depth: 0.4 * scale
-                }, scene);
-                rearSpur.position = new BABYLON.Vector3(0, -0.05 * scale, -0.55 * scale);
-                rearSpur.rotation.x = 0.25;
-                rearSpur.parent = foot;
-                rearSpur.material = metalMat;
 
                 return { hip, upperLeg, knee, lowerLeg, ankle, foot, legGroup, footGroup };
             }
@@ -1970,6 +1960,9 @@
         }
 
         function stabilize(mech, dt) {
+            // Don't stabilize destroyed mechs - let them collapse!
+            if (mech.currentHP <= 0) return;
+
             const body = mech.pelvisAggregate.body;
             const quat = body.transformNode.rotationQuaternion;
             if (!quat) return;
@@ -2377,19 +2370,37 @@
         }
 
         function fireCluster(from, to, weapon) {
-            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
-            const start = arm.weaponPod.getAbsolutePosition();
+            // Use shoulder missile launchers (leftPod/rightPod) instead of arm weapons
+            const usePod = from.lastFiredArm === 'left' ? from.leftPod : from.rightPod;
+            from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';  // Alternate pods
+
+            const podPos = usePod.getAbsolutePosition();
             const target = to.torso.getAbsolutePosition();
 
             for (let i = 0; i < weapon.clusterCount; i++) {
                 setTimeout(() => {
+                    // Calculate tube position within the missile rack (5x4 grid)
+                    const row = Math.floor(i / 5) % 4;
+                    const col = i % 5;
+
+                    // Offset from pod center to simulate missiles coming from individual tubes
+                    const tubeOffset = new BABYLON.Vector3(
+                        (col - 2) * 0.13,   // X spread across columns
+                        (row - 1.5) * 0.16, // Y spread across rows
+                        0.7                  // Forward from pod center
+                    );
+
+                    // Transform offset to world space based on pod orientation
+                    const worldMatrix = usePod.getWorldMatrix();
+                    const start = BABYLON.Vector3.TransformCoordinates(tubeOffset, worldMatrix);
+
                     const spread = target.clone();
                     spread.x += (Math.random() - 0.5) * 2;
                     spread.y += (Math.random() - 0.5) * 1.5;
                     spread.z += (Math.random() - 0.5) * 1;
 
                     const dir = spread.subtract(start).normalize();
-                    dir.y += 0.18;
+                    dir.y += 0.18;  // Arc upward slightly
                     dir.normalize();
 
                     const missile = BABYLON.MeshBuilder.CreateBox('missile' + Date.now() + i, {
@@ -2411,9 +2422,11 @@
                         weapon: { ...weapon, damage: weapon.damage / weapon.clusterCount },
                         target: to, firedAt: Date.now(), isMissile: true
                     });
+
+                    // Create small muzzle flash at each tube
+                    createMuzzleFlash(start, weapon.color);
                 }, i * 40);
             }
-            createMuzzleFlash(start, weapon.color);
         }
 
         function applyDamage(mech, weapon, dirSign) {
@@ -2609,59 +2622,6 @@
                     )), new BABYLON.Color3(1, 0.3 + Math.random() * 0.4, 0));
                 }, 500 + i * 100);
             }
-
-            // ========================================
-            // DRAMATIC "DESTROYED!" TEXT
-            // ========================================
-            const destroyedText = document.createElement('div');
-            destroyedText.textContent = `${mechName} DESTROYED!`;
-            destroyedText.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-size: 72px;
-                font-weight: bold;
-                font-family: monospace;
-                color: ${mech.isPlayer ? '#ff4444' : '#00ff88'};
-                text-shadow: 0 0 30px ${mech.isPlayer ? '#ff0000' : '#00ff00'},
-                             0 0 60px ${mech.isPlayer ? '#ff0000' : '#00ff00'},
-                             4px 4px 0 #000;
-                z-index: 9999;
-                pointer-events: none;
-                animation: destroyPulse 0.15s ease-in-out infinite;
-            `;
-            document.body.appendChild(destroyedText);
-
-            // Add animation keyframes
-            if (!document.getElementById('destroy-animation-style')) {
-                const style = document.createElement('style');
-                style.id = 'destroy-animation-style';
-                style.textContent = `
-                    @keyframes destroyPulse {
-                        0%, 100% { transform: translate(-50%, -50%) scale(1); }
-                        50% { transform: translate(-50%, -50%) scale(1.05); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-
-            // Fade out and remove text
-            let textOpacity = 1;
-            setTimeout(() => {
-                const fadeText = setInterval(() => {
-                    textOpacity -= 0.03;
-                    if (textOpacity <= 0) {
-                        clearInterval(fadeText);
-                        destroyedText.remove();
-                    } else {
-                        destroyedText.style.opacity = textOpacity;
-                        // Float upward
-                        const currentTop = parseFloat(destroyedText.style.top) || 50;
-                        destroyedText.style.top = (currentTop - 0.5) + '%';
-                    }
-                }, 30);
-            }, 1500);
 
             // ========================================
             // MAKE MECH COLLAPSE DRAMATICALLY

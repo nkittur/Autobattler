@@ -294,7 +294,7 @@
                 damage: 25,
                 knockback: 15,
                 recoil: 0.15,
-                projectileSpeed: 20,
+                projectileSpeed: 38,  // Faster missiles
                 isCluster: true,
                 clusterCount: 8,
                 color: new BABYLON.Color3(1, 0.5, 0.1)
@@ -302,9 +302,9 @@
             ac: {
                 name: 'UAC/5',
                 damage: 18,
-                knockback: 8,
+                knockback: 28,  // Much more impact
                 recoil: 0.12,
-                projectileSpeed: 35,
+                projectileSpeed: 45,  // Faster rounds
                 projectileSize: 0.1,
                 color: new BABYLON.Color3(1, 0.9, 0.3)
             }
@@ -1961,7 +1961,7 @@
 
         function stabilize(mech, dt) {
             // Don't stabilize destroyed mechs - let them collapse!
-            if (mech.currentHP <= 0) return;
+            if (mech.currentHP <= 0 || mech.isDestroyed) return;
 
             const body = mech.pelvisAggregate.body;
             const quat = body.transformNode.rotationQuaternion;
@@ -2249,10 +2249,10 @@
             }
 
             // === FULL BODY ROTATION TOWARD TARGET ===
-            // The whole mech should rotate to face the target, not just twist the torso
-            // This makes movement more realistic - mechs walk toward their target
+            // The whole mech (pelvis/legs) should always try to face the target
+            // This is independent of torso twist - the body should orient toward enemy
             const quat = body.transformNode.rotationQuaternion;
-            if (quat && !mech.isRecovering) {
+            if (quat && !mech.isRecovering && !mech.isDestroyed) {
                 const euler = quat.toEulerAngles();
                 const currentYaw = euler.y;  // Current facing direction
 
@@ -2271,19 +2271,19 @@
                 while (yawError > Math.PI) yawError -= 2 * Math.PI;
                 while (yawError < -Math.PI) yawError += 2 * Math.PI;
 
-                // Only rotate if error is significant (> 10 degrees)
-                const rotationThreshold = 0.17;  // ~10 degrees
+                // ALWAYS try to face target - very low threshold (3 degrees)
+                // This makes the mech constantly adjust its body to face the enemy
+                const rotationThreshold = 0.05;  // ~3 degrees - always trying to align
                 if (Math.abs(yawError) > rotationThreshold) {
-                    // Apply angular impulse to rotate body toward target
-                    // Stronger rotation when error is large, gentler when small
-                    const rotationStrength = 25;  // Base strength
-                    const maxRotationSpeed = 1.5;  // Limit rotation speed
+                    // Strong rotation force to actively turn toward target
+                    const rotationStrength = 50;  // Stronger force for active turning
+                    const maxRotationSpeed = 2.5;  // Allow faster rotation
 
                     // Current angular velocity
                     const angVel = body.getAngularVelocity();
 
                     // Calculate desired angular velocity (proportional to error, clamped)
-                    const desiredAngVel = Math.sign(yawError) * Math.min(Math.abs(yawError) * 2, maxRotationSpeed);
+                    const desiredAngVel = Math.sign(yawError) * Math.min(Math.abs(yawError) * 3, maxRotationSpeed);
 
                     // Apply torque to reach desired velocity
                     const yawCorrection = (desiredAngVel - angVel.y) * rotationStrength * dt;
@@ -2626,22 +2626,29 @@
             // ========================================
             // MAKE MECH COLLAPSE DRAMATICALLY
             // ========================================
-            mech.pelvisAggregate.body.setLinearDamping(0.08);
-            mech.pelvisAggregate.body.setAngularDamping(0.08);
+            // Mark as destroyed so stabilize() and AI don't interfere
+            mech.isDestroyed = true;
+            mech.isRecovering = false;
+            mech.ai.enabled = false;
+            mech.isWalking = false;
 
-            // Massive angular impulse to make it spin and fall
+            // Reduce damping so mech falls freely
+            mech.pelvisAggregate.body.setLinearDamping(0.05);
+            mech.pelvisAggregate.body.setAngularDamping(0.05);
+
+            // Massive angular impulse to make it spin and fall (much stronger)
             mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                (Math.random() - 0.5) * 50,
-                (Math.random() - 0.5) * 25,
-                (Math.random() - 0.5) * 50
+                (Math.random() - 0.5) * 150,
+                (Math.random() - 0.5) * 80,
+                (Math.random() - 0.5) * 150
             ));
 
             // Strong upward then falling impulse
             mech.pelvisAggregate.body.applyImpulse(
                 new BABYLON.Vector3(
-                    (Math.random() - 0.5) * 15,
-                    8 + Math.random() * 5,
-                    (Math.random() - 0.5) * 8
+                    (Math.random() - 0.5) * 25,
+                    15 + Math.random() * 10,
+                    (Math.random() - 0.5) * 15
                 ),
                 mech.pelvis.getAbsolutePosition()
             );

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Babylon.js + Havok Physics Test</title>
+    <title>BattleTech Physics Test - Babylon.js + Havok</title>
     <style>
         body {
             margin: 0;
@@ -15,9 +15,9 @@
         }
         #renderCanvas {
             width: 100%;
-            max-width: 900px;
-            height: 50vh;
-            max-height: 350px;
+            max-width: 1000px;
+            height: 60vh;
+            max-height: 500px;
             display: block;
             margin: 0 auto;
             border: 3px solid #00ff88;
@@ -28,17 +28,38 @@
             text-align: center;
             color: #00ff88;
             text-shadow: 0 0 10px #00ff88;
+            margin: 10px 0;
         }
         #status {
-            max-width: 900px;
-            margin: 20px auto;
+            max-width: 1000px;
+            margin: 15px auto;
             padding: 10px;
             background: rgba(0,0,0,0.5);
             border: 2px solid #00ff88;
             border-radius: 8px;
+            display: flex;
+            gap: 20px;
         }
+        #logs {
+            flex: 1;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        #mechStatus {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+        }
+        .mech-info {
+            flex: 1;
+            padding: 5px;
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+        }
+        .mech-info.player { border-color: #00ff88; }
+        .mech-info.enemy { border-color: #ff4444; }
         .log {
-            font-size: 12px;
+            font-size: 11px;
             margin: 2px 0;
             padding: 2px 5px;
         }
@@ -50,33 +71,74 @@
             margin: 10px 0;
         }
         button {
-            padding: 10px 20px;
-            margin: 5px;
+            padding: 8px 16px;
+            margin: 3px;
             background: rgba(0, 255, 136, 0.2);
             border: 2px solid #00ff88;
             color: #00ff88;
             cursor: pointer;
             border-radius: 5px;
             font-family: monospace;
-            font-size: 14px;
+            font-size: 12px;
         }
         button:hover {
             background: rgba(0, 255, 136, 0.4);
         }
+        button.red {
+            border-color: #ff4444;
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+        }
+        button.red:hover {
+            background: rgba(255, 68, 68, 0.4);
+        }
+        .hp-bar {
+            height: 12px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 3px 0;
+        }
+        .hp-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+        .hp-fill.player { background: linear-gradient(90deg, #00aa55, #00ff88); }
+        .hp-fill.enemy { background: linear-gradient(90deg, #aa2222, #ff4444); }
     </style>
 </head>
 <body>
-    <h1>Babylon.js + Havok Physics Test</h1>
+    <h1>BattleTech Mech Physics Test</h1>
     <div id="controls">
-        <button onclick="firePlayerProjectile()">Fire Player Weapon</button>
-        <button onclick="fireEnemyProjectile()">Fire Enemy Weapon</button>
-        <button onclick="fireLaser(true)">Player Laser</button>
-        <button onclick="fireLaser(false)">Enemy Laser</button>
+        <button onclick="fireWeapon(true, 'autocannon')">Player AC/10</button>
+        <button onclick="fireWeapon(true, 'ppc')">Player PPC</button>
+        <button onclick="fireWeapon(true, 'missile')">Player LRM</button>
+        <button onclick="toggleWalking(true)">Toggle Player Walk</button>
+        <span style="margin: 0 10px;">|</span>
+        <button class="red" onclick="fireWeapon(false, 'autocannon')">Enemy AC/10</button>
+        <button class="red" onclick="fireWeapon(false, 'ppc')">Enemy PPC</button>
+        <button class="red" onclick="fireWeapon(false, 'missile')">Enemy LRM</button>
+        <button class="red" onclick="toggleWalking(false)">Toggle Enemy Walk</button>
+        <span style="margin: 0 10px;">|</span>
         <button onclick="resetScene()">Reset Scene</button>
     </div>
     <canvas id="renderCanvas"></canvas>
     <div id="status">
         <div id="logs"></div>
+        <div id="mechStatus">
+            <div class="mech-info player">
+                <strong style="color: #00ff88;">ATLAS (Player)</strong>
+                <div class="hp-bar"><div class="hp-fill player" id="playerHP" style="width: 100%"></div></div>
+                <div id="playerHPText">HP: 200/200</div>
+                <div id="playerState">State: Idle</div>
+            </div>
+            <div class="mech-info enemy">
+                <strong style="color: #ff4444;">HUNCHBACK (Enemy)</strong>
+                <div class="hp-bar"><div class="hp-fill enemy" id="enemyHP" style="width: 100%"></div></div>
+                <div id="enemyHPText">HP: 150/150</div>
+                <div id="enemyState">State: Idle</div>
+            </div>
+        </div>
     </div>
 
     <!-- Babylon.js Core -->
@@ -89,29 +151,70 @@
         const logs = [];
         function log(msg, type = 'info') {
             console.log(msg);
-            logs.push({ msg, type });
+            logs.push({ msg, type, time: Date.now() });
             const logsDiv = document.getElementById('logs');
-            logsDiv.innerHTML = logs.slice(-15).map(l =>
+            logsDiv.innerHTML = logs.slice(-12).map(l =>
                 `<div class="log ${l.type}">${l.msg}</div>`
             ).join('');
+            logsDiv.scrollTop = logsDiv.scrollHeight;
         }
 
-        log('Initializing Babylon.js + Havok Physics...', 'info');
+        log('Initializing BattleTech Physics Test...', 'info');
 
         // Global references
         let engine, scene, camera, havokInstance, havokPlugin;
         let playerMech, enemyMech;
         let projectiles = [];
-        let laserBeams = [];
+        let beams = [];
+        let gameTime = 0;
+
+        // BattleTech weapon definitions
+        const WEAPONS = {
+            autocannon: {
+                name: 'AC/10',
+                damage: 25,
+                knockback: 12,
+                recoil: 0.15,
+                projectileSpeed: 25,
+                projectileSize: 0.15,
+                color: new BABYLON.Color3(1, 0.8, 0.2),
+                sound: 'thud'
+            },
+            ppc: {
+                name: 'PPC',
+                damage: 35,
+                knockback: 18,
+                recoil: 0.25,
+                isBeam: true,
+                beamDuration: 200,
+                color: new BABYLON.Color3(0.3, 0.5, 1),
+                sound: 'zap'
+            },
+            missile: {
+                name: 'LRM-10',
+                damage: 15,
+                knockback: 8,
+                recoil: 0.1,
+                projectileSpeed: 18,
+                projectileSize: 0.1,
+                isCluster: true,
+                clusterCount: 5,
+                color: new BABYLON.Color3(1, 0.4, 0.1),
+                sound: 'whoosh'
+            }
+        };
 
         // Colors
         const COLORS = {
-            player: new BABYLON.Color3(0, 1, 0.53),     // #00ff88
-            enemy: new BABYLON.Color3(1, 0.27, 0.27),   // #ff4444
-            ground: new BABYLON.Color3(0.29, 0.29, 0.42), // #4a4a6a
-            projectile: new BABYLON.Color3(1, 0.67, 0),  // #ffaa00
-            laser: new BABYLON.Color3(1, 0, 0),          // Red
-            explosion: new BABYLON.Color3(1, 0.4, 0)     // #ff6600
+            player: new BABYLON.Color3(0.2, 0.6, 0.3),       // Military green
+            playerAccent: new BABYLON.Color3(0.8, 0.7, 0.2), // Gold trim
+            enemy: new BABYLON.Color3(0.6, 0.15, 0.15),      // Dark red
+            enemyAccent: new BABYLON.Color3(0.3, 0.3, 0.35), // Gunmetal
+            ground: new BABYLON.Color3(0.25, 0.22, 0.2),     // Desert brown
+            metal: new BABYLON.Color3(0.3, 0.3, 0.35),       // Steel
+            darkMetal: new BABYLON.Color3(0.15, 0.15, 0.18), // Dark steel
+            cockpit: new BABYLON.Color3(0.1, 0.8, 0.9),      // Cyan glow
+            heat: new BABYLON.Color3(1, 0.3, 0.1)            // Heat vents
         };
 
         // Initialize Babylon.js and Havok
@@ -139,557 +242,1172 @@
             scene = createScene();
 
             // Start render loop
+            let lastTime = performance.now();
             engine.runRenderLoop(() => {
                 if (scene) {
+                    const now = performance.now();
+                    const deltaTime = (now - lastTime) / 1000;
+                    lastTime = now;
+                    gameTime += deltaTime;
+
+                    updateMechs(deltaTime);
+                    updateProjectiles(deltaTime);
+                    updateBeams();
+                    updateUI();
+
                     scene.render();
-                    updateProjectiles();
-                    updateLaserBeams();
                 }
             });
 
             // Handle resize
             window.addEventListener('resize', () => engine.resize());
 
-            log('Scene created and render loop started!', 'info');
+            log('Scene initialized - mechs ready!', 'info');
         }
 
         function createScene() {
             const scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color3(0.05, 0.05, 0.12); // Dark background
+            scene.clearColor = new BABYLON.Color3(0.08, 0.08, 0.12);
 
-            // Create Havok physics plugin
+            // Create Havok physics plugin with stronger gravity
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
-            scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), havokPlugin);
-            log('Physics enabled with Havok', 'info');
+            scene.enablePhysics(new BABYLON.Vector3(0, -20, 0), havokPlugin);
+            log('Physics enabled with heavy gravity', 'info');
 
-            // Create camera - fixed isometric-style view
+            // Create camera - cinematic angle
             camera = new BABYLON.ArcRotateCamera(
                 'camera',
-                -Math.PI / 2,  // Alpha (horizontal rotation)
-                Math.PI / 4,   // Beta (vertical angle - 45 degree isometric)
-                18,            // Radius (distance)
-                new BABYLON.Vector3(0, 3.5, 0), // Target (centered on mechs)
+                -Math.PI / 2,
+                Math.PI / 3.5,   // Higher angle for better mech view
+                22,
+                new BABYLON.Vector3(0, 2.5, 0),
                 scene
             );
             camera.attachControl(document.getElementById('renderCanvas'), true);
-            camera.lowerRadiusLimit = 10;
-            camera.upperRadiusLimit = 40;
+            camera.lowerRadiusLimit = 12;
+            camera.upperRadiusLimit = 45;
+            camera.wheelPrecision = 20;
 
-            // Lighting
-            const hemisphericLight = new BABYLON.HemisphericLight(
+            // Atmospheric lighting
+            const hemiLight = new BABYLON.HemisphericLight(
                 'hemiLight',
                 new BABYLON.Vector3(0, 1, 0),
                 scene
             );
-            hemisphericLight.intensity = 0.7;
+            hemiLight.intensity = 0.5;
+            hemiLight.groundColor = new BABYLON.Color3(0.2, 0.15, 0.1);
 
-            const directionalLight = new BABYLON.DirectionalLight(
+            const dirLight = new BABYLON.DirectionalLight(
                 'dirLight',
-                new BABYLON.Vector3(-1, -2, 1),
+                new BABYLON.Vector3(-1, -3, 1),
                 scene
             );
-            directionalLight.intensity = 0.5;
+            dirLight.intensity = 0.8;
+            dirLight.diffuse = new BABYLON.Color3(1, 0.95, 0.8);
 
-            // Create ground
+            // Subtle fog for atmosphere
+            scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
+            scene.fogDensity = 0.01;
+            scene.fogColor = new BABYLON.Color3(0.1, 0.1, 0.15);
+
+            // Create environment
             createGround(scene);
-
-            // Create boundary walls
             createWalls(scene);
 
-            // Create mechs (spawned at x position, they will drop to ground)
-            playerMech = createMech(scene, -5, true);
-            enemyMech = createMech(scene, 5, false);
+            // Create BattleTech mechs - Atlas (player) vs Hunchback (enemy)
+            playerMech = createBattleMech(scene, -6, true, 'atlas');
+            enemyMech = createBattleMech(scene, 6, false, 'hunchback');
 
-            log('Scene fully initialized with mechs!', 'info');
+            log('BattleMechs deployed!', 'info');
             return scene;
         }
 
         function createGround(scene) {
+            // Main ground
             const ground = BABYLON.MeshBuilder.CreateGround('ground', {
-                width: 30,
-                height: 15
+                width: 35,
+                height: 18
             }, scene);
 
             const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
             groundMat.diffuseColor = COLORS.ground;
-            groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+            groundMat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
             ground.material = groundMat;
 
-            // Add physics to ground (static body)
-            const groundAggregate = new BABYLON.PhysicsAggregate(
+            // Add physics to ground
+            new BABYLON.PhysicsAggregate(
                 ground,
                 BABYLON.PhysicsShapeType.BOX,
-                { mass: 0, friction: 0.8, restitution: 0.1 },
+                { mass: 0, friction: 1.0, restitution: 0.05 },
                 scene
             );
 
-            log('Ground created with physics', 'info');
+            // Add some terrain features
+            for (let i = 0; i < 4; i++) {
+                const rock = BABYLON.MeshBuilder.CreateBox('rock_' + i, {
+                    width: 0.8 + Math.random() * 0.5,
+                    height: 0.3 + Math.random() * 0.3,
+                    depth: 0.8 + Math.random() * 0.5
+                }, scene);
+                rock.position = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 20,
+                    0.2,
+                    (Math.random() - 0.5) * 8
+                );
+                rock.rotation.y = Math.random() * Math.PI;
+                rock.material = groundMat;
+                new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+            }
+
             return ground;
         }
 
         function createWalls(scene) {
-            // Create invisible boundary walls
-            const wallHeight = 8;
-            const wallThickness = 1;
-            const arenaWidth = 30;
-            const arenaDepth = 15;
+            const wallHeight = 10;
+            const arenaWidth = 35;
+            const arenaDepth = 18;
 
             const wallMat = new BABYLON.StandardMaterial('wallMat', scene);
-            wallMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.4);
-            wallMat.alpha = 0.3;
+            wallMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.25);
+            wallMat.alpha = 0.15;
 
-            // Left wall
-            const leftWall = BABYLON.MeshBuilder.CreateBox('leftWall', {
-                width: wallThickness, height: wallHeight, depth: arenaDepth
-            }, scene);
-            leftWall.position = new BABYLON.Vector3(-arenaWidth/2, wallHeight/2, 0);
-            leftWall.material = wallMat;
-            new BABYLON.PhysicsAggregate(leftWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+            const walls = [
+                { pos: [-arenaWidth/2, wallHeight/2, 0], size: [1, wallHeight, arenaDepth] },
+                { pos: [arenaWidth/2, wallHeight/2, 0], size: [1, wallHeight, arenaDepth] },
+                { pos: [0, wallHeight/2, arenaDepth/2], size: [arenaWidth, wallHeight, 1] },
+                { pos: [0, wallHeight/2, -arenaDepth/2], size: [arenaWidth, wallHeight, 1] }
+            ];
 
-            // Right wall
-            const rightWall = BABYLON.MeshBuilder.CreateBox('rightWall', {
-                width: wallThickness, height: wallHeight, depth: arenaDepth
-            }, scene);
-            rightWall.position = new BABYLON.Vector3(arenaWidth/2, wallHeight/2, 0);
-            rightWall.material = wallMat;
-            new BABYLON.PhysicsAggregate(rightWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
-
-            // Front wall
-            const frontWall = BABYLON.MeshBuilder.CreateBox('frontWall', {
-                width: arenaWidth, height: wallHeight, depth: wallThickness
-            }, scene);
-            frontWall.position = new BABYLON.Vector3(0, wallHeight/2, arenaDepth/2);
-            frontWall.material = wallMat;
-            new BABYLON.PhysicsAggregate(frontWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
-
-            // Back wall
-            const backWall = BABYLON.MeshBuilder.CreateBox('backWall', {
-                width: arenaWidth, height: wallHeight, depth: wallThickness
-            }, scene);
-            backWall.position = new BABYLON.Vector3(0, wallHeight/2, -arenaDepth/2);
-            backWall.material = wallMat;
-            new BABYLON.PhysicsAggregate(backWall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
-
-            log('Boundary walls created', 'info');
+            walls.forEach((w, i) => {
+                const wall = BABYLON.MeshBuilder.CreateBox('wall_' + i, {
+                    width: w.size[0], height: w.size[1], depth: w.size[2]
+                }, scene);
+                wall.position = new BABYLON.Vector3(...w.pos);
+                wall.material = wallMat;
+                new BABYLON.PhysicsAggregate(wall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+            });
         }
 
-        function createMech(scene, xPos, isPlayer) {
+        // ==========================================
+        // BATTLEMECH CREATION - Industrial War Machine
+        // ==========================================
+        function createBattleMech(scene, xPos, isPlayer, variant) {
             const color = isPlayer ? COLORS.player : COLORS.enemy;
+            const accent = isPlayer ? COLORS.playerAccent : COLORS.enemyAccent;
             const mechName = isPlayer ? 'player' : 'enemy';
 
-            // Create parent transform node
-            const mechRoot = new BABYLON.TransformNode(`${mechName}_root`, scene);
-            mechRoot.position = new BABYLON.Vector3(xPos, 0, 0);
+            // Mech stats based on variant
+            const stats = variant === 'atlas' ?
+                { maxHP: 200, mass: 100, height: 4.5, width: 1.8 } :
+                { maxHP: 150, mass: 70, height: 3.8, width: 1.5 };
 
-            // Create materials
-            const bodyMat = new BABYLON.StandardMaterial(`${mechName}_bodyMat`, scene);
-            bodyMat.diffuseColor = color;
-            bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
-            bodyMat.emissiveColor = color.scale(0.2);
+            // Materials
+            const armorMat = new BABYLON.StandardMaterial(`${mechName}_armorMat`, scene);
+            armorMat.diffuseColor = color;
+            armorMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            armorMat.specularPower = 32;
 
-            const darkMat = new BABYLON.StandardMaterial(`${mechName}_darkMat`, scene);
-            darkMat.diffuseColor = color.scale(0.5);
+            const accentMat = new BABYLON.StandardMaterial(`${mechName}_accentMat`, scene);
+            accentMat.diffuseColor = accent;
+            accentMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
 
-            const jointMat = new BABYLON.StandardMaterial(`${mechName}_jointMat`, scene);
-            jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
-            jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+            const metalMat = new BABYLON.StandardMaterial(`${mechName}_metalMat`, scene);
+            metalMat.diffuseColor = COLORS.metal;
+            metalMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+            metalMat.specularPower = 64;
 
-            // === TORSO (Main body with physics) ===
-            const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
-                width: 1.2, height: 1.5, depth: 0.8
+            const darkMetalMat = new BABYLON.StandardMaterial(`${mechName}_darkMetalMat`, scene);
+            darkMetalMat.diffuseColor = COLORS.darkMetal;
+
+            const cockpitMat = new BABYLON.StandardMaterial(`${mechName}_cockpitMat`, scene);
+            cockpitMat.diffuseColor = COLORS.cockpit;
+            cockpitMat.emissiveColor = COLORS.cockpit.scale(0.5);
+            cockpitMat.alpha = 0.85;
+
+            const scale = variant === 'atlas' ? 1.0 : 0.85;
+
+            // === CENTER OF MASS / PELVIS (Main physics body) ===
+            // This is the core that everything is attached to
+            const pelvis = BABYLON.MeshBuilder.CreateBox(`${mechName}_pelvis`, {
+                width: 1.0 * scale,
+                height: 0.6 * scale,
+                depth: 0.8 * scale
             }, scene);
-            torso.position = new BABYLON.Vector3(xPos, 4.5, 0);
-            torso.material = bodyMat;
+            pelvis.position = new BABYLON.Vector3(xPos, 2.0, 0);
+            pelvis.material = darkMetalMat;
 
-            // Add physics to torso (main physics body)
-            const torsoAggregate = new BABYLON.PhysicsAggregate(
-                torso,
+            // Physics for pelvis - this is the main physics body
+            const pelvisAggregate = new BABYLON.PhysicsAggregate(
+                pelvis,
                 BABYLON.PhysicsShapeType.BOX,
-                { mass: 50, friction: 0.8, restitution: 0.1 },
+                { mass: stats.mass, friction: 1.0, restitution: 0.05 },
                 scene
             );
+            // High angular damping to keep upright, but allow some sway
+            pelvisAggregate.body.setAngularDamping(0.92);
+            pelvisAggregate.body.setLinearDamping(0.3);
 
-            // === HEAD ===
+            // === TORSO (Upper body - attached to pelvis) ===
+            const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
+                width: 1.6 * scale,
+                height: 1.4 * scale,
+                depth: 1.2 * scale
+            }, scene);
+            torso.position = new BABYLON.Vector3(0, 0.9 * scale, 0);
+            torso.parent = pelvis;
+            torso.material = armorMat;
+
+            // Torso front armor plate (angled)
+            const chestPlate = BABYLON.MeshBuilder.CreateBox(`${mechName}_chest`, {
+                width: 1.4 * scale,
+                height: 1.0 * scale,
+                depth: 0.3 * scale
+            }, scene);
+            chestPlate.position = new BABYLON.Vector3(0, 0, 0.55 * scale);
+            chestPlate.rotation.x = -0.2;
+            chestPlate.parent = torso;
+            chestPlate.material = armorMat;
+
+            // Reactor hump on back
+            const reactorHump = BABYLON.MeshBuilder.CreateBox(`${mechName}_reactor`, {
+                width: 1.0 * scale,
+                height: 0.8 * scale,
+                depth: 0.6 * scale
+            }, scene);
+            reactorHump.position = new BABYLON.Vector3(0, 0.3 * scale, -0.7 * scale);
+            reactorHump.parent = torso;
+            reactorHump.material = darkMetalMat;
+
+            // Heat vents on reactor
+            for (let i = 0; i < 3; i++) {
+                const vent = BABYLON.MeshBuilder.CreateBox(`${mechName}_vent_${i}`, {
+                    width: 0.15 * scale,
+                    height: 0.4 * scale,
+                    depth: 0.1 * scale
+                }, scene);
+                vent.position = new BABYLON.Vector3((i - 1) * 0.25 * scale, 0, 0.35 * scale);
+                vent.parent = reactorHump;
+                const ventMat = new BABYLON.StandardMaterial(`${mechName}_ventMat_${i}`, scene);
+                ventMat.emissiveColor = COLORS.heat.scale(0.3);
+                vent.material = ventMat;
+            }
+
+            // === HEAD / COCKPIT ===
             const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
-                width: 0.6, height: 0.5, depth: 0.5
+                width: 0.7 * scale,
+                height: 0.55 * scale,
+                depth: 0.6 * scale
             }, scene);
-            head.position = new BABYLON.Vector3(0, 1.2, 0);
+            head.position = new BABYLON.Vector3(0, 1.0 * scale, 0.2 * scale);
             head.parent = torso;
-            head.material = bodyMat;
+            head.material = armorMat;
 
-            // Visor
-            const visor = BABYLON.MeshBuilder.CreateBox(`${mechName}_visor`, {
-                width: 0.5, height: 0.15, depth: 0.1
+            // Cockpit glass (angled visor)
+            const cockpit = BABYLON.MeshBuilder.CreateBox(`${mechName}_cockpit`, {
+                width: 0.5 * scale,
+                height: 0.25 * scale,
+                depth: 0.15 * scale
             }, scene);
-            visor.position = new BABYLON.Vector3(0, 0.1, 0.25);
-            visor.parent = head;
-            const visorMat = new BABYLON.StandardMaterial(`${mechName}_visorMat`, scene);
-            visorMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0);
-            visorMat.emissiveColor = new BABYLON.Color3(1, 0.2, 0);
-            visor.material = visorMat;
+            cockpit.position = new BABYLON.Vector3(0, 0, 0.35 * scale);
+            cockpit.rotation.x = -0.3;
+            cockpit.parent = head;
+            cockpit.material = cockpitMat;
 
-            // === ARMS ===
+            // Antenna / sensor array
+            const antenna = BABYLON.MeshBuilder.CreateCylinder(`${mechName}_antenna`, {
+                height: 0.4 * scale,
+                diameter: 0.06 * scale
+            }, scene);
+            antenna.position = new BABYLON.Vector3(0.25 * scale, 0.35 * scale, 0);
+            antenna.parent = head;
+            antenna.material = metalMat;
+
+            // === SHOULDER PAULDRONS (Massive armor plates) ===
+            const createPauldron = (side) => {
+                const xOff = side === 'left' ? -1 : 1;
+
+                // Main pauldron
+                const pauldron = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Pauldron`, {
+                    width: 0.8 * scale,
+                    height: 0.5 * scale,
+                    depth: 0.9 * scale
+                }, scene);
+                pauldron.position = new BABYLON.Vector3(xOff * 1.0 * scale, 0.6 * scale, 0);
+                pauldron.parent = torso;
+                pauldron.material = armorMat;
+
+                // Upper armor ridge
+                const ridge = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Ridge`, {
+                    width: 0.6 * scale,
+                    height: 0.2 * scale,
+                    depth: 0.7 * scale
+                }, scene);
+                ridge.position = new BABYLON.Vector3(xOff * 0.1 * scale, 0.3 * scale, 0);
+                ridge.parent = pauldron;
+                ridge.material = accentMat;
+
+                return pauldron;
+            };
+
+            const leftPauldron = createPauldron('left');
+            const rightPauldron = createPauldron('right');
+
+            // === ARMS WITH WEAPONS ===
             const createArm = (side) => {
-                const xOffset = side === 'left' ? -0.9 : 0.9;
+                const xOff = side === 'left' ? -1 : 1;
+                const armGroup = new BABYLON.TransformNode(`${mechName}_${side}ArmGroup`, scene);
+                armGroup.parent = torso;
+                armGroup.position = new BABYLON.Vector3(xOff * 1.0 * scale, 0.2 * scale, 0);
+
+                // Shoulder actuator
+                const shoulderJoint = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
+                    diameter: 0.35 * scale
+                }, scene);
+                shoulderJoint.parent = armGroup;
+                shoulderJoint.material = metalMat;
 
                 // Upper arm
                 const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperArm`, {
-                    width: 0.25, height: 0.6, depth: 0.25
+                    width: 0.35 * scale,
+                    height: 0.7 * scale,
+                    depth: 0.35 * scale
                 }, scene);
-                upperArm.position = new BABYLON.Vector3(xOffset, 0.3, 0);
-                upperArm.parent = torso;
-                upperArm.material = darkMat;
+                upperArm.position = new BABYLON.Vector3(xOff * 0.2 * scale, -0.4 * scale, 0);
+                upperArm.parent = armGroup;
+                upperArm.material = armorMat;
 
-                // Shoulder joint
-                const shoulder = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Shoulder`, {
-                    diameter: 0.3
+                // Elbow actuator
+                const elbowJoint = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Elbow`, {
+                    diameter: 0.25 * scale
                 }, scene);
-                shoulder.position = new BABYLON.Vector3(xOffset, 0.65, 0);
-                shoulder.parent = torso;
-                shoulder.material = jointMat;
+                elbowJoint.position = new BABYLON.Vector3(0, -0.45 * scale, 0);
+                elbowJoint.parent = upperArm;
+                elbowJoint.material = metalMat;
 
-                // Lower arm / weapon
-                const weapon = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Weapon`, {
-                    width: 0.2, height: 0.8, depth: 0.2
+                // Lower arm / weapon housing
+                const lowerArm = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}LowerArm`, {
+                    width: 0.4 * scale,
+                    height: 0.9 * scale,
+                    depth: 0.4 * scale
                 }, scene);
-                weapon.position = new BABYLON.Vector3(0, -0.7, 0);
-                weapon.parent = upperArm;
-                weapon.material = jointMat;
+                lowerArm.position = new BABYLON.Vector3(0, -0.9 * scale, 0);
+                lowerArm.parent = upperArm;
+                lowerArm.material = darkMetalMat;
 
                 // Weapon barrel
                 const barrel = BABYLON.MeshBuilder.CreateCylinder(`${mechName}_${side}Barrel`, {
-                    height: 0.4, diameter: 0.12
+                    height: 0.8 * scale,
+                    diameter: 0.18 * scale
                 }, scene);
                 barrel.rotation.x = Math.PI / 2;
-                barrel.position = new BABYLON.Vector3(0, -0.3, 0.25);
-                barrel.parent = weapon;
-                barrel.material = jointMat;
+                barrel.position = new BABYLON.Vector3(0, -0.2 * scale, 0.5 * scale);
+                barrel.parent = lowerArm;
+                barrel.material = metalMat;
 
-                return { upperArm, shoulder, weapon, barrel };
+                // Muzzle brake
+                const muzzle = BABYLON.MeshBuilder.CreateCylinder(`${mechName}_${side}Muzzle`, {
+                    height: 0.15 * scale,
+                    diameter: 0.25 * scale
+                }, scene);
+                muzzle.rotation.x = Math.PI / 2;
+                muzzle.position = new BABYLON.Vector3(0, 0, 0.45 * scale);
+                muzzle.parent = barrel;
+                muzzle.material = darkMetalMat;
+
+                return { armGroup, upperArm, lowerArm, barrel };
             };
 
             const leftArm = createArm('left');
             const rightArm = createArm('right');
 
-            // === LEGS ===
+            // === LEGS (Chicken-walker / Reverse-joint style) ===
             const createLeg = (side) => {
-                const xOffset = side === 'left' ? -0.4 : 0.4;
+                const xOff = side === 'left' ? -1 : 1;
 
-                // Hip joint
-                const hip = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Hip`, {
-                    diameter: 0.25
+                // Hip assembly
+                const hipJoint = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Hip`, {
+                    diameter: 0.4 * scale
                 }, scene);
-                hip.position = new BABYLON.Vector3(xOffset, -0.85, 0);
-                hip.parent = torso;
-                hip.material = jointMat;
+                hipJoint.position = new BABYLON.Vector3(xOff * 0.4 * scale, -0.35 * scale, 0);
+                hipJoint.parent = pelvis;
+                hipJoint.material = metalMat;
 
-                // Upper leg
+                // Upper leg (thigh) - angles forward
                 const upperLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}UpperLeg`, {
-                    width: 0.3, height: 0.7, depth: 0.3
+                    width: 0.4 * scale,
+                    height: 0.9 * scale,
+                    depth: 0.4 * scale
                 }, scene);
-                upperLeg.position = new BABYLON.Vector3(xOffset, -1.35, 0);
-                upperLeg.parent = torso;
-                upperLeg.material = bodyMat;
+                upperLeg.position = new BABYLON.Vector3(xOff * 0.4 * scale, -0.85 * scale, 0.15 * scale);
+                upperLeg.rotation.x = 0.25; // Angled forward
+                upperLeg.parent = pelvis;
+                upperLeg.material = armorMat;
 
-                // Knee joint
-                const knee = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
-                    diameter: 0.2
+                // Thigh armor plate
+                const thighArmor = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}ThighArmor`, {
+                    width: 0.5 * scale,
+                    height: 0.6 * scale,
+                    depth: 0.15 * scale
                 }, scene);
-                knee.position = new BABYLON.Vector3(0, -0.45, 0);
-                knee.parent = upperLeg;
-                knee.material = jointMat;
+                thighArmor.position = new BABYLON.Vector3(xOff * 0.05 * scale, 0.1 * scale, 0.25 * scale);
+                thighArmor.parent = upperLeg;
+                thighArmor.material = accentMat;
 
-                // Lower leg
+                // Knee actuator (the reverse joint point)
+                const kneeJoint = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Knee`, {
+                    diameter: 0.35 * scale
+                }, scene);
+                kneeJoint.position = new BABYLON.Vector3(0, -0.5 * scale, 0);
+                kneeJoint.parent = upperLeg;
+                kneeJoint.material = metalMat;
+
+                // Lower leg (shin) - angles backward (chicken-walker style)
                 const lowerLeg = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}LowerLeg`, {
-                    width: 0.25, height: 0.6, depth: 0.25
+                    width: 0.35 * scale,
+                    height: 1.0 * scale,
+                    depth: 0.35 * scale
                 }, scene);
-                lowerLeg.position = new BABYLON.Vector3(0, -0.85, 0);
-                lowerLeg.parent = upperLeg;
-                lowerLeg.material = darkMat;
+                lowerLeg.position = new BABYLON.Vector3(0, -0.75 * scale, -0.2 * scale);
+                lowerLeg.rotation.x = -0.3; // Angled backward
+                lowerLeg.parent = kneeJoint;
+                lowerLeg.material = armorMat;
 
-                // Foot
+                // Shin armor
+                const shinArmor = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}ShinArmor`, {
+                    width: 0.4 * scale,
+                    height: 0.7 * scale,
+                    depth: 0.15 * scale
+                }, scene);
+                shinArmor.position = new BABYLON.Vector3(0, 0, 0.22 * scale);
+                shinArmor.parent = lowerLeg;
+                shinArmor.material = armorMat;
+
+                // Ankle actuator
+                const ankleJoint = BABYLON.MeshBuilder.CreateSphere(`${mechName}_${side}Ankle`, {
+                    diameter: 0.25 * scale
+                }, scene);
+                ankleJoint.position = new BABYLON.Vector3(0, -0.55 * scale, 0);
+                ankleJoint.parent = lowerLeg;
+                ankleJoint.material = metalMat;
+
+                // Foot (large, armored)
                 const foot = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Foot`, {
-                    width: 0.35, height: 0.15, depth: 0.5
+                    width: 0.5 * scale,
+                    height: 0.2 * scale,
+                    depth: 0.8 * scale
                 }, scene);
-                foot.position = new BABYLON.Vector3(0, -0.38, 0.1);
-                foot.parent = lowerLeg;
-                foot.material = jointMat;
+                foot.position = new BABYLON.Vector3(0, -0.15 * scale, 0.2 * scale);
+                foot.parent = ankleJoint;
+                foot.material = darkMetalMat;
 
-                return { hip, upperLeg, knee, lowerLeg, foot };
+                // Toe claws
+                for (let i = 0; i < 2; i++) {
+                    const claw = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}Claw_${i}`, {
+                        width: 0.12 * scale,
+                        height: 0.1 * scale,
+                        depth: 0.25 * scale
+                    }, scene);
+                    claw.position = new BABYLON.Vector3((i - 0.5) * 0.25 * scale, -0.05 * scale, 0.45 * scale);
+                    claw.parent = foot;
+                    claw.material = metalMat;
+                }
+
+                return { hipJoint, upperLeg, kneeJoint, lowerLeg, ankleJoint, foot };
             };
 
             const leftLeg = createLeg('left');
             const rightLeg = createLeg('right');
 
-            // === SHOULDER ARMOR ===
-            const createShoulderArmor = (side) => {
-                const xOffset = side === 'left' ? -0.85 : 0.85;
-                const shoulderArmor = BABYLON.MeshBuilder.CreateBox(`${mechName}_${side}ShoulderArmor`, {
-                    width: 0.5, height: 0.35, depth: 0.6
-                }, scene);
-                shoulderArmor.position = new BABYLON.Vector3(xOffset, 0.8, 0);
-                shoulderArmor.parent = torso;
-                shoulderArmor.material = bodyMat;
-                return shoulderArmor;
-            };
-
-            createShoulderArmor('left');
-            createShoulderArmor('right');
-
-            // Store mech data
+            // === MECH DATA OBJECT ===
             const mechData = {
-                root: mechRoot,
+                name: variant.toUpperCase(),
+                pelvis: pelvis,
+                pelvisAggregate: pelvisAggregate,
                 torso: torso,
-                torsoAggregate: torsoAggregate,
                 head: head,
-                visor: visor,
+                cockpit: cockpit,
                 leftArm: leftArm,
                 rightArm: rightArm,
                 leftLeg: leftLeg,
                 rightLeg: rightLeg,
+                leftPauldron: leftPauldron,
+                rightPauldron: rightPauldron,
                 isPlayer: isPlayer,
-                currentHP: 100,
-                maxHP: 100,
-                color: color
+                scale: scale,
+                stats: stats,
+                currentHP: stats.maxHP,
+                maxHP: stats.maxHP,
+
+                // Animation state
+                isWalking: false,
+                walkCycle: 0,
+                walkSpeed: 2.5,
+                walkDirection: isPlayer ? 1 : -1,
+
+                // Impact state
+                impactRecovery: 0,
+                impactDirection: new BABYLON.Vector3(0, 0, 0),
+                staggerTime: 0,
+
+                // Weapon state
+                recoilRecovery: 0,
+                lastFiredArm: 'right',
+
+                // Torso twist for aiming
+                torsoTwist: 0,
+                targetTorsoTwist: 0
             };
 
-            log(`${isPlayer ? 'Player' : 'Enemy'} mech created at x=${xPos}`, 'info');
+            log(`${variant.toUpperCase()} deployed at x=${xPos}`, 'info');
             return mechData;
         }
 
-        // === PROJECTILE SYSTEM ===
-        function firePlayerProjectile() {
-            if (!playerMech || !enemyMech) return;
-            createProjectile(playerMech, enemyMech, 15);
+        // ==========================================
+        // ANIMATION SYSTEM
+        // ==========================================
+        function updateMechs(deltaTime) {
+            [playerMech, enemyMech].forEach(mech => {
+                if (!mech) return;
+
+                updateWalkingAnimation(mech, deltaTime);
+                updateImpactRecovery(mech, deltaTime);
+                updateRecoilRecovery(mech, deltaTime);
+                updateTorsoTracking(mech, deltaTime);
+                stabilizeMech(mech, deltaTime);
+            });
         }
 
-        function fireEnemyProjectile() {
-            if (!playerMech || !enemyMech) return;
-            createProjectile(enemyMech, playerMech, 12);
+        function updateWalkingAnimation(mech, deltaTime) {
+            if (!mech.isWalking) {
+                // Gradually return legs to neutral when not walking
+                dampLegAnimation(mech, deltaTime);
+                return;
+            }
+
+            // Advance walk cycle
+            mech.walkCycle += deltaTime * mech.walkSpeed * 2;
+            const cycle = mech.walkCycle;
+            const scale = mech.scale;
+
+            // Calculate leg positions based on walk cycle
+            // Using sin/cos for smooth alternating motion
+            const leftPhase = Math.sin(cycle);
+            const rightPhase = Math.sin(cycle + Math.PI); // 180 degrees out of phase
+
+            // Animate left leg
+            animateLeg(mech.leftLeg, leftPhase, scale, mech);
+            // Animate right leg
+            animateLeg(mech.rightLeg, rightPhase, scale, mech);
+
+            // Body bob - slight vertical movement with each step
+            const bobAmount = Math.abs(Math.sin(cycle * 2)) * 0.08 * scale;
+
+            // Body sway - lean into the stepping leg
+            const swayAmount = Math.sin(cycle) * 0.03;
+
+            // Apply movement force in walk direction
+            const moveForce = new BABYLON.Vector3(
+                mech.walkDirection * 15 * deltaTime,
+                0,
+                0
+            );
+            mech.pelvisAggregate.body.applyForce(
+                moveForce,
+                mech.pelvis.getAbsolutePosition()
+            );
+
+            // Apply subtle rotation for body sway (around Z axis)
+            const currentAngVel = mech.pelvisAggregate.body.getAngularVelocity();
+            mech.pelvisAggregate.body.setAngularVelocity(
+                new BABYLON.Vector3(
+                    currentAngVel.x * 0.9,
+                    currentAngVel.y * 0.9,
+                    swayAmount * 2
+                )
+            );
         }
 
-        function createProjectile(fromMech, toMech, damage) {
-            const startPos = fromMech.torso.position.clone();
-            startPos.y += 0.3; // Fire from weapon height
+        function animateLeg(leg, phase, scale, mech) {
+            // Upper leg swings forward/back
+            const upperLegSwing = phase * 0.25;
+            leg.upperLeg.rotation.x = 0.25 + upperLegSwing;
 
-            const targetPos = toMech.torso.position.clone();
+            // Knee bends more when leg is forward
+            const kneeBend = (phase > 0 ? phase : 0) * 0.3;
 
-            // Calculate direction
+            // Lower leg rotation relative to knee
+            leg.lowerLeg.rotation.x = -0.3 - kneeBend;
+
+            // Foot stays level (counter-rotates)
+            leg.foot.rotation.x = -leg.lowerLeg.rotation.x * 0.5;
+        }
+
+        function dampLegAnimation(mech, deltaTime) {
+            const dampSpeed = 3 * deltaTime;
+            const scale = mech.scale;
+
+            // Return legs to neutral standing position
+            [mech.leftLeg, mech.rightLeg].forEach(leg => {
+                leg.upperLeg.rotation.x = BABYLON.Scalar.Lerp(leg.upperLeg.rotation.x, 0.25, dampSpeed);
+                leg.lowerLeg.rotation.x = BABYLON.Scalar.Lerp(leg.lowerLeg.rotation.x, -0.3, dampSpeed);
+                leg.foot.rotation.x = BABYLON.Scalar.Lerp(leg.foot.rotation.x, 0.15, dampSpeed);
+            });
+        }
+
+        function updateImpactRecovery(mech, deltaTime) {
+            if (mech.impactRecovery <= 0) return;
+
+            // Decay impact over time
+            mech.impactRecovery -= deltaTime * 2;
+            if (mech.impactRecovery < 0) mech.impactRecovery = 0;
+
+            // Apply torso tilt based on impact direction
+            const tiltAmount = mech.impactRecovery * 0.3;
+            mech.torso.rotation.x = mech.impactDirection.z * tiltAmount;
+            mech.torso.rotation.z = -mech.impactDirection.x * tiltAmount;
+
+            // Stagger effect - prevent movement
+            if (mech.staggerTime > 0) {
+                mech.staggerTime -= deltaTime;
+                mech.isWalking = false;
+            }
+        }
+
+        function updateRecoilRecovery(mech, deltaTime) {
+            if (mech.recoilRecovery <= 0) return;
+
+            mech.recoilRecovery -= deltaTime * 4;
+            if (mech.recoilRecovery < 0) mech.recoilRecovery = 0;
+
+            // Apply recoil to the arm that fired
+            const arm = mech.lastFiredArm === 'left' ? mech.leftArm : mech.rightArm;
+            const recoilAmount = mech.recoilRecovery;
+
+            // Push arm back
+            arm.armGroup.rotation.x = -recoilAmount * 0.5;
+
+            // Slight torso push-back
+            mech.torso.rotation.x = Math.max(mech.torso.rotation.x, -recoilAmount * 0.1);
+        }
+
+        function updateTorsoTracking(mech, deltaTime) {
+            // Torso tracks toward enemy
+            const target = mech.isPlayer ? enemyMech : playerMech;
+            if (!target) return;
+
+            const myPos = mech.pelvis.getAbsolutePosition();
+            const targetPos = target.pelvis.getAbsolutePosition();
+
+            // Calculate angle to target
+            const dx = targetPos.x - myPos.x;
+            const dz = targetPos.z - myPos.z;
+            const angleToTarget = Math.atan2(dz, dx);
+
+            // Convert to torso twist (limited range)
+            mech.targetTorsoTwist = Math.max(-0.4, Math.min(0.4, angleToTarget));
+
+            // Smoothly interpolate torso twist
+            mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, mech.targetTorsoTwist, deltaTime * 3);
+            mech.torso.rotation.y = mech.torsoTwist;
+        }
+
+        function stabilizeMech(mech, deltaTime) {
+            // Keep mech upright using physics
+            const body = mech.pelvisAggregate.body;
+
+            // Get current rotation
+            const quat = body.transformNode.rotationQuaternion;
+            if (!quat) return;
+
+            // Convert to euler to check tilt
+            const euler = quat.toEulerAngles();
+
+            // Apply corrective torque if tilting too much
+            const maxTilt = 0.3;
+            if (Math.abs(euler.x) > maxTilt || Math.abs(euler.z) > maxTilt) {
+                const correctiveTorque = new BABYLON.Vector3(
+                    -euler.x * 50 * deltaTime,
+                    0,
+                    -euler.z * 50 * deltaTime
+                );
+                body.applyAngularImpulse(correctiveTorque);
+            }
+
+            // Limit maximum velocities
+            const vel = body.getLinearVelocity();
+            const maxSpeed = 5;
+            if (vel.length() > maxSpeed) {
+                body.setLinearVelocity(vel.normalize().scale(maxSpeed));
+            }
+        }
+
+        // ==========================================
+        // COMBAT SYSTEM
+        // ==========================================
+        function fireWeapon(isPlayer, weaponType) {
+            const fromMech = isPlayer ? playerMech : enemyMech;
+            const toMech = isPlayer ? enemyMech : playerMech;
+            if (!fromMech || !toMech) return;
+
+            const weapon = WEAPONS[weaponType];
+
+            // Apply recoil to firing mech
+            fromMech.recoilRecovery = weapon.recoil;
+            fromMech.lastFiredArm = fromMech.lastFiredArm === 'left' ? 'right' : 'left';
+
+            // Apply backward impulse from recoil
+            const recoilImpulse = new BABYLON.Vector3(
+                (isPlayer ? -1 : 1) * weapon.knockback * 0.3,
+                0,
+                0
+            );
+            fromMech.pelvisAggregate.body.applyImpulse(
+                recoilImpulse,
+                fromMech.pelvis.getAbsolutePosition()
+            );
+
+            if (weapon.isBeam) {
+                fireBeamWeapon(fromMech, toMech, weapon);
+            } else if (weapon.isCluster) {
+                fireClusterWeapon(fromMech, toMech, weapon);
+            } else {
+                fireProjectileWeapon(fromMech, toMech, weapon);
+            }
+
+            log(`${fromMech.name} fires ${weapon.name}!`, 'info');
+        }
+
+        function fireProjectileWeapon(fromMech, toMech, weapon) {
+            const arm = fromMech.lastFiredArm === 'left' ? fromMech.leftArm : fromMech.rightArm;
+            const startPos = arm.barrel.getAbsolutePosition();
+            const targetPos = toMech.torso.getAbsolutePosition();
+
+            // Add some spread
+            targetPos.x += (Math.random() - 0.5) * 0.5;
+            targetPos.y += (Math.random() - 0.5) * 0.5;
+
             const direction = targetPos.subtract(startPos).normalize();
 
-            // Create projectile mesh
-            const projectile = BABYLON.MeshBuilder.CreateSphere('projectile_' + Date.now(), {
-                diameter: 0.2
+            // Create projectile
+            const projectile = BABYLON.MeshBuilder.CreateSphere('proj_' + Date.now(), {
+                diameter: weapon.projectileSize * 2
             }, scene);
             projectile.position = startPos.clone();
 
-            // Projectile material with glow
             const projMat = new BABYLON.StandardMaterial('projMat_' + Date.now(), scene);
-            projMat.diffuseColor = COLORS.projectile;
-            projMat.emissiveColor = COLORS.projectile;
+            projMat.diffuseColor = weapon.color;
+            projMat.emissiveColor = weapon.color;
             projectile.material = projMat;
 
-            // Add physics to projectile
+            // Physics
             const projAggregate = new BABYLON.PhysicsAggregate(
                 projectile,
                 BABYLON.PhysicsShapeType.SPHERE,
-                { mass: 0.5, friction: 0, restitution: 0.3 },
+                { mass: 1, friction: 0, restitution: 0.1 },
                 scene
             );
 
-            // Apply velocity
-            const speed = 15;
-            const velocity = direction.scale(speed);
-            projAggregate.body.setLinearVelocity(velocity);
+            projAggregate.body.setLinearVelocity(direction.scale(weapon.projectileSpeed));
 
-            // Store projectile data
             projectiles.push({
                 mesh: projectile,
                 aggregate: projAggregate,
-                damage: damage,
+                weapon: weapon,
                 target: toMech,
-                firedAt: Date.now(),
-                fromPlayer: fromMech.isPlayer
+                firedAt: Date.now()
             });
 
-            log(`${fromMech.isPlayer ? 'Player' : 'Enemy'} fired projectile!`, 'info');
+            // Muzzle flash
+            createMuzzleFlash(startPos, weapon.color);
         }
 
-        function updateProjectiles() {
+        function fireBeamWeapon(fromMech, toMech, weapon) {
+            const arm = fromMech.lastFiredArm === 'left' ? fromMech.leftArm : fromMech.rightArm;
+            const startPos = arm.barrel.getAbsolutePosition();
+            const targetPos = toMech.torso.getAbsolutePosition();
+
+            // Create beam
+            const points = [startPos, targetPos];
+            const beam = BABYLON.MeshBuilder.CreateTube('beam_' + Date.now(), {
+                path: points,
+                radius: 0.12,
+                updatable: false
+            }, scene);
+
+            const beamMat = new BABYLON.StandardMaterial('beamMat_' + Date.now(), scene);
+            beamMat.diffuseColor = weapon.color;
+            beamMat.emissiveColor = weapon.color;
+            beamMat.alpha = 0.9;
+            beam.material = beamMat;
+
+            beams.push({
+                mesh: beam,
+                material: beamMat,
+                createdAt: Date.now(),
+                duration: weapon.beamDuration
+            });
+
+            // Instant damage and impact
+            applyDamageAndImpact(toMech, weapon, fromMech.isPlayer ? 1 : -1);
+            createImpactEffect(targetPos.clone(), weapon.color);
+        }
+
+        function fireClusterWeapon(fromMech, toMech, weapon) {
+            const arm = fromMech.lastFiredArm === 'left' ? fromMech.leftArm : fromMech.rightArm;
+            const startPos = arm.barrel.getAbsolutePosition();
+            const targetPos = toMech.torso.getAbsolutePosition();
+
+            // Fire multiple missiles with spread
+            for (let i = 0; i < weapon.clusterCount; i++) {
+                setTimeout(() => {
+                    const spreadTarget = targetPos.clone();
+                    spreadTarget.x += (Math.random() - 0.5) * 1.5;
+                    spreadTarget.y += (Math.random() - 0.5) * 1.5;
+                    spreadTarget.z += (Math.random() - 0.5) * 1.0;
+
+                    const direction = spreadTarget.subtract(startPos).normalize();
+                    // Add slight arc
+                    direction.y += 0.2;
+                    direction.normalize();
+
+                    const missile = BABYLON.MeshBuilder.CreateBox('missile_' + Date.now() + '_' + i, {
+                        width: 0.08,
+                        height: 0.08,
+                        depth: 0.2
+                    }, scene);
+                    missile.position = startPos.clone();
+                    missile.lookAt(spreadTarget);
+
+                    const missileMat = new BABYLON.StandardMaterial('missileMat_' + Date.now(), scene);
+                    missileMat.diffuseColor = weapon.color;
+                    missileMat.emissiveColor = weapon.color.scale(0.5);
+                    missile.material = missileMat;
+
+                    const missileAggregate = new BABYLON.PhysicsAggregate(
+                        missile,
+                        BABYLON.PhysicsShapeType.BOX,
+                        { mass: 0.3, friction: 0, restitution: 0 },
+                        scene
+                    );
+
+                    missileAggregate.body.setLinearVelocity(direction.scale(weapon.projectileSpeed));
+
+                    projectiles.push({
+                        mesh: missile,
+                        aggregate: missileAggregate,
+                        weapon: { ...weapon, damage: weapon.damage / weapon.clusterCount },
+                        target: toMech,
+                        firedAt: Date.now(),
+                        isMissile: true
+                    });
+                }, i * 50); // Stagger missile launches
+            }
+
+            createMuzzleFlash(startPos, weapon.color);
+        }
+
+        function applyDamageAndImpact(mech, weapon, directionSign) {
+            // Apply damage
+            mech.currentHP -= weapon.damage;
+            if (mech.currentHP < 0) mech.currentHP = 0;
+
+            // Calculate impact direction (from shooter)
+            const impactDir = new BABYLON.Vector3(directionSign, 0, 0);
+
+            // Apply knockback impulse
+            const knockbackImpulse = impactDir.scale(weapon.knockback);
+            mech.pelvisAggregate.body.applyImpulse(
+                knockbackImpulse,
+                mech.pelvis.getAbsolutePosition()
+            );
+
+            // Set impact recovery state
+            mech.impactRecovery = Math.min(1.0, weapon.knockback / 20);
+            mech.impactDirection = impactDir;
+
+            // Heavy hits cause stagger
+            if (weapon.damage >= 30) {
+                mech.staggerTime = 0.5;
+                log(`${mech.name} STAGGERS from heavy impact!`, 'warn');
+            }
+
+            // Apply angular impulse for hit reaction
+            const angularImpulse = new BABYLON.Vector3(
+                (Math.random() - 0.5) * weapon.knockback * 0.1,
+                (Math.random() - 0.5) * weapon.knockback * 0.05,
+                directionSign * weapon.knockback * 0.15
+            );
+            mech.pelvisAggregate.body.applyAngularImpulse(angularImpulse);
+
+            // Check for destruction
+            if (mech.currentHP <= 0) {
+                log(`${mech.name} DESTROYED!`, 'error');
+                triggerMechDestruction(mech);
+            }
+        }
+
+        function updateProjectiles(deltaTime) {
             const now = Date.now();
 
             projectiles = projectiles.filter(proj => {
-                // Remove old projectiles (after 5 seconds)
-                if (now - proj.firedAt > 5000) {
+                // Timeout old projectiles
+                if (now - proj.firedAt > 4000) {
                     proj.mesh.dispose();
                     return false;
                 }
 
-                // Check for collision with target
+                // Check collision with target
                 const projPos = proj.mesh.position;
-                const targetPos = proj.target.torso.position;
+                const targetPos = proj.target.torso.getAbsolutePosition();
                 const distance = BABYLON.Vector3.Distance(projPos, targetPos);
 
-                if (distance < 1.5) {
+                if (distance < 1.8) {
                     // Hit!
-                    proj.target.currentHP -= proj.damage;
-                    log(`HIT! ${proj.fromPlayer ? 'Enemy' : 'Player'} takes ${proj.damage} damage! (${proj.target.currentHP}/${proj.target.maxHP} HP)`, 'warn');
+                    const dirSign = proj.target.isPlayer ? -1 : 1;
+                    applyDamageAndImpact(proj.target, proj.weapon, dirSign);
 
-                    // Create impact effect
-                    createImpactEffect(projPos.clone());
+                    log(`HIT! ${proj.target.name} takes ${proj.weapon.damage} damage! (${proj.target.currentHP}/${proj.target.maxHP})`, 'warn');
 
-                    // Apply knockback force to target
-                    const knockbackDir = projPos.subtract(proj.target.torso.position).normalize().scale(-1);
-                    proj.target.torsoAggregate.body.applyImpulse(
-                        knockbackDir.scale(5),
-                        proj.target.torso.position
-                    );
-
+                    createImpactEffect(projPos.clone(), proj.weapon.color);
                     proj.mesh.dispose();
                     return false;
                 }
 
-                // Check if projectile is out of bounds
-                if (projPos.y < -5 || Math.abs(projPos.x) > 20 || Math.abs(projPos.z) > 10) {
+                // Out of bounds
+                if (projPos.y < -2 || Math.abs(projPos.x) > 20) {
                     proj.mesh.dispose();
                     return false;
+                }
+
+                // Add smoke trail to missiles
+                if (proj.isMissile && Math.random() < 0.3) {
+                    createSmokeParticle(projPos.clone());
                 }
 
                 return true;
             });
         }
 
-        // === LASER BEAM SYSTEM ===
-        function fireLaser(isPlayer) {
-            const fromMech = isPlayer ? playerMech : enemyMech;
-            const toMech = isPlayer ? enemyMech : playerMech;
-
-            const startPos = fromMech.torso.position.clone();
-            startPos.y += 0.3;
-
-            const endPos = toMech.torso.position.clone();
-
-            // Create laser beam
-            const points = [startPos, endPos];
-            const laserBeam = BABYLON.MeshBuilder.CreateTube('laser_' + Date.now(), {
-                path: points,
-                radius: 0.08,
-                updatable: false
-            }, scene);
-
-            // Laser material with glow
-            const laserMat = new BABYLON.StandardMaterial('laserMat_' + Date.now(), scene);
-            laserMat.diffuseColor = COLORS.laser;
-            laserMat.emissiveColor = COLORS.laser;
-            laserMat.alpha = 0.8;
-            laserBeam.material = laserMat;
-
-            // Apply damage immediately (laser is instant)
-            const damage = 10;
-            toMech.currentHP -= damage;
-            log(`LASER HIT! ${isPlayer ? 'Enemy' : 'Player'} takes ${damage} damage! (${toMech.currentHP}/${toMech.maxHP} HP)`, 'warn');
-
-            // Store for fadeout
-            laserBeams.push({
-                mesh: laserBeam,
-                material: laserMat,
-                createdAt: Date.now(),
-                duration: 150 // ms
-            });
-
-            // Create impact at target
-            createImpactEffect(endPos.clone());
-        }
-
-        function updateLaserBeams() {
+        function updateBeams() {
             const now = Date.now();
 
-            laserBeams = laserBeams.filter(beam => {
+            beams = beams.filter(beam => {
                 const age = now - beam.createdAt;
-
                 if (age > beam.duration) {
                     beam.mesh.dispose();
                     return false;
                 }
-
-                // Fade out
-                beam.material.alpha = 0.8 * (1 - age / beam.duration);
+                beam.material.alpha = 0.9 * (1 - age / beam.duration);
                 return true;
             });
         }
 
-        // === EFFECTS ===
-        function createImpactEffect(position) {
-            // Create particle system for impact
-            const particleSystem = new BABYLON.ParticleSystem('impact_' + Date.now(), 50, scene);
+        // ==========================================
+        // EFFECTS
+        // ==========================================
+        function createMuzzleFlash(position, color) {
+            const flash = BABYLON.MeshBuilder.CreateSphere('flash_' + Date.now(), {
+                diameter: 0.4
+            }, scene);
+            flash.position = position;
 
-            // Texture (procedural)
+            const flashMat = new BABYLON.StandardMaterial('flashMat', scene);
+            flashMat.emissiveColor = color;
+            flashMat.disableLighting = true;
+            flash.material = flashMat;
+
+            // Quick fade out
+            let alpha = 1;
+            const fadeInterval = setInterval(() => {
+                alpha -= 0.15;
+                if (alpha <= 0) {
+                    clearInterval(fadeInterval);
+                    flash.dispose();
+                } else {
+                    flash.scaling = new BABYLON.Vector3(alpha, alpha, alpha);
+                }
+            }, 16);
+        }
+
+        function createImpactEffect(position, color) {
+            const particleSystem = new BABYLON.ParticleSystem('impact_' + Date.now(), 80, scene);
             particleSystem.particleTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/flare.png', scene);
 
-            // Emitter
             particleSystem.emitter = position;
-            particleSystem.minEmitBox = new BABYLON.Vector3(-0.1, -0.1, -0.1);
-            particleSystem.maxEmitBox = new BABYLON.Vector3(0.1, 0.1, 0.1);
+            particleSystem.minEmitBox = new BABYLON.Vector3(-0.15, -0.15, -0.15);
+            particleSystem.maxEmitBox = new BABYLON.Vector3(0.15, 0.15, 0.15);
 
-            // Colors
-            particleSystem.color1 = new BABYLON.Color4(1, 0.5, 0, 1);
-            particleSystem.color2 = new BABYLON.Color4(1, 0.2, 0, 1);
+            const c = color || new BABYLON.Color3(1, 0.5, 0);
+            particleSystem.color1 = new BABYLON.Color4(c.r, c.g, c.b, 1);
+            particleSystem.color2 = new BABYLON.Color4(c.r * 0.5, c.g * 0.5, c.b * 0.5, 1);
             particleSystem.colorDead = new BABYLON.Color4(0.2, 0.1, 0, 0);
 
-            // Size
             particleSystem.minSize = 0.1;
-            particleSystem.maxSize = 0.3;
+            particleSystem.maxSize = 0.4;
+            particleSystem.minLifeTime = 0.15;
+            particleSystem.maxLifeTime = 0.4;
 
-            // Lifetime
-            particleSystem.minLifeTime = 0.1;
-            particleSystem.maxLifeTime = 0.3;
+            particleSystem.emitRate = 300;
+            particleSystem.manualEmitCount = 50;
 
-            // Emission
-            particleSystem.emitRate = 200;
-            particleSystem.manualEmitCount = 30;
+            particleSystem.minEmitPower = 3;
+            particleSystem.maxEmitPower = 8;
 
-            // Speed
-            particleSystem.minEmitPower = 2;
-            particleSystem.maxEmitPower = 5;
-            particleSystem.updateSpeed = 0.02;
-
-            // Direction
             particleSystem.direction1 = new BABYLON.Vector3(-1, 1, -1);
-            particleSystem.direction2 = new BABYLON.Vector3(1, 1, 1);
+            particleSystem.direction2 = new BABYLON.Vector3(1, 1.5, 1);
 
-            // Gravity
-            particleSystem.gravity = new BABYLON.Vector3(0, -5, 0);
+            particleSystem.gravity = new BABYLON.Vector3(0, -12, 0);
 
-            // Start and auto-dispose
             particleSystem.start();
-            particleSystem.targetStopDuration = 0.3;
+            particleSystem.targetStopDuration = 0.2;
             particleSystem.disposeOnStop = true;
+
+            // Sparks
+            const sparks = new BABYLON.ParticleSystem('sparks_' + Date.now(), 30, scene);
+            sparks.particleTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/flare.png', scene);
+            sparks.emitter = position;
+            sparks.color1 = new BABYLON.Color4(1, 1, 0.5, 1);
+            sparks.color2 = new BABYLON.Color4(1, 0.5, 0, 1);
+            sparks.minSize = 0.02;
+            sparks.maxSize = 0.06;
+            sparks.minLifeTime = 0.3;
+            sparks.maxLifeTime = 0.6;
+            sparks.emitRate = 200;
+            sparks.manualEmitCount = 20;
+            sparks.minEmitPower = 5;
+            sparks.maxEmitPower = 12;
+            sparks.gravity = new BABYLON.Vector3(0, -15, 0);
+            sparks.start();
+            sparks.targetStopDuration = 0.1;
+            sparks.disposeOnStop = true;
+        }
+
+        function createSmokeParticle(position) {
+            const smoke = BABYLON.MeshBuilder.CreateSphere('smoke_' + Date.now(), {
+                diameter: 0.1
+            }, scene);
+            smoke.position = position;
+
+            const smokeMat = new BABYLON.StandardMaterial('smokeMat', scene);
+            smokeMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+            smokeMat.alpha = 0.5;
+            smoke.material = smokeMat;
+
+            let life = 0.5;
+            const interval = setInterval(() => {
+                life -= 0.05;
+                if (life <= 0) {
+                    clearInterval(interval);
+                    smoke.dispose();
+                } else {
+                    smoke.scaling.scaleInPlace(1.05);
+                    smokeMat.alpha = life;
+                }
+            }, 50);
+        }
+
+        function triggerMechDestruction(mech) {
+            // Massive explosion
+            const pos = mech.pelvis.getAbsolutePosition();
+
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    const offset = new BABYLON.Vector3(
+                        (Math.random() - 0.5) * 2,
+                        Math.random() * 2,
+                        (Math.random() - 0.5) * 1
+                    );
+                    createImpactEffect(pos.add(offset), COLORS.heat);
+                }, i * 100);
+            }
+
+            // Disable physics and let it fall
+            mech.pelvisAggregate.body.setLinearDamping(0.1);
+            mech.pelvisAggregate.body.setAngularDamping(0.1);
+
+            // Apply random death tumble
+            mech.pelvisAggregate.body.applyAngularImpulse(
+                new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 20
+                )
+            );
+        }
+
+        // ==========================================
+        // CONTROLS
+        // ==========================================
+        function toggleWalking(isPlayer) {
+            const mech = isPlayer ? playerMech : enemyMech;
+            if (!mech) return;
+
+            mech.isWalking = !mech.isWalking;
+            if (mech.isWalking) {
+                log(`${mech.name} begins walking`, 'info');
+            } else {
+                log(`${mech.name} stops walking`, 'info');
+            }
         }
 
         function resetScene() {
-            // Reset mech positions
+            // Reset player mech
             if (playerMech) {
-                playerMech.torso.position = new BABYLON.Vector3(-5, 4.5, 0);
-                playerMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                playerMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                playerMech.pelvis.position = new BABYLON.Vector3(-6, 2.5, 0);
+                playerMech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
+                playerMech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                playerMech.pelvisAggregate.body.setAngularDamping(0.92);
+                playerMech.pelvisAggregate.body.setLinearDamping(0.3);
                 playerMech.currentHP = playerMech.maxHP;
-            }
-            if (enemyMech) {
-                enemyMech.torso.position = new BABYLON.Vector3(5, 4.5, 0);
-                enemyMech.torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                enemyMech.torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-                enemyMech.currentHP = enemyMech.maxHP;
+                playerMech.isWalking = false;
+                playerMech.impactRecovery = 0;
+                playerMech.recoilRecovery = 0;
+                playerMech.torso.rotation = BABYLON.Vector3.Zero();
             }
 
-            // Clear projectiles
+            // Reset enemy mech
+            if (enemyMech) {
+                enemyMech.pelvis.position = new BABYLON.Vector3(6, 2.5, 0);
+                enemyMech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
+                enemyMech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                enemyMech.pelvisAggregate.body.setAngularDamping(0.92);
+                enemyMech.pelvisAggregate.body.setLinearDamping(0.3);
+                enemyMech.currentHP = enemyMech.maxHP;
+                enemyMech.isWalking = false;
+                enemyMech.impactRecovery = 0;
+                enemyMech.recoilRecovery = 0;
+                enemyMech.torso.rotation = BABYLON.Vector3.Zero();
+            }
+
+            // Clear projectiles and beams
             projectiles.forEach(p => p.mesh.dispose());
             projectiles = [];
-
-            // Clear laser beams
-            laserBeams.forEach(b => b.mesh.dispose());
-            laserBeams = [];
+            beams.forEach(b => b.mesh.dispose());
+            beams = [];
 
             log('Scene reset!', 'info');
+        }
+
+        function updateUI() {
+            if (playerMech) {
+                const pHP = document.getElementById('playerHP');
+                const pText = document.getElementById('playerHPText');
+                const pState = document.getElementById('playerState');
+                const pct = (playerMech.currentHP / playerMech.maxHP) * 100;
+                pHP.style.width = pct + '%';
+                pText.textContent = `HP: ${playerMech.currentHP}/${playerMech.maxHP}`;
+                pState.textContent = `State: ${playerMech.isWalking ? 'Walking' : playerMech.staggerTime > 0 ? 'Staggered' : 'Idle'}`;
+            }
+
+            if (enemyMech) {
+                const eHP = document.getElementById('enemyHP');
+                const eText = document.getElementById('enemyHPText');
+                const eState = document.getElementById('enemyState');
+                const pct = (enemyMech.currentHP / enemyMech.maxHP) * 100;
+                eHP.style.width = pct + '%';
+                eText.textContent = `HP: ${enemyMech.currentHP}/${enemyMech.maxHP}`;
+                eState.textContent = `State: ${enemyMech.isWalking ? 'Walking' : enemyMech.staggerTime > 0 ? 'Staggered' : 'Idle'}`;
+            }
         }
 
         // Initialize when page loads

@@ -1538,11 +1538,11 @@
             const angleToEnemy = Math.atan2(dz, dx);
 
             // Mech mesh faces +Z by default (chest at +Z, reactor at -Z)
-            // Player should face +X (toward enemy), Enemy should face -X (toward player)
-            // In Babylon: rotation.y = 0 faces +Z, rotation.y = -π/2 faces +X, rotation.y = +π/2 faces -X
-            // So we subtract π/2 from angleToEnemy to convert from world angle to mech-relative rotation
+            // Babylon.js uses LEFT-HANDED coordinates: +Y rotation is CLOCKWISE from above
+            // rotation.y = 0 faces +Z, rotation.y = +π/2 faces +X, rotation.y = -π/2 faces -X
+            // To convert world angle to mech rotation: baseAngle - angleToEnemy (not the reverse!)
             const baseAngle = Math.PI / 2;
-            let torsoAngle = angleToEnemy - baseAngle;
+            let torsoAngle = baseAngle - angleToEnemy;  // FIXED: was angleToEnemy - baseAngle
 
             // Normalize to -PI to PI range
             while (torsoAngle > Math.PI) torsoAngle -= Math.PI * 2;
@@ -1579,7 +1579,8 @@
             if (speed > 0.5 && mech.isWalking) {
                 // Calculate movement direction angle
                 const moveAngle = Math.atan2(vel.z, vel.x);
-                let legAngle = moveAngle - baseAngle;
+                // FIXED: Same left-handed coordinate fix as torso - use baseAngle - moveAngle
+                let legAngle = baseAngle - moveAngle;
 
                 // Normalize
                 while (legAngle > Math.PI) legAngle -= Math.PI * 2;
@@ -1603,6 +1604,11 @@
                 if (mech.leftLeg.footGroup) {
                     mech.leftLeg.footGroup.rotation.y = mech.footRotation;
                     mech.rightLeg.footGroup.rotation.y = mech.footRotation;
+                }
+
+                // Diagnostic: Log leg rotation
+                if (shouldLog) {
+                    dbg(`${name}: legs moveAngle=${(moveAngle * 180/Math.PI).toFixed(1)}° legAngle=${(legAngle * 180/Math.PI).toFixed(1)}° footRot=${(mech.footRotation * 180/Math.PI).toFixed(1)}°`, 'torso');
                 }
             } else if (!mech.isWalking) {
                 // When not walking, gradually return legs and feet to neutral

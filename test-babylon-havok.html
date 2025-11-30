@@ -1416,17 +1416,77 @@
 
         function updateTorsoTrack(mech, dt) {
             const target = mech.isPlayer ? enemyMech : playerMech;
-            if (!target) return;
+            if (!target || target.currentHP <= 0) return;
 
             const myPos = mech.pelvis.getAbsolutePosition();
             const targetPos = target.pelvis.getAbsolutePosition();
             const dx = targetPos.x - myPos.x;
             const dz = targetPos.z - myPos.z;
-            const angle = Math.atan2(dz, dx);
 
-            mech.targetTorsoTwist = Math.max(-0.35, Math.min(0.35, angle));
-            mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, mech.targetTorsoTwist, dt * 3.5);
+            // =============================================
+            // TORSO ALWAYS FACES ENEMY
+            // =============================================
+            // Calculate angle to enemy (in XZ plane)
+            // Mechs face along X axis, so we want to rotate Y to face target
+            const angleToEnemy = Math.atan2(dz, dx);
+
+            // Player faces right (+X), Enemy faces left (-X)
+            // Adjust base angle based on which way mech should face
+            const baseAngle = mech.isPlayer ? 0 : Math.PI;
+            let torsoAngle = angleToEnemy - baseAngle;
+
+            // Normalize to -PI to PI range
+            while (torsoAngle > Math.PI) torsoAngle -= Math.PI * 2;
+            while (torsoAngle < -Math.PI) torsoAngle += Math.PI * 2;
+
+            // Clamp torso rotation to reasonable range (about 60 degrees each way)
+            mech.targetTorsoTwist = Math.max(-1.0, Math.min(1.0, torsoAngle));
+
+            // Smooth interpolation for torso rotation
+            mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, mech.targetTorsoTwist, dt * 5);
             mech.torso.rotation.y = mech.torsoTwist;
+
+            // Head follows torso but can look even more toward enemy
+            if (mech.head) {
+                mech.head.rotation.y = mech.torsoTwist * 1.2;
+            }
+
+            // =============================================
+            // LEGS/PELVIS FACE MOVEMENT DIRECTION
+            // =============================================
+            const vel = mech.pelvisAggregate.body.getLinearVelocity();
+            const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+
+            if (speed > 0.5 && mech.isWalking) {
+                // Calculate movement direction angle
+                const moveAngle = Math.atan2(vel.z, vel.x);
+                let legAngle = moveAngle - baseAngle;
+
+                // Normalize
+                while (legAngle > Math.PI) legAngle -= Math.PI * 2;
+                while (legAngle < -Math.PI) legAngle += Math.PI * 2;
+
+                // Clamp leg rotation (about 45 degrees each way)
+                const targetLegAngle = Math.max(-0.8, Math.min(0.8, legAngle));
+
+                // Initialize pelvisRotation if not set
+                if (mech.pelvisRotation === undefined) mech.pelvisRotation = 0;
+
+                // Smooth interpolation for pelvis/leg rotation
+                mech.pelvisRotation = BABYLON.Scalar.Lerp(mech.pelvisRotation, targetLegAngle, dt * 4);
+
+                // Apply rotation to legs (they're children of pelvis visual, not physics body)
+                // Rotate legs around Y axis to face movement direction
+                mech.leftLeg.upperLeg.parent.rotation.y = mech.pelvisRotation * 0.7;
+                mech.rightLeg.upperLeg.parent.rotation.y = mech.pelvisRotation * 0.7;
+            } else if (!mech.isWalking) {
+                // When not walking, gradually return legs to neutral
+                if (mech.pelvisRotation !== undefined && Math.abs(mech.pelvisRotation) > 0.01) {
+                    mech.pelvisRotation = BABYLON.Scalar.Lerp(mech.pelvisRotation, 0, dt * 3);
+                    mech.leftLeg.upperLeg.parent.rotation.y = mech.pelvisRotation * 0.7;
+                    mech.rightLeg.upperLeg.parent.rotation.y = mech.pelvisRotation * 0.7;
+                }
+            }
         }
 
         function stabilize(mech, dt) {

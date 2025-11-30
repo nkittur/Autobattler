@@ -154,17 +154,10 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.1</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.3</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
-        <span style="color: #666; margin: 0 8px;">|</span>
-        <button onclick="fireWeapon(true, 'erlaser')">P: Laser</button>
-        <button onclick="fireWeapon(true, 'lrm')">P: LRM</button>
-        <button onclick="fireWeapon(true, 'ac')">P: AC</button>
-        <button class="red" onclick="fireWeapon(false, 'erlaser')">E: Laser</button>
-        <button class="red" onclick="fireWeapon(false, 'lrm')">E: LRM</button>
-        <button class="red" onclick="fireWeapon(false, 'ac')">E: AC</button>
     </div>
     <canvas id="renderCanvas"></canvas>
     <div id="polyCount">Triangles: <span id="triCount">0</span></div>
@@ -1849,23 +1842,160 @@
 
         function triggerDestruction(mech) {
             const pos = mech.pelvis.getAbsolutePosition();
-            for (let i = 0; i < 6; i++) {
-                setTimeout(() => {
-                    createImpact(pos.add(new BABYLON.Vector3(
-                        (Math.random() - 0.5) * 2.5,
-                        Math.random() * 2.5,
-                        (Math.random() - 0.5) * 1.2
-                    )), COLORS.thruster);
-                }, i * 90);
+            const mechName = mech.isPlayer ? 'TIMBER WOLF' : 'DIRE WOLF';
+
+            // ========================================
+            // SCREEN FLASH - bright orange/white
+            // ========================================
+            const flashPlane = BABYLON.MeshBuilder.CreatePlane('flash', { size: 100 }, scene);
+            flashPlane.position = camera.position.add(camera.getForwardRay().direction.scale(5));
+            flashPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+            const flashMat = new BABYLON.StandardMaterial('flashMat', scene);
+            flashMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0.2);
+            flashMat.disableLighting = true;
+            flashMat.alpha = 0.8;
+            flashPlane.material = flashMat;
+
+            let flashAlpha = 0.8;
+            const flashFade = setInterval(() => {
+                flashAlpha -= 0.04;
+                if (flashAlpha <= 0) {
+                    clearInterval(flashFade);
+                    flashPlane.dispose();
+                } else {
+                    flashMat.alpha = flashAlpha;
+                }
+            }, 30);
+
+            // ========================================
+            // CAMERA SHAKE
+            // ========================================
+            const originalCamPos = camera.position.clone();
+            let shakeTime = 0;
+            const shakeInterval = setInterval(() => {
+                shakeTime += 30;
+                if (shakeTime > 1500) {
+                    clearInterval(shakeInterval);
+                    camera.position = originalCamPos;
+                } else {
+                    const intensity = 0.5 * (1 - shakeTime / 1500);
+                    camera.position = originalCamPos.add(new BABYLON.Vector3(
+                        (Math.random() - 0.5) * intensity,
+                        (Math.random() - 0.5) * intensity * 0.5,
+                        (Math.random() - 0.5) * intensity
+                    ));
+                }
+            }, 30);
+
+            // ========================================
+            // MASSIVE CHAIN EXPLOSIONS
+            // ========================================
+            // Initial big explosion at center
+            for (let i = 0; i < 3; i++) {
+                createImpact(pos.clone(), new BABYLON.Color3(1, 0.4, 0));
             }
 
+            // Ring of explosions spreading outward
+            for (let i = 0; i < 16; i++) {
+                setTimeout(() => {
+                    const angle = (Math.PI * 2 * i) / 16;
+                    const dist = 1.5 + Math.random() * 1.5;
+                    createImpact(pos.add(new BABYLON.Vector3(
+                        Math.cos(angle) * dist,
+                        Math.random() * 2,
+                        Math.sin(angle) * dist * 0.5
+                    )), Math.random() > 0.5 ? COLORS.thruster : new BABYLON.Color3(1, 0.6, 0));
+                }, i * 60);
+            }
+
+            // Delayed secondary explosions
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    createImpact(pos.add(new BABYLON.Vector3(
+                        (Math.random() - 0.5) * 4,
+                        Math.random() * 3,
+                        (Math.random() - 0.5) * 2
+                    )), new BABYLON.Color3(1, 0.3 + Math.random() * 0.4, 0));
+                }, 500 + i * 100);
+            }
+
+            // ========================================
+            // DRAMATIC "DESTROYED!" TEXT
+            // ========================================
+            const destroyedText = document.createElement('div');
+            destroyedText.textContent = `${mechName} DESTROYED!`;
+            destroyedText.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 72px;
+                font-weight: bold;
+                font-family: monospace;
+                color: ${mech.isPlayer ? '#ff4444' : '#00ff88'};
+                text-shadow: 0 0 30px ${mech.isPlayer ? '#ff0000' : '#00ff00'},
+                             0 0 60px ${mech.isPlayer ? '#ff0000' : '#00ff00'},
+                             4px 4px 0 #000;
+                z-index: 9999;
+                pointer-events: none;
+                animation: destroyPulse 0.15s ease-in-out infinite;
+            `;
+            document.body.appendChild(destroyedText);
+
+            // Add animation keyframes
+            if (!document.getElementById('destroy-animation-style')) {
+                const style = document.createElement('style');
+                style.id = 'destroy-animation-style';
+                style.textContent = `
+                    @keyframes destroyPulse {
+                        0%, 100% { transform: translate(-50%, -50%) scale(1); }
+                        50% { transform: translate(-50%, -50%) scale(1.05); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Fade out and remove text
+            let textOpacity = 1;
+            setTimeout(() => {
+                const fadeText = setInterval(() => {
+                    textOpacity -= 0.03;
+                    if (textOpacity <= 0) {
+                        clearInterval(fadeText);
+                        destroyedText.remove();
+                    } else {
+                        destroyedText.style.opacity = textOpacity;
+                        // Float upward
+                        const currentTop = parseFloat(destroyedText.style.top) || 50;
+                        destroyedText.style.top = (currentTop - 0.5) + '%';
+                    }
+                }, 30);
+            }, 1500);
+
+            // ========================================
+            // MAKE MECH COLLAPSE DRAMATICALLY
+            // ========================================
             mech.pelvisAggregate.body.setLinearDamping(0.08);
             mech.pelvisAggregate.body.setAngularDamping(0.08);
+
+            // Massive angular impulse to make it spin and fall
             mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
+                (Math.random() - 0.5) * 50,
                 (Math.random() - 0.5) * 25,
-                (Math.random() - 0.5) * 12,
-                (Math.random() - 0.5) * 25
+                (Math.random() - 0.5) * 50
             ));
+
+            // Strong upward then falling impulse
+            mech.pelvisAggregate.body.applyImpulse(
+                new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 15,
+                    8 + Math.random() * 5,
+                    (Math.random() - 0.5) * 8
+                ),
+                mech.pelvis.getAbsolutePosition()
+            );
+
+            log(`💀💀💀 ${mechName} HAS BEEN DESTROYED! 💀💀💀`, 'error');
         }
 
         // ============================================

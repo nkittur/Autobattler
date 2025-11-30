@@ -116,7 +116,7 @@
     </style>
 </head>
 <body>
-    <h1>Mad Cat Detail Test</h1>
+    <h1>Mad Cat Detail Test <span id="version" style="font-size: 0.6em; color: #888;">v6.0</span></h1>
     <div id="controls">
         <button onclick="fireWeapon(true, 'erlaser')">P: ER Laser</button>
         <button onclick="fireWeapon(true, 'lrm')">P: LRM-20</button>
@@ -125,6 +125,7 @@
         <button class="red" onclick="fireWeapon(false, 'erlaser')">E: ER Laser</button>
         <button class="red" onclick="fireWeapon(false, 'lrm')">E: LRM-20</button>
         <button class="red" onclick="toggleWalking(false)">E: Walk</button>
+        <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">Auto-Fire: OFF</button>
         <button onclick="resetScene()">Reset</button>
     </div>
     <canvas id="renderCanvas"></canvas>
@@ -172,6 +173,15 @@
         let projectiles = [];
         let beams = [];
         let gameTime = 0;
+        let autoFireEnabled = false;
+        let autoFireInterval = null;
+
+        // Weapon cooldowns for auto-fire AI
+        const weaponCooldowns = {
+            player: { erlaser: 0, lrm: 0, ac: 0 },
+            enemy: { erlaser: 0, lrm: 0, ac: 0 }
+        };
+        const COOLDOWN_TIMES = { erlaser: 2000, lrm: 3500, ac: 1500 };
 
         // Weapons
         const WEAPONS = {
@@ -1557,7 +1567,89 @@
             projectiles = [];
             beams.forEach(b => b.mesh.dispose());
             beams = [];
+
+            // Reset cooldowns
+            weaponCooldowns.player = { erlaser: 0, lrm: 0, ac: 0 };
+            weaponCooldowns.enemy = { erlaser: 0, lrm: 0, ac: 0 };
+
             log('Scene reset');
+        }
+
+        // ============================================
+        // AUTO-FIRE SYSTEM
+        // ============================================
+        function toggleAutoFire() {
+            autoFireEnabled = !autoFireEnabled;
+            const btn = document.getElementById('autoFireBtn');
+
+            if (autoFireEnabled) {
+                btn.textContent = 'Auto-Fire: ON';
+                btn.style.background = 'rgba(0, 255, 136, 0.4)';
+                btn.style.borderColor = '#00ff88';
+                btn.style.color = '#00ff88';
+                log('Auto-fire ENABLED - mechs will fight!');
+
+                // Start both mechs walking
+                if (playerMech) playerMech.isWalking = true;
+                if (enemyMech) enemyMech.isWalking = true;
+
+                // Start auto-fire loop
+                if (!autoFireInterval) {
+                    autoFireInterval = setInterval(autoFireUpdate, 200);
+                }
+            } else {
+                btn.textContent = 'Auto-Fire: OFF';
+                btn.style.background = 'rgba(255, 200, 0, 0.3)';
+                btn.style.borderColor = '#ffcc00';
+                btn.style.color = '#ffcc00';
+                log('Auto-fire DISABLED');
+
+                // Stop auto-fire loop
+                if (autoFireInterval) {
+                    clearInterval(autoFireInterval);
+                    autoFireInterval = null;
+                }
+            }
+        }
+
+        function autoFireUpdate() {
+            if (!autoFireEnabled || !playerMech || !enemyMech) return;
+            if (playerMech.currentHP <= 0 || enemyMech.currentHP <= 0) {
+                // Battle ended
+                autoFireEnabled = false;
+                const btn = document.getElementById('autoFireBtn');
+                btn.textContent = 'Auto-Fire: OFF';
+                btn.style.background = 'rgba(255, 200, 0, 0.3)';
+                btn.style.borderColor = '#ffcc00';
+                btn.style.color = '#ffcc00';
+                if (autoFireInterval) {
+                    clearInterval(autoFireInterval);
+                    autoFireInterval = null;
+                }
+                log('Battle ended!');
+                return;
+            }
+
+            const now = Date.now();
+            const weaponTypes = ['erlaser', 'ac', 'lrm'];
+
+            // Player AI fires
+            for (const wtype of weaponTypes) {
+                if (now >= weaponCooldowns.player[wtype]) {
+                    fireWeapon(true, wtype);
+                    weaponCooldowns.player[wtype] = now + COOLDOWN_TIMES[wtype];
+                    break; // Fire one weapon per update
+                }
+            }
+
+            // Enemy AI fires
+            for (const wtype of weaponTypes) {
+                if (now >= weaponCooldowns.enemy[wtype]) {
+                    fireWeapon(false, wtype);
+                    weaponCooldowns.enemy[wtype] = now + COOLDOWN_TIMES[wtype];
+                    break; // Fire one weapon per update
+                }
+            }
         }
 
         function updateUI() {

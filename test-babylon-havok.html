@@ -532,73 +532,133 @@
 
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
-            // === TORSO - Multi-part ===
+            // === TORSO - Mad Cat Style with Conical Front ===
             const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torsoCore', {
-                width: 1.5, height: 1.1, depth: 1.0
+                width: 1.6, height: 1.2, depth: 1.1
             }, scene);
             torsoCore.position.y = 0.75;
             torsoCore.parent = pelvis;
             torsoCore.material = primaryMat;
 
-            // Torso upper section
+            // Torso upper section (wider for missile racks)
             const torsoUpper = BABYLON.MeshBuilder.CreateBox(name + '_torsoUpper', {
-                width: 1.3, height: 0.5, depth: 0.9
+                width: 1.8, height: 0.55, depth: 0.95
             }, scene);
-            torsoUpper.position.y = 0.75;
+            torsoUpper.position.y = 0.8;
             torsoUpper.parent = torsoCore;
             torsoUpper.material = secondaryMat;
 
-            // Chest armor plates (angled)
-            const chestLeft = BABYLON.MeshBuilder.CreateBox(name + '_chestL', {
-                width: 0.5, height: 0.7, depth: 0.2
+            // === DISTINCTIVE CONICAL FRONT (Mad Cat "Bird Beak") ===
+            // Main nose cone pointing forward
+            const noseCone = BABYLON.MeshBuilder.CreateCylinder(name + '_noseCone', {
+                height: 0.9, diameterTop: 0.15, diameterBottom: 0.7, tessellation: 8
             }, scene);
-            chestLeft.position = new BABYLON.Vector3(-0.35, 0.2, 0.5);
-            chestLeft.rotation.x = -0.25;
-            chestLeft.rotation.y = 0.15;
+            noseCone.rotation.x = Math.PI / 2;
+            noseCone.position = new BABYLON.Vector3(0, 0.15, 0.75);
+            noseCone.parent = torsoCore;
+            noseCone.material = primaryMat;
+
+            // Nose cone tip (darker)
+            const noseTip = BABYLON.MeshBuilder.CreateCylinder(name + '_noseTip', {
+                height: 0.25, diameterTop: 0.08, diameterBottom: 0.18, tessellation: 8
+            }, scene);
+            noseTip.rotation.x = Math.PI / 2;
+            noseTip.position = new BABYLON.Vector3(0, 0.15, 1.15);
+            noseTip.parent = torsoCore;
+            noseTip.material = darkMat;
+
+            // Laser ports on nose (glowing)
+            for (let i = 0; i < 2; i++) {
+                const laserPort = BABYLON.MeshBuilder.CreateCylinder(name + '_laserPort' + i, {
+                    height: 0.15, diameter: 0.12, tessellation: 12
+                }, scene);
+                laserPort.rotation.x = Math.PI / 2;
+                laserPort.position = new BABYLON.Vector3((i - 0.5) * 0.25, 0.15, 1.22);
+                laserPort.parent = torsoCore;
+                const laserMat = new BABYLON.StandardMaterial(name + '_laserMat' + i, scene);
+                laserMat.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 1) : new BABYLON.Color3(1, 0.3, 0.1);
+                laserPort.material = laserMat;
+            }
+
+            // Side chest plates (angled to form the cone shape)
+            const chestLeft = BABYLON.MeshBuilder.CreateBox(name + '_chestL', {
+                width: 0.5, height: 0.85, depth: 0.55
+            }, scene);
+            chestLeft.position = new BABYLON.Vector3(-0.5, 0.1, 0.4);
+            chestLeft.rotation.x = -0.15;
+            chestLeft.rotation.y = 0.35;
             chestLeft.parent = torsoCore;
             chestLeft.material = primaryMat;
 
             const chestRight = chestLeft.clone(name + '_chestR');
-            chestRight.position.x = 0.35;
-            chestRight.rotation.y = -0.15;
+            chestRight.position.x = 0.5;
+            chestRight.rotation.y = -0.35;
             chestRight.parent = torsoCore;
 
-            // Center chest detail
-            const chestCenter = BABYLON.MeshBuilder.CreateBox(name + '_chestC', {
-                width: 0.3, height: 0.5, depth: 0.15
-            }, scene);
-            chestCenter.position = new BABYLON.Vector3(0, 0.1, 0.55);
-            chestCenter.parent = torsoCore;
-            chestCenter.material = accentMat;
+            // Side intake vents (decorative)
+            for (let side = -1; side <= 1; side += 2) {
+                const intake = BABYLON.MeshBuilder.CreateBox(name + '_intake' + side, {
+                    width: 0.08, height: 0.4, depth: 0.35
+                }, scene);
+                intake.position = new BABYLON.Vector3(side * 0.65, 0.2, 0.25);
+                intake.parent = torsoCore;
+                intake.material = darkMat;
 
-            // Reactor housing (back)
-            const reactor = BABYLON.MeshBuilder.CreateBox(name + '_reactor', {
-                width: 0.9, height: 0.8, depth: 0.5
+                // Vent slats
+                for (let j = 0; j < 4; j++) {
+                    const slat = BABYLON.MeshBuilder.CreateBox(name + '_slat' + side + j, {
+                        width: 0.1, height: 0.03, depth: 0.3
+                    }, scene);
+                    slat.position = new BABYLON.Vector3(side * 0.02, (j - 1.5) * 0.09, 0);
+                    slat.parent = intake;
+                    slat.material = metalMat;
+                }
+            }
+
+            // Center chest armor ridge
+            const chestRidge = BABYLON.MeshBuilder.CreateBox(name + '_chestRidge', {
+                width: 0.15, height: 0.7, depth: 0.5
             }, scene);
-            reactor.position = new BABYLON.Vector3(0, 0.3, -0.6);
+            chestRidge.position = new BABYLON.Vector3(0, 0.15, 0.35);
+            chestRidge.parent = torsoCore;
+            chestRidge.material = accentMat;
+
+            // Lower chest detail
+            const chestLower = BABYLON.MeshBuilder.CreateBox(name + '_chestLower', {
+                width: 0.8, height: 0.25, depth: 0.4
+            }, scene);
+            chestLower.position = new BABYLON.Vector3(0, -0.35, 0.45);
+            chestLower.parent = torsoCore;
+            chestLower.material = secondaryMat;
+
+            // Reactor housing (back) - larger
+            const reactor = BABYLON.MeshBuilder.CreateBox(name + '_reactor', {
+                width: 1.1, height: 0.9, depth: 0.6
+            }, scene);
+            reactor.position = new BABYLON.Vector3(0, 0.25, -0.7);
             reactor.parent = torsoCore;
             reactor.material = darkMat;
 
-            // Heat sink fins
-            for (let i = 0; i < 4; i++) {
+            // Heat sink fins (more prominent)
+            for (let i = 0; i < 5; i++) {
                 const fin = BABYLON.MeshBuilder.CreateBox(name + '_fin' + i, {
-                    width: 0.08, height: 0.5, depth: 0.35
+                    width: 0.06, height: 0.6, depth: 0.45
                 }, scene);
-                fin.position = new BABYLON.Vector3((i - 1.5) * 0.22, 0, 0.1);
+                fin.position = new BABYLON.Vector3((i - 2) * 0.2, 0.05, 0.15);
                 fin.parent = reactor;
                 fin.material = metalMat;
             }
 
-            // Exhaust vents
-            for (let i = 0; i < 2; i++) {
+            // Exhaust vents (glowing)
+            for (let i = 0; i < 3; i++) {
                 const vent = BABYLON.MeshBuilder.CreateCylinder(name + '_vent' + i, {
-                    height: 0.15, diameter: 0.18
+                    height: 0.18, diameter: 0.2, tessellation: 12
                 }, scene);
-                vent.position = new BABYLON.Vector3((i - 0.5) * 0.35, -0.3, 0.28);
+                vent.position = new BABYLON.Vector3((i - 1) * 0.32, -0.32, 0.32);
                 vent.rotation.x = Math.PI / 2;
                 vent.parent = reactor;
                 const ventMat = new BABYLON.StandardMaterial(name + '_ventMat' + i, scene);
-                ventMat.emissiveColor = COLORS.thruster.scale(0.4);
+                ventMat.emissiveColor = COLORS.thruster.scale(0.5);
                 vent.material = ventMat;
             }
 
@@ -652,52 +712,130 @@
             chin.parent = headBase;
             chin.material = darkMat;
 
-            // === SHOULDER MISSILE PODS (LRM Racks) ===
+            // === GIANT SHOULDER MISSILE RACKS (LRM-20 Style) ===
             function createMissilePod(side) {
                 const xOff = side === 'left' ? -1 : 1;
                 const pod = new BABYLON.TransformNode(name + '_' + side + 'Pod', scene);
                 pod.parent = torsoUpper;
-                pod.position = new BABYLON.Vector3(xOff * 0.85, 0.35, -0.1);
+                pod.position = new BABYLON.Vector3(xOff * 1.1, 0.5, -0.15);
+                // Angle pods slightly outward for intimidating look
+                pod.rotation.z = xOff * -0.15;
 
-                // Pod base
+                // Main pod housing (much larger)
                 const podBase = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'PodBase', {
-                    width: 0.55, height: 0.45, depth: 0.7
+                    width: 0.75, height: 0.85, depth: 1.0
                 }, scene);
                 podBase.parent = pod;
                 podBase.material = primaryMat;
 
-                // Missile tubes (4x5 grid)
+                // Angled front face plate
+                const podFront = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'PodFront', {
+                    width: 0.7, height: 0.8, depth: 0.15
+                }, scene);
+                podFront.position = new BABYLON.Vector3(0, 0, 0.5);
+                podFront.rotation.x = -0.1;
+                podFront.parent = podBase;
+                podFront.material = secondaryMat;
+
+                // Missile tubes (5x4 grid = 20 missiles per rack)
                 for (let row = 0; row < 4; row++) {
                     for (let col = 0; col < 5; col++) {
                         const tube = BABYLON.MeshBuilder.CreateCylinder(name + '_tube_' + side + row + col, {
-                            height: 0.12, diameter: 0.08
+                            height: 0.2, diameter: 0.11, tessellation: 8
                         }, scene);
                         tube.rotation.x = Math.PI / 2;
                         tube.position = new BABYLON.Vector3(
-                            (col - 2) * 0.1,
-                            (row - 1.5) * 0.1,
-                            0.38
+                            (col - 2) * 0.13,
+                            (row - 1.5) * 0.16,
+                            0.55
                         );
                         tube.parent = podBase;
                         tube.material = darkMat;
+
+                        // Missile tip visible in each tube
+                        const missileTip = BABYLON.MeshBuilder.CreateCylinder(name + '_missile_' + side + row + col, {
+                            height: 0.08, diameterTop: 0.02, diameterBottom: 0.07, tessellation: 6
+                        }, scene);
+                        missileTip.rotation.x = Math.PI / 2;
+                        missileTip.position = new BABYLON.Vector3(
+                            (col - 2) * 0.13,
+                            (row - 1.5) * 0.16,
+                            0.62
+                        );
+                        missileTip.parent = podBase;
+                        missileTip.material = metalMat;
                     }
                 }
 
-                // Pod armor top
+                // Armored top with angular shape
                 const podTop = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'PodTop', {
-                    width: 0.5, height: 0.12, depth: 0.6
+                    width: 0.72, height: 0.15, depth: 0.95
                 }, scene);
-                podTop.position.y = 0.28;
+                podTop.position.y = 0.48;
                 podTop.parent = podBase;
                 podTop.material = secondaryMat;
 
-                // Side armor
-                const podSide = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'PodSide', {
-                    width: 0.1, height: 0.35, depth: 0.55
+                // Top ridge
+                const topRidge = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'TopRidge', {
+                    width: 0.2, height: 0.12, depth: 0.85
                 }, scene);
-                podSide.position.x = xOff * 0.3;
-                podSide.parent = podBase;
-                podSide.material = accentMat;
+                topRidge.position = new BABYLON.Vector3(0, 0.58, 0);
+                topRidge.parent = podBase;
+                topRidge.material = accentMat;
+
+                // Outer side armor panel
+                const podSideOuter = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'PodSideO', {
+                    width: 0.12, height: 0.75, depth: 0.9
+                }, scene);
+                podSideOuter.position.x = xOff * 0.4;
+                podSideOuter.parent = podBase;
+                podSideOuter.material = primaryMat;
+
+                // Inner side armor panel
+                const podSideInner = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'PodSideI', {
+                    width: 0.1, height: 0.6, depth: 0.8
+                }, scene);
+                podSideInner.position.x = xOff * -0.38;
+                podSideInner.parent = podBase;
+                podSideInner.material = secondaryMat;
+
+                // Bottom armor
+                const podBottom = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'PodBottom', {
+                    width: 0.65, height: 0.1, depth: 0.85
+                }, scene);
+                podBottom.position.y = -0.45;
+                podBottom.parent = podBase;
+                podBottom.material = darkMat;
+
+                // Mounting strut connecting to torso
+                const strut = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Strut', {
+                    width: 0.2, height: 0.35, depth: 0.3
+                }, scene);
+                strut.position = new BABYLON.Vector3(xOff * -0.35, -0.25, 0);
+                strut.parent = podBase;
+                strut.material = metalMat;
+
+                // Hydraulic actuator
+                const actuator = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Actuator', {
+                    height: 0.4, diameter: 0.1, tessellation: 8
+                }, scene);
+                actuator.position = new BABYLON.Vector3(xOff * -0.28, -0.15, -0.25);
+                actuator.rotation.x = 0.3;
+                actuator.parent = podBase;
+                actuator.material = chromeMat;
+
+                // Warning stripes on side
+                for (let i = 0; i < 3; i++) {
+                    const stripe = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Stripe' + i, {
+                        width: 0.13, height: 0.08, depth: 0.25
+                    }, scene);
+                    stripe.position = new BABYLON.Vector3(xOff * 0.405, 0.2 - i * 0.25, 0.2);
+                    stripe.parent = podBase;
+                    const stripeMat = new BABYLON.StandardMaterial(name + '_stripeMat' + side + i, scene);
+                    stripeMat.diffuseColor = i % 2 === 0 ?
+                        new BABYLON.Color3(0.9, 0.7, 0) : new BABYLON.Color3(0.1, 0.1, 0.1);
+                    stripe.material = stripeMat;
+                }
 
                 return pod;
             }
@@ -1034,72 +1172,135 @@
 
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
-            // === MASSIVE TORSO ===
+            // === MASSIVE TORSO - Dire Wolf Style with Angular Front ===
             const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torsoCore', {
-                width: 1.8 * scale, height: 1.3 * scale, depth: 1.2 * scale
+                width: 1.9 * scale, height: 1.4 * scale, depth: 1.3 * scale
             }, scene);
             torsoCore.position.y = 0.85 * scale;
             torsoCore.parent = pelvis;
             torsoCore.material = primaryMat;
 
-            // Upper torso
+            // Upper torso (wider for weapon pods)
             const torsoUpper = BABYLON.MeshBuilder.CreateBox(name + '_torsoUpper', {
-                width: 1.6 * scale, height: 0.6 * scale, depth: 1.0 * scale
+                width: 2.0 * scale, height: 0.65 * scale, depth: 1.1 * scale
             }, scene);
-            torsoUpper.position.y = 0.85 * scale;
+            torsoUpper.position.y = 0.9 * scale;
             torsoUpper.parent = torsoCore;
             torsoUpper.material = secondaryMat;
 
-            // Chest armor plates (multiple angled)
-            for (let i = 0; i < 3; i++) {
-                const chest = BABYLON.MeshBuilder.CreateBox(name + '_chest' + i, {
-                    width: 0.45 * scale, height: 0.6 * scale, depth: 0.18 * scale
+            // === DISTINCTIVE ANGULAR FRONT (Dire Wolf "Fortress" style) ===
+            // Main angular nose section
+            const noseCone = BABYLON.MeshBuilder.CreateCylinder(name + '_noseCone', {
+                height: 1.1 * scale, diameterTop: 0.2 * scale, diameterBottom: 0.85 * scale, tessellation: 6
+            }, scene);
+            noseCone.rotation.x = Math.PI / 2;
+            noseCone.position = new BABYLON.Vector3(0, 0.1 * scale, 0.85 * scale);
+            noseCone.parent = torsoCore;
+            noseCone.material = primaryMat;
+
+            // Nose armor tip
+            const noseTip = BABYLON.MeshBuilder.CreateCylinder(name + '_noseTip', {
+                height: 0.3 * scale, diameterTop: 0.1 * scale, diameterBottom: 0.25 * scale, tessellation: 6
+            }, scene);
+            noseTip.rotation.x = Math.PI / 2;
+            noseTip.position = new BABYLON.Vector3(0, 0.1 * scale, 1.35 * scale);
+            noseTip.parent = torsoCore;
+            noseTip.material = darkMat;
+
+            // Heavy laser array on nose (4 barrels)
+            for (let i = 0; i < 4; i++) {
+                const laserBarrel = BABYLON.MeshBuilder.CreateCylinder(name + '_laserBarrel' + i, {
+                    height: 0.25 * scale, diameter: 0.1 * scale, tessellation: 12
                 }, scene);
-                chest.position = new BABYLON.Vector3((i - 1) * 0.45 * scale, 0.15 * scale, 0.55 * scale);
-                chest.rotation.x = -0.2;
-                chest.parent = torsoCore;
-                chest.material = i === 1 ? accentMat : primaryMat;
+                laserBarrel.rotation.x = Math.PI / 2;
+                const angle = (i / 4) * Math.PI * 2;
+                laserBarrel.position = new BABYLON.Vector3(
+                    Math.cos(angle) * 0.18 * scale,
+                    0.1 * scale + Math.sin(angle) * 0.18 * scale,
+                    1.45 * scale
+                );
+                laserBarrel.parent = torsoCore;
+                const barrelMat = new BABYLON.StandardMaterial(name + '_barrelMat' + i, scene);
+                barrelMat.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 1) : new BABYLON.Color3(1, 0.2, 0.1);
+                laserBarrel.material = barrelMat;
             }
 
-            // Side torso panels
+            // Side chest plates (angled for angular look)
+            for (let side = -1; side <= 1; side += 2) {
+                const chestPlate = BABYLON.MeshBuilder.CreateBox(name + '_chestPlate' + side, {
+                    width: 0.6 * scale, height: 0.95 * scale, depth: 0.6 * scale
+                }, scene);
+                chestPlate.position = new BABYLON.Vector3(side * 0.6 * scale, 0.05 * scale, 0.45 * scale);
+                chestPlate.rotation.y = side * 0.4;
+                chestPlate.parent = torsoCore;
+                chestPlate.material = primaryMat;
+
+                // Armor detail on chest plates
+                const plateDetail = BABYLON.MeshBuilder.CreateBox(name + '_plateDetail' + side, {
+                    width: 0.5 * scale, height: 0.6 * scale, depth: 0.12 * scale
+                }, scene);
+                plateDetail.position = new BABYLON.Vector3(0, 0, 0.32 * scale);
+                plateDetail.parent = chestPlate;
+                plateDetail.material = secondaryMat;
+            }
+
+            // Side torso panels (larger)
             for (let side = -1; side <= 1; side += 2) {
                 const sidePanel = BABYLON.MeshBuilder.CreateBox(name + '_sidePanel' + side, {
-                    width: 0.15 * scale, height: 0.9 * scale, depth: 0.8 * scale
+                    width: 0.18 * scale, height: 1.0 * scale, depth: 0.9 * scale
                 }, scene);
-                sidePanel.position = new BABYLON.Vector3(side * 0.9 * scale, 0.2 * scale, 0);
+                sidePanel.position = new BABYLON.Vector3(side * 0.95 * scale, 0.15 * scale, 0);
                 sidePanel.parent = torsoCore;
                 sidePanel.material = secondaryMat;
+
+                // Vent grilles
+                for (let j = 0; j < 3; j++) {
+                    const grille = BABYLON.MeshBuilder.CreateBox(name + '_grille' + side + j, {
+                        width: 0.2 * scale, height: 0.05 * scale, depth: 0.4 * scale
+                    }, scene);
+                    grille.position = new BABYLON.Vector3(side * 0.02, (j - 1) * 0.2 * scale, 0.1 * scale);
+                    grille.parent = sidePanel;
+                    grille.material = darkMat;
+                }
             }
+
+            // Center chest ridge
+            const chestRidge = BABYLON.MeshBuilder.CreateBox(name + '_chestRidge', {
+                width: 0.2 * scale, height: 0.8 * scale, depth: 0.55 * scale
+            }, scene);
+            chestRidge.position = new BABYLON.Vector3(0, 0.1 * scale, 0.4 * scale);
+            chestRidge.parent = torsoCore;
+            chestRidge.material = accentMat;
 
             // Large reactor (back)
             const reactor = BABYLON.MeshBuilder.CreateBox(name + '_reactor', {
-                width: 1.1 * scale, height: 0.95 * scale, depth: 0.6 * scale
+                width: 1.3 * scale, height: 1.1 * scale, depth: 0.7 * scale
             }, scene);
-            reactor.position = new BABYLON.Vector3(0, 0.35 * scale, -0.75 * scale);
+            reactor.position = new BABYLON.Vector3(0, 0.3 * scale, -0.85 * scale);
             reactor.parent = torsoCore;
             reactor.material = darkMat;
 
             // Reactor pipes
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 4; i++) {
                 const pipe = BABYLON.MeshBuilder.CreateCylinder(name + '_pipe' + i, {
-                    height: 0.8 * scale, diameter: 0.12 * scale
+                    height: 0.9 * scale, diameter: 0.14 * scale
                 }, scene);
-                pipe.position = new BABYLON.Vector3((i - 1) * 0.35 * scale, 0.1 * scale, 0);
+                pipe.position = new BABYLON.Vector3((i - 1.5) * 0.28 * scale, 0.15 * scale, 0);
                 pipe.rotation.x = 0.15;
                 pipe.parent = reactor;
                 pipe.material = chromeMat;
             }
 
-            // Exhaust array
+            // Exhaust array (larger)
             for (let i = 0; i < 4; i++) {
                 const exhaust = BABYLON.MeshBuilder.CreateCylinder(name + '_exhaust' + i, {
-                    height: 0.18 * scale, diameter: 0.15 * scale
+                    height: 0.22 * scale, diameter: 0.18 * scale, tessellation: 12
                 }, scene);
                 exhaust.rotation.x = Math.PI / 2;
-                exhaust.position = new BABYLON.Vector3((i - 1.5) * 0.25 * scale, -0.35 * scale, 0.32 * scale);
+                exhaust.position = new BABYLON.Vector3((i - 1.5) * 0.28 * scale, -0.4 * scale, 0.38 * scale);
                 exhaust.parent = reactor;
                 const exMat = new BABYLON.StandardMaterial(name + '_exMat' + i, scene);
-                exMat.emissiveColor = COLORS.thruster.scale(0.3);
+                exMat.emissiveColor = COLORS.thruster.scale(0.4);
                 exhaust.material = exMat;
             }
 

@@ -139,6 +139,7 @@
         }
         #debugLogs .dbg-ai { color: #88ff88; }
         #debugLogs .dbg-phys { color: #88ffff; }
+        #debugLogs .dbg-torso { color: #ff88ff; }
         #debugLogs .dbg-err { color: #ff4444; }
         #debugLogs .dbg-warn { color: #ffaa00; }
         .copy-btn {
@@ -355,6 +356,11 @@
                         checkBattleEnd();
                     }
                     updateUI();
+
+                    // Update debug timer AFTER all subsystems have had a chance to log
+                    if (gameTime - lastDebugTime > DEBUG_INTERVAL) {
+                        lastDebugTime = gameTime;
+                    }
                     scene.render();
                 }
             });
@@ -1415,8 +1421,38 @@
         }
 
         function updateTorsoTrack(mech, dt) {
+            const name = mech.isPlayer ? 'P' : 'E';
+            const shouldLog = gameTime - lastDebugTime > DEBUG_INTERVAL;
+
+            // Diagnostic: Check if mech object is valid
+            if (!mech) {
+                if (shouldLog) dbg(`${name}: updateTorsoTrack - mech is null/undefined!`, 'warn');
+                return;
+            }
+            if (!mech.torso) {
+                if (shouldLog) dbg(`${name}: updateTorsoTrack - mech.torso is null/undefined!`, 'warn');
+                return;
+            }
+            if (!mech.pelvis) {
+                if (shouldLog) dbg(`${name}: updateTorsoTrack - mech.pelvis is null/undefined!`, 'warn');
+                return;
+            }
+
             const target = mech.isPlayer ? enemyMech : playerMech;
-            if (!target || target.currentHP <= 0) return;
+
+            // Diagnostic: Check target validity
+            if (!target) {
+                if (shouldLog) dbg(`${name}: updateTorsoTrack - no target (${mech.isPlayer ? 'enemyMech' : 'playerMech'} is null)`, 'warn');
+                return;
+            }
+            if (target.currentHP <= 0) {
+                if (shouldLog) dbg(`${name}: updateTorsoTrack - target HP=${target.currentHP}, skipping`, 'warn');
+                return;
+            }
+            if (!target.pelvis) {
+                if (shouldLog) dbg(`${name}: updateTorsoTrack - target.pelvis is null/undefined!`, 'warn');
+                return;
+            }
 
             const myPos = mech.pelvis.getAbsolutePosition();
             const targetPos = target.pelvis.getAbsolutePosition();
@@ -1445,6 +1481,12 @@
             // Smooth interpolation for torso rotation
             mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, mech.targetTorsoTwist, dt * 5);
             mech.torso.rotation.y = mech.torsoTwist;
+
+            // Diagnostic: Log torso tracking calculations
+            if (shouldLog) {
+                dbg(`${name}: torso dx=${dx.toFixed(2)} dz=${dz.toFixed(2)} angleToEnemy=${(angleToEnemy * 180/Math.PI).toFixed(1)}°`, 'torso');
+                dbg(`${name}: torso baseAngle=${(baseAngle * 180/Math.PI).toFixed(0)}° rawAngle=${(torsoAngle * 180/Math.PI).toFixed(1)}° target=${(mech.targetTorsoTwist * 180/Math.PI).toFixed(1)}° actual=${(mech.torsoTwist * 180/Math.PI).toFixed(1)}°`, 'torso');
+            }
 
             // Head follows torso but can look even more toward enemy
             if (mech.head) {
@@ -1671,11 +1713,7 @@
             if (shouldLog && forceApplied.length() > 0) {
                 dbg(`${name}: FORCE (${forceApplied.x.toFixed(0)},${forceApplied.z.toFixed(0)}) state=${mech.ai.state}`, 'phys');
             }
-
-            // Update debug timer at end of second mech's AI update
-            if (!mech.isPlayer && shouldLog) {
-                lastDebugTime = gameTime;
-            }
+            // Note: lastDebugTime is updated in the main render loop after all subsystems log
         }
 
         // ============================================

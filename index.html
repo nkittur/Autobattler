@@ -65,6 +65,20 @@
             color: #00ff88;
         }
 
+        .version-display {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 255, 136, 0.3);
+            font-size: 10px;
+            color: #888;
+            text-align: right;
+        }
+
+        .version-display .version-number {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
         .screen {
             display: none;
         }
@@ -682,6 +696,9 @@
                 <div class="stat"><strong>Current Mech:</strong> <span id="current-mech-name">None</span></div>
                 <div class="stat"><strong>Inventory:</strong> <span id="inventory-count">0/10</span></div>
             </div>
+            <div class="version-display">
+                <span class="version-number" id="version-display"></span>
+            </div>
         </header>
 
         <!-- Battle Screen -->
@@ -829,6 +846,29 @@
     <div class="debug-panel" id="debug-panel" style="display: none;"></div>
 
     <script>
+        // ============================================================================
+        // VERSION INFO - Auto-increment build number on each change
+        // ============================================================================
+        const VERSION = {
+            major: 1,
+            minor: 0,
+            patch: 0,
+            build: 2,  // INCREMENT THIS ON EACH CHANGE
+            date: '2025-11-30',
+            get string() {
+                return `v${this.major}.${this.minor}.${this.patch} (build ${this.build} - ${this.date})`;
+            }
+        };
+
+        // Display version on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const versionEl = document.getElementById('version-display');
+            if (versionEl) {
+                versionEl.textContent = VERSION.string;
+                versionEl.title = `Build ${VERSION.build} - ${VERSION.date}`;
+            }
+        });
+
         // ============================================================================
         // GAME DATA STRUCTURES
         // ============================================================================

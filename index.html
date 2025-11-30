@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <!--
 ================================================================================
-⚠️  ACTIVE DEVELOPMENT FILE - DO ALL DEVELOPMENT HERE! ⚠️
+⛔ DO NOT UPDATE THIS FILE - USE test-babylon-havok.html INSTEAD ⛔
 ================================================================================
-This is the PRIMARY development file for the Mech Autobattler physics system.
-ALL new features, fixes, and experiments should be done in THIS file.
+This 2D Matter.js version is DEPRECATED.
+
+ACTIVE DEVELOPMENT is now in: test-babylon-havok.html (3D Babylon.js + Havok)
 
 The old full app is available at: app.html
 ================================================================================
@@ -12,7 +13,7 @@ The old full app is available at: app.html
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Physics Battle Test - ACTIVE DEVELOPMENT</title>
+    <title>Physics Battle Test - DEPRECATED (Use test-babylon-havok.html)</title>
     <style>
         body {
             margin: 0;
@@ -42,12 +43,12 @@ The old full app is available at: app.html
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
-    <div style="background: #ff0000; color: #fff; padding: 10px; text-align: center; font-weight: bold; margin-bottom: 10px;">
-        ⚠️ MAIN DEVELOPMENT FILE - All work happens here! Old full app: <a href="app.html" style="color: #ffff00;">app.html</a> | Physics test: <a href="test-physics.html" style="color: #ffff00;">test-physics.html</a>
+    <div style="background: #ff6600; color: #000; padding: 15px; text-align: center; font-weight: bold; margin-bottom: 10px; font-size: 18px;">
+        ⛔ DEPRECATED - Go to: <a href="test-babylon-havok.html" style="color: #0000ff; text-decoration: underline; font-size: 20px;">test-babylon-havok.html</a> (3D Babylon.js version)
     </div>
     <h1 style="text-align: center;">⚔️ Physics Battle Test ⚔️</h1>
-    <h2 style="text-align: center; color: #ff00ff; background: #000; padding: 10px;">VERSION 4.5 - DEVELOPMENT FOCUS</h2>
-    <p style="text-align: center; color: #ff6b35; font-size: 18px; font-weight: bold;">🔧 Rigid joints | 2x ground friction | Mechs should STAND!</p>
+    <h2 style="text-align: center; color: #ff00ff; background: #000; padding: 10px;">VERSION 9.3 - DRAMATIC DESTRUCTION</h2>
+    <p style="text-align: center; color: #ff6b35; font-size: 18px; font-weight: bold;">🔧 Torso faces enemy | Legs face movement | Strafing at range!</p>
     <p style="text-align: center; color: #00ff88; font-size: 14px;">Look for "Modern Rendering: YES" in top left of game</p>
     <div id="status">
         <div id="logs"></div>
@@ -121,6 +122,12 @@ The old full app is available at: app.html
                 this.projectileHit = 0;
                 this.projectileMissed = 0;
                 this.battleEnded = false;
+
+                // Dramatic destruction effects
+                this.screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+                this.destructionExplosions = [];  // Big explosions for mech death
+                this.battleEndText = null;  // "DESTROYED!" text
+                this.screenFlash = { color: null, alpha: 0 };  // Screen flash effect
 
                 // WEAPON DEFINITIONS LIBRARY
                 this.weaponDefs = {
@@ -436,30 +443,127 @@ The old full app is available at: app.html
             destroyMech(mech) {
                 if (mech.destroyed) return;  // Already destroyed
 
-                log(`💀 ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} MECH DESTROYED!`);
+                log(`💀💀💀 ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} MECH DESTROYED! 💀💀💀`);
 
                 mech.destroyed = true;
 
-                // Create massive explosion effects
                 const torsoPos = mech.components.torso.body.position;
-                for (let i = 0; i < 5; i++) {
+                const mechName = mech.isPlayer ? 'PLAYER' : 'ENEMY';
+
+                // ========================================
+                // DRAMATIC SCREEN FLASH - bright white/orange
+                // ========================================
+                this.screenFlash = { color: '#ff6600', alpha: 0.8 };
+
+                // ========================================
+                // MASSIVE SCREEN SHAKE
+                // ========================================
+                this.screenShake = { x: 0, y: 0, intensity: 25, duration: 1500 };
+
+                // ========================================
+                // CHAIN OF MASSIVE EXPLOSIONS
+                // ========================================
+                // Initial giant explosion
+                this.destructionExplosions.push({
+                    x: torsoPos.x,
+                    y: torsoPos.y,
+                    radius: 80,
+                    maxRadius: 150,
+                    createdAt: Date.now(),
+                    duration: 800,
+                    color: '#ff4400'
+                });
+
+                // Secondary explosions spreading outward
+                for (let i = 0; i < 12; i++) {
                     setTimeout(() => {
+                        const angle = (Math.PI * 2 * i) / 12;
+                        const dist = 20 + Math.random() * 40;
+                        this.destructionExplosions.push({
+                            x: torsoPos.x + Math.cos(angle) * dist,
+                            y: torsoPos.y + Math.sin(angle) * dist,
+                            radius: 30 + Math.random() * 30,
+                            maxRadius: 60 + Math.random() * 40,
+                            createdAt: Date.now(),
+                            duration: 500 + Math.random() * 300,
+                            color: Math.random() > 0.5 ? '#ff6600' : '#ffaa00'
+                        });
+                        // Also create standard impact effects
                         this.createImpactEffect(
-                            torsoPos.x + (Math.random() - 0.5) * 40,
-                            torsoPos.y + (Math.random() - 0.5) * 40,
-                            { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 }
+                            torsoPos.x + Math.cos(angle) * dist,
+                            torsoPos.y + Math.sin(angle) * dist,
+                            { x: Math.cos(angle) * 5, y: Math.sin(angle) * 5 }
                         );
-                    }, i * 100);
+                    }, i * 80);
                 }
 
-                // Remove all remaining components from world
-                for (const [key, component] of Object.entries(mech.components)) {
-                    if (component.health > 0) {
-                        setTimeout(() => {
-                            Matter.World.remove(this.world, component.body);
-                        }, 500);
-                    }
+                // Delayed secondary explosions
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        this.destructionExplosions.push({
+                            x: torsoPos.x + (Math.random() - 0.5) * 100,
+                            y: torsoPos.y + (Math.random() - 0.5) * 80,
+                            radius: 20 + Math.random() * 25,
+                            maxRadius: 50 + Math.random() * 30,
+                            createdAt: Date.now(),
+                            duration: 400,
+                            color: '#ffcc00'
+                        });
+                    }, 500 + i * 120);
                 }
+
+                // ========================================
+                // BLOW ALL COMPONENTS OFF DRAMATICALLY
+                // ========================================
+                const Body = Matter.Body;
+                for (const [key, component] of Object.entries(mech.components)) {
+                    // Remove all constraints first
+                    const constraintsToRemove = mech.constraints.filter(constraint =>
+                        constraint.bodyA === component.body || constraint.bodyB === component.body
+                    );
+                    constraintsToRemove.forEach(constraint => {
+                        Matter.World.remove(this.world, constraint);
+                    });
+
+                    // Apply massive explosive force to each component
+                    const compPos = component.body.position;
+                    const angle = Math.atan2(compPos.y - torsoPos.y, compPos.x - torsoPos.x);
+                    const explosionForce = 0.3 + Math.random() * 0.2;
+
+                    Body.applyForce(component.body, compPos, {
+                        x: Math.cos(angle) * explosionForce + (Math.random() - 0.5) * 0.1,
+                        y: Math.sin(angle) * explosionForce - 0.2  // Upward bias
+                    });
+
+                    // Add chaotic spin
+                    Body.setAngularVelocity(component.body, (Math.random() - 0.5) * 0.8);
+
+                    // Make component darker to show it's destroyed
+                    component.destroyed = true;
+                }
+                mech.constraints = [];
+
+                // ========================================
+                // SHOW "DESTROYED!" TEXT
+                // ========================================
+                this.battleEndText = {
+                    text: `${mechName} DESTROYED!`,
+                    x: torsoPos.x,
+                    y: torsoPos.y - 50,
+                    createdAt: Date.now(),
+                    duration: 3000,
+                    fontSize: 48,
+                    color: mech.isPlayer ? '#ff4444' : '#00ff88'
+                };
+
+                // Remove components from world after they fall (delayed cleanup)
+                setTimeout(() => {
+                    for (const [key, component] of Object.entries(mech.components)) {
+                        try {
+                            Matter.World.remove(this.world, component.body);
+                        } catch (e) { /* ignore */ }
+                    }
+                }, 3000);
 
                 // Check if battle should end
                 this.checkBattleEnd();
@@ -809,6 +913,10 @@ The old full app is available at: app.html
                     isPlayer: isPlayer,
                     destroyed: false,  // Full mech destroyed flag
                     destroyedComponents: [],  // Track destroyed component names
+                    // Strafing state
+                    strafePhase: Math.random() * Math.PI * 2,  // Random starting phase for strafing
+                    strafeDirection: 1,  // 1 = up, -1 = down
+                    isStrafing: false,
                     // Weapons assigned above
                     weapons: weapons,
                     // Range for movement AI (calculated above)
@@ -1023,61 +1131,213 @@ The old full app is available at: app.html
                     const otherPos = otherMech.torso.position;
                     const vel = mech.torso.velocity;
 
-                    // Calculate distance between mechs
-                    const distance = Math.abs(pos.x - otherPos.x);
+                    // Calculate distance between mechs (full 2D distance for strafing)
+                    const dx = otherPos.x - pos.x;
+                    const dy = otherPos.y - pos.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const horizontalDistance = Math.abs(dx);
 
                     // Track if we need emergency forces
                     let needsEmergencyForce = false;
-                    let emergencyForce = 0;
 
                     // RANGE-BASED MOVEMENT AI
-                    let desiredDirection = 0;
+                    let desiredDirectionX = 0;
+                    let desiredDirectionY = 0;
                     let forceMultiplier = 1;
 
-                    if (distance > mech.weapon.maxRange) {
+                    // Check if in optimal range for strafing
+                    const inOptimalRange = horizontalDistance >= mech.weapon.optimalRange - 30 &&
+                                          horizontalDistance <= mech.weapon.optimalRange + 30 &&
+                                          horizontalDistance >= mech.weapon.minRange &&
+                                          horizontalDistance <= mech.weapon.maxRange;
+
+                    if (horizontalDistance > mech.weapon.maxRange) {
                         // Too far - move closer
-                        desiredDirection = pos.x < otherPos.x ? 1 : -1;
-                    } else if (distance < mech.weapon.minRange) {
+                        desiredDirectionX = pos.x < otherPos.x ? 1 : -1;
+                        mech.isStrafing = false;
+                    } else if (horizontalDistance < mech.weapon.minRange) {
                         // Too close - move away with STRONG force
-                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        desiredDirectionX = pos.x < otherPos.x ? -1 : 1;
                         forceMultiplier = 50;  // 50x force when below minimum range!
-                    } else if (distance > mech.weapon.optimalRange + 30) {
+                        mech.isStrafing = false;
+                    } else if (horizontalDistance > mech.weapon.optimalRange + 30) {
                         // Outside optimal range - move closer
-                        desiredDirection = pos.x < otherPos.x ? 1 : -1;
+                        desiredDirectionX = pos.x < otherPos.x ? 1 : -1;
                         forceMultiplier = 2;
-                    } else if (distance < mech.weapon.optimalRange - 30) {
+                        mech.isStrafing = false;
+                    } else if (horizontalDistance < mech.weapon.optimalRange - 30) {
                         // Outside optimal range - move away
-                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        desiredDirectionX = pos.x < otherPos.x ? -1 : 1;
                         forceMultiplier = 2;
+                        mech.isStrafing = false;
                     } else {
-                        // In optimal range - stay still
-                        desiredDirection = 0;
+                        // In optimal range - STRAFE!
+                        mech.isStrafing = true;
+
+                        // Update strafe phase for smooth oscillation
+                        mech.strafePhase += 0.03;  // Speed of strafe oscillation
+
+                        // Sinusoidal strafing motion (up and down)
+                        desiredDirectionY = Math.sin(mech.strafePhase);
+                        forceMultiplier = 3;  // Moderate force for strafing
+
+                        // Boundary check - reverse if getting too close to ground or ceiling
+                        const groundY = 400;  // Approximate ground level
+                        const ceilingY = 150;  // Don't go too high
+
+                        if (pos.y > groundY - 30 && desiredDirectionY > 0) {
+                            // Too close to ground, force upward
+                            desiredDirectionY = -1;
+                            mech.strafePhase = -Math.PI / 2;  // Reset phase to go up
+                        } else if (pos.y < ceilingY && desiredDirectionY < 0) {
+                            // Too high, force downward
+                            desiredDirectionY = 1;
+                            mech.strafePhase = Math.PI / 2;  // Reset phase to go down
+                        }
                     }
 
                     // EXTREME REPULSION when mechs are too close
-                    if (distance < 120) {
+                    if (horizontalDistance < 120) {
                         // Mechs too close - repel strongly
-                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        desiredDirectionX = pos.x < otherPos.x ? -1 : 1;
                         forceMultiplier = 200;  // 200x force when colliding!
                         needsEmergencyForce = true;
+                        mech.isStrafing = false;
                     }
 
                     // Apply movement forces
-                    if (desiredDirection !== 0) {
-                        const force = mech.moveSpeed * forceMultiplier;
+                    const force = mech.moveSpeed * forceMultiplier;
 
+                    if (desiredDirectionX !== 0 || desiredDirectionY !== 0) {
                         Body.applyForce(mech.torso, pos, {
-                            x: desiredDirection * force,
-                            y: 0
+                            x: desiredDirectionX * force,
+                            y: desiredDirectionY * force * 0.5  // Reduced vertical force for smoother strafing
                         });
                     }
 
                     // SMART VELOCITY DAMPENING - only dampen when NOT in emergency
-                    if (!needsEmergencyForce && Math.abs(vel.x) > 0.1) {
+                    if (!needsEmergencyForce && (Math.abs(vel.x) > 0.1 || Math.abs(vel.y) > 0.1)) {
                         Body.setVelocity(mech.torso, {
                             x: vel.x * 0.85,  // Dampen horizontal movement
-                            y: vel.y
+                            y: vel.y * 0.90   // Slightly less damping on vertical for smoother strafing
                         });
+                    }
+
+                    // =============================================
+                    // TORSO ROTATION - Face the enemy
+                    // =============================================
+                    // Calculate angle from this mech to enemy
+                    const angleToEnemy = Math.atan2(dy, dx);
+
+                    // Torso should face enemy - but we only want slight rotation, not full aim
+                    // Limit the rotation to a subtle tilt (max ~15 degrees = 0.26 radians)
+                    const maxTorsoRotation = 0.15;
+                    let torsoTargetAngle = 0;
+
+                    // Tilt torso slightly towards enemy (subtle lean)
+                    if (dx > 0) {
+                        // Enemy is to the right - slight lean right
+                        torsoTargetAngle = Math.min(maxTorsoRotation, Math.abs(angleToEnemy) * 0.1);
+                    } else {
+                        // Enemy is to the left - slight lean left
+                        torsoTargetAngle = -Math.min(maxTorsoRotation, Math.abs(angleToEnemy) * 0.1);
+                    }
+
+                    // Smoothly interpolate torso angle
+                    const currentTorsoAngle = mech.torso.angle;
+                    const newTorsoAngle = currentTorsoAngle + (torsoTargetAngle - currentTorsoAngle) * 0.1;
+                    Body.setAngle(mech.torso, newTorsoAngle);
+
+                    // Head follows torso but can look more towards enemy
+                    if (!mech.destroyedComponents.includes('head')) {
+                        const headTargetAngle = torsoTargetAngle * 1.5;  // Head turns a bit more
+                        const currentHeadAngle = mech.head.angle;
+                        const newHeadAngle = currentHeadAngle + (headTargetAngle - currentHeadAngle) * 0.15;
+                        Body.setAngle(mech.head, newHeadAngle);
+                    }
+
+                    // Arms follow torso
+                    if (!mech.destroyedComponents.includes('leftArm')) {
+                        Body.setAngle(mech.leftArm, newTorsoAngle);
+                    }
+                    if (!mech.destroyedComponents.includes('rightArm')) {
+                        Body.setAngle(mech.rightArm, newTorsoAngle);
+                    }
+
+                    // =============================================
+                    // LEG/FOOT ROTATION - Face movement direction
+                    // =============================================
+                    // Calculate movement direction angle from velocity
+                    const movementAngle = Math.atan2(vel.y, vel.x);
+                    const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+
+                    // Only rotate legs if actually moving
+                    const legRotationSpeed = 0.08;  // How fast legs rotate to new direction
+                    const maxLegRotation = 0.4;  // Maximum leg rotation (~23 degrees)
+
+                    if (speed > 0.5) {  // Only rotate if moving with some speed
+                        // Determine target leg angle based on movement direction
+                        let legTargetAngle = 0;
+
+                        // Moving right (positive X velocity dominant)
+                        if (vel.x > Math.abs(vel.y) * 0.5) {
+                            legTargetAngle = Math.min(maxLegRotation, vel.x * 0.1);
+                        }
+                        // Moving left (negative X velocity dominant)
+                        else if (vel.x < -Math.abs(vel.y) * 0.5) {
+                            legTargetAngle = Math.max(-maxLegRotation, vel.x * 0.1);
+                        }
+                        // Moving up/down (strafing) - legs stay relatively straight but can tilt
+                        else if (Math.abs(vel.y) > 0.3) {
+                            // Slight rotation based on vertical movement
+                            legTargetAngle = vel.y * 0.05;
+                        }
+
+                        // Apply leg rotations with smooth interpolation
+                        if (!mech.destroyedComponents.includes('leftLeg')) {
+                            const currentLeftLegAngle = mech.leftLeg.angle;
+                            const newLeftLegAngle = currentLeftLegAngle + (legTargetAngle - currentLeftLegAngle) * legRotationSpeed;
+                            Body.setAngle(mech.leftLeg, newLeftLegAngle);
+                        }
+                        if (!mech.destroyedComponents.includes('rightLeg')) {
+                            const currentRightLegAngle = mech.rightLeg.angle;
+                            const newRightLegAngle = currentRightLegAngle + (legTargetAngle - currentRightLegAngle) * legRotationSpeed;
+                            Body.setAngle(mech.rightLeg, newRightLegAngle);
+                        }
+
+                        // Feet follow legs but can rotate slightly more for ground contact
+                        if (!mech.destroyedComponents.includes('leftFoot')) {
+                            const footTargetAngle = legTargetAngle * 0.7;  // Feet rotate less than legs
+                            const currentLeftFootAngle = mech.leftFoot.angle;
+                            const newLeftFootAngle = currentLeftFootAngle + (footTargetAngle - currentLeftFootAngle) * legRotationSpeed;
+                            Body.setAngle(mech.leftFoot, newLeftFootAngle);
+                        }
+                        if (!mech.destroyedComponents.includes('rightFoot')) {
+                            const footTargetAngle = legTargetAngle * 0.7;
+                            const currentRightFootAngle = mech.rightFoot.angle;
+                            const newRightFootAngle = currentRightFootAngle + (footTargetAngle - currentRightFootAngle) * legRotationSpeed;
+                            Body.setAngle(mech.rightFoot, newRightFootAngle);
+                        }
+                    } else {
+                        // Not moving much - gradually return legs to neutral
+                        const returnSpeed = 0.05;
+
+                        if (!mech.destroyedComponents.includes('leftLeg')) {
+                            const currentAngle = mech.leftLeg.angle;
+                            Body.setAngle(mech.leftLeg, currentAngle * (1 - returnSpeed));
+                        }
+                        if (!mech.destroyedComponents.includes('rightLeg')) {
+                            const currentAngle = mech.rightLeg.angle;
+                            Body.setAngle(mech.rightLeg, currentAngle * (1 - returnSpeed));
+                        }
+                        if (!mech.destroyedComponents.includes('leftFoot')) {
+                            const currentAngle = mech.leftFoot.angle;
+                            Body.setAngle(mech.leftFoot, currentAngle * (1 - returnSpeed));
+                        }
+                        if (!mech.destroyedComponents.includes('rightFoot')) {
+                            const currentAngle = mech.rightFoot.angle;
+                            Body.setAngle(mech.rightFoot, currentAngle * (1 - returnSpeed));
+                        }
                     }
                 });
             }
@@ -1107,9 +1367,21 @@ The old full app is available at: app.html
             render() {
                 const ctx = this.ctx;
 
+                // ========================================
+                // UPDATE AND APPLY SCREEN SHAKE
+                // ========================================
+                ctx.save();
+                if (this.screenShake.duration > 0) {
+                    this.screenShake.duration -= 16;  // Assuming ~60fps
+                    const intensity = this.screenShake.intensity * (this.screenShake.duration / 1500);
+                    this.screenShake.x = (Math.random() - 0.5) * intensity * 2;
+                    this.screenShake.y = (Math.random() - 0.5) * intensity * 2;
+                    ctx.translate(this.screenShake.x, this.screenShake.y);
+                }
+
                 // Clear
                 ctx.fillStyle = '#0d0d1f';
-                ctx.fillRect(0, 0, this.width, this.height);
+                ctx.fillRect(-10, -10, this.width + 20, this.height + 20);  // Extra size for shake
 
                 // Render ground and terrain
                 const bodies = Matter.Composite.allBodies(this.world);
@@ -1188,10 +1460,10 @@ The old full app is available at: app.html
                     this.renderComponentHealth(this.enemyMech, ctx);
                 }
 
-                // Debug info with V4 STATUS
+                // Debug info with V5 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V4.4 WEAPON LIBRARY', 10, 20);
+                ctx.fillText('V9.3 DRAMATIC DESTRUCTION', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';
@@ -1205,6 +1477,30 @@ The old full app is available at: app.html
                 // RENDER VERIFICATION
                 ctx.fillStyle = '#ff6b35';
                 ctx.fillText('Modern Rendering: ' + (this._v3verified ? 'YES' : 'NO'), 10, 125);
+
+                // ========================================
+                // RENDER DESTRUCTION EXPLOSIONS
+                // ========================================
+                this.renderDestructionExplosions(ctx);
+
+                // ========================================
+                // RENDER BATTLE END TEXT
+                // ========================================
+                this.renderBattleEndText(ctx);
+
+                // ========================================
+                // RENDER SCREEN FLASH (on top of everything)
+                // ========================================
+                if (this.screenFlash.alpha > 0) {
+                    ctx.fillStyle = this.screenFlash.color;
+                    ctx.globalAlpha = this.screenFlash.alpha;
+                    ctx.fillRect(-10, -10, this.width + 20, this.height + 20);
+                    ctx.globalAlpha = 1;
+                    this.screenFlash.alpha -= 0.03;  // Fade out
+                }
+
+                // Restore context (end screen shake)
+                ctx.restore();
             }
 
             renderMech(mech, ctx) {
@@ -1774,6 +2070,111 @@ The old full app is available at: app.html
 
                     return true;  // Keep
                 });
+            }
+
+            renderDestructionExplosions(ctx) {
+                const now = Date.now();
+
+                this.destructionExplosions = this.destructionExplosions.filter(explosion => {
+                    const age = now - explosion.createdAt;
+                    if (age > explosion.duration) return false;  // Remove expired
+
+                    const progress = age / explosion.duration;
+                    const life = 1 - progress;
+
+                    // Expanding radius
+                    const currentRadius = explosion.radius + (explosion.maxRadius - explosion.radius) * progress;
+
+                    ctx.save();
+
+                    // Outer glow (largest, most transparent)
+                    const gradient = ctx.createRadialGradient(
+                        explosion.x, explosion.y, 0,
+                        explosion.x, explosion.y, currentRadius
+                    );
+                    gradient.addColorStop(0, '#ffffff');
+                    gradient.addColorStop(0.2, explosion.color);
+                    gradient.addColorStop(0.5, explosion.color + '88');
+                    gradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+
+                    ctx.globalAlpha = life * 0.9;
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(explosion.x, explosion.y, currentRadius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Inner bright core
+                    if (life > 0.5) {
+                        const coreGradient = ctx.createRadialGradient(
+                            explosion.x, explosion.y, 0,
+                            explosion.x, explosion.y, currentRadius * 0.4
+                        );
+                        coreGradient.addColorStop(0, '#ffffff');
+                        coreGradient.addColorStop(0.5, '#ffffaa');
+                        coreGradient.addColorStop(1, 'rgba(255, 255, 170, 0)');
+
+                        ctx.globalAlpha = (life - 0.5) * 2;
+                        ctx.fillStyle = coreGradient;
+                        ctx.beginPath();
+                        ctx.arc(explosion.x, explosion.y, currentRadius * 0.4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    ctx.restore();
+
+                    return true;  // Keep
+                });
+            }
+
+            renderBattleEndText(ctx) {
+                if (!this.battleEndText) return;
+
+                const now = Date.now();
+                const age = now - this.battleEndText.createdAt;
+                if (age > this.battleEndText.duration) {
+                    this.battleEndText = null;
+                    return;
+                }
+
+                const progress = age / this.battleEndText.duration;
+                const life = 1 - progress;
+
+                ctx.save();
+
+                // Pulsing scale effect
+                const pulse = 1 + Math.sin(age * 0.01) * 0.05;
+                const scale = (1 + progress * 0.3) * pulse;
+
+                // Float upward
+                const yOffset = -progress * 80;
+
+                ctx.globalAlpha = life;
+                ctx.font = `bold ${this.battleEndText.fontSize * scale}px monospace`;
+                ctx.textAlign = 'center';
+
+                // Multiple layers for glow effect
+                // Outer glow
+                ctx.shadowColor = this.battleEndText.color;
+                ctx.shadowBlur = 30;
+                ctx.fillStyle = this.battleEndText.color;
+                ctx.fillText(this.battleEndText.text, this.battleEndText.x, this.battleEndText.y + yOffset);
+
+                // Black outline
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 4;
+                ctx.strokeText(this.battleEndText.text, this.battleEndText.x, this.battleEndText.y + yOffset);
+
+                // Main text
+                ctx.fillStyle = '#fff';
+                ctx.fillText(this.battleEndText.text, this.battleEndText.x, this.battleEndText.y + yOffset);
+
+                // Color overlay
+                ctx.globalAlpha = life * 0.7;
+                ctx.fillStyle = this.battleEndText.color;
+                ctx.fillText(this.battleEndText.text, this.battleEndText.x, this.battleEndText.y + yOffset);
+
+                ctx.restore();
             }
 
             renderComponentHealth(mech, ctx) {

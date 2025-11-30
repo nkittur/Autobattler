@@ -719,7 +719,6 @@ This file is kept for reference and comparison.
             <!-- Physics Combat Visualization -->
             <div id="physics-controls">
                 <button id="toggle-physics" class="active">🎮 Physics View</button>
-                <button id="toggle-autofire" class="active">🔫 Auto-Fire: ON</button>
                 <button id="toggle-speed" class="active">⚡ Speed: 1x</button>
             </div>
             <canvas id="physics-canvas" width="800" height="450"></canvas>
@@ -4624,15 +4623,7 @@ This file is kept for reference and comparison.
             }
         });
 
-        // Auto-fire toggle
-        let autoFireEnabled = true;
-        document.getElementById('toggle-autofire').addEventListener('click', function() {
-            autoFireEnabled = !autoFireEnabled;
-            this.classList.toggle('active');
-            this.textContent = autoFireEnabled ? '🔫 Auto-Fire: ON' : '🔫 Auto-Fire: OFF';
-            // Store in global for battle system to check
-            window.autoFireEnabled = autoFireEnabled;
-        });
+        // Auto-fire is always enabled (no manual toggle)
         window.autoFireEnabled = true;
 
         // Speed toggle (cycles through 1x, 2x, 4x)

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BattleTech Physics Test - Mad Cat Detail</title>
+    <title>BattleTech Arena - AI Combat</title>
     <style>
         body {
             margin: 0;
@@ -113,19 +113,50 @@
             color: #888;
             margin-top: 5px;
         }
+        #debugPanel {
+            max-width: 1000px;
+            margin: 10px auto;
+            padding: 8px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #ff8800;
+            border-radius: 8px;
+            font-size: 10px;
+        }
+        #debugPanel .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        #debugPanel .title { color: #ff8800; font-weight: bold; }
+        #debugLogs {
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre;
+            color: #aaa;
+            line-height: 1.3;
+        }
+        #debugLogs .dbg-ai { color: #88ff88; }
+        #debugLogs .dbg-phys { color: #88ffff; }
+        #debugLogs .dbg-err { color: #ff4444; }
+        #debugLogs .dbg-warn { color: #ffaa00; }
+        .copy-btn {
+            padding: 3px 8px;
+            font-size: 10px;
+            background: rgba(255, 136, 0, 0.3);
+            border: 1px solid #ff8800;
+            color: #ff8800;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .copy-btn:hover { background: rgba(255, 136, 0, 0.5); }
     </style>
 </head>
 <body>
-    <h1>Mad Cat Detail Test <span id="version" style="font-size: 0.6em; color: #888;">v6.0</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.3</span></h1>
     <div id="controls">
-        <button onclick="fireWeapon(true, 'erlaser')">P: ER Laser</button>
-        <button onclick="fireWeapon(true, 'lrm')">P: LRM-20</button>
-        <button onclick="fireWeapon(true, 'ac')">P: UAC/5</button>
-        <button onclick="toggleWalking(true)">P: Walk</button>
-        <button class="red" onclick="fireWeapon(false, 'erlaser')">E: ER Laser</button>
-        <button class="red" onclick="fireWeapon(false, 'lrm')">E: LRM-20</button>
-        <button class="red" onclick="toggleWalking(false)">E: Walk</button>
-        <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">Auto-Fire: OFF</button>
+        <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
     </div>
     <canvas id="renderCanvas"></canvas>
@@ -148,6 +179,14 @@
         </div>
     </div>
 
+    <div id="debugPanel">
+        <div class="header">
+            <span class="title">DIAGNOSTIC LOGS</span>
+            <button class="copy-btn" onclick="copyDebugLogs()">Copy Logs</button>
+        </div>
+        <div id="debugLogs"></div>
+    </div>
+
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
 
@@ -165,6 +204,46 @@
             }
         }
 
+        // Debug logging system
+        const debugLogs = [];
+        let lastDebugTime = 0;
+        const DEBUG_INTERVAL = 0.5; // Log every 0.5 seconds to avoid spam
+
+        function dbg(msg, category = '') {
+            const ts = gameTime.toFixed(2);
+            const entry = `[${ts}] ${msg}`;
+            debugLogs.push({ msg: entry, cat: category });
+            if (debugLogs.length > 100) debugLogs.shift(); // Keep last 100 entries
+            updateDebugPanel();
+        }
+
+        function updateDebugPanel() {
+            const el = document.getElementById('debugLogs');
+            if (el) {
+                el.innerHTML = debugLogs.slice(-30).map(l => {
+                    const cls = l.cat ? `dbg-${l.cat}` : '';
+                    return `<span class="${cls}">${l.msg}</span>`;
+                }).join('\n');
+                el.scrollTop = el.scrollHeight;
+            }
+        }
+
+        function copyDebugLogs() {
+            const text = debugLogs.map(l => l.msg).join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                log('Logs copied to clipboard!', 'info');
+            }).catch(err => {
+                // Fallback for browsers without clipboard API
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                log('Logs copied!', 'info');
+            });
+        }
+
         log('Initializing Mad Cat Physics Test...');
 
         // Globals
@@ -175,13 +254,28 @@
         let gameTime = 0;
         let autoFireEnabled = false;
         let autoFireInterval = null;
+        let battleEnded = false;  // Flag to stop AI loops when battle is over
 
-        // Weapon cooldowns for auto-fire AI
+        // Weapon cooldowns for AI
         const weaponCooldowns = {
             player: { erlaser: 0, lrm: 0, ac: 0 },
             enemy: { erlaser: 0, lrm: 0, ac: 0 }
         };
         const COOLDOWN_TIMES = { erlaser: 2000, lrm: 3500, ac: 1500 };
+
+        // AI Configuration
+        const AI_CONFIG = {
+            idealRange: 10,         // Optimal combat distance
+            minRange: 6,            // Too close - back up
+            maxRange: 13,           // Too far - close in (slightly less than starting distance)
+            edgeBoundary: 16,       // X position to start avoiding edges
+            edgeForce: 45,          // Force to push away from edges
+            moveForce: 150,         // Normal movement force (increased significantly)
+            strafeForce: 60,        // Lateral movement force (increased significantly)
+            decisionInterval: 0.2,  // How often AI makes decisions (faster for responsiveness)
+            strafeChance: 0.15,     // Chance to start strafing each decision
+            strafeDuration: 1.5     // How long to strafe before reconsidering
+        };
 
         // Weapons
         const WEAPONS = {
@@ -253,9 +347,13 @@
                     lastTime = now;
                     gameTime += dt;
 
-                    updateMechs(dt);
-                    updateProjectiles(dt);
-                    updateBeams();
+                    // Only run game logic if battle hasn't ended
+                    if (!battleEnded) {
+                        updateMechs(dt);
+                        updateProjectiles(dt);
+                        updateBeams();
+                        checkBattleEnd();
+                    }
                     updateUI();
                     scene.render();
                 }
@@ -263,6 +361,25 @@
 
             window.addEventListener('resize', () => engine.resize());
             log('Scene ready!');
+
+            // Log initial mech state for debugging
+            setTimeout(() => {
+                if (playerMech) {
+                    const pos = playerMech.pelvis.getAbsolutePosition();
+                    const body = playerMech.pelvisAggregate.body;
+                    const motionTypes = ['STATIC', 'ANIMATED', 'DYNAMIC'];
+                    dbg(`P created: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)})`, 'ai');
+                    dbg(`P body: mass=${body.getMassProperties().mass} motion=${motionTypes[body.motionType] || body.motionType}`, 'phys');
+                }
+                if (enemyMech) {
+                    const pos = enemyMech.pelvis.getAbsolutePosition();
+                    const body = enemyMech.pelvisAggregate.body;
+                    const motionTypes = ['STATIC', 'ANIMATED', 'DYNAMIC'];
+                    dbg(`E created: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)})`, 'ai');
+                    dbg(`E body: mass=${body.getMassProperties().mass} motion=${motionTypes[body.motionType] || body.motionType}`, 'phys');
+                }
+                dbg('Click "AI Battle: OFF" to start battle', 'warn');
+            }, 500);
         }
 
         function createScene() {
@@ -328,8 +445,7 @@
         }
 
         function createWalls(scene) {
-            const wallMat = new BABYLON.StandardMaterial('wallMat', scene);
-            wallMat.alpha = 0.1;
+            // Invisible walls - physics only, no rendering
             const walls = [
                 { p: [-20, 5, 0], s: [1, 10, 20] },
                 { p: [20, 5, 0], s: [1, 10, 20] },
@@ -339,7 +455,7 @@
             walls.forEach((w, i) => {
                 const wall = BABYLON.MeshBuilder.CreateBox('wall' + i, { width: w.s[0], height: w.s[1], depth: w.s[2] }, scene);
                 wall.position = new BABYLON.Vector3(...w.p);
-                wall.material = wallMat;
+                wall.isVisible = false;  // Invisible but still has physics
                 new BABYLON.PhysicsAggregate(wall, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
             });
         }
@@ -387,13 +503,28 @@
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
                 width: 1.1, height: 0.5, depth: 0.9
             }, scene);
-            pelvis.position = new BABYLON.Vector3(xPos, 4.5, 0);  // Higher spawn!
+            pelvis.position = new BABYLON.Vector3(xPos, 3.5, 0);  // Spawn height
             pelvis.material = darkMat;
 
-            const pelvisAgg = new BABYLON.PhysicsAggregate(pelvis, BABYLON.PhysicsShapeType.BOX,
-                { mass: 75, friction: 1.0, restitution: 0.05 }, scene);
-            pelvisAgg.body.setAngularDamping(0.92);
-            pelvisAgg.body.setLinearDamping(0.25);
+            // Create a taller collision shape to represent the full mech standing height
+            // The visual legs extend ~3 units below pelvis, so we use a tall box offset downward
+            const pelvisShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, -1.5, 0),  // Center offset (shift down to cover legs)
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(1.1, 3.5, 0.9),  // Full standing height
+                scene
+            );
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            pelvisBody.shape = pelvisShape;
+            pelvisBody.setMassProperties({ mass: 75 });
+            pelvisBody.setAngularDamping(0.92);
+            pelvisBody.setLinearDamping(0.25);
+
+            // Set friction and restitution on the shape
+            // Low friction (0.1) allows movement - friction 1.0 was blocking all forces
+            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+
+            const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
             // === TORSO - Multi-part ===
             const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torsoCore', {
@@ -803,7 +934,15 @@
                 walkDirection: isPlayer ? 1 : -1,
                 impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
                 staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
-                torsoTwist: 0, targetTorsoTwist: 0
+                torsoTwist: 0, targetTorsoTwist: 0,
+                // AI state
+                ai: {
+                    enabled: false,
+                    state: 'idle',        // idle, advancing, retreating, optimal, strafing
+                    lastDecision: 0,
+                    strafeDir: 0,         // -1 left, 0 none, 1 right
+                    strafeEndTime: 0
+                }
             };
         }
 
@@ -842,13 +981,28 @@
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
                 width: 1.3 * scale, height: 0.55 * scale, depth: 1.0 * scale
             }, scene);
-            pelvis.position = new BABYLON.Vector3(xPos, 4.8, 0);
+            pelvis.position = new BABYLON.Vector3(xPos, 3.8, 0);  // Spawn height
             pelvis.material = darkMat;
 
-            const pelvisAgg = new BABYLON.PhysicsAggregate(pelvis, BABYLON.PhysicsShapeType.BOX,
-                { mass: 100, friction: 1.0, restitution: 0.05 }, scene);
-            pelvisAgg.body.setAngularDamping(0.93);
-            pelvisAgg.body.setLinearDamping(0.3);
+            // Create a taller collision shape to represent the full mech standing height
+            // Dire Wolf is bigger (scale 1.15), legs extend ~3.5 units below pelvis
+            const pelvisShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, -1.7 * scale, 0),  // Center offset (shift down to cover legs)
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(1.3 * scale, 4.0 * scale, 1.0 * scale),  // Full standing height
+                scene
+            );
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            pelvisBody.shape = pelvisShape;
+            pelvisBody.setMassProperties({ mass: 100 });
+            pelvisBody.setAngularDamping(0.93);
+            pelvisBody.setLinearDamping(0.3);
+
+            // Set friction and restitution on the shape
+            // Low friction (0.1) allows movement - friction 1.0 was blocking all forces
+            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+
+            const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
             // === MASSIVE TORSO ===
             const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torsoCore', {
@@ -1162,7 +1316,15 @@
                 walkDirection: isPlayer ? 1 : -1,
                 impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
                 staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
-                torsoTwist: 0, targetTorsoTwist: 0
+                torsoTwist: 0, targetTorsoTwist: 0,
+                // AI state
+                ai: {
+                    enabled: false,
+                    state: 'idle',        // idle, advancing, retreating, optimal, strafing
+                    lastDecision: 0,
+                    strafeDir: 0,         // -1 left, 0 none, 1 right
+                    strafeEndTime: 0
+                }
             };
         }
 
@@ -1172,6 +1334,7 @@
         function updateMechs(dt) {
             [playerMech, enemyMech].forEach(mech => {
                 if (!mech) return;
+                updateAI(mech, dt);      // AI controls movement and firing
                 updateWalking(mech, dt);
                 updateImpact(mech, dt);
                 updateRecoil(mech, dt);
@@ -1197,8 +1360,9 @@
 
             const sway = Math.sin(cycle) * 0.025;
 
+            // Walking force - physics engine integrates force, don't multiply by dt
             mech.pelvisAggregate.body.applyForce(
-                new BABYLON.Vector3(mech.walkDirection * 18 * dt, 0, 0),
+                new BABYLON.Vector3(mech.walkDirection * 120, 0, 0),
                 mech.pelvis.getAbsolutePosition()
             );
 
@@ -1252,17 +1416,77 @@
 
         function updateTorsoTrack(mech, dt) {
             const target = mech.isPlayer ? enemyMech : playerMech;
-            if (!target) return;
+            if (!target || target.currentHP <= 0) return;
 
             const myPos = mech.pelvis.getAbsolutePosition();
             const targetPos = target.pelvis.getAbsolutePosition();
             const dx = targetPos.x - myPos.x;
             const dz = targetPos.z - myPos.z;
-            const angle = Math.atan2(dz, dx);
 
-            mech.targetTorsoTwist = Math.max(-0.35, Math.min(0.35, angle));
-            mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, mech.targetTorsoTwist, dt * 3.5);
+            // =============================================
+            // TORSO ALWAYS FACES ENEMY
+            // =============================================
+            // Calculate angle to enemy (in XZ plane)
+            // Mechs face along X axis, so we want to rotate Y to face target
+            const angleToEnemy = Math.atan2(dz, dx);
+
+            // Player faces right (+X), Enemy faces left (-X)
+            // Adjust base angle based on which way mech should face
+            const baseAngle = mech.isPlayer ? 0 : Math.PI;
+            let torsoAngle = angleToEnemy - baseAngle;
+
+            // Normalize to -PI to PI range
+            while (torsoAngle > Math.PI) torsoAngle -= Math.PI * 2;
+            while (torsoAngle < -Math.PI) torsoAngle += Math.PI * 2;
+
+            // Clamp torso rotation to reasonable range (about 60 degrees each way)
+            mech.targetTorsoTwist = Math.max(-1.0, Math.min(1.0, torsoAngle));
+
+            // Smooth interpolation for torso rotation
+            mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, mech.targetTorsoTwist, dt * 5);
             mech.torso.rotation.y = mech.torsoTwist;
+
+            // Head follows torso but can look even more toward enemy
+            if (mech.head) {
+                mech.head.rotation.y = mech.torsoTwist * 1.2;
+            }
+
+            // =============================================
+            // LEGS/PELVIS FACE MOVEMENT DIRECTION
+            // =============================================
+            const vel = mech.pelvisAggregate.body.getLinearVelocity();
+            const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+
+            if (speed > 0.5 && mech.isWalking) {
+                // Calculate movement direction angle
+                const moveAngle = Math.atan2(vel.z, vel.x);
+                let legAngle = moveAngle - baseAngle;
+
+                // Normalize
+                while (legAngle > Math.PI) legAngle -= Math.PI * 2;
+                while (legAngle < -Math.PI) legAngle += Math.PI * 2;
+
+                // Clamp leg rotation (about 45 degrees each way)
+                const targetLegAngle = Math.max(-0.8, Math.min(0.8, legAngle));
+
+                // Initialize pelvisRotation if not set
+                if (mech.pelvisRotation === undefined) mech.pelvisRotation = 0;
+
+                // Smooth interpolation for pelvis/leg rotation
+                mech.pelvisRotation = BABYLON.Scalar.Lerp(mech.pelvisRotation, targetLegAngle, dt * 4);
+
+                // Apply rotation to legs (they're children of pelvis visual, not physics body)
+                // Rotate legs around Y axis to face movement direction
+                mech.leftLeg.upperLeg.parent.rotation.y = mech.pelvisRotation * 0.7;
+                mech.rightLeg.upperLeg.parent.rotation.y = mech.pelvisRotation * 0.7;
+            } else if (!mech.isWalking) {
+                // When not walking, gradually return legs to neutral
+                if (mech.pelvisRotation !== undefined && Math.abs(mech.pelvisRotation) > 0.01) {
+                    mech.pelvisRotation = BABYLON.Scalar.Lerp(mech.pelvisRotation, 0, dt * 3);
+                    mech.leftLeg.upperLeg.parent.rotation.y = mech.pelvisRotation * 0.7;
+                    mech.rightLeg.upperLeg.parent.rotation.y = mech.pelvisRotation * 0.7;
+                }
+            }
         }
 
         function stabilize(mech, dt) {
@@ -1281,6 +1505,176 @@
             const vel = body.getLinearVelocity();
             if (vel.length() > 5.5) {
                 body.setLinearVelocity(vel.normalize().scale(5.5));
+            }
+        }
+
+        // ============================================
+        // MECH AI SYSTEM
+        // ============================================
+        function updateAI(mech, dt) {
+            const name = mech.isPlayer ? 'P' : 'E';
+
+            // Periodic verbose logging
+            const shouldLog = gameTime - lastDebugTime > DEBUG_INTERVAL;
+
+            if (!mech.ai.enabled) {
+                if (shouldLog) dbg(`${name}: AI disabled`, 'warn');
+                return;
+            }
+            if (mech.currentHP <= 0) {
+                if (shouldLog) dbg(`${name}: HP=0, skip AI`, 'warn');
+                return;
+            }
+            if (mech.staggerTime > 0) {
+                if (shouldLog) dbg(`${name}: staggered (${mech.staggerTime.toFixed(2)}s)`, 'warn');
+                return;
+            }
+
+            const target = mech.isPlayer ? enemyMech : playerMech;
+            if (!target || target.currentHP <= 0) {
+                if (shouldLog) dbg(`${name}: no valid target`, 'warn');
+                return;
+            }
+
+            const body = mech.pelvisAggregate.body;
+            const myPos = mech.pelvis.getAbsolutePosition();
+            const targetPos = target.pelvis.getAbsolutePosition();
+            const distance = BABYLON.Vector3.Distance(myPos, targetPos);
+            const toTarget = targetPos.subtract(myPos).normalize();
+            const vel = body.getLinearVelocity();
+
+            // Log physics state periodically
+            if (shouldLog) {
+                dbg(`${name}: pos=(${myPos.x.toFixed(1)},${myPos.y.toFixed(1)},${myPos.z.toFixed(1)}) vel=(${vel.x.toFixed(2)},${vel.y.toFixed(2)},${vel.z.toFixed(2)}) dist=${distance.toFixed(1)}`, 'phys');
+                dbg(`${name}: state=${mech.ai.state} walk=${mech.isWalking} dir=${mech.walkDirection}`, 'ai');
+            }
+
+            // Edge avoidance - high priority
+            // Note: applyForce() is integrated by physics engine, don't multiply by dt
+            let edgeForce = new BABYLON.Vector3(0, 0, 0);
+            if (myPos.x < -AI_CONFIG.edgeBoundary) {
+                edgeForce.x = AI_CONFIG.edgeForce;
+                mech.ai.state = 'edge-avoid';
+            } else if (myPos.x > AI_CONFIG.edgeBoundary) {
+                edgeForce.x = -AI_CONFIG.edgeForce;
+                mech.ai.state = 'edge-avoid';
+            }
+            if (Math.abs(myPos.z) > 7) {
+                edgeForce.z = -Math.sign(myPos.z) * AI_CONFIG.edgeForce * 0.5;
+            }
+
+            // Apply edge avoidance force
+            if (edgeForce.length() > 0) {
+                mech.pelvisAggregate.body.applyForce(edgeForce, myPos);
+                if (shouldLog) dbg(`${name}: edge force (${edgeForce.x.toFixed(0)},${edgeForce.z.toFixed(0)})`, 'phys');
+            }
+
+            // AI decision making (periodic, not every frame)
+            if (gameTime - mech.ai.lastDecision > AI_CONFIG.decisionInterval) {
+                mech.ai.lastDecision = gameTime;
+
+                // Determine movement state based on range
+                if (distance > AI_CONFIG.maxRange) {
+                    mech.ai.state = 'advancing';
+                    mech.walkDirection = toTarget.x > 0 ? 1 : -1;
+                } else if (distance < AI_CONFIG.minRange) {
+                    mech.ai.state = 'retreating';
+                    mech.walkDirection = toTarget.x > 0 ? -1 : 1;
+                } else {
+                    // At optimal range - maybe strafe
+                    if (Math.random() < AI_CONFIG.strafeChance) {
+                        mech.ai.state = 'strafing';
+                        mech.ai.strafeDir = Math.random() < 0.5 ? -1 : 1;
+                        mech.ai.strafeEndTime = gameTime + AI_CONFIG.strafeDuration;
+                    } else {
+                        mech.ai.state = 'optimal';
+                    }
+                }
+
+                // Fire weapons when in range (increased range for more action)
+                if (distance <= 18 && distance >= AI_CONFIG.minRange * 0.5) {
+                    const now = Date.now();
+                    const side = mech.isPlayer ? 'player' : 'enemy';
+                    const weaponPriority = ['erlaser', 'ac', 'lrm'];
+
+                    for (const wtype of weaponPriority) {
+                        if (now >= weaponCooldowns[side][wtype]) {
+                            fireWeapon(mech.isPlayer, wtype);
+                            weaponCooldowns[side][wtype] = now + COOLDOWN_TIMES[wtype];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Check if strafing should end
+            if (mech.ai.state === 'strafing' && gameTime > mech.ai.strafeEndTime) {
+                mech.ai.state = 'optimal';
+                mech.ai.strafeDir = 0;
+            }
+
+            // Apply movement based on state
+            // Note: applyForce() is integrated by physics engine, don't multiply by dt
+            let forceApplied = new BABYLON.Vector3(0, 0, 0);
+            switch (mech.ai.state) {
+                case 'advancing':
+                    mech.isWalking = true;
+                    forceApplied = new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce, 0, 0);
+                    body.applyForce(forceApplied, myPos);
+                    break;
+
+                case 'retreating':
+                    mech.isWalking = true;
+                    forceApplied = new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 1.2, 0, 0);
+                    body.applyForce(forceApplied, myPos);
+                    break;
+
+                case 'strafing':
+                    mech.isWalking = true;
+                    // Strafe perpendicular to target
+                    forceApplied = new BABYLON.Vector3(0, 0, mech.ai.strafeDir * AI_CONFIG.strafeForce);
+                    body.applyForce(forceApplied, myPos);
+                    // Small adjustment toward ideal range
+                    if (distance > AI_CONFIG.idealRange + 1) {
+                        body.applyForce(new BABYLON.Vector3(toTarget.x * AI_CONFIG.moveForce * 0.3, 0, 0), myPos);
+                    } else if (distance < AI_CONFIG.idealRange - 1) {
+                        body.applyForce(new BABYLON.Vector3(-toTarget.x * AI_CONFIG.moveForce * 0.3, 0, 0), myPos);
+                    }
+                    break;
+
+                case 'optimal':
+                    // Small adjustments to stay at ideal range
+                    if (distance > AI_CONFIG.idealRange + 2) {
+                        mech.isWalking = true;
+                        mech.walkDirection = toTarget.x > 0 ? 1 : -1;
+                        forceApplied = new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 0.5, 0, 0);
+                        body.applyForce(forceApplied, myPos);
+                    } else if (distance < AI_CONFIG.idealRange - 2) {
+                        mech.isWalking = true;
+                        mech.walkDirection = toTarget.x > 0 ? -1 : 1;
+                        forceApplied = new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 0.5, 0, 0);
+                        body.applyForce(forceApplied, myPos);
+                    } else {
+                        mech.isWalking = false;
+                    }
+                    break;
+
+                case 'edge-avoid':
+                    mech.isWalking = true;
+                    break;
+
+                default:
+                    mech.isWalking = false;
+            }
+
+            // Log force applied
+            if (shouldLog && forceApplied.length() > 0) {
+                dbg(`${name}: FORCE (${forceApplied.x.toFixed(0)},${forceApplied.z.toFixed(0)}) state=${mech.ai.state}`, 'phys');
+            }
+
+            // Update debug timer at end of second mech's AI update
+            if (!mech.isPlayer && shouldLog) {
+                lastDebugTime = gameTime;
             }
         }
 
@@ -1508,23 +1902,160 @@
 
         function triggerDestruction(mech) {
             const pos = mech.pelvis.getAbsolutePosition();
-            for (let i = 0; i < 6; i++) {
-                setTimeout(() => {
-                    createImpact(pos.add(new BABYLON.Vector3(
-                        (Math.random() - 0.5) * 2.5,
-                        Math.random() * 2.5,
-                        (Math.random() - 0.5) * 1.2
-                    )), COLORS.thruster);
-                }, i * 90);
+            const mechName = mech.isPlayer ? 'TIMBER WOLF' : 'DIRE WOLF';
+
+            // ========================================
+            // SCREEN FLASH - bright orange/white
+            // ========================================
+            const flashPlane = BABYLON.MeshBuilder.CreatePlane('flash', { size: 100 }, scene);
+            flashPlane.position = camera.position.add(camera.getForwardRay().direction.scale(5));
+            flashPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+            const flashMat = new BABYLON.StandardMaterial('flashMat', scene);
+            flashMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0.2);
+            flashMat.disableLighting = true;
+            flashMat.alpha = 0.8;
+            flashPlane.material = flashMat;
+
+            let flashAlpha = 0.8;
+            const flashFade = setInterval(() => {
+                flashAlpha -= 0.04;
+                if (flashAlpha <= 0) {
+                    clearInterval(flashFade);
+                    flashPlane.dispose();
+                } else {
+                    flashMat.alpha = flashAlpha;
+                }
+            }, 30);
+
+            // ========================================
+            // CAMERA SHAKE
+            // ========================================
+            const originalCamPos = camera.position.clone();
+            let shakeTime = 0;
+            const shakeInterval = setInterval(() => {
+                shakeTime += 30;
+                if (shakeTime > 1500) {
+                    clearInterval(shakeInterval);
+                    camera.position = originalCamPos;
+                } else {
+                    const intensity = 0.5 * (1 - shakeTime / 1500);
+                    camera.position = originalCamPos.add(new BABYLON.Vector3(
+                        (Math.random() - 0.5) * intensity,
+                        (Math.random() - 0.5) * intensity * 0.5,
+                        (Math.random() - 0.5) * intensity
+                    ));
+                }
+            }, 30);
+
+            // ========================================
+            // MASSIVE CHAIN EXPLOSIONS
+            // ========================================
+            // Initial big explosion at center
+            for (let i = 0; i < 3; i++) {
+                createImpact(pos.clone(), new BABYLON.Color3(1, 0.4, 0));
             }
 
+            // Ring of explosions spreading outward
+            for (let i = 0; i < 16; i++) {
+                setTimeout(() => {
+                    const angle = (Math.PI * 2 * i) / 16;
+                    const dist = 1.5 + Math.random() * 1.5;
+                    createImpact(pos.add(new BABYLON.Vector3(
+                        Math.cos(angle) * dist,
+                        Math.random() * 2,
+                        Math.sin(angle) * dist * 0.5
+                    )), Math.random() > 0.5 ? COLORS.thruster : new BABYLON.Color3(1, 0.6, 0));
+                }, i * 60);
+            }
+
+            // Delayed secondary explosions
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    createImpact(pos.add(new BABYLON.Vector3(
+                        (Math.random() - 0.5) * 4,
+                        Math.random() * 3,
+                        (Math.random() - 0.5) * 2
+                    )), new BABYLON.Color3(1, 0.3 + Math.random() * 0.4, 0));
+                }, 500 + i * 100);
+            }
+
+            // ========================================
+            // DRAMATIC "DESTROYED!" TEXT
+            // ========================================
+            const destroyedText = document.createElement('div');
+            destroyedText.textContent = `${mechName} DESTROYED!`;
+            destroyedText.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 72px;
+                font-weight: bold;
+                font-family: monospace;
+                color: ${mech.isPlayer ? '#ff4444' : '#00ff88'};
+                text-shadow: 0 0 30px ${mech.isPlayer ? '#ff0000' : '#00ff00'},
+                             0 0 60px ${mech.isPlayer ? '#ff0000' : '#00ff00'},
+                             4px 4px 0 #000;
+                z-index: 9999;
+                pointer-events: none;
+                animation: destroyPulse 0.15s ease-in-out infinite;
+            `;
+            document.body.appendChild(destroyedText);
+
+            // Add animation keyframes
+            if (!document.getElementById('destroy-animation-style')) {
+                const style = document.createElement('style');
+                style.id = 'destroy-animation-style';
+                style.textContent = `
+                    @keyframes destroyPulse {
+                        0%, 100% { transform: translate(-50%, -50%) scale(1); }
+                        50% { transform: translate(-50%, -50%) scale(1.05); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Fade out and remove text
+            let textOpacity = 1;
+            setTimeout(() => {
+                const fadeText = setInterval(() => {
+                    textOpacity -= 0.03;
+                    if (textOpacity <= 0) {
+                        clearInterval(fadeText);
+                        destroyedText.remove();
+                    } else {
+                        destroyedText.style.opacity = textOpacity;
+                        // Float upward
+                        const currentTop = parseFloat(destroyedText.style.top) || 50;
+                        destroyedText.style.top = (currentTop - 0.5) + '%';
+                    }
+                }, 30);
+            }, 1500);
+
+            // ========================================
+            // MAKE MECH COLLAPSE DRAMATICALLY
+            // ========================================
             mech.pelvisAggregate.body.setLinearDamping(0.08);
             mech.pelvisAggregate.body.setAngularDamping(0.08);
+
+            // Massive angular impulse to make it spin and fall
             mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
+                (Math.random() - 0.5) * 50,
                 (Math.random() - 0.5) * 25,
-                (Math.random() - 0.5) * 12,
-                (Math.random() - 0.5) * 25
+                (Math.random() - 0.5) * 50
             ));
+
+            // Strong upward then falling impulse
+            mech.pelvisAggregate.body.applyImpulse(
+                new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 15,
+                    8 + Math.random() * 5,
+                    (Math.random() - 0.5) * 8
+                ),
+                mech.pelvis.getAbsolutePosition()
+            );
+
+            log(`💀💀💀 ${mechName} HAS BEEN DESTROYED! 💀💀💀`, 'error');
         }
 
         // ============================================
@@ -1538,8 +2069,16 @@
         }
 
         function resetScene() {
+            // Disable AI battle mode
+            autoFireEnabled = false;
+            const btn = document.getElementById('autoFireBtn');
+            btn.textContent = 'AI Battle: OFF';
+            btn.style.background = 'rgba(255, 200, 0, 0.3)';
+            btn.style.borderColor = '#ffcc00';
+            btn.style.color = '#ffcc00';
+
             if (playerMech) {
-                playerMech.pelvis.position = new BABYLON.Vector3(-7, 4.5, 0);
+                playerMech.pelvis.position = new BABYLON.Vector3(-7, 3.5, 0);
                 playerMech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 playerMech.pelvisAggregate.body.setAngularDamping(0.92);
@@ -1549,9 +2088,15 @@
                 playerMech.impactRecovery = 0;
                 playerMech.recoilRecovery = 0;
                 playerMech.torso.rotation.setAll(0);
+                // Reset AI state
+                playerMech.ai.enabled = false;
+                playerMech.ai.state = 'idle';
+                playerMech.ai.lastDecision = 0;
+                playerMech.ai.strafeDir = 0;
+                playerMech.ai.strafeEndTime = 0;
             }
             if (enemyMech) {
-                enemyMech.pelvis.position = new BABYLON.Vector3(7, 4.8, 0);
+                enemyMech.pelvis.position = new BABYLON.Vector3(7, 3.8, 0);
                 enemyMech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 enemyMech.pelvisAggregate.body.setAngularDamping(0.93);
@@ -1561,6 +2106,12 @@
                 enemyMech.impactRecovery = 0;
                 enemyMech.recoilRecovery = 0;
                 enemyMech.torso.rotation.setAll(0);
+                // Reset AI state
+                enemyMech.ai.enabled = false;
+                enemyMech.ai.state = 'idle';
+                enemyMech.ai.lastDecision = 0;
+                enemyMech.ai.strafeDir = 0;
+                enemyMech.ai.strafeEndTime = 0;
             }
 
             projectiles.forEach(p => p.mesh.dispose());
@@ -1576,79 +2127,87 @@
         }
 
         // ============================================
-        // AUTO-FIRE SYSTEM
+        // AI BATTLE SYSTEM
         // ============================================
         function toggleAutoFire() {
             autoFireEnabled = !autoFireEnabled;
             const btn = document.getElementById('autoFireBtn');
 
             if (autoFireEnabled) {
-                btn.textContent = 'Auto-Fire: ON';
+                btn.textContent = 'AI Battle: ON';
                 btn.style.background = 'rgba(0, 255, 136, 0.4)';
                 btn.style.borderColor = '#00ff88';
                 btn.style.color = '#00ff88';
-                log('Auto-fire ENABLED - mechs will fight!');
+                battleEnded = false;  // Allow AI loop to run again
+                log('AI ENABLED - mechs will fight autonomously!');
 
-                // Start both mechs walking
-                if (playerMech) playerMech.isWalking = true;
-                if (enemyMech) enemyMech.isWalking = true;
+                // Clear debug logs for fresh start
+                debugLogs.length = 0;
+                lastDebugTime = 0;
+                dbg('=== AI BATTLE STARTED ===', 'ai');
 
-                // Start auto-fire loop
-                if (!autoFireInterval) {
-                    autoFireInterval = setInterval(autoFireUpdate, 200);
+                // Enable AI on both mechs with proper initialization
+                if (playerMech) {
+                    playerMech.ai.enabled = true;
+                    playerMech.ai.state = 'advancing';
+                    playerMech.ai.lastDecision = gameTime; // Prevent immediate state override
+                    playerMech.isWalking = true;
+                    playerMech.walkDirection = 1; // Start moving toward enemy
+                    const pos = playerMech.pelvis.getAbsolutePosition();
+                    const body = playerMech.pelvisAggregate.body;
+                    dbg(`P init: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)}) ai.enabled=${playerMech.ai.enabled} state=${playerMech.ai.state}`, 'ai');
+                    dbg(`P body: mass=${body.getMassProperties().mass} type=${body.motionType}`, 'phys');
+                }
+                if (enemyMech) {
+                    enemyMech.ai.enabled = true;
+                    enemyMech.ai.state = 'advancing';
+                    enemyMech.ai.lastDecision = gameTime; // Prevent immediate state override
+                    enemyMech.isWalking = true;
+                    enemyMech.walkDirection = -1; // Start moving toward player
+                    const pos = enemyMech.pelvis.getAbsolutePosition();
+                    const body = enemyMech.pelvisAggregate.body;
+                    dbg(`E init: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)}) ai.enabled=${enemyMech.ai.enabled} state=${enemyMech.ai.state}`, 'ai');
+                    dbg(`E body: mass=${body.getMassProperties().mass} type=${body.motionType}`, 'phys');
                 }
             } else {
-                btn.textContent = 'Auto-Fire: OFF';
+                btn.textContent = 'AI Battle: OFF';
                 btn.style.background = 'rgba(255, 200, 0, 0.3)';
                 btn.style.borderColor = '#ffcc00';
                 btn.style.color = '#ffcc00';
-                log('Auto-fire DISABLED');
+                battleEnded = true;  // Stop the AI loop
+                log('AI DISABLED');
 
-                // Stop auto-fire loop
-                if (autoFireInterval) {
-                    clearInterval(autoFireInterval);
-                    autoFireInterval = null;
+                // Disable AI on both mechs
+                if (playerMech) {
+                    playerMech.ai.enabled = false;
+                    playerMech.ai.state = 'idle';
+                    playerMech.isWalking = false;
+                }
+                if (enemyMech) {
+                    enemyMech.ai.enabled = false;
+                    enemyMech.ai.state = 'idle';
+                    enemyMech.isWalking = false;
                 }
             }
         }
 
-        function autoFireUpdate() {
+        function checkBattleEnd() {
+            if (battleEnded) return;  // Already ended
             if (!autoFireEnabled || !playerMech || !enemyMech) return;
             if (playerMech.currentHP <= 0 || enemyMech.currentHP <= 0) {
-                // Battle ended
+                battleEnded = true;  // Stop all AI loops
                 autoFireEnabled = false;
                 const btn = document.getElementById('autoFireBtn');
-                btn.textContent = 'Auto-Fire: OFF';
+                btn.textContent = 'AI Battle: OFF';
                 btn.style.background = 'rgba(255, 200, 0, 0.3)';
                 btn.style.borderColor = '#ffcc00';
                 btn.style.color = '#ffcc00';
-                if (autoFireInterval) {
-                    clearInterval(autoFireInterval);
-                    autoFireInterval = null;
-                }
-                log('Battle ended!');
-                return;
-            }
 
-            const now = Date.now();
-            const weaponTypes = ['erlaser', 'ac', 'lrm'];
+                if (playerMech) playerMech.ai.enabled = false;
+                if (enemyMech) enemyMech.ai.enabled = false;
 
-            // Player AI fires
-            for (const wtype of weaponTypes) {
-                if (now >= weaponCooldowns.player[wtype]) {
-                    fireWeapon(true, wtype);
-                    weaponCooldowns.player[wtype] = now + COOLDOWN_TIMES[wtype];
-                    break; // Fire one weapon per update
-                }
-            }
-
-            // Enemy AI fires
-            for (const wtype of weaponTypes) {
-                if (now >= weaponCooldowns.enemy[wtype]) {
-                    fireWeapon(false, wtype);
-                    weaponCooldowns.enemy[wtype] = now + COOLDOWN_TIMES[wtype];
-                    break; // Fire one weapon per update
-                }
+                const winner = playerMech.currentHP > 0 ? 'TIMBER WOLF' : 'DIRE WOLF';
+                log(`Battle ended! ${winner} WINS!`, 'warn');
             }
         }
 
@@ -1659,17 +2218,46 @@
                 triCount.textContent = scene.getActiveIndices() / 3 | 0;
             }
 
+            // Calculate distance between mechs
+            let distance = 0;
+            if (playerMech && enemyMech) {
+                distance = BABYLON.Vector3.Distance(
+                    playerMech.pelvis.getAbsolutePosition(),
+                    enemyMech.pelvis.getAbsolutePosition()
+                );
+            }
+
             if (playerMech) {
                 document.getElementById('playerHP').style.width = (playerMech.currentHP / playerMech.maxHP * 100) + '%';
                 document.getElementById('playerHPText').textContent = `HP: ${playerMech.currentHP}/${playerMech.maxHP}`;
-                document.getElementById('playerState').textContent =
-                    playerMech.isWalking ? 'Walking' : playerMech.staggerTime > 0 ? 'Staggered' : 'Idle';
+
+                let stateText = '';
+                if (playerMech.currentHP <= 0) {
+                    stateText = 'DESTROYED';
+                } else if (playerMech.staggerTime > 0) {
+                    stateText = 'Staggered!';
+                } else if (playerMech.ai.enabled) {
+                    stateText = playerMech.ai.state.toUpperCase();
+                } else {
+                    stateText = playerMech.isWalking ? 'Walking' : 'Idle';
+                }
+                document.getElementById('playerState').textContent = stateText;
             }
             if (enemyMech) {
                 document.getElementById('enemyHP').style.width = (enemyMech.currentHP / enemyMech.maxHP * 100) + '%';
                 document.getElementById('enemyHPText').textContent = `HP: ${enemyMech.currentHP}/${enemyMech.maxHP}`;
-                document.getElementById('enemyState').textContent =
-                    enemyMech.isWalking ? 'Walking' : enemyMech.staggerTime > 0 ? 'Staggered' : 'Idle';
+
+                let stateText = '';
+                if (enemyMech.currentHP <= 0) {
+                    stateText = 'DESTROYED';
+                } else if (enemyMech.staggerTime > 0) {
+                    stateText = 'Staggered!';
+                } else if (enemyMech.ai.enabled) {
+                    stateText = `${enemyMech.ai.state.toUpperCase()} (${distance.toFixed(1)}m)`;
+                } else {
+                    stateText = enemyMech.isWalking ? 'Walking' : 'Idle';
+                }
+                document.getElementById('enemyState').textContent = stateText;
             }
         }
 

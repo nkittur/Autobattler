@@ -1466,9 +1466,11 @@
             // Mechs face along X axis, so we want to rotate Y to face target
             const angleToEnemy = Math.atan2(dz, dx);
 
-            // Player faces right (+X), Enemy faces left (-X)
-            // Adjust base angle based on which way mech should face
-            const baseAngle = mech.isPlayer ? 0 : Math.PI;
+            // Mech mesh faces +Z by default (chest at +Z, reactor at -Z)
+            // Player should face +X (toward enemy), Enemy should face -X (toward player)
+            // In Babylon: rotation.y = 0 faces +Z, rotation.y = -π/2 faces +X, rotation.y = +π/2 faces -X
+            // So we subtract π/2 from angleToEnemy to convert from world angle to mech-relative rotation
+            const baseAngle = Math.PI / 2;
             let torsoAngle = angleToEnemy - baseAngle;
 
             // Normalize to -PI to PI range

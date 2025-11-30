@@ -1034,53 +1034,123 @@
                 footGroup.position = new BABYLON.Vector3(0, -0.12, 0);
                 footGroup.parent = ankle;
 
-                // Foot (large, flat claw - wider for stability)
+                // === MAD CAT STYLE FOOT - Balanced forward/backward ===
+                // Main foot body (centered under ankle for balance)
                 const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
-                    width: 0.7, height: 0.15, depth: 1.0
+                    width: 0.5, height: 0.18, depth: 0.5
                 }, scene);
-                foot.position = new BABYLON.Vector3(0, 0, 0.35);
+                foot.position = new BABYLON.Vector3(0, 0, 0);  // Centered under ankle
                 foot.parent = footGroup;
                 foot.material = darkMat;
 
                 // Foot armor top
                 const footTop = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FootTop', {
-                    width: 0.6, height: 0.12, depth: 0.7
+                    width: 0.45, height: 0.1, depth: 0.45
                 }, scene);
-                footTop.position = new BABYLON.Vector3(0, 0.1, -0.05);
+                footTop.position = new BABYLON.Vector3(0, 0.1, 0);
                 footTop.parent = foot;
                 footTop.material = primaryMat;
 
-                // Toe claws (3) - spread wider for stability
-                for (let i = 0; i < 3; i++) {
-                    const claw = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Claw' + i, {
-                        width: 0.14, height: 0.1, depth: 0.35
-                    }, scene);
-                    claw.position = new BABYLON.Vector3((i - 1) * 0.22, -0.05, 0.55);
-                    claw.rotation.x = -0.15;  // Slight downward angle
-                    claw.parent = foot;
-                    claw.material = metalMat;
-                }
-
-                // Heel spur (larger for stability)
-                const heel = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Heel', {
-                    width: 0.2, height: 0.12, depth: 0.4
+                // === FORWARD CLAWS (3) - Bird-like digitigrade ===
+                // Center front claw (longest)
+                const frontClawCenter = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawC', {
+                    width: 0.18, height: 0.12, depth: 0.7
                 }, scene);
-                heel.position = new BABYLON.Vector3(0, -0.02, -0.45);
-                heel.rotation.x = 0.25;
-                heel.parent = foot;
-                heel.material = metalMat;
+                frontClawCenter.position = new BABYLON.Vector3(0, -0.03, 0.5);
+                frontClawCenter.rotation.x = -0.1;
+                frontClawCenter.parent = foot;
+                frontClawCenter.material = primaryMat;
 
-                // Side stabilizers on foot
-                const leftStab = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'StabL', {
-                    width: 0.12, height: 0.08, depth: 0.3
+                // Center claw tip
+                const frontTipC = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipC', {
+                    width: 0.12, height: 0.08, depth: 0.25
                 }, scene);
-                leftStab.position = new BABYLON.Vector3(-0.35, -0.04, 0.2);
-                leftStab.parent = foot;
-                leftStab.material = metalMat;
+                frontTipC.position = new BABYLON.Vector3(0, -0.02, 0.4);
+                frontTipC.rotation.x = -0.2;
+                frontTipC.parent = frontClawCenter;
+                frontTipC.material = metalMat;
 
-                const rightStab = leftStab.clone(name + '_' + side + 'StabR');
-                rightStab.position.x = 0.35;
-                rightStab.parent = foot;
+                // Left front claw
+                const frontClawL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawL', {
+                    width: 0.14, height: 0.1, depth: 0.55
+                }, scene);
+                frontClawL.position = new BABYLON.Vector3(-0.22, -0.04, 0.4);
+                frontClawL.rotation.x = -0.1;
+                frontClawL.rotation.y = 0.25;  // Angled outward
+                frontClawL.parent = foot;
+                frontClawL.material = primaryMat;
+
+                const frontTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipL', {
+                    width: 0.1, height: 0.06, depth: 0.2
+                }, scene);
+                frontTipL.position = new BABYLON.Vector3(0, -0.02, 0.32);
+                frontTipL.rotation.x = -0.2;
+                frontTipL.parent = frontClawL;
+                frontTipL.material = metalMat;
+
+                // Right front claw
+                const frontClawR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawR', {
+                    width: 0.14, height: 0.1, depth: 0.55
+                }, scene);
+                frontClawR.position = new BABYLON.Vector3(0.22, -0.04, 0.4);
+                frontClawR.rotation.x = -0.1;
+                frontClawR.rotation.y = -0.25;  // Angled outward
+                frontClawR.parent = foot;
+                frontClawR.material = primaryMat;
+
+                const frontTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipR', {
+                    width: 0.1, height: 0.06, depth: 0.2
+                }, scene);
+                frontTipR.position = new BABYLON.Vector3(0, -0.02, 0.32);
+                frontTipR.rotation.x = -0.2;
+                frontTipR.parent = frontClawR;
+                frontTipR.material = metalMat;
+
+                // === REAR CLAWS (2) - Critical for balance ===
+                // Left rear claw
+                const rearClawL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearClawL', {
+                    width: 0.14, height: 0.1, depth: 0.6
+                }, scene);
+                rearClawL.position = new BABYLON.Vector3(-0.18, -0.04, -0.45);
+                rearClawL.rotation.x = 0.15;  // Angled down at back
+                rearClawL.rotation.y = -0.2;  // Angled outward
+                rearClawL.parent = foot;
+                rearClawL.material = primaryMat;
+
+                const rearTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearTipL', {
+                    width: 0.1, height: 0.06, depth: 0.2
+                }, scene);
+                rearTipL.position = new BABYLON.Vector3(0, -0.02, -0.35);
+                rearTipL.rotation.x = 0.2;
+                rearTipL.parent = rearClawL;
+                rearTipL.material = metalMat;
+
+                // Right rear claw
+                const rearClawR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearClawR', {
+                    width: 0.14, height: 0.1, depth: 0.6
+                }, scene);
+                rearClawR.position = new BABYLON.Vector3(0.18, -0.04, -0.45);
+                rearClawR.rotation.x = 0.15;
+                rearClawR.rotation.y = 0.2;  // Angled outward
+                rearClawR.parent = foot;
+                rearClawR.material = primaryMat;
+
+                const rearTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearTipR', {
+                    width: 0.1, height: 0.06, depth: 0.2
+                }, scene);
+                rearTipR.position = new BABYLON.Vector3(0, -0.02, -0.35);
+                rearTipR.rotation.x = 0.2;
+                rearTipR.parent = rearClawR;
+                rearTipR.material = metalMat;
+
+                // Center rear spur (for extra stability)
+                const rearSpur = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearSpur', {
+                    width: 0.12, height: 0.08, depth: 0.35
+                }, scene);
+                rearSpur.position = new BABYLON.Vector3(0, -0.05, -0.5);
+                rearSpur.rotation.x = 0.25;
+                rearSpur.parent = foot;
+                rearSpur.material = metalMat;
 
                 return { hip, upperLeg, knee, lowerLeg, ankle, foot, legGroup, footGroup };
             }
@@ -1522,53 +1592,123 @@
                 footGroup.position = new BABYLON.Vector3(0, -0.14 * scale, 0);
                 footGroup.parent = ankle;
 
-                // Foot (large, flat claw - wider for stability)
+                // === DIRE WOLF STYLE FOOT - Balanced forward/backward (heavier than Mad Cat) ===
+                // Main foot body (centered under ankle for balance)
                 const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
-                    width: 0.8 * scale, height: 0.18 * scale, depth: 1.1 * scale
+                    width: 0.6 * scale, height: 0.2 * scale, depth: 0.6 * scale
                 }, scene);
-                foot.position = new BABYLON.Vector3(0, 0, 0.4 * scale);
+                foot.position = new BABYLON.Vector3(0, 0, 0);  // Centered under ankle
                 foot.parent = footGroup;
                 foot.material = darkMat;
 
                 // Foot armor top
                 const footArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FootArmor', {
-                    width: 0.7 * scale, height: 0.14 * scale, depth: 0.8 * scale
+                    width: 0.55 * scale, height: 0.12 * scale, depth: 0.55 * scale
                 }, scene);
-                footArmor.position = new BABYLON.Vector3(0, 0.12 * scale, -0.05 * scale);
+                footArmor.position = new BABYLON.Vector3(0, 0.12 * scale, 0);
                 footArmor.parent = foot;
                 footArmor.material = primaryMat;
 
-                // Toe claws (3) - spread wider for stability
-                for (let i = 0; i < 3; i++) {
-                    const claw = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Claw' + i, {
-                        width: 0.16 * scale, height: 0.12 * scale, depth: 0.4 * scale
-                    }, scene);
-                    claw.position = new BABYLON.Vector3((i - 1) * 0.25 * scale, -0.06 * scale, 0.6 * scale);
-                    claw.rotation.x = -0.15;
-                    claw.parent = foot;
-                    claw.material = metalMat;
-                }
-
-                // Heel spur (larger for stability)
-                const heel = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Heel', {
-                    width: 0.22 * scale, height: 0.14 * scale, depth: 0.45 * scale
+                // === FORWARD CLAWS (3) - Heavy digitigrade style ===
+                // Center front claw (longest)
+                const frontClawC = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawC', {
+                    width: 0.2 * scale, height: 0.14 * scale, depth: 0.8 * scale
                 }, scene);
-                heel.position = new BABYLON.Vector3(0, -0.02 * scale, -0.5 * scale);
-                heel.rotation.x = 0.25;
-                heel.parent = foot;
-                heel.material = metalMat;
+                frontClawC.position = new BABYLON.Vector3(0, -0.03 * scale, 0.55 * scale);
+                frontClawC.rotation.x = -0.1;
+                frontClawC.parent = foot;
+                frontClawC.material = primaryMat;
 
-                // Side stabilizers on foot
-                const leftStab = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'StabL', {
-                    width: 0.14 * scale, height: 0.1 * scale, depth: 0.35 * scale
+                // Center claw tip
+                const frontTipC = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipC', {
+                    width: 0.14 * scale, height: 0.1 * scale, depth: 0.3 * scale
                 }, scene);
-                leftStab.position = new BABYLON.Vector3(-0.4 * scale, -0.04 * scale, 0.25 * scale);
-                leftStab.parent = foot;
-                leftStab.material = metalMat;
+                frontTipC.position = new BABYLON.Vector3(0, -0.02 * scale, 0.45 * scale);
+                frontTipC.rotation.x = -0.2;
+                frontTipC.parent = frontClawC;
+                frontTipC.material = metalMat;
 
-                const rightStab = leftStab.clone(name + '_' + side + 'StabR');
-                rightStab.position.x = 0.4 * scale;
-                rightStab.parent = foot;
+                // Left front claw
+                const frontClawL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawL', {
+                    width: 0.16 * scale, height: 0.12 * scale, depth: 0.65 * scale
+                }, scene);
+                frontClawL.position = new BABYLON.Vector3(-0.25 * scale, -0.04 * scale, 0.45 * scale);
+                frontClawL.rotation.x = -0.1;
+                frontClawL.rotation.y = 0.25;  // Angled outward
+                frontClawL.parent = foot;
+                frontClawL.material = primaryMat;
+
+                const frontTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipL', {
+                    width: 0.12 * scale, height: 0.08 * scale, depth: 0.22 * scale
+                }, scene);
+                frontTipL.position = new BABYLON.Vector3(0, -0.02 * scale, 0.36 * scale);
+                frontTipL.rotation.x = -0.2;
+                frontTipL.parent = frontClawL;
+                frontTipL.material = metalMat;
+
+                // Right front claw
+                const frontClawR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontClawR', {
+                    width: 0.16 * scale, height: 0.12 * scale, depth: 0.65 * scale
+                }, scene);
+                frontClawR.position = new BABYLON.Vector3(0.25 * scale, -0.04 * scale, 0.45 * scale);
+                frontClawR.rotation.x = -0.1;
+                frontClawR.rotation.y = -0.25;  // Angled outward
+                frontClawR.parent = foot;
+                frontClawR.material = primaryMat;
+
+                const frontTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'FrontTipR', {
+                    width: 0.12 * scale, height: 0.08 * scale, depth: 0.22 * scale
+                }, scene);
+                frontTipR.position = new BABYLON.Vector3(0, -0.02 * scale, 0.36 * scale);
+                frontTipR.rotation.x = -0.2;
+                frontTipR.parent = frontClawR;
+                frontTipR.material = metalMat;
+
+                // === REAR CLAWS (2) - Critical for balance ===
+                // Left rear claw
+                const rearClawL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearClawL', {
+                    width: 0.16 * scale, height: 0.12 * scale, depth: 0.7 * scale
+                }, scene);
+                rearClawL.position = new BABYLON.Vector3(-0.2 * scale, -0.04 * scale, -0.5 * scale);
+                rearClawL.rotation.x = 0.15;  // Angled down at back
+                rearClawL.rotation.y = -0.2;  // Angled outward
+                rearClawL.parent = foot;
+                rearClawL.material = primaryMat;
+
+                const rearTipL = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearTipL', {
+                    width: 0.12 * scale, height: 0.08 * scale, depth: 0.22 * scale
+                }, scene);
+                rearTipL.position = new BABYLON.Vector3(0, -0.02 * scale, -0.4 * scale);
+                rearTipL.rotation.x = 0.2;
+                rearTipL.parent = rearClawL;
+                rearTipL.material = metalMat;
+
+                // Right rear claw
+                const rearClawR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearClawR', {
+                    width: 0.16 * scale, height: 0.12 * scale, depth: 0.7 * scale
+                }, scene);
+                rearClawR.position = new BABYLON.Vector3(0.2 * scale, -0.04 * scale, -0.5 * scale);
+                rearClawR.rotation.x = 0.15;
+                rearClawR.rotation.y = 0.2;  // Angled outward
+                rearClawR.parent = foot;
+                rearClawR.material = primaryMat;
+
+                const rearTipR = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearTipR', {
+                    width: 0.12 * scale, height: 0.08 * scale, depth: 0.22 * scale
+                }, scene);
+                rearTipR.position = new BABYLON.Vector3(0, -0.02 * scale, -0.4 * scale);
+                rearTipR.rotation.x = 0.2;
+                rearTipR.parent = rearClawR;
+                rearTipR.material = metalMat;
+
+                // Center rear spur (for extra stability)
+                const rearSpur = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'RearSpur', {
+                    width: 0.14 * scale, height: 0.1 * scale, depth: 0.4 * scale
+                }, scene);
+                rearSpur.position = new BABYLON.Vector3(0, -0.05 * scale, -0.55 * scale);
+                rearSpur.rotation.x = 0.25;
+                rearSpur.parent = foot;
+                rearSpur.material = metalMat;
 
                 return { hip, upperLeg, knee, lowerLeg, ankle, foot, legGroup, footGroup };
             }
@@ -1836,62 +1976,98 @@
 
             const euler = quat.toEulerAngles();
             const tiltMagnitude = Math.sqrt(euler.x * euler.x + euler.z * euler.z);
+            const pos = mech.pelvis.getAbsolutePosition();
 
             // Initialize recovery state if not set
             if (mech.isRecovering === undefined) mech.isRecovering = false;
             if (mech.recoveryTime === undefined) mech.recoveryTime = 0;
+            if (mech.fallCount === undefined) mech.fallCount = 0;
 
-            // Detect if mech has fallen (tilt > 60 degrees)
-            const fallenThreshold = 1.05; // ~60 degrees
-            const severelyFallenThreshold = 1.4; // ~80 degrees
+            // Detect if mech has fallen (tilt > 45 degrees - detect earlier)
+            const fallenThreshold = 0.8; // ~45 degrees - start recovery sooner
+            const severelyFallenThreshold = 1.2; // ~70 degrees - definitely fallen
+            const groundLevel = 1.5;  // If pelvis is below this, mech is on ground
 
-            if (tiltMagnitude > severelyFallenThreshold && !mech.isRecovering) {
-                // Mech has severely fallen - start recovery process
+            // Check for fall: tilted too much OR pelvis too low (lying down)
+            const isFallen = (tiltMagnitude > severelyFallenThreshold) ||
+                            (tiltMagnitude > fallenThreshold && pos.y < groundLevel);
+
+            if (isFallen && !mech.isRecovering) {
+                // Mech has fallen - start recovery process
                 mech.isRecovering = true;
                 mech.recoveryTime = 0;
                 mech.isWalking = false;
-                dbg(`${mech.isPlayer ? 'P' : 'E'}: FALLEN! Starting recovery...`, 'warn');
+                mech.fallCount++;
+                dbg(`${mech.isPlayer ? 'P' : 'E'}: FALLEN! (tilt=${(tiltMagnitude * 57.3).toFixed(0)}° y=${pos.y.toFixed(1)}) Starting recovery #${mech.fallCount}...`, 'warn');
             }
 
             if (mech.isRecovering) {
                 mech.recoveryTime += dt;
 
-                // During recovery, apply very strong uprighting force
-                const recoveryStrength = 200;
-                body.applyAngularImpulse(new BABYLON.Vector3(
-                    -euler.x * recoveryStrength * dt,
-                    -euler.y * 50 * dt,  // Also correct Y rotation
-                    -euler.z * recoveryStrength * dt
-                ));
-
-                // Reduce linear velocity during recovery
-                const vel = body.getLinearVelocity();
-                body.setLinearVelocity(vel.scale(0.95));
-
-                // Apply upward force to help get back on feet
-                const pos = mech.pelvis.getAbsolutePosition();
-                if (pos.y < 3.5) {  // If below normal standing height
-                    body.applyForce(new BABYLON.Vector3(0, 80, 0), pos);
+                // Phase 1 (0-0.5s): Stop all motion and prepare
+                if (mech.recoveryTime < 0.5) {
+                    body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
+                    body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Recovery phase 1 - stopping...`, 'torso');
                 }
+                // Phase 2 (0.5-1.5s): Apply strong uprighting forces and lift
+                else if (mech.recoveryTime < 1.5) {
+                    // Very strong uprighting torque
+                    const recoveryStrength = 400;
+                    body.applyAngularImpulse(new BABYLON.Vector3(
+                        -euler.x * recoveryStrength * dt,
+                        -euler.y * 100 * dt,
+                        -euler.z * recoveryStrength * dt
+                    ));
 
-                // End recovery when mostly upright
-                if (tiltMagnitude < 0.3 && mech.recoveryTime > 0.5) {
-                    mech.isRecovering = false;
-                    mech.recoveryTime = 0;
-                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Recovered!`, 'ai');
-                }
-
-                // Force end recovery after 3 seconds (failsafe)
-                if (mech.recoveryTime > 3.0) {
-                    mech.isRecovering = false;
-                    mech.recoveryTime = 0;
-                    // Reset position if still badly tilted
-                    if (tiltMagnitude > fallenThreshold) {
-                        body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
-                        const newQuat = BABYLON.Quaternion.Identity();
-                        body.transformNode.rotationQuaternion = newQuat;
-                        dbg(`${mech.isPlayer ? 'P' : 'E'}: Force reset to upright`, 'warn');
+                    // Strong upward force to lift mech
+                    const normalHeight = 3.8;
+                    if (pos.y < normalHeight) {
+                        const liftForce = (normalHeight - pos.y) * 150;
+                        body.applyForce(new BABYLON.Vector3(0, liftForce, 0), pos);
                     }
+
+                    // Keep horizontal velocity low during lift
+                    const vel = body.getLinearVelocity();
+                    body.setLinearVelocity(new BABYLON.Vector3(vel.x * 0.9, vel.y, vel.z * 0.9));
+                }
+                // Phase 3 (1.5-2.5s): Check if recovered
+                else if (mech.recoveryTime < 2.5) {
+                    // Continue mild uprighting
+                    body.applyAngularImpulse(new BABYLON.Vector3(
+                        -euler.x * 150 * dt,
+                        -euler.y * 50 * dt,
+                        -euler.z * 150 * dt
+                    ));
+                }
+
+                // End recovery when mostly upright and at good height
+                if (tiltMagnitude < 0.25 && pos.y > 3.0 && mech.recoveryTime > 0.8) {
+                    mech.isRecovering = false;
+                    mech.recoveryTime = 0;
+                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Recovered! (tilt=${(tiltMagnitude * 57.3).toFixed(0)}° y=${pos.y.toFixed(1)})`, 'ai');
+                }
+
+                // Force reset after 2.5 seconds - teleport mech upright
+                if (mech.recoveryTime > 2.5) {
+                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Force reset! Teleporting upright...`, 'warn');
+
+                    // Stop all motion
+                    body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
+                    body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+
+                    // Teleport to standing position - keep X/Z, reset Y and rotation
+                    const standingY = 4.0;
+                    body.disablePreStep = false;
+                    mech.pelvis.position.y = standingY;
+
+                    // Reset rotation to upright (keep Y rotation for facing)
+                    const facingAngle = euler.y;
+                    body.transformNode.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(0, facingAngle, 0);
+
+                    mech.isRecovering = false;
+                    mech.recoveryTime = 0;
+                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Teleported to y=${standingY}, facing=${(facingAngle * 57.3).toFixed(0)}°`, 'ai');
                 }
 
                 return;  // Skip normal stabilization during recovery
@@ -2077,6 +2253,53 @@
 
                 default:
                     mech.isWalking = false;
+            }
+
+            // === FULL BODY ROTATION TOWARD TARGET ===
+            // The whole mech should rotate to face the target, not just twist the torso
+            // This makes movement more realistic - mechs walk toward their target
+            const quat = body.transformNode.rotationQuaternion;
+            if (quat && !mech.isRecovering) {
+                const euler = quat.toEulerAngles();
+                const currentYaw = euler.y;  // Current facing direction
+
+                // Calculate desired facing angle (toward target)
+                const dx = targetPos.x - myPos.x;
+                const dz = targetPos.z - myPos.z;
+                const angleToTarget = Math.atan2(dz, dx);  // Angle in XZ plane
+
+                // Convert to body rotation (mesh faces +Z, so we need baseAngle offset)
+                const baseAngle = Math.PI / 2;  // 90° offset because mesh faces +Z
+                const desiredYaw = baseAngle - angleToTarget;
+
+                // Calculate rotation error (shortest path)
+                let yawError = desiredYaw - currentYaw;
+                // Normalize to [-PI, PI]
+                while (yawError > Math.PI) yawError -= 2 * Math.PI;
+                while (yawError < -Math.PI) yawError += 2 * Math.PI;
+
+                // Only rotate if error is significant (> 10 degrees)
+                const rotationThreshold = 0.17;  // ~10 degrees
+                if (Math.abs(yawError) > rotationThreshold) {
+                    // Apply angular impulse to rotate body toward target
+                    // Stronger rotation when error is large, gentler when small
+                    const rotationStrength = 25;  // Base strength
+                    const maxRotationSpeed = 1.5;  // Limit rotation speed
+
+                    // Current angular velocity
+                    const angVel = body.getAngularVelocity();
+
+                    // Calculate desired angular velocity (proportional to error, clamped)
+                    const desiredAngVel = Math.sign(yawError) * Math.min(Math.abs(yawError) * 2, maxRotationSpeed);
+
+                    // Apply torque to reach desired velocity
+                    const yawCorrection = (desiredAngVel - angVel.y) * rotationStrength * dt;
+                    body.applyAngularImpulse(new BABYLON.Vector3(0, yawCorrection, 0));
+
+                    if (shouldLog) {
+                        dbg(`${name}: BODY ROTATE yaw=${(currentYaw * 57.3).toFixed(0)}° target=${(desiredYaw * 57.3).toFixed(0)}° err=${(yawError * 57.3).toFixed(0)}°`, 'torso');
+                    }
+                }
             }
 
             // Log force applied

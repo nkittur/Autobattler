@@ -154,6 +154,119 @@ Now mechs have obviously distinctive fronts making facing direction clear.
 
 ---
 
+## Issue 6: Feet Not Balanced (Mechs Fall Over)
+
+### Symptoms
+- Mechs would fall forward because feet only extended forward
+- Timber Wolf would tip over and not recover
+
+### Root Cause
+Original foot design had claws only extending forward with a small heel spur. This didn't provide enough rear support when the mech leaned back or got hit.
+
+### Fix Applied
+Redesigned both mech feet with Mad Cat-style balanced forward/backward extension:
+
+**Mad Cat / Timber Wolf**:
+- 3 forward claws (center longest, left/right angled outward)
+- 2 rear claws (left/right angled outward)
+- Center rear spur for extra stability
+- Main foot body centered under ankle (was previously offset forward)
+- Total footprint now extends equally forward and backward
+
+**Dire Wolf**:
+- Same balanced design but scaled up for heavier mech
+- 3 forward claws with tips
+- 2 rear claws with tips
+- Center rear spur
+- Larger overall footprint for stability
+
+---
+
+## Issue 7: Get-Up Recovery System Not Working
+
+### Symptoms
+- Mech would fall down and stay down
+- Recovery system wasn't lifting mech back up
+- Force reset at 3 seconds wasn't effective
+
+### Root Cause
+1. Detection threshold too high (80°) - mech could be lying flat without triggering
+2. Recovery forces too weak (200) to right a fallen mech
+3. Upward lift force (80) insufficient
+4. Force reset only set quaternion but didn't reposition the physics body
+
+### Fix Applied
+Completely rewrote the recovery system with phased approach:
+
+**Detection** (improved):
+- Lower threshold: 70° tilt OR (45° tilt AND pelvis below 1.5 height)
+- Catches mechs lying on their side, not just inverted
+
+**Phase 1 (0-0.5s)**: Stop all motion
+- Zero out linear and angular velocity
+- Prepare for lift
+
+**Phase 2 (0.5-1.5s)**: Active recovery
+- Strong uprighting torque (400 strength, was 200)
+- Progressive lift force based on height difference
+- Dampen horizontal velocity during lift
+
+**Phase 3 (1.5-2.5s)**: Gentle correction
+- Milder uprighting force
+- Let physics settle
+
+**Force Reset (2.5s)**: Teleport if still stuck
+- Stop all motion
+- Set pelvis to standing height (Y=4.0)
+- Reset rotation to upright (preserving facing direction)
+
+Added `fallCount` tracking to monitor how often mechs fall.
+
+---
+
+## Issue 8: Whole Body Should Rotate Toward Target
+
+### Symptoms
+- Only torso twisted to face enemy
+- Mech body stayed fixed in one direction
+- Legs walked sideways instead of toward target
+
+### Root Cause
+AI only applied linear forces for movement. No angular forces were applied to rotate the physics body.
+
+### Fix Applied
+Added full body rotation in `updateAI()` after movement force application:
+
+```javascript
+// Calculate angle to target
+const dx = targetPos.x - myPos.x;
+const dz = targetPos.z - myPos.z;
+const angleToTarget = Math.atan2(dz, dx);
+
+// Convert to body rotation (mesh faces +Z)
+const baseAngle = Math.PI / 2;
+const desiredYaw = baseAngle - angleToTarget;
+
+// Calculate rotation error (normalize to [-PI, PI])
+let yawError = desiredYaw - currentYaw;
+while (yawError > Math.PI) yawError -= 2 * Math.PI;
+while (yawError < -Math.PI) yawError += 2 * Math.PI;
+
+// Apply angular impulse to rotate body
+if (Math.abs(yawError) > 0.17) {  // > 10 degrees
+    const desiredAngVel = Math.sign(yawError) * Math.min(Math.abs(yawError) * 2, 1.5);
+    const yawCorrection = (desiredAngVel - angVel.y) * 25 * dt;
+    body.applyAngularImpulse(new BABYLON.Vector3(0, yawCorrection, 0));
+}
+```
+
+Now mechs:
+- Rotate their entire body to face the target
+- Walk forward toward enemy instead of strafing sideways
+- Torso provides fine-tuning aim on top of body rotation
+
+---
+
 ## Files Modified
 - `test-babylon-havok.html` - Main physics test file
 - `ROTATION_DEBUG_LOG.md` - This file
@@ -164,3 +277,6 @@ Now mechs have obviously distinctive fronts making facing direction clear.
 3. `d943d7a` - Improve mech stability with chicken-walker legs
 4. `7fc4385` - Fix rotation direction (left-handed coordinate fix)
 5. `c3ee797` - Enhance torsos with conical fronts and giant missile racks
+6. (pending) - Balanced feet design with forward/backward claws
+7. (pending) - Improved phased recovery system with teleport fallback
+8. (pending) - Full body rotation toward target

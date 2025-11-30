@@ -689,10 +689,8 @@
             <!-- Physics Combat Visualization -->
             <div id="physics-controls">
                 <button id="toggle-physics" class="active">🎮 Physics View</button>
-                <button id="speed-1x" class="active">1x Speed</button>
-                <button id="speed-2x">2x Speed</button>
-                <button id="speed-4x">4x Speed</button>
-                <button id="toggle-effects" class="active">✨ Effects</button>
+                <button id="toggle-autofire" class="active">🔫 Auto-Fire: ON</button>
+                <button id="toggle-speed" class="active">⚡ Speed: 1x</button>
             </div>
             <canvas id="physics-canvas" width="800" height="450"></canvas>
 
@@ -1866,13 +1864,25 @@
                 // Convert 2D coordinates to 3D (x stays, y becomes height, z=0)
                 // Scale down from pixel coords to 3D world units
                 const worldX = (x - 400) / 50;  // Center around 0, scale down
-                const worldY = 4.5;  // Spawn height - high enough for legs to clear ground
                 const worldZ = 0;
 
                 // Size based on mech class
                 let scale = 1;
                 if (type === 'Light') scale = 0.8;
                 if (type === 'Heavy') scale = 1.2;
+
+                // Calculate leg length to ensure mech doesn't spawn in ground
+                // Legs extend: hip(-0.65) + upperLeg(-0.4) + lowerLeg(-0.65) + foot(-0.3) + foot half height(-0.06)
+                const legLength = 2.06 * scale;  // Distance from torso center to foot bottom
+                const headHeight = 1.1 * scale;  // Distance from torso center to head top
+
+                // Physics body height covers from foot bottom to head top
+                const physicsHeight = legLength + headHeight;  // Total standing height
+
+                // When physics body lands, its center will be at physicsHeight/2
+                // We want torso center to be at legLength above ground
+                // So spawn high enough to fall and land properly
+                const worldY = 6.0;  // Spawn height - will fall and settle correctly
 
                 const mechName = isPlayer ? 'player' : 'enemy';
                 const color = isPlayer ? this.hexToColor3(this.colors.player) : this.hexToColor3(this.colors.enemy);
@@ -1891,23 +1901,36 @@
                 jointMat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
                 jointMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
 
-                // === TORSO (Main physics body) ===
-                const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
-                    width: 1.0 * scale, height: 1.2 * scale, depth: 0.6 * scale
+                // === PHYSICS BODY (invisible, represents full mech standing height) ===
+                // This ensures the mech's feet land on the ground, not clip through
+                const physicsBody = BABYLON.MeshBuilder.CreateBox(`${mechName}_physicsBody`, {
+                    width: 0.8 * scale, height: physicsHeight, depth: 0.5 * scale
                 }, this.scene);
-                torso.position = new BABYLON.Vector3(worldX, worldY, worldZ);
-                torso.material = bodyMat;
+                physicsBody.position = new BABYLON.Vector3(worldX, worldY, worldZ);
+                physicsBody.visibility = 0;  // Invisible
 
-                // Add physics to torso (main physics body)
+                // Add physics to the standing body
                 const torsoAggregate = new BABYLON.PhysicsAggregate(
-                    torso,
+                    physicsBody,
                     BABYLON.PhysicsShapeType.BOX,
                     { mass: 40 * scale, friction: 0.8, restitution: 0.1 },
                     this.scene
                 );
 
-                // Limit torso rotation to stay upright
+                // Limit rotation to stay upright
                 torsoAggregate.body.setAngularDamping(0.95);
+
+                // === TORSO (Visual, parented to physics body) ===
+                const torso = BABYLON.MeshBuilder.CreateBox(`${mechName}_torso`, {
+                    width: 1.0 * scale, height: 1.2 * scale, depth: 0.6 * scale
+                }, this.scene);
+                // Offset torso within physics body so feet align with bottom
+                // Physics body center is at middle of physicsHeight
+                // Torso should be at (legLength - physicsHeight/2) above physics center
+                const torsoOffset = legLength - (physicsHeight / 2);
+                torso.position = new BABYLON.Vector3(0, torsoOffset, 0);
+                torso.parent = physicsBody;
+                torso.material = bodyMat;
 
                 // === HEAD ===
                 const head = BABYLON.MeshBuilder.CreateBox(`${mechName}_head`, {
@@ -2039,7 +2062,8 @@
                 // Store mech data with compatibility properties for battle system
                 const mechData = {
                     // Babylon.js specific
-                    torsoMesh: torso,
+                    physicsBody: physicsBody,  // The physics-enabled mesh
+                    torsoMesh: torso,          // Visual torso (for projectile targeting)
                     torsoAggregate: torsoAggregate,
                     head: head,
                     visor: visor,
@@ -2048,13 +2072,13 @@
                     leftLeg: leftLeg,
                     rightLeg: rightLeg,
 
-                    // Compatibility with old Matter.js API (torso has position property)
+                    // Compatibility with old Matter.js API (use physicsBody for position)
                     torso: {
                         position: {
-                            get x() { return torso.position.x * 50 + 400; },  // Convert back to pixel coords
-                            get y() { return (5 - torso.position.y) * 50; },
-                            set x(val) { torso.position.x = (val - 400) / 50; },
-                            set y(val) { torso.position.y = 5 - val / 50; }
+                            get x() { return physicsBody.position.x * 50 + 400; },  // Convert back to pixel coords
+                            get y() { return (5 - physicsBody.position.y) * 50; },
+                            set x(val) { physicsBody.position.x = (val - 400) / 50; },
+                            set y(val) { physicsBody.position.y = 5 - val / 50; }
                         },
                         angle: 0
                     },
@@ -2065,10 +2089,10 @@
                     isRagdoll: false,
                     isPlayer: isPlayer,
 
-                    // Methods for position access
-                    getPosition: () => torso.position.clone(),
+                    // Methods for position access (use physicsBody)
+                    getPosition: () => physicsBody.position.clone(),
                     setPosition: (pos) => {
-                        torso.position = pos;
+                        physicsBody.position = pos;
                         torsoAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                         torsoAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                     }
@@ -2081,10 +2105,10 @@
             fireProjectile(fromMech, toMech, weaponType, damage) {
                 if (!this.scene || !fromMech || !toMech) return null;
 
-                // Get 3D positions from mechs
-                const startPos = fromMech.torsoMesh ? fromMech.torsoMesh.position.clone() :
+                // Get 3D positions from mechs (use absolute position since torsoMesh is a child)
+                const startPos = fromMech.torsoMesh ? fromMech.torsoMesh.getAbsolutePosition().clone() :
                                  new BABYLON.Vector3((fromMech.torso.position.x - 400) / 50, 2.5, 0);
-                const targetPos = toMech.torsoMesh ? toMech.torsoMesh.position.clone() :
+                const targetPos = toMech.torsoMesh ? toMech.torsoMesh.getAbsolutePosition().clone() :
                                   new BABYLON.Vector3((toMech.torso.position.x - 400) / 50, 2.5, 0);
 
                 // Adjust start position to weapon mount
@@ -2195,7 +2219,7 @@
                     // Check for collision with target
                     if (proj.target && proj.target.torsoMesh) {
                         const projPos = proj.mesh.position;
-                        const targetPos = proj.target.torsoMesh.position;
+                        const targetPos = proj.target.torsoMesh.getAbsolutePosition();
                         const distance = BABYLON.Vector3.Distance(projPos, targetPos);
 
                         if (distance < 1.2) {
@@ -2261,7 +2285,7 @@
 
                 mech.torsoAggregate.body.applyImpulse(
                     impulse,
-                    mech.torsoMesh.position
+                    mech.torsoMesh.getAbsolutePosition()
                 );
 
                 // Camera shake
@@ -2790,16 +2814,19 @@
 
                     const now = Date.now();
 
-                    // Player auto-fire
-                    if (now - this.lastPlayerShot > this.playerFireRate && this.playerPhysMech && this.enemyPhysMech) {
-                        this.fireWeapon(this.playerPhysMech, this.enemyPhysMech, true);
-                        this.lastPlayerShot = now;
-                    }
+                    // Only fire if auto-fire is enabled
+                    if (window.autoFireEnabled !== false) {
+                        // Player auto-fire
+                        if (now - this.lastPlayerShot > this.playerFireRate && this.playerPhysMech && this.enemyPhysMech) {
+                            this.fireWeapon(this.playerPhysMech, this.enemyPhysMech, true);
+                            this.lastPlayerShot = now;
+                        }
 
-                    // Enemy auto-fire
-                    if (now - this.lastEnemyShot > this.enemyFireRate && this.playerPhysMech && this.enemyPhysMech) {
-                        this.fireWeapon(this.enemyPhysMech, this.playerPhysMech, false);
-                        this.lastEnemyShot = now;
+                        // Enemy auto-fire
+                        if (now - this.lastEnemyShot > this.enemyFireRate && this.playerPhysMech && this.enemyPhysMech) {
+                            this.fireWeapon(this.enemyPhysMech, this.playerPhysMech, false);
+                            this.lastEnemyShot = now;
+                        }
                     }
 
                     // Check win conditions
@@ -4544,29 +4571,25 @@
             }
         });
 
-        document.getElementById('speed-1x').addEventListener('click', function() {
-            if (physicsEngine) physicsEngine.setTimeScale(1);
-            document.querySelectorAll('#physics-controls button[id^="speed-"]').forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
+        // Auto-fire toggle
+        let autoFireEnabled = true;
+        document.getElementById('toggle-autofire').addEventListener('click', function() {
+            autoFireEnabled = !autoFireEnabled;
+            this.classList.toggle('active');
+            this.textContent = autoFireEnabled ? '🔫 Auto-Fire: ON' : '🔫 Auto-Fire: OFF';
+            // Store in global for battle system to check
+            window.autoFireEnabled = autoFireEnabled;
         });
+        window.autoFireEnabled = true;
 
-        document.getElementById('speed-2x').addEventListener('click', function() {
-            if (physicsEngine) physicsEngine.setTimeScale(2);
-            document.querySelectorAll('#physics-controls button[id^="speed-"]').forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-        });
-
-        document.getElementById('speed-4x').addEventListener('click', function() {
-            if (physicsEngine) physicsEngine.setTimeScale(4);
-            document.querySelectorAll('#physics-controls button[id^="speed-"]').forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
-        });
-
-        document.getElementById('toggle-effects').addEventListener('click', function() {
-            if (physicsEngine) {
-                physicsEngine.effectsEnabled = !physicsEngine.effectsEnabled;
-                this.classList.toggle('active');
-            }
+        // Speed toggle (cycles through 1x, 2x, 4x)
+        let currentSpeedIndex = 0;
+        const speeds = [1, 2, 4];
+        document.getElementById('toggle-speed').addEventListener('click', function() {
+            currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
+            const speed = speeds[currentSpeedIndex];
+            if (physicsEngine) physicsEngine.setTimeScale(speed);
+            this.textContent = `⚡ Speed: ${speed}x`;
         });
 
         // Abilities guide toggle

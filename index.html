@@ -46,8 +46,8 @@ The old full app is available at: app.html
         ⚠️ MAIN DEVELOPMENT FILE - All work happens here! Old full app: <a href="app.html" style="color: #ffff00;">app.html</a> | Physics test: <a href="test-physics.html" style="color: #ffff00;">test-physics.html</a>
     </div>
     <h1 style="text-align: center;">⚔️ Physics Battle Test ⚔️</h1>
-    <h2 style="text-align: center; color: #ff00ff; background: #000; padding: 10px;">VERSION 4.5 - DEVELOPMENT FOCUS</h2>
-    <p style="text-align: center; color: #ff6b35; font-size: 18px; font-weight: bold;">🔧 Rigid joints | 2x ground friction | Mechs should STAND!</p>
+    <h2 style="text-align: center; color: #ff00ff; background: #000; padding: 10px;">VERSION 5.0 - ENHANCED MECH PHYSICS</h2>
+    <p style="text-align: center; color: #ff6b35; font-size: 18px; font-weight: bold;">🔧 Torso faces enemy | Legs face movement | Strafing at range!</p>
     <p style="text-align: center; color: #00ff88; font-size: 14px;">Look for "Modern Rendering: YES" in top left of game</p>
     <div id="status">
         <div id="logs"></div>
@@ -809,6 +809,10 @@ The old full app is available at: app.html
                     isPlayer: isPlayer,
                     destroyed: false,  // Full mech destroyed flag
                     destroyedComponents: [],  // Track destroyed component names
+                    // Strafing state
+                    strafePhase: Math.random() * Math.PI * 2,  // Random starting phase for strafing
+                    strafeDirection: 1,  // 1 = up, -1 = down
+                    isStrafing: false,
                     // Weapons assigned above
                     weapons: weapons,
                     // Range for movement AI (calculated above)
@@ -1023,61 +1027,213 @@ The old full app is available at: app.html
                     const otherPos = otherMech.torso.position;
                     const vel = mech.torso.velocity;
 
-                    // Calculate distance between mechs
-                    const distance = Math.abs(pos.x - otherPos.x);
+                    // Calculate distance between mechs (full 2D distance for strafing)
+                    const dx = otherPos.x - pos.x;
+                    const dy = otherPos.y - pos.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const horizontalDistance = Math.abs(dx);
 
                     // Track if we need emergency forces
                     let needsEmergencyForce = false;
-                    let emergencyForce = 0;
 
                     // RANGE-BASED MOVEMENT AI
-                    let desiredDirection = 0;
+                    let desiredDirectionX = 0;
+                    let desiredDirectionY = 0;
                     let forceMultiplier = 1;
 
-                    if (distance > mech.weapon.maxRange) {
+                    // Check if in optimal range for strafing
+                    const inOptimalRange = horizontalDistance >= mech.weapon.optimalRange - 30 &&
+                                          horizontalDistance <= mech.weapon.optimalRange + 30 &&
+                                          horizontalDistance >= mech.weapon.minRange &&
+                                          horizontalDistance <= mech.weapon.maxRange;
+
+                    if (horizontalDistance > mech.weapon.maxRange) {
                         // Too far - move closer
-                        desiredDirection = pos.x < otherPos.x ? 1 : -1;
-                    } else if (distance < mech.weapon.minRange) {
+                        desiredDirectionX = pos.x < otherPos.x ? 1 : -1;
+                        mech.isStrafing = false;
+                    } else if (horizontalDistance < mech.weapon.minRange) {
                         // Too close - move away with STRONG force
-                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        desiredDirectionX = pos.x < otherPos.x ? -1 : 1;
                         forceMultiplier = 50;  // 50x force when below minimum range!
-                    } else if (distance > mech.weapon.optimalRange + 30) {
+                        mech.isStrafing = false;
+                    } else if (horizontalDistance > mech.weapon.optimalRange + 30) {
                         // Outside optimal range - move closer
-                        desiredDirection = pos.x < otherPos.x ? 1 : -1;
+                        desiredDirectionX = pos.x < otherPos.x ? 1 : -1;
                         forceMultiplier = 2;
-                    } else if (distance < mech.weapon.optimalRange - 30) {
+                        mech.isStrafing = false;
+                    } else if (horizontalDistance < mech.weapon.optimalRange - 30) {
                         // Outside optimal range - move away
-                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        desiredDirectionX = pos.x < otherPos.x ? -1 : 1;
                         forceMultiplier = 2;
+                        mech.isStrafing = false;
                     } else {
-                        // In optimal range - stay still
-                        desiredDirection = 0;
+                        // In optimal range - STRAFE!
+                        mech.isStrafing = true;
+
+                        // Update strafe phase for smooth oscillation
+                        mech.strafePhase += 0.03;  // Speed of strafe oscillation
+
+                        // Sinusoidal strafing motion (up and down)
+                        desiredDirectionY = Math.sin(mech.strafePhase);
+                        forceMultiplier = 3;  // Moderate force for strafing
+
+                        // Boundary check - reverse if getting too close to ground or ceiling
+                        const groundY = 400;  // Approximate ground level
+                        const ceilingY = 150;  // Don't go too high
+
+                        if (pos.y > groundY - 30 && desiredDirectionY > 0) {
+                            // Too close to ground, force upward
+                            desiredDirectionY = -1;
+                            mech.strafePhase = -Math.PI / 2;  // Reset phase to go up
+                        } else if (pos.y < ceilingY && desiredDirectionY < 0) {
+                            // Too high, force downward
+                            desiredDirectionY = 1;
+                            mech.strafePhase = Math.PI / 2;  // Reset phase to go down
+                        }
                     }
 
                     // EXTREME REPULSION when mechs are too close
-                    if (distance < 120) {
+                    if (horizontalDistance < 120) {
                         // Mechs too close - repel strongly
-                        desiredDirection = pos.x < otherPos.x ? -1 : 1;
+                        desiredDirectionX = pos.x < otherPos.x ? -1 : 1;
                         forceMultiplier = 200;  // 200x force when colliding!
                         needsEmergencyForce = true;
+                        mech.isStrafing = false;
                     }
 
                     // Apply movement forces
-                    if (desiredDirection !== 0) {
-                        const force = mech.moveSpeed * forceMultiplier;
+                    const force = mech.moveSpeed * forceMultiplier;
 
+                    if (desiredDirectionX !== 0 || desiredDirectionY !== 0) {
                         Body.applyForce(mech.torso, pos, {
-                            x: desiredDirection * force,
-                            y: 0
+                            x: desiredDirectionX * force,
+                            y: desiredDirectionY * force * 0.5  // Reduced vertical force for smoother strafing
                         });
                     }
 
                     // SMART VELOCITY DAMPENING - only dampen when NOT in emergency
-                    if (!needsEmergencyForce && Math.abs(vel.x) > 0.1) {
+                    if (!needsEmergencyForce && (Math.abs(vel.x) > 0.1 || Math.abs(vel.y) > 0.1)) {
                         Body.setVelocity(mech.torso, {
                             x: vel.x * 0.85,  // Dampen horizontal movement
-                            y: vel.y
+                            y: vel.y * 0.90   // Slightly less damping on vertical for smoother strafing
                         });
+                    }
+
+                    // =============================================
+                    // TORSO ROTATION - Face the enemy
+                    // =============================================
+                    // Calculate angle from this mech to enemy
+                    const angleToEnemy = Math.atan2(dy, dx);
+
+                    // Torso should face enemy - but we only want slight rotation, not full aim
+                    // Limit the rotation to a subtle tilt (max ~15 degrees = 0.26 radians)
+                    const maxTorsoRotation = 0.15;
+                    let torsoTargetAngle = 0;
+
+                    // Tilt torso slightly towards enemy (subtle lean)
+                    if (dx > 0) {
+                        // Enemy is to the right - slight lean right
+                        torsoTargetAngle = Math.min(maxTorsoRotation, Math.abs(angleToEnemy) * 0.1);
+                    } else {
+                        // Enemy is to the left - slight lean left
+                        torsoTargetAngle = -Math.min(maxTorsoRotation, Math.abs(angleToEnemy) * 0.1);
+                    }
+
+                    // Smoothly interpolate torso angle
+                    const currentTorsoAngle = mech.torso.angle;
+                    const newTorsoAngle = currentTorsoAngle + (torsoTargetAngle - currentTorsoAngle) * 0.1;
+                    Body.setAngle(mech.torso, newTorsoAngle);
+
+                    // Head follows torso but can look more towards enemy
+                    if (!mech.destroyedComponents.includes('head')) {
+                        const headTargetAngle = torsoTargetAngle * 1.5;  // Head turns a bit more
+                        const currentHeadAngle = mech.head.angle;
+                        const newHeadAngle = currentHeadAngle + (headTargetAngle - currentHeadAngle) * 0.15;
+                        Body.setAngle(mech.head, newHeadAngle);
+                    }
+
+                    // Arms follow torso
+                    if (!mech.destroyedComponents.includes('leftArm')) {
+                        Body.setAngle(mech.leftArm, newTorsoAngle);
+                    }
+                    if (!mech.destroyedComponents.includes('rightArm')) {
+                        Body.setAngle(mech.rightArm, newTorsoAngle);
+                    }
+
+                    // =============================================
+                    // LEG/FOOT ROTATION - Face movement direction
+                    // =============================================
+                    // Calculate movement direction angle from velocity
+                    const movementAngle = Math.atan2(vel.y, vel.x);
+                    const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+
+                    // Only rotate legs if actually moving
+                    const legRotationSpeed = 0.08;  // How fast legs rotate to new direction
+                    const maxLegRotation = 0.4;  // Maximum leg rotation (~23 degrees)
+
+                    if (speed > 0.5) {  // Only rotate if moving with some speed
+                        // Determine target leg angle based on movement direction
+                        let legTargetAngle = 0;
+
+                        // Moving right (positive X velocity dominant)
+                        if (vel.x > Math.abs(vel.y) * 0.5) {
+                            legTargetAngle = Math.min(maxLegRotation, vel.x * 0.1);
+                        }
+                        // Moving left (negative X velocity dominant)
+                        else if (vel.x < -Math.abs(vel.y) * 0.5) {
+                            legTargetAngle = Math.max(-maxLegRotation, vel.x * 0.1);
+                        }
+                        // Moving up/down (strafing) - legs stay relatively straight but can tilt
+                        else if (Math.abs(vel.y) > 0.3) {
+                            // Slight rotation based on vertical movement
+                            legTargetAngle = vel.y * 0.05;
+                        }
+
+                        // Apply leg rotations with smooth interpolation
+                        if (!mech.destroyedComponents.includes('leftLeg')) {
+                            const currentLeftLegAngle = mech.leftLeg.angle;
+                            const newLeftLegAngle = currentLeftLegAngle + (legTargetAngle - currentLeftLegAngle) * legRotationSpeed;
+                            Body.setAngle(mech.leftLeg, newLeftLegAngle);
+                        }
+                        if (!mech.destroyedComponents.includes('rightLeg')) {
+                            const currentRightLegAngle = mech.rightLeg.angle;
+                            const newRightLegAngle = currentRightLegAngle + (legTargetAngle - currentRightLegAngle) * legRotationSpeed;
+                            Body.setAngle(mech.rightLeg, newRightLegAngle);
+                        }
+
+                        // Feet follow legs but can rotate slightly more for ground contact
+                        if (!mech.destroyedComponents.includes('leftFoot')) {
+                            const footTargetAngle = legTargetAngle * 0.7;  // Feet rotate less than legs
+                            const currentLeftFootAngle = mech.leftFoot.angle;
+                            const newLeftFootAngle = currentLeftFootAngle + (footTargetAngle - currentLeftFootAngle) * legRotationSpeed;
+                            Body.setAngle(mech.leftFoot, newLeftFootAngle);
+                        }
+                        if (!mech.destroyedComponents.includes('rightFoot')) {
+                            const footTargetAngle = legTargetAngle * 0.7;
+                            const currentRightFootAngle = mech.rightFoot.angle;
+                            const newRightFootAngle = currentRightFootAngle + (footTargetAngle - currentRightFootAngle) * legRotationSpeed;
+                            Body.setAngle(mech.rightFoot, newRightFootAngle);
+                        }
+                    } else {
+                        // Not moving much - gradually return legs to neutral
+                        const returnSpeed = 0.05;
+
+                        if (!mech.destroyedComponents.includes('leftLeg')) {
+                            const currentAngle = mech.leftLeg.angle;
+                            Body.setAngle(mech.leftLeg, currentAngle * (1 - returnSpeed));
+                        }
+                        if (!mech.destroyedComponents.includes('rightLeg')) {
+                            const currentAngle = mech.rightLeg.angle;
+                            Body.setAngle(mech.rightLeg, currentAngle * (1 - returnSpeed));
+                        }
+                        if (!mech.destroyedComponents.includes('leftFoot')) {
+                            const currentAngle = mech.leftFoot.angle;
+                            Body.setAngle(mech.leftFoot, currentAngle * (1 - returnSpeed));
+                        }
+                        if (!mech.destroyedComponents.includes('rightFoot')) {
+                            const currentAngle = mech.rightFoot.angle;
+                            Body.setAngle(mech.rightFoot, currentAngle * (1 - returnSpeed));
+                        }
                     }
                 });
             }
@@ -1188,10 +1344,10 @@ The old full app is available at: app.html
                     this.renderComponentHealth(this.enemyMech, ctx);
                 }
 
-                // Debug info with V4 STATUS
+                // Debug info with V5 STATUS
                 ctx.fillStyle = '#ff00ff';
                 ctx.font = 'bold 16px monospace';
-                ctx.fillText('V4.4 WEAPON LIBRARY', 10, 20);
+                ctx.fillText('V5.0 ENHANCED PHYSICS', 10, 20);
 
                 ctx.fillStyle = '#00ff88';
                 ctx.font = '14px monospace';

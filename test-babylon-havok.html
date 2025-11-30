@@ -261,6 +261,7 @@
         let gameTime = 0;
         let autoFireEnabled = false;
         let autoFireInterval = null;
+        let battleEnded = false;  // Flag to stop AI loops when battle is over
 
         // Weapon cooldowns for AI
         const weaponCooldowns = {
@@ -353,10 +354,13 @@
                     lastTime = now;
                     gameTime += dt;
 
-                    updateMechs(dt);
-                    updateProjectiles(dt);
-                    updateBeams();
-                    checkBattleEnd();
+                    // Only run game logic if battle hasn't ended
+                    if (!battleEnded) {
+                        updateMechs(dt);
+                        updateProjectiles(dt);
+                        updateBeams();
+                        checkBattleEnd();
+                    }
                     updateUI();
                     scene.render();
                 }
@@ -1944,6 +1948,7 @@
                 btn.style.background = 'rgba(0, 255, 136, 0.4)';
                 btn.style.borderColor = '#00ff88';
                 btn.style.color = '#00ff88';
+                battleEnded = false;  // Allow AI loop to run again
                 log('AI ENABLED - mechs will fight autonomously!');
 
                 // Clear debug logs for fresh start
@@ -1979,6 +1984,7 @@
                 btn.style.background = 'rgba(255, 200, 0, 0.3)';
                 btn.style.borderColor = '#ffcc00';
                 btn.style.color = '#ffcc00';
+                battleEnded = true;  // Stop the AI loop
                 log('AI DISABLED');
 
                 // Disable AI on both mechs
@@ -1996,8 +2002,10 @@
         }
 
         function checkBattleEnd() {
+            if (battleEnded) return;  // Already ended
             if (!autoFireEnabled || !playerMech || !enemyMech) return;
             if (playerMech.currentHP <= 0 || enemyMech.currentHP <= 0) {
+                battleEnded = true;  // Stop all AI loops
                 autoFireEnabled = false;
                 const btn = document.getElementById('autoFireBtn');
                 btn.textContent = 'AI Battle: OFF';

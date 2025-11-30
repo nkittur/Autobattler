@@ -1256,8 +1256,9 @@
 
             const sway = Math.sin(cycle) * 0.025;
 
+            // Walking force - physics engine integrates force, don't multiply by dt
             mech.pelvisAggregate.body.applyForce(
-                new BABYLON.Vector3(mech.walkDirection * 120 * dt, 0, 0),
+                new BABYLON.Vector3(mech.walkDirection * 120, 0, 0),
                 mech.pelvis.getAbsolutePosition()
             );
 
@@ -1359,16 +1360,17 @@
             const toTarget = targetPos.subtract(myPos).normalize();
 
             // Edge avoidance - high priority
+            // Note: applyForce() is integrated by physics engine, don't multiply by dt
             let edgeForce = new BABYLON.Vector3(0, 0, 0);
             if (myPos.x < -AI_CONFIG.edgeBoundary) {
-                edgeForce.x = AI_CONFIG.edgeForce * dt;
+                edgeForce.x = AI_CONFIG.edgeForce;
                 mech.ai.state = 'edge-avoid';
             } else if (myPos.x > AI_CONFIG.edgeBoundary) {
-                edgeForce.x = -AI_CONFIG.edgeForce * dt;
+                edgeForce.x = -AI_CONFIG.edgeForce;
                 mech.ai.state = 'edge-avoid';
             }
             if (Math.abs(myPos.z) > 7) {
-                edgeForce.z = -Math.sign(myPos.z) * AI_CONFIG.edgeForce * 0.5 * dt;
+                edgeForce.z = -Math.sign(myPos.z) * AI_CONFIG.edgeForce * 0.5;
             }
 
             // Apply edge avoidance force
@@ -1421,12 +1423,13 @@
             }
 
             // Apply movement based on state
+            // Note: applyForce() is integrated by physics engine, don't multiply by dt
             const body = mech.pelvisAggregate.body;
             switch (mech.ai.state) {
                 case 'advancing':
                     mech.isWalking = true;
                     body.applyForce(
-                        new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * dt, 0, 0),
+                        new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce, 0, 0),
                         myPos
                     );
                     break;
@@ -1434,7 +1437,7 @@
                 case 'retreating':
                     mech.isWalking = true;
                     body.applyForce(
-                        new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 1.2 * dt, 0, 0),
+                        new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 1.2, 0, 0),
                         myPos
                     );
                     break;
@@ -1443,14 +1446,14 @@
                     mech.isWalking = true;
                     // Strafe perpendicular to target
                     body.applyForce(
-                        new BABYLON.Vector3(0, 0, mech.ai.strafeDir * AI_CONFIG.strafeForce * dt),
+                        new BABYLON.Vector3(0, 0, mech.ai.strafeDir * AI_CONFIG.strafeForce),
                         myPos
                     );
                     // Small adjustment toward ideal range
                     if (distance > AI_CONFIG.idealRange + 1) {
-                        body.applyForce(new BABYLON.Vector3(toTarget.x * AI_CONFIG.moveForce * 0.3 * dt, 0, 0), myPos);
+                        body.applyForce(new BABYLON.Vector3(toTarget.x * AI_CONFIG.moveForce * 0.3, 0, 0), myPos);
                     } else if (distance < AI_CONFIG.idealRange - 1) {
-                        body.applyForce(new BABYLON.Vector3(-toTarget.x * AI_CONFIG.moveForce * 0.3 * dt, 0, 0), myPos);
+                        body.applyForce(new BABYLON.Vector3(-toTarget.x * AI_CONFIG.moveForce * 0.3, 0, 0), myPos);
                     }
                     break;
 
@@ -1459,11 +1462,11 @@
                     if (distance > AI_CONFIG.idealRange + 2) {
                         mech.isWalking = true;
                         mech.walkDirection = toTarget.x > 0 ? 1 : -1;
-                        body.applyForce(new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 0.5 * dt, 0, 0), myPos);
+                        body.applyForce(new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 0.5, 0, 0), myPos);
                     } else if (distance < AI_CONFIG.idealRange - 2) {
                         mech.isWalking = true;
                         mech.walkDirection = toTarget.x > 0 ? -1 : 1;
-                        body.applyForce(new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 0.5 * dt, 0, 0), myPos);
+                        body.applyForce(new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 0.5, 0, 0), myPos);
                     } else {
                         mech.isWalking = false;
                     }

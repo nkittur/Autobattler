@@ -128,11 +128,39 @@ Added `'torso'` category with magenta color (`#ff88ff`) for torso/leg rotation l
 
 ---
 
+## Issue 5: Front of Mech Not Obvious
+
+### Symptoms
+- Hard to tell which way mechs were facing visually
+- Original torso design was too symmetrical
+
+### Fix Applied
+Added distinctive conical front sections to both mechs:
+
+**Mad Cat (Player)**:
+- Conical "bird beak" nose cone (8-sided cylinder)
+- Twin glowing laser ports (cyan)
+- Angled side chest plates
+- Giant LRM-20 style shoulder missile racks (5x4 = 20 tubes each)
+- Visible missile tips in tubes
+- Warning stripes on missile pods
+
+**Dire Wolf (Enemy)**:
+- Angular "fortress" style nose cone (6-sided for aggressive look)
+- Quad laser barrel array (red/orange glow)
+- Angled chest plates with armor detail
+
+Now mechs have obviously distinctive fronts making facing direction clear.
+
+---
+
 ## Files Modified
 - `test-babylon-havok.html` - Main physics test file
+- `ROTATION_DEBUG_LOG.md` - This file
 
 ## Related Commits
 1. `3094a59` - Add diagnostic logging to updateTorsoTrack
 2. `91b310d` - Fix torso rotation 90° offset
 3. `d943d7a` - Improve mech stability with chicken-walker legs
-4. Current - Fix rotation direction (left-handed coordinate fix)
+4. `7fc4385` - Fix rotation direction (left-handed coordinate fix)
+5. `c3ee797` - Enhance torsos with conical fronts and giant missile racks

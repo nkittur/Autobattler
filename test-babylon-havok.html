@@ -187,12 +187,12 @@
         const AI_CONFIG = {
             idealRange: 10,         // Optimal combat distance
             minRange: 6,            // Too close - back up
-            maxRange: 14,           // Too far - close in
+            maxRange: 13,           // Too far - close in (slightly less than starting distance)
             edgeBoundary: 16,       // X position to start avoiding edges
-            edgeForce: 35,          // Force to push away from edges
-            moveForce: 22,          // Normal movement force
-            strafeForce: 8,         // Lateral movement force
-            decisionInterval: 0.3,  // How often AI makes decisions (seconds)
+            edgeForce: 45,          // Force to push away from edges
+            moveForce: 150,         // Normal movement force (increased significantly)
+            strafeForce: 60,        // Lateral movement force (increased significantly)
+            decisionInterval: 0.2,  // How often AI makes decisions (faster for responsiveness)
             strafeChance: 0.15,     // Chance to start strafing each decision
             strafeDuration: 1.5     // How long to strafe before reconsidering
         };
@@ -1257,7 +1257,7 @@
             const sway = Math.sin(cycle) * 0.025;
 
             mech.pelvisAggregate.body.applyForce(
-                new BABYLON.Vector3(mech.walkDirection * 18 * dt, 0, 0),
+                new BABYLON.Vector3(mech.walkDirection * 120 * dt, 0, 0),
                 mech.pelvis.getAbsolutePosition()
             );
 
@@ -1398,8 +1398,8 @@
                     }
                 }
 
-                // Fire weapons when in range
-                if (distance <= AI_CONFIG.maxRange && distance >= AI_CONFIG.minRange * 0.5) {
+                // Fire weapons when in range (increased range for more action)
+                if (distance <= 18 && distance >= AI_CONFIG.minRange * 0.5) {
                     const now = Date.now();
                     const side = mech.isPlayer ? 'player' : 'enemy';
                     const weaponPriority = ['erlaser', 'ac', 'lrm'];
@@ -1803,14 +1803,20 @@
                 btn.style.color = '#00ff88';
                 log('AI ENABLED - mechs will fight autonomously!');
 
-                // Enable AI on both mechs
+                // Enable AI on both mechs with proper initialization
                 if (playerMech) {
                     playerMech.ai.enabled = true;
                     playerMech.ai.state = 'advancing';
+                    playerMech.ai.lastDecision = gameTime; // Prevent immediate state override
+                    playerMech.isWalking = true;
+                    playerMech.walkDirection = 1; // Start moving toward enemy
                 }
                 if (enemyMech) {
                     enemyMech.ai.enabled = true;
                     enemyMech.ai.state = 'advancing';
+                    enemyMech.ai.lastDecision = gameTime; // Prevent immediate state override
+                    enemyMech.isWalking = true;
+                    enemyMech.walkDirection = -1; // Start moving toward player
                 }
             } else {
                 btn.textContent = 'AI Battle: OFF';

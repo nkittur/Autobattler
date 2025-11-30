@@ -154,7 +154,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.0</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.1</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
@@ -524,7 +524,8 @@
             pelvisBody.setLinearDamping(0.25);
 
             // Set friction and restitution on the shape
-            pelvisShape.material = { friction: 1.0, restitution: 0.05 };
+            // Low friction (0.1) allows movement - friction 1.0 was blocking all forces
+            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
 
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
@@ -1001,7 +1002,8 @@
             pelvisBody.setLinearDamping(0.3);
 
             // Set friction and restitution on the shape
-            pelvisShape.material = { friction: 1.0, restitution: 0.05 };
+            // Low friction (0.1) allows movement - friction 1.0 was blocking all forces
+            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
 
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 

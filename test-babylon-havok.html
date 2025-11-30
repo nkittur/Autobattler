@@ -116,7 +116,7 @@
     </style>
 </head>
 <body>
-    <h1>Mad Cat Detail Test <span id="version" style="font-size: 0.6em; color: #888;">v6.0</span></h1>
+    <h1>Mad Cat Detail Test <span id="version" style="font-size: 0.6em; color: #888;">v7.0</span></h1>
     <div id="controls">
         <button onclick="fireWeapon(true, 'erlaser')">P: ER Laser</button>
         <button onclick="fireWeapon(true, 'lrm')">P: LRM-20</button>
@@ -387,13 +387,27 @@
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
                 width: 1.1, height: 0.5, depth: 0.9
             }, scene);
-            pelvis.position = new BABYLON.Vector3(xPos, 4.5, 0);  // Higher spawn!
+            pelvis.position = new BABYLON.Vector3(xPos, 3.5, 0);  // Spawn height
             pelvis.material = darkMat;
 
-            const pelvisAgg = new BABYLON.PhysicsAggregate(pelvis, BABYLON.PhysicsShapeType.BOX,
-                { mass: 75, friction: 1.0, restitution: 0.05 }, scene);
-            pelvisAgg.body.setAngularDamping(0.92);
-            pelvisAgg.body.setLinearDamping(0.25);
+            // Create a taller collision shape to represent the full mech standing height
+            // The visual legs extend ~3 units below pelvis, so we use a tall box offset downward
+            const pelvisShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, -1.5, 0),  // Center offset (shift down to cover legs)
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(1.1, 3.5, 0.9),  // Full standing height
+                scene
+            );
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            pelvisBody.shape = pelvisShape;
+            pelvisBody.setMassProperties({ mass: 75 });
+            pelvisBody.setAngularDamping(0.92);
+            pelvisBody.setLinearDamping(0.25);
+
+            // Set friction and restitution on the shape
+            pelvisShape.material = { friction: 1.0, restitution: 0.05 };
+
+            const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
             // === TORSO - Multi-part ===
             const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torsoCore', {
@@ -842,13 +856,27 @@
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
                 width: 1.3 * scale, height: 0.55 * scale, depth: 1.0 * scale
             }, scene);
-            pelvis.position = new BABYLON.Vector3(xPos, 4.8, 0);
+            pelvis.position = new BABYLON.Vector3(xPos, 3.8, 0);  // Spawn height
             pelvis.material = darkMat;
 
-            const pelvisAgg = new BABYLON.PhysicsAggregate(pelvis, BABYLON.PhysicsShapeType.BOX,
-                { mass: 100, friction: 1.0, restitution: 0.05 }, scene);
-            pelvisAgg.body.setAngularDamping(0.93);
-            pelvisAgg.body.setLinearDamping(0.3);
+            // Create a taller collision shape to represent the full mech standing height
+            // Dire Wolf is bigger (scale 1.15), legs extend ~3.5 units below pelvis
+            const pelvisShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, -1.7 * scale, 0),  // Center offset (shift down to cover legs)
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(1.3 * scale, 4.0 * scale, 1.0 * scale),  // Full standing height
+                scene
+            );
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            pelvisBody.shape = pelvisShape;
+            pelvisBody.setMassProperties({ mass: 100 });
+            pelvisBody.setAngularDamping(0.93);
+            pelvisBody.setLinearDamping(0.3);
+
+            // Set friction and restitution on the shape
+            pelvisShape.material = { friction: 1.0, restitution: 0.05 };
+
+            const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
             // === MASSIVE TORSO ===
             const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torsoCore', {
@@ -1539,7 +1567,7 @@
 
         function resetScene() {
             if (playerMech) {
-                playerMech.pelvis.position = new BABYLON.Vector3(-7, 4.5, 0);
+                playerMech.pelvis.position = new BABYLON.Vector3(-7, 3.5, 0);
                 playerMech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 playerMech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 playerMech.pelvisAggregate.body.setAngularDamping(0.92);
@@ -1551,7 +1579,7 @@
                 playerMech.torso.rotation.setAll(0);
             }
             if (enemyMech) {
-                enemyMech.pelvis.position = new BABYLON.Vector3(7, 4.8, 0);
+                enemyMech.pelvis.position = new BABYLON.Vector3(7, 3.8, 0);
                 enemyMech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 enemyMech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
                 enemyMech.pelvisAggregate.body.setAngularDamping(0.93);

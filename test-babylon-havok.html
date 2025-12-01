@@ -370,12 +370,30 @@
                     lastTime = now;
                     gameTime += dt;
 
-                    // Only run game logic if battle hasn't ended
+                    // Always update projectiles and beams (so they don't freeze)
+                    updateProjectiles(dt);
+                    updateBeams();
+
+                    // Only run AI/mech logic if battle hasn't ended
                     if (!battleEnded) {
                         updateMechs(dt);
-                        updateProjectiles(dt);
-                        updateBeams();
                         checkBattleEnd();
+                    } else {
+                        // Still update destroyed mech physics during death animation
+                        [playerMech, enemyMech].forEach(mech => {
+                            if (mech && mech.isDestroyed) {
+                                // Keep feet horizontal even when falling
+                                const body = mech.pelvisAggregate.body;
+                                const quat = body.transformNode.rotationQuaternion;
+                                if (quat && mech.leftLeg.footGroup) {
+                                    const euler = quat.toEulerAngles();
+                                    mech.leftLeg.footGroup.rotation.x = -euler.x;
+                                    mech.rightLeg.footGroup.rotation.x = -euler.x;
+                                    mech.leftLeg.footGroup.rotation.z = -euler.z * 0.5;
+                                    mech.rightLeg.footGroup.rotation.z = -euler.z * 0.5;
+                                }
+                            }
+                        });
                     }
                     updateUI();
 
@@ -451,14 +469,37 @@
             camera.upperRadiusLimit = 50;
             camera.wheelPrecision = 30;
 
-            // Lighting
+            // Lighting - multiple sources for better illumination
+            // Main ambient light from above
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.5;
-            hemi.groundColor = new BABYLON.Color3(0.15, 0.12, 0.1);
+            hemi.intensity = 0.7;
+            hemi.groundColor = new BABYLON.Color3(0.2, 0.18, 0.15);
 
+            // Primary directional (sun) light
             const dir = new BABYLON.DirectionalLight('dir', new BABYLON.Vector3(-1, -2.5, 1), scene);
-            dir.intensity = 0.9;
+            dir.intensity = 1.0;
             dir.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
+
+            // Secondary fill light from opposite side
+            const fillLight = new BABYLON.DirectionalLight('fill', new BABYLON.Vector3(1, -1, -0.5), scene);
+            fillLight.intensity = 0.4;
+            fillLight.diffuse = new BABYLON.Color3(0.7, 0.8, 1.0);  // Slight blue tint
+
+            // Rim/back light for mech silhouettes
+            const rimLight = new BABYLON.DirectionalLight('rim', new BABYLON.Vector3(0, -0.5, -1), scene);
+            rimLight.intensity = 0.3;
+            rimLight.diffuse = new BABYLON.Color3(1, 0.9, 0.7);
+
+            // Point lights on each side of arena for extra fill
+            const leftPoint = new BABYLON.PointLight('leftPoint', new BABYLON.Vector3(-12, 6, 0), scene);
+            leftPoint.intensity = 0.5;
+            leftPoint.diffuse = new BABYLON.Color3(0.9, 0.95, 1.0);
+            leftPoint.range = 25;
+
+            const rightPoint = new BABYLON.PointLight('rightPoint', new BABYLON.Vector3(12, 6, 0), scene);
+            rightPoint.intensity = 0.5;
+            rightPoint.diffuse = new BABYLON.Color3(1.0, 0.9, 0.85);
+            rightPoint.range = 25;
 
             // Fog
             scene.fogMode = BABYLON.Scene.FOGMODE_EXP;

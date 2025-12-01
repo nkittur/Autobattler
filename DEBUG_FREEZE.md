@@ -1,57 +1,85 @@
-# Freeze Bug Investigation
+# Debug Investigation
 
-## Problem
-Game freezes shortly after AI battle starts, before or during the first weapon fire.
+## Current Issue (v10.2)
+Canvas is blank after Havok initialized. No mechs render.
 
-## Version History
-- v9.5: Added textures to new mechs
-- v9.6: Added destroyed mech check in applyDamage (didn't fix)
-- v9.7: Added comprehensive defensive checks and logging
+## Problem History
+1. v9.5-9.7: Freeze bug when weapons fired (fixed with defensive checks)
+2. v10.1: Working - mass-based wall avoidance, cinematic camera added
+3. v10.2: **BROKEN** - Canvas blank after leg geometry changes
 
-## Attempted Fixes
+## Changes Since Last Working Version (8cea02d)
 
-### v9.5-9.6 Fixes (Didn't work)
-1. **Added weaponPod to Commando and Catapult arms** - Arms now return `{ shoulder, arm, weaponPod }` instead of just `{ shoulder, arm }`. This was needed because `fireProjectile` and `fireBeam` access `arm.weaponPod.getAbsolutePosition()`.
+### Commit f0281e4: Fix mech leg geometry to proper digitigrade 'lightning bolt' shape
+- Changed ALL 5 mech leg geometries (Mad Cat, Dire Wolf, Commando, Catapult, Hatchetman)
+- Key changes:
+  - upperLeg.rotation.x: 0.5 → 0.85 (steeper forward angle)
+  - lowerLeg.rotation.x: -0.65 → -0.75 (steeper backward angle)
+  - Added calfBulge mesh to all legs
+  - Changed dimensions and positions of all leg components
+  - Hip positions changed (removed Z offset of -0.1)
 
-2. **Added check for destroyed mechs in applyDamage** - Added early return `if (mech.isDestroyed) return;` and changed destruction check to `if (mech.currentHP <= 0 && !mech.isDestroyed)`. This prevents triggerDestruction from being called multiple times.
+### Commit 2cce482: Fix walking animation
+- Updated animateLeg() base values: 0.5 → 0.85, -0.65 → -0.75
+- Updated dampLegs() target values to match
 
-### v9.7 Defensive Checks Added
-1. **fireWeapon**: try-catch wrapper, validates pelvis exists, logs weapon attempt
-2. **fireProjectile**: try-catch, validates arm/weaponPod/torso, checks for NaN positions
-3. **fireBeam**: try-catch, validates arm/weaponPod/torso, checks beam path length > 0.1
-4. **fireCluster**: try-catch, validates leftPod/rightPod/torso
-5. **updateProjectiles**: try-catch per projectile, validates target/torso before distance check
-6. **Render loop**: try-catch wrapper, frame counter logging
+### Commit 6e5c689: Improve cinematic camera
+- Added helper functions: getBattleCenter(), getClosestEnemyPair()
+- Replaced camera modes with new ones
+- Added const declarations in switch cases (problematic!)
 
-## Observations from Logs
-- All 6 mechs initialize correctly with AI enabled
-- Targets are assigned (all player mechs target DIRE WOLF, all enemy mechs target TIMBER WOLF)
-- Position/velocity logging shows mechs starting to move
-- Freeze happens around first weapon fire attempt
-- No "fires" log message appears in the provided logs
-- Freeze happens BEFORE weapon fire completes (no fire log shown)
+### Commit ace02b0: Fix switch case block scope
+- Added {} braces around switch cases with const declarations
+- **This should have fixed the syntax error but didn't**
 
-## Potential Remaining Issues
+## Potential Causes
 
-### 1. CreateTube with invalid path
-`fireBeam` uses `BABYLON.MeshBuilder.CreateTube` with path `[start, end]`. Even with our checks, there could be edge cases.
+### 1. Leg Hierarchy Issues
+The leg changes modified parent-child relationships. Check if:
+- upperLeg is properly parented to legGroup
+- knee is properly parented to upperLeg
+- lowerLeg is properly parented to knee
+- ankle is properly parented to lowerLeg
 
-### 2. Texture cloning issues
-New mechs clone textures: `TEXTURES.rustMetal.clone()`. If textures aren't fully loaded when mechs are created, this could fail.
+### 2. Walking Animation Accessing Wrong Properties
+The animateLeg function expects:
+- leg.upperLeg.rotation.x
+- leg.lowerLeg.rotation.x
+- leg.foot.rotation.x
 
-### 3. Physics body issues
-New mechs have different mass/damping values. Could cause physics engine to hang with invalid calculations.
+If any mech's createLeg doesn't return these properly, animation will fail.
 
-### 4. Synchronous Babylon.js call blocking
-Some Babylon.js calls might be synchronously blocking. CreateTube, PhysicsAggregate creation could hang.
+### 3. Physics Body Positioning
+Changed hip positions could put physics bodies in invalid states.
+Old: hip.position.z = -0.1
+New: hip.position.z = 0
 
-### 5. Invalid physics body state
-applyImpulse on a body with invalid state could cause physics engine to hang.
+### 4. Cinematic Camera Null References
+Even with block scope fix, could still have issues:
+- state.target could be undefined before battle starts
+- state.target.ai.target could throw if ai doesn't exist
 
-## Next Steps If Still Failing
-1. Check browser console for specific error messages
-2. Look for any "[ERROR]" or "[FIRE]" prefixed log messages
-3. Try disabling specific mech types (create only Timber Wolf vs Dire Wolf)
-4. Add more granular logging inside the functions
-5. Test with physics disabled
-6. Check if issue is specific to erlaser (beam) weapon
+## Investigation Steps
+
+### Step 1: Check if legs are the problem
+Try reverting just the leg changes to see if that fixes rendering.
+
+### Step 2: Check console for actual error
+The blank canvas with "Havok initialized" suggests error happens during scene creation.
+
+### Step 3: Test each mech type individually
+Comment out all but one mech to isolate which mech creation is failing.
+
+### Step 4: Check leg return values
+Ensure all 5 createLeg functions return:
+{ hip, upperLeg, knee, lowerLeg, ankle, foot, legGroup, footGroup }
+
+## Quick Fix Attempts
+
+### Attempt 1: Revert to last working commit
+```bash
+git checkout 8cea02d -- test-babylon-havok.html
+```
+
+### Attempt 2: Just revert leg geometry (keep camera fixes)
+Manually restore old leg geometry while keeping other changes.

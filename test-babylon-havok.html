@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.2</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.1</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -1136,109 +1136,97 @@
             const leftArm = createArm('left');
             const rightArm = createArm('right');
 
-            // === LEGS (Chicken Walker / Mad Cat Style - Lightning Bolt Digitigrade) ===
-            // Proper digitigrade legs: thigh forward, knee forward, shin backward = "Z" shape
+            // === LEGS (Chicken Walker / Mad Cat Style - More Stable) ===
+            // These legs have a pronounced backward knee bend for stability
             function createLeg(side) {
                 const xOff = side === 'left' ? -1 : 1;
 
-                // Hip joint - positioned for proper leg attachment
+                // Hip joint - moved slightly back for better balance
                 const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', {
-                    diameter: 0.45
+                    diameter: 0.42
                 }, scene);
-                hip.position = new BABYLON.Vector3(xOff * 0.75, -0.25, 0);
+                hip.position = new BABYLON.Vector3(xOff * 0.8, -0.3, -0.1);  // Wider stance
                 hip.parent = pelvis;
                 hip.material = chromeMat;
 
                 // Leg group for rotation (parent of all leg parts below hip)
                 const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
-                legGroup.position = new BABYLON.Vector3(xOff * 0.75, -0.25, 0);
+                legGroup.position = new BABYLON.Vector3(xOff * 0.8, -0.3, -0.1);  // Match hip
                 legGroup.parent = pelvis;
 
-                // Upper leg (thigh) - SHORT and angled steeply FORWARD (45-50 degrees)
-                // This is the first stroke of the "lightning bolt"
+                // Upper leg (thigh) - angled forward significantly for chicken-walk stance
                 const upperLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'UpperLeg', {
-                    width: 0.38, height: 0.75, depth: 0.42
+                    width: 0.4, height: 1.0, depth: 0.4
                 }, scene);
-                upperLeg.position = new BABYLON.Vector3(0, -0.35, 0.45);
-                upperLeg.rotation.x = 0.85;  // ~48 degrees forward - steep!
+                upperLeg.position = new BABYLON.Vector3(0, -0.55, 0.35);
+                upperLeg.rotation.x = 0.5;  // Angled forward
                 upperLeg.parent = legGroup;
                 upperLeg.material = primaryMat;
 
-                // Thigh armor (front) - angular armor plate
+                // Thigh armor (front)
                 const thighFront = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ThighFront', {
-                    width: 0.42, height: 0.55, depth: 0.16
+                    width: 0.44, height: 0.7, depth: 0.14
                 }, scene);
-                thighFront.position = new BABYLON.Vector3(0, 0.05, 0.26);
+                thighFront.position = new BABYLON.Vector3(0, 0.05, 0.24);
                 thighFront.parent = upperLeg;
                 thighFront.material = secondaryMat;
 
                 // Thigh armor (side)
                 const thighSide = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ThighSide', {
-                    width: 0.14, height: 0.5, depth: 0.38
+                    width: 0.12, height: 0.6, depth: 0.35
                 }, scene);
-                thighSide.position = new BABYLON.Vector3(xOff * 0.22, 0, 0);
+                thighSide.position = new BABYLON.Vector3(xOff * 0.24, 0, 0);
                 thighSide.parent = upperLeg;
                 thighSide.material = accentMat;
 
-                // Knee joint - LARGE and positioned FORWARD of the hip
-                // This is the point of the "lightning bolt" pointing forward
+                // Knee (large, detailed) - the backward-pointing joint
                 const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', {
-                    diameter: 0.48
+                    diameter: 0.4
                 }, scene);
-                knee.position = new BABYLON.Vector3(0, -0.42, 0);
+                knee.position = new BABYLON.Vector3(0, -0.55, 0);
                 knee.parent = upperLeg;
                 knee.material = metalMat;
 
-                // Knee armor cap (pointing forward - the distinctive forward knee)
+                // Knee armor cap (pointing backward)
                 const kneeCap = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'KneeCap', {
-                    width: 0.32, height: 0.3, depth: 0.22
+                    width: 0.28, height: 0.25, depth: 0.2
                 }, scene);
-                kneeCap.position = new BABYLON.Vector3(0, 0, 0.28);  // Points FORWARD
+                kneeCap.position = new BABYLON.Vector3(0, 0, -0.22);
                 kneeCap.parent = knee;
                 kneeCap.material = primaryMat;
 
-                // Lower leg (shin/calf) - BULKY "boot" housing actuators
-                // This angles BACKWARD - second stroke of lightning bolt
-                // Much larger than thigh - this is the distinctive Mad Cat look
+                // Lower leg (shin) - angled backward for chicken-walker stance
                 const lowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'LowerLeg', {
-                    width: 0.52, height: 1.3, depth: 0.55  // MUCH bulkier
+                    width: 0.34, height: 1.1, depth: 0.34
                 }, scene);
-                lowerLeg.position = new BABYLON.Vector3(0, -0.75, -0.25);
-                lowerLeg.rotation.x = -0.75;  // ~43 degrees backward
+                lowerLeg.position = new BABYLON.Vector3(0, -0.75, -0.3);
+                lowerLeg.rotation.x = -0.65;  // Strong backward angle
                 lowerLeg.parent = knee;
                 lowerLeg.material = primaryMat;
 
-                // Calf muscle bulge (rear) - actuator housing
-                const calfBulge = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'CalfBulge', {
-                    width: 0.48, height: 0.7, depth: 0.25
-                }, scene);
-                calfBulge.position = new BABYLON.Vector3(0, 0.15, -0.35);
-                calfBulge.parent = lowerLeg;
-                calfBulge.material = secondaryMat;
-
-                // Shin armor (front) - angled plate
+                // Shin armor (front)
                 const shinFront = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ShinFront', {
-                    width: 0.48, height: 0.9, depth: 0.18
+                    width: 0.38, height: 0.8, depth: 0.14
                 }, scene);
-                shinFront.position = new BABYLON.Vector3(0, 0, 0.32);
+                shinFront.position = new BABYLON.Vector3(0, 0.05, 0.22);
                 shinFront.parent = lowerLeg;
                 shinFront.material = secondaryMat;
 
                 // Shin detail lines
                 for (let i = 0; i < 3; i++) {
                     const line = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ShinLine' + i, {
-                        width: 0.44, height: 0.04, depth: 0.03
+                        width: 0.32, height: 0.035, depth: 0.025
                     }, scene);
-                    line.position = new BABYLON.Vector3(0, 0.3 - i * 0.25, 0.38);
+                    line.position = new BABYLON.Vector3(0, 0.25 - i * 0.22, 0.29);
                     line.parent = lowerLeg;
                     line.material = darkMat;
                 }
 
-                // Ankle - positioned to put foot roughly under hip for balance
+                // Ankle - positioned for digitigrade stance
                 const ankle = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Ankle', {
-                    diameter: 0.32
+                    diameter: 0.28
                 }, scene);
-                ankle.position = new BABYLON.Vector3(0, -0.7, 0.1);
+                ankle.position = new BABYLON.Vector3(0, -0.6, 0);
                 ankle.parent = lowerLeg;
                 ankle.material = metalMat;
 
@@ -1752,87 +1740,78 @@
             const leftArm = createArm('left');
             const rightArm = createArm('right');
 
-            // === LEGS (Heavy Assault - Lightning Bolt Digitigrade) ===
-            // Dire Wolf has the heaviest, most armored legs
+            // === LEGS (Heavy Chicken Walker / Mad Cat Style - More Stable) ===
             function createLeg(side) {
                 const xOff = side === 'left' ? -1 : 1;
 
                 // Hip joint - wider stance for stability
                 const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', {
-                    diameter: 0.5 * scale
+                    diameter: 0.46 * scale
                 }, scene);
-                hip.position = new BABYLON.Vector3(xOff * 0.85 * scale, -0.28 * scale, 0);
+                hip.position = new BABYLON.Vector3(xOff * 0.9 * scale, -0.32 * scale, -0.1 * scale);  // Wider stance
                 hip.parent = pelvis;
                 hip.material = chromeMat;
 
-                // Leg group for rotation
+                // Leg group for rotation (parent of all leg parts below hip)
                 const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
-                legGroup.position = new BABYLON.Vector3(xOff * 0.85 * scale, -0.28 * scale, 0);
+                legGroup.position = new BABYLON.Vector3(xOff * 0.9 * scale, -0.32 * scale, -0.1 * scale);  // Match hip
                 legGroup.parent = pelvis;
 
-                // Upper leg (thigh) - SHORT and angled steeply FORWARD
+                // Upper leg (thigh) - angled forward for chicken-walk stance
                 const upperLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'UpperLeg', {
-                    width: 0.42 * scale, height: 0.8 * scale, depth: 0.46 * scale
+                    width: 0.44 * scale, height: 1.1 * scale, depth: 0.44 * scale
                 }, scene);
-                upperLeg.position = new BABYLON.Vector3(0, -0.38 * scale, 0.5 * scale);
-                upperLeg.rotation.x = 0.85;  // ~48 degrees forward
+                upperLeg.position = new BABYLON.Vector3(0, -0.6 * scale, 0.4 * scale);
+                upperLeg.rotation.x = 0.5;  // Angled forward
                 upperLeg.parent = legGroup;
                 upperLeg.material = primaryMat;
 
                 // Thigh armor layers
                 const thighArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ThighArmor', {
-                    width: 0.48 * scale, height: 0.6 * scale, depth: 0.18 * scale
+                    width: 0.5 * scale, height: 0.8 * scale, depth: 0.16 * scale
                 }, scene);
                 thighArmor.position = new BABYLON.Vector3(0, 0.05 * scale, 0.28 * scale);
                 thighArmor.parent = upperLeg;
                 thighArmor.material = secondaryMat;
 
-                // Knee - LARGE, forward-pointing joint
+                // Knee (backward-pointing joint)
                 const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', {
-                    diameter: 0.52 * scale
+                    diameter: 0.44 * scale
                 }, scene);
-                knee.position = new BABYLON.Vector3(0, -0.45 * scale, 0);
+                knee.position = new BABYLON.Vector3(0, -0.6 * scale, 0);
                 knee.parent = upperLeg;
                 knee.material = metalMat;
 
-                // Knee armor cap (pointing FORWARD)
+                // Knee armor cap (pointing backward)
                 const kneeCap = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'KneeCap', {
-                    width: 0.36 * scale, height: 0.32 * scale, depth: 0.24 * scale
+                    width: 0.32 * scale, height: 0.28 * scale, depth: 0.22 * scale
                 }, scene);
-                kneeCap.position = new BABYLON.Vector3(0, 0, 0.3 * scale);  // Points FORWARD
+                kneeCap.position = new BABYLON.Vector3(0, 0, -0.25 * scale);
                 kneeCap.parent = knee;
                 kneeCap.material = accentMat;
 
-                // Lower leg (shin/calf) - MASSIVE "boot" for assault mech
+                // Lower leg (shin) - angled backward for chicken-walker stance
                 const lowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'LowerLeg', {
-                    width: 0.58 * scale, height: 1.4 * scale, depth: 0.6 * scale
+                    width: 0.4 * scale, height: 1.2 * scale, depth: 0.4 * scale
                 }, scene);
-                lowerLeg.position = new BABYLON.Vector3(0, -0.8 * scale, -0.28 * scale);
-                lowerLeg.rotation.x = -0.75;  // Backward angle
+                lowerLeg.position = new BABYLON.Vector3(0, -0.8 * scale, -0.35 * scale);
+                lowerLeg.rotation.x = -0.65;  // Strong backward angle
                 lowerLeg.parent = knee;
                 lowerLeg.material = primaryMat;
 
-                // Calf bulge (actuator housing)
-                const calfBulge = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'CalfBulge', {
-                    width: 0.54 * scale, height: 0.75 * scale, depth: 0.28 * scale
-                }, scene);
-                calfBulge.position = new BABYLON.Vector3(0, 0.15 * scale, -0.38 * scale);
-                calfBulge.parent = lowerLeg;
-                calfBulge.material = secondaryMat;
-
                 // Shin armor
                 const shinArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ShinArmor', {
-                    width: 0.52 * scale, height: 0.95 * scale, depth: 0.18 * scale
+                    width: 0.44 * scale, height: 0.9 * scale, depth: 0.14 * scale
                 }, scene);
-                shinArmor.position = new BABYLON.Vector3(0, 0, 0.34 * scale);
+                shinArmor.position = new BABYLON.Vector3(0, 0, 0.24 * scale);
                 shinArmor.parent = lowerLeg;
                 shinArmor.material = secondaryMat;
 
                 // Ankle
                 const ankle = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Ankle', {
-                    diameter: 0.36 * scale
+                    diameter: 0.32 * scale
                 }, scene);
-                ankle.position = new BABYLON.Vector3(0, -0.75 * scale, 0.1 * scale);
+                ankle.position = new BABYLON.Vector3(0, -0.65 * scale, 0);
                 ankle.parent = lowerLeg;
                 ankle.material = metalMat;
 
@@ -2125,71 +2104,50 @@
             rightPod.parent = torsoCore;
             rightPod.material = darkMat;
 
-            // Legs - Lightning Bolt Digitigrade (light/scout mech)
+            // Legs - chicken walker style
             function createLeg(side) {
                 const sign = side === 'left' ? -1 : 1;
                 const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
-                legGroup.position = new BABYLON.Vector3(sign * 0.45 * scale, -0.15 * scale, 0);
                 legGroup.parent = pelvis;
 
-                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.28 * scale }, scene);
-                hip.position = new BABYLON.Vector3(0, 0, 0);
+                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.25 * scale }, scene);
+                hip.position = new BABYLON.Vector3(sign * 0.5 * scale, -0.15 * scale, 0);
                 hip.parent = legGroup;
                 hip.material = darkMat;
 
-                // Thigh - SHORT, angled steeply forward
-                const upperLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Upper', {
-                    width: 0.22 * scale, height: 0.55 * scale, depth: 0.26 * scale
+                const upperLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Upper', {
+                    diameterTop: 0.18 * scale, diameterBottom: 0.14 * scale, height: 0.9 * scale
                 }, scene);
-                upperLeg.rotation.x = 0.85;  // Steep forward angle
-                upperLeg.position = new BABYLON.Vector3(0, -0.26 * scale, 0.32 * scale);
-                upperLeg.parent = legGroup;
+                upperLeg.rotation.x = 0.5;
+                upperLeg.position = new BABYLON.Vector3(0, -0.45 * scale, 0.2 * scale);
+                upperLeg.parent = hip;
                 upperLeg.material = primaryMat;
 
-                // Knee - forward-pointing joint
-                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.24 * scale }, scene);
-                knee.position = new BABYLON.Vector3(0, -0.32 * scale, 0);
+                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.16 * scale }, scene);
+                knee.position.y = -0.5 * scale;
                 knee.parent = upperLeg;
                 knee.material = metalMat;
 
-                // Knee cap pointing forward
-                const kneeCap = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'KneeCap', {
-                    width: 0.18 * scale, height: 0.16 * scale, depth: 0.12 * scale
+                const lowerLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Lower', {
+                    diameterTop: 0.14 * scale, diameterBottom: 0.1 * scale, height: 1.0 * scale
                 }, scene);
-                kneeCap.position = new BABYLON.Vector3(0, 0, 0.15 * scale);
-                kneeCap.parent = knee;
-                kneeCap.material = secondaryMat;
-
-                // Lower leg - bulkier "boot" angled backward
-                const lowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Lower', {
-                    width: 0.3 * scale, height: 0.9 * scale, depth: 0.35 * scale
-                }, scene);
-                lowerLeg.rotation.x = -0.75;  // Backward angle
-                lowerLeg.position = new BABYLON.Vector3(0, -0.52 * scale, -0.18 * scale);
+                lowerLeg.rotation.x = -0.7;
+                lowerLeg.position = new BABYLON.Vector3(0, -0.5 * scale, 0);
                 lowerLeg.parent = knee;
                 lowerLeg.material = primaryMat;
 
-                // Calf bulge
-                const calfBulge = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Calf', {
-                    width: 0.26 * scale, height: 0.45 * scale, depth: 0.15 * scale
-                }, scene);
-                calfBulge.position = new BABYLON.Vector3(0, 0.1 * scale, -0.22 * scale);
-                calfBulge.parent = lowerLeg;
-                calfBulge.material = secondaryMat;
-
                 const footGroup = new BABYLON.TransformNode(name + '_' + side + 'FootGroup', scene);
-                footGroup.position = new BABYLON.Vector3(0, -0.5 * scale, 0.05 * scale);
+                footGroup.position.y = -0.55 * scale;
                 footGroup.parent = lowerLeg;
 
-                const ankle = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Ankle', {
-                    diameter: 0.16 * scale
+                const ankle = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Ankle', {
+                    width: 0.12 * scale, height: 0.1 * scale, depth: 0.15 * scale
                 }, scene);
-                ankle.position = new BABYLON.Vector3(0, 0.05 * scale, 0);
                 ankle.parent = footGroup;
                 ankle.material = metalMat;
 
                 const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
-                    width: 0.22 * scale, height: 0.08 * scale, depth: 0.38 * scale
+                    width: 0.2 * scale, height: 0.06 * scale, depth: 0.35 * scale
                 }, scene);
                 foot.position = new BABYLON.Vector3(0, -0.05 * scale, 0.08 * scale);
                 foot.parent = footGroup;
@@ -2367,87 +2325,50 @@
             const leftArm = createArm('left');
             const rightArm = createArm('right');
 
-            // Legs - Lightning Bolt Digitigrade (medium support mech)
+            // Legs
             function createLeg(side) {
                 const sign = side === 'left' ? -1 : 1;
                 const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
-                legGroup.position = new BABYLON.Vector3(sign * 0.55 * scale, -0.2 * scale, 0);
                 legGroup.parent = pelvis;
 
-                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.34 * scale }, scene);
-                hip.position = new BABYLON.Vector3(0, 0, 0);
+                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.3 * scale }, scene);
+                hip.position = new BABYLON.Vector3(sign * 0.6 * scale, -0.2 * scale, 0);
                 hip.parent = legGroup;
                 hip.material = darkMat;
 
-                // Thigh - SHORT, angled steeply forward
-                const upperLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Upper', {
-                    width: 0.28 * scale, height: 0.6 * scale, depth: 0.32 * scale
+                const upperLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Upper', {
+                    diameterTop: 0.22 * scale, diameterBottom: 0.18 * scale, height: 1.0 * scale
                 }, scene);
-                upperLeg.rotation.x = 0.85;  // Steep forward angle
-                upperLeg.position = new BABYLON.Vector3(0, -0.3 * scale, 0.38 * scale);
-                upperLeg.parent = legGroup;
+                upperLeg.rotation.x = 0.5;
+                upperLeg.position = new BABYLON.Vector3(0, -0.5 * scale, 0.25 * scale);
+                upperLeg.parent = hip;
                 upperLeg.material = primaryMat;
 
-                // Thigh armor
-                const thighArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ThighArmor', {
-                    width: 0.3 * scale, height: 0.45 * scale, depth: 0.12 * scale
-                }, scene);
-                thighArmor.position = new BABYLON.Vector3(0, 0, 0.2 * scale);
-                thighArmor.parent = upperLeg;
-                thighArmor.material = secondaryMat;
-
-                // Knee - forward-pointing joint
-                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.3 * scale }, scene);
-                knee.position = new BABYLON.Vector3(0, -0.35 * scale, 0);
+                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.2 * scale }, scene);
+                knee.position.y = -0.55 * scale;
                 knee.parent = upperLeg;
                 knee.material = metalMat;
 
-                // Knee cap pointing forward
-                const kneeCap = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'KneeCap', {
-                    width: 0.22 * scale, height: 0.2 * scale, depth: 0.14 * scale
+                const lowerLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Lower', {
+                    diameterTop: 0.18 * scale, diameterBottom: 0.12 * scale, height: 1.1 * scale
                 }, scene);
-                kneeCap.position = new BABYLON.Vector3(0, 0, 0.18 * scale);
-                kneeCap.parent = knee;
-                kneeCap.material = accentMat;
-
-                // Lower leg - bulkier "boot" angled backward
-                const lowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Lower', {
-                    width: 0.38 * scale, height: 1.0 * scale, depth: 0.42 * scale
-                }, scene);
-                lowerLeg.rotation.x = -0.75;  // Backward angle
-                lowerLeg.position = new BABYLON.Vector3(0, -0.58 * scale, -0.2 * scale);
+                lowerLeg.rotation.x = -0.65;
+                lowerLeg.position = new BABYLON.Vector3(0, -0.55 * scale, 0);
                 lowerLeg.parent = knee;
                 lowerLeg.material = primaryMat;
 
-                // Calf bulge (actuator housing)
-                const calfBulge = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Calf', {
-                    width: 0.34 * scale, height: 0.55 * scale, depth: 0.2 * scale
-                }, scene);
-                calfBulge.position = new BABYLON.Vector3(0, 0.12 * scale, -0.28 * scale);
-                calfBulge.parent = lowerLeg;
-                calfBulge.material = secondaryMat;
-
-                // Shin armor
-                const shinArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ShinArmor', {
-                    width: 0.34 * scale, height: 0.7 * scale, depth: 0.12 * scale
-                }, scene);
-                shinArmor.position = new BABYLON.Vector3(0, 0, 0.24 * scale);
-                shinArmor.parent = lowerLeg;
-                shinArmor.material = secondaryMat;
-
                 const footGroup = new BABYLON.TransformNode(name + '_' + side + 'FootGroup', scene);
-                footGroup.position = new BABYLON.Vector3(0, -0.55 * scale, 0.08 * scale);
+                footGroup.position.y = -0.6 * scale;
                 footGroup.parent = lowerLeg;
 
-                const ankle = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Ankle', {
-                    diameter: 0.2 * scale
+                const ankle = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Ankle', {
+                    width: 0.14 * scale, height: 0.12 * scale, depth: 0.18 * scale
                 }, scene);
-                ankle.position = new BABYLON.Vector3(0, 0.05 * scale, 0);
                 ankle.parent = footGroup;
                 ankle.material = metalMat;
 
                 const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
-                    width: 0.28 * scale, height: 0.1 * scale, depth: 0.45 * scale
+                    width: 0.25 * scale, height: 0.08 * scale, depth: 0.4 * scale
                 }, scene);
                 foot.position = new BABYLON.Vector3(0, -0.06 * scale, 0.1 * scale);
                 foot.parent = footGroup;
@@ -2683,87 +2604,50 @@
             rightPod.parent = torsoCore;
             rightPod.material = darkMat;
 
-            // Legs - Lightning Bolt Digitigrade (melee mech - sturdy for combat)
+            // Legs - chicken walker style, fast
             function createLeg(side) {
                 const sign = side === 'left' ? -1 : 1;
                 const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
-                legGroup.position = new BABYLON.Vector3(sign * 0.5 * scale, -0.18 * scale, 0);
                 legGroup.parent = pelvis;
 
-                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.32 * scale }, scene);
-                hip.position = new BABYLON.Vector3(0, 0, 0);
+                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.28 * scale }, scene);
+                hip.position = new BABYLON.Vector3(sign * 0.55 * scale, -0.2 * scale, 0);
                 hip.parent = legGroup;
                 hip.material = darkMat;
 
-                // Thigh - SHORT, angled steeply forward
-                const upperLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Upper', {
-                    width: 0.26 * scale, height: 0.6 * scale, depth: 0.3 * scale
+                const upperLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Upper', {
+                    diameterTop: 0.2 * scale, diameterBottom: 0.16 * scale, height: 0.95 * scale
                 }, scene);
-                upperLeg.rotation.x = 0.85;  // Steep forward angle
-                upperLeg.position = new BABYLON.Vector3(0, -0.28 * scale, 0.36 * scale);
-                upperLeg.parent = legGroup;
+                upperLeg.rotation.x = 0.55;
+                upperLeg.position = new BABYLON.Vector3(0, -0.48 * scale, 0.25 * scale);
+                upperLeg.parent = hip;
                 upperLeg.material = primaryMat;
 
-                // Thigh armor
-                const thighArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ThighArmor', {
-                    width: 0.28 * scale, height: 0.45 * scale, depth: 0.12 * scale
-                }, scene);
-                thighArmor.position = new BABYLON.Vector3(0, 0, 0.18 * scale);
-                thighArmor.parent = upperLeg;
-                thighArmor.material = secondaryMat;
-
-                // Knee - forward-pointing joint
-                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.28 * scale }, scene);
-                knee.position = new BABYLON.Vector3(0, -0.35 * scale, 0);
+                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.18 * scale }, scene);
+                knee.position.y = -0.52 * scale;
                 knee.parent = upperLeg;
                 knee.material = metalMat;
 
-                // Knee cap pointing forward
-                const kneeCap = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'KneeCap', {
-                    width: 0.2 * scale, height: 0.18 * scale, depth: 0.12 * scale
+                const lowerLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Lower', {
+                    diameterTop: 0.16 * scale, diameterBottom: 0.11 * scale, height: 1.0 * scale
                 }, scene);
-                kneeCap.position = new BABYLON.Vector3(0, 0, 0.16 * scale);
-                kneeCap.parent = knee;
-                kneeCap.material = accentMat;
-
-                // Lower leg - bulkier "boot" angled backward
-                const lowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Lower', {
-                    width: 0.35 * scale, height: 0.95 * scale, depth: 0.4 * scale
-                }, scene);
-                lowerLeg.rotation.x = -0.75;  // Backward angle
-                lowerLeg.position = new BABYLON.Vector3(0, -0.55 * scale, -0.18 * scale);
+                lowerLeg.rotation.x = -0.7;
+                lowerLeg.position = new BABYLON.Vector3(0, -0.52 * scale, 0);
                 lowerLeg.parent = knee;
                 lowerLeg.material = primaryMat;
 
-                // Calf bulge (actuator housing)
-                const calfBulge = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Calf', {
-                    width: 0.31 * scale, height: 0.5 * scale, depth: 0.18 * scale
-                }, scene);
-                calfBulge.position = new BABYLON.Vector3(0, 0.1 * scale, -0.25 * scale);
-                calfBulge.parent = lowerLeg;
-                calfBulge.material = secondaryMat;
-
-                // Shin armor
-                const shinArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ShinArmor', {
-                    width: 0.31 * scale, height: 0.65 * scale, depth: 0.12 * scale
-                }, scene);
-                shinArmor.position = new BABYLON.Vector3(0, 0, 0.22 * scale);
-                shinArmor.parent = lowerLeg;
-                shinArmor.material = secondaryMat;
-
                 const footGroup = new BABYLON.TransformNode(name + '_' + side + 'FootGroup', scene);
-                footGroup.position = new BABYLON.Vector3(0, -0.52 * scale, 0.06 * scale);
+                footGroup.position.y = -0.55 * scale;
                 footGroup.parent = lowerLeg;
 
-                const ankle = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Ankle', {
-                    diameter: 0.18 * scale
+                const ankle = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Ankle', {
+                    width: 0.13 * scale, height: 0.11 * scale, depth: 0.16 * scale
                 }, scene);
-                ankle.position = new BABYLON.Vector3(0, 0.04 * scale, 0);
                 ankle.parent = footGroup;
                 ankle.material = metalMat;
 
                 const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
-                    width: 0.25 * scale, height: 0.09 * scale, depth: 0.42 * scale
+                    width: 0.22 * scale, height: 0.07 * scale, depth: 0.38 * scale
                 }, scene);
                 foot.position = new BABYLON.Vector3(0, -0.06 * scale, 0.1 * scale);
                 foot.parent = footGroup;
@@ -2906,24 +2790,24 @@
         }
 
         function animateLeg(leg, phase, scale) {
-            // Lightning bolt digitigrade animation
-            const swing = phase * 0.2;  // Slightly reduced swing for new geometry
-            // Upper leg swings forward/back (base position is steeply forward-tilted at 0.85)
-            leg.upperLeg.rotation.x = 0.85 + swing;
-            // Lower leg bends backward more when stepping (base is -0.75)
-            const bend = (phase > 0 ? phase : 0) * 0.3;
-            leg.lowerLeg.rotation.x = -0.75 - bend;
+            // Chicken-walker animation with backward-bent knees
+            const swing = phase * 0.25;
+            // Upper leg swings forward/back (base position is forward-tilted)
+            leg.upperLeg.rotation.x = 0.5 + swing;
+            // Lower leg bends backward more when stepping
+            const bend = (phase > 0 ? phase : 0) * 0.35;
+            leg.lowerLeg.rotation.x = -0.65 - bend;
             // Foot stays relatively flat
-            leg.foot.rotation.x = 0.15;
+            leg.foot.rotation.x = 0.1;
         }
 
         function dampLegs(mech, dt) {
             const d = 3 * dt;
             [mech.leftLeg, mech.rightLeg].forEach(leg => {
-                // Return to lightning bolt digitigrade stance
-                leg.upperLeg.rotation.x = BABYLON.Scalar.Lerp(leg.upperLeg.rotation.x, 0.85, d);
-                leg.lowerLeg.rotation.x = BABYLON.Scalar.Lerp(leg.lowerLeg.rotation.x, -0.75, d);
-                leg.foot.rotation.x = BABYLON.Scalar.Lerp(leg.foot.rotation.x, 0.15, d);
+                // Return to chicken-walker stance
+                leg.upperLeg.rotation.x = BABYLON.Scalar.Lerp(leg.upperLeg.rotation.x, 0.5, d);
+                leg.lowerLeg.rotation.x = BABYLON.Scalar.Lerp(leg.lowerLeg.rotation.x, -0.65, d);
+                leg.foot.rotation.x = BABYLON.Scalar.Lerp(leg.foot.rotation.x, 0.1, d);
             });
         }
 
@@ -4314,35 +4198,6 @@
             }
         }
 
-        // Helper: find battle center (average position of all alive mechs)
-        function getBattleCenter(mechs) {
-            if (mechs.length === 0) return new BABYLON.Vector3(0, 2, 0);
-            let sum = new BABYLON.Vector3(0, 0, 0);
-            mechs.forEach(m => sum.addInPlace(m.pelvis.getAbsolutePosition()));
-            return sum.scale(1 / mechs.length);
-        }
-
-        // Helper: find closest enemy pair for dramatic shots
-        function getClosestEnemyPair(mechs) {
-            let bestDist = Infinity;
-            let mechA = null, mechB = null;
-            for (let i = 0; i < mechs.length; i++) {
-                for (let j = i + 1; j < mechs.length; j++) {
-                    if (mechs[i].isPlayer === mechs[j].isPlayer) continue;
-                    const d = BABYLON.Vector3.Distance(
-                        mechs[i].pelvis.getAbsolutePosition(),
-                        mechs[j].pelvis.getAbsolutePosition()
-                    );
-                    if (d < bestDist) {
-                        bestDist = d;
-                        mechA = mechs[i];
-                        mechB = mechs[j];
-                    }
-                }
-            }
-            return { mechA, mechB, distance: bestDist };
-        }
-
         function updateCinematicCamera(dt) {
             if (!cinematicEnabled) return;
 
@@ -4358,42 +4213,45 @@
                 state.target = aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
             }
 
-            const battleCenter = getBattleCenter(aliveMechs);
-            const closestPair = getClosestEnemyPair(aliveMechs);
-
             // Mode transitions
             if (state.transitionTime > state.modeDuration) {
                 state.transitionTime = 0;
 
-                // Pick next mode - prioritize multi-mech views
+                // Pick next mode with weighted random
                 const roll = Math.random();
-                if (roll < 0.25) {
-                    state.mode = 'highOrbit';  // High angle orbit around battle
-                    state.modeDuration = 6 + Math.random() * 3;
-                    state.orbitRadius = 16 + Math.random() * 6;
-                    state.orbitHeight = 12 + Math.random() * 5;
-                } else if (roll < 0.45) {
-                    state.mode = 'overShoulder';  // Behind mech looking at target
-                    state.modeDuration = 4 + Math.random() * 2;
-                    state.target = aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
-                } else if (roll < 0.6) {
-                    state.mode = 'lowBetween';  // Low angle between fighting mechs
-                    state.modeDuration = 4 + Math.random() * 2;
-                } else if (roll < 0.75) {
-                    state.mode = 'sweep';  // Panoramic sweep
-                    state.modeDuration = 7 + Math.random() * 4;
-                    state.sweepPhase = Math.random() * Math.PI;
-                } else if (roll < 0.9) {
-                    state.mode = 'chase';  // Following behind moving mech
-                    state.modeDuration = 5 + Math.random() * 2;
-                    // Pick a mech that's moving toward enemy
-                    const movingMechs = aliveMechs.filter(m => m.isWalking);
-                    state.target = movingMechs.length > 0
-                        ? movingMechs[Math.floor(Math.random() * movingMechs.length)]
-                        : aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
-                } else {
-                    state.mode = 'wideShot';  // Wide establishing shot
+                if (roll < 0.35) {
+                    state.mode = 'orbit';
                     state.modeDuration = 5 + Math.random() * 3;
+                    state.orbitRadius = 10 + Math.random() * 8;
+                    state.orbitHeight = 5 + Math.random() * 6;
+                } else if (roll < 0.6) {
+                    state.mode = 'track';
+                    state.modeDuration = 4 + Math.random() * 2;
+                    // Pick a new random target
+                    state.target = aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
+                } else if (roll < 0.85) {
+                    state.mode = 'sweep';
+                    state.modeDuration = 6 + Math.random() * 4;
+                    state.sweepPhase = 0;
+                } else {
+                    state.mode = 'action';
+                    state.modeDuration = 3 + Math.random() * 2;
+                    // Find mech with most enemies nearby for action shot
+                    let bestMech = state.target;
+                    let maxEnemies = 0;
+                    aliveMechs.forEach(mech => {
+                        const enemies = aliveMechs.filter(m => m.isPlayer !== mech.isPlayer);
+                        let nearby = 0;
+                        enemies.forEach(e => {
+                            const d = BABYLON.Vector3.Distance(mech.pelvis.getAbsolutePosition(), e.pelvis.getAbsolutePosition());
+                            if (d < 15) nearby++;
+                        });
+                        if (nearby > maxEnemies) {
+                            maxEnemies = nearby;
+                            bestMech = mech;
+                        }
+                    });
+                    state.target = bestMech;
                 }
             }
 
@@ -4403,102 +4261,55 @@
             let lookAt;
 
             switch (state.mode) {
-                case 'highOrbit': {
-                    // High angle orbit around battle center (shows all mechs)
-                    state.orbitAngle += dt * 0.3;
+                case 'orbit':
+                    // Smooth orbit around target
+                    state.orbitAngle += dt * 0.4;  // Slow rotation
                     cameraPos = new BABYLON.Vector3(
-                        battleCenter.x + Math.cos(state.orbitAngle) * state.orbitRadius,
-                        state.orbitHeight,
-                        battleCenter.z + Math.sin(state.orbitAngle) * state.orbitRadius * 0.6
+                        targetPos.x + Math.cos(state.orbitAngle) * state.orbitRadius,
+                        targetPos.y + state.orbitHeight,
+                        targetPos.z + Math.sin(state.orbitAngle) * state.orbitRadius
                     );
-                    lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
+                    lookAt = targetPos.add(new BABYLON.Vector3(0, 2, 0));
                     break;
-                }
 
-                case 'overShoulder': {
-                    // Over-the-shoulder looking toward target's enemy
-                    const enemy = state.target.ai.target;
-                    const enemyPos = enemy ? enemy.pelvis.getAbsolutePosition() : battleCenter;
-                    const toEnemy = enemyPos.subtract(targetPos).normalize();
-                    const perpendicular = new BABYLON.Vector3(-toEnemy.z, 0, toEnemy.x);
-                    const sideOS = Math.sin(state.transitionTime * 0.5) > 0 ? 1 : -1;
+                case 'track':
+                    // Over-the-shoulder tracking shot
+                    const forward = state.target.pelvis.getDirection(BABYLON.Vector3.Forward());
+                    const right = state.target.pelvis.getDirection(BABYLON.Vector3.Right());
                     cameraPos = targetPos
-                        .add(toEnemy.scale(-3.5))      // Behind
-                        .add(perpendicular.scale(1.8 * sideOS))  // To the side
+                        .add(forward.scale(-4))  // Behind
+                        .add(right.scale(2))     // To the side
                         .add(new BABYLON.Vector3(0, 3.5, 0));  // Above
-                    // Look toward enemy (shows both mechs)
-                    lookAt = targetPos.add(toEnemy.scale(6)).add(new BABYLON.Vector3(0, 2, 0));
+                    // Look at target's front
+                    lookAt = targetPos.add(forward.scale(5)).add(new BABYLON.Vector3(0, 2.5, 0));
                     break;
-                }
 
-                case 'lowBetween': {
-                    // Low angle positioned between two fighting mechs
-                    if (closestPair.mechA && closestPair.mechB) {
-                        const posA = closestPair.mechA.pelvis.getAbsolutePosition();
-                        const posB = closestPair.mechB.pelvis.getAbsolutePosition();
-                        const midpoint = posA.add(posB).scale(0.5);
-                        const axis = posB.subtract(posA).normalize();
-                        const perpAxis = new BABYLON.Vector3(-axis.z, 0, axis.x);
-                        // Position to the side, low down
-                        const offsetDist = Math.min(closestPair.distance * 0.6, 5);
-                        cameraPos = midpoint
-                            .add(perpAxis.scale(offsetDist))
-                            .add(new BABYLON.Vector3(0, 1.2, 0));  // Low angle
-                        lookAt = midpoint.add(new BABYLON.Vector3(0, 2.5, 0));
-                    } else {
-                        // Fallback to battle center
-                        cameraPos = battleCenter.add(new BABYLON.Vector3(5, 1.5, 5));
-                        lookAt = battleCenter.add(new BABYLON.Vector3(0, 2, 0));
-                    }
-                    break;
-                }
-
-                case 'sweep': {
-                    // Panoramic sweep - high angle showing battlefield
-                    state.sweepPhase += dt * 0.12;
+                case 'sweep':
+                    // Panoramic sweep across the battlefield
+                    state.sweepPhase += dt * 0.15;
                     const sweepAngle = state.sweepPhase * Math.PI * 2;
-                    const sweepRadius = 20 + Math.sin(state.sweepPhase * 1.5) * 4;
-                    const sweepHeight = 10 + Math.sin(state.sweepPhase * 2) * 3;
+                    const sweepRadius = 18 + Math.sin(state.sweepPhase * 2) * 5;
+                    const sweepHeight = 8 + Math.sin(state.sweepPhase * 3) * 4;
                     cameraPos = new BABYLON.Vector3(
                         Math.cos(sweepAngle) * sweepRadius,
                         sweepHeight,
                         Math.sin(sweepAngle) * sweepRadius * 0.5
                     );
-                    lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
+                    // Look at battle center or nearest mech
+                    lookAt = new BABYLON.Vector3(0, 3, 0);
                     break;
-                }
 
-                case 'chase': {
-                    // Chase cam - behind and slightly above moving mech
-                    const chaseTarget = state.target.ai.target;
-                    const chaseDir = chaseTarget
-                        ? chaseTarget.pelvis.getAbsolutePosition().subtract(targetPos).normalize()
-                        : new BABYLON.Vector3(state.target.isPlayer ? 1 : -1, 0, 0);
+                case 'action':
+                    // Low dramatic angle looking up at target
+                    const actionForward = state.target.pelvis.getDirection(BABYLON.Vector3.Forward());
+                    const actionRight = state.target.pelvis.getDirection(BABYLON.Vector3.Right());
+                    const actionSide = Math.sin(state.transitionTime * 2) > 0 ? 1 : -1;
                     cameraPos = targetPos
-                        .add(chaseDir.scale(-6))  // Behind
-                        .add(new BABYLON.Vector3(0, 4, 0));  // Above
-                    // Look ahead of the mech toward where it's going
-                    lookAt = targetPos.add(chaseDir.scale(8)).add(new BABYLON.Vector3(0, 2, 0));
+                        .add(actionForward.scale(3))
+                        .add(actionRight.scale(3 * actionSide))
+                        .add(new BABYLON.Vector3(0, 1.5, 0));  // Low angle
+                    lookAt = targetPos.add(new BABYLON.Vector3(0, 3.5, 0));  // Look up at torso
                     break;
-                }
-
-                case 'wideShot': {
-                    // Wide establishing shot from corner, high angle
-                    const corner = state.transitionTime < state.modeDuration / 2 ? 1 : -1;
-                    cameraPos = new BABYLON.Vector3(
-                        corner * 22,
-                        14,
-                        8 * Math.sin(state.transitionTime * 0.3)
-                    );
-                    lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
-                    break;
-                }
-
-                default: {
-                    // Fallback
-                    cameraPos = new BABYLON.Vector3(0, 15, 15);
-                    lookAt = battleCenter;
-                }
             }
 
             // Smooth camera movement

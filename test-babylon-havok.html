@@ -188,8 +188,8 @@
         <div id="debugLogs"></div>
     </div>
 
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="https://cdn.babylonjs.com/v9.4.0/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/v9.4.0/havok/HavokPhysics_umd.js"></script>
 
     <script>
         // Logging
@@ -1917,14 +1917,25 @@
 
             const sway = Math.sin(cycle) * 0.025;
 
-            // Walking force - physics engine integrates force, don't multiply by dt
-            mech.pelvisAggregate.body.applyForce(
-                new BABYLON.Vector3(mech.walkDirection * 120, 0, 0),
-                mech.pelvis.getAbsolutePosition()
-            );
+            // Get pelvis facing direction from its rotation
+            const body = mech.pelvisAggregate.body;
+            const quat = body.transformNode.rotationQuaternion;
+            let forwardDir = new BABYLON.Vector3(1, 0, 0);  // Default forward is +X
+            if (quat) {
+                // Get the forward vector from pelvis rotation (local +X in world space)
+                const rotMatrix = new BABYLON.Matrix();
+                quat.toRotationMatrix(rotMatrix);
+                forwardDir = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
+                forwardDir.y = 0;  // Keep movement horizontal
+                forwardDir.normalize();
+            }
 
-            const angVel = mech.pelvisAggregate.body.getAngularVelocity();
-            mech.pelvisAggregate.body.setAngularVelocity(
+            // Walking force in pelvis facing direction
+            const walkForce = forwardDir.scale(mech.walkDirection * 120);
+            body.applyForce(walkForce, mech.pelvis.getAbsolutePosition());
+
+            const angVel = body.getAngularVelocity();
+            body.setAngularVelocity(
                 new BABYLON.Vector3(angVel.x * 0.9, angVel.y * 0.9, sway * 2)
             );
         }
@@ -2334,32 +2345,49 @@
                 mech.ai.strafeDir = 0;
             }
 
-            // Apply movement based on state
+            // Get pelvis forward direction for movement
+            const pelvisQuat = body.transformNode.rotationQuaternion;
+            let pelvisForward = new BABYLON.Vector3(1, 0, 0);
+            let pelvisRight = new BABYLON.Vector3(0, 0, 1);
+            if (pelvisQuat) {
+                const rotMatrix = new BABYLON.Matrix();
+                pelvisQuat.toRotationMatrix(rotMatrix);
+                pelvisForward = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
+                pelvisForward.y = 0;
+                pelvisForward.normalize();
+                pelvisRight = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
+                pelvisRight.y = 0;
+                pelvisRight.normalize();
+            }
+
+            // Apply movement based on state - mech moves in pelvis facing direction
             // Note: applyForce() is integrated by physics engine, don't multiply by dt
             let forceApplied = new BABYLON.Vector3(0, 0, 0);
             switch (mech.ai.state) {
                 case 'advancing':
                     mech.isWalking = true;
-                    forceApplied = new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce, 0, 0);
+                    mech.walkDirection = 1;  // Forward
+                    forceApplied = pelvisForward.scale(AI_CONFIG.moveForce);
                     body.applyForce(forceApplied, myPos);
                     break;
 
                 case 'retreating':
                     mech.isWalking = true;
-                    forceApplied = new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 1.2, 0, 0);
+                    mech.walkDirection = -1;  // Backward
+                    forceApplied = pelvisForward.scale(-AI_CONFIG.moveForce * 1.2);
                     body.applyForce(forceApplied, myPos);
                     break;
 
                 case 'strafing':
                     mech.isWalking = true;
-                    // Strafe perpendicular to target
-                    forceApplied = new BABYLON.Vector3(0, 0, mech.ai.strafeDir * AI_CONFIG.strafeForce);
+                    // Strafe perpendicular to pelvis facing (sideways)
+                    forceApplied = pelvisRight.scale(mech.ai.strafeDir * AI_CONFIG.strafeForce);
                     body.applyForce(forceApplied, myPos);
-                    // Small adjustment toward ideal range
+                    // Small forward/back adjustment toward ideal range
                     if (distance > AI_CONFIG.idealRange + 1) {
-                        body.applyForce(new BABYLON.Vector3(toTarget.x * AI_CONFIG.moveForce * 0.3, 0, 0), myPos);
+                        body.applyForce(pelvisForward.scale(AI_CONFIG.moveForce * 0.3), myPos);
                     } else if (distance < AI_CONFIG.idealRange - 1) {
-                        body.applyForce(new BABYLON.Vector3(-toTarget.x * AI_CONFIG.moveForce * 0.3, 0, 0), myPos);
+                        body.applyForce(pelvisForward.scale(-AI_CONFIG.moveForce * 0.3), myPos);
                     }
                     break;
 
@@ -2367,13 +2395,13 @@
                     // Small adjustments to stay at ideal range
                     if (distance > AI_CONFIG.idealRange + 2) {
                         mech.isWalking = true;
-                        mech.walkDirection = toTarget.x > 0 ? 1 : -1;
-                        forceApplied = new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 0.5, 0, 0);
+                        mech.walkDirection = 1;
+                        forceApplied = pelvisForward.scale(AI_CONFIG.moveForce * 0.5);
                         body.applyForce(forceApplied, myPos);
                     } else if (distance < AI_CONFIG.idealRange - 2) {
                         mech.isWalking = true;
-                        mech.walkDirection = toTarget.x > 0 ? -1 : 1;
-                        forceApplied = new BABYLON.Vector3(mech.walkDirection * AI_CONFIG.moveForce * 0.5, 0, 0);
+                        mech.walkDirection = -1;
+                        forceApplied = pelvisForward.scale(-AI_CONFIG.moveForce * 0.5);
                         body.applyForce(forceApplied, myPos);
                     } else {
                         mech.isWalking = false;

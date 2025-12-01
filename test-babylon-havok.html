@@ -2672,7 +2672,11 @@
             if (mech.recoilRecovery < 0) mech.recoilRecovery = 0;
 
             const arm = mech.lastFiredArm === 'left' ? mech.leftArm : mech.rightArm;
-            arm.armGroup.rotation.x = -mech.recoilRecovery * 0.45;
+            // Handle different arm structures: armGroup (Mad Cat, Dire Wolf) or shoulder (others)
+            const armNode = arm.armGroup || arm.shoulder;
+            if (armNode) {
+                armNode.rotation.x = -mech.recoilRecovery * 0.45;
+            }
             mech.torso.rotation.x = Math.max(mech.torso.rotation.x, -mech.recoilRecovery * 0.08);
         }
 

@@ -391,7 +391,9 @@
             crate: 'https://playground.babylonjs.com/textures/crate.png',
             wood: 'https://playground.babylonjs.com/textures/wood.jpg',
             // Misc
-            distortion: 'https://playground.babylonjs.com/textures/distortion.png'
+            distortion: 'https://playground.babylonjs.com/textures/distortion.png',
+            // Sky
+            skybox: 'https://playground.babylonjs.com/textures/skybox'
         };
 
         // Global texture cache
@@ -487,7 +489,7 @@
 
         function createScene() {
             const scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color3(0.06, 0.06, 0.1);
+            scene.clearColor = new BABYLON.Color3(0.5, 0.6, 0.75);  // Sky blue fallback
 
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
             scene.enablePhysics(new BABYLON.Vector3(0, -18, 0), havokPlugin);
@@ -523,7 +525,7 @@
                 new BABYLON.Vector3(0, 3, 0), scene);
             camera.attachControl(document.getElementById('renderCanvas'), true);
             camera.lowerRadiusLimit = 10;
-            camera.upperRadiusLimit = 50;
+            camera.upperRadiusLimit = 120;  // Allow zooming out to see environment
             camera.wheelPrecision = 30;
 
             // Lighting - multiple sources for better illumination
@@ -558,10 +560,10 @@
             rightPoint.diffuse = new BABYLON.Color3(1.0, 0.9, 0.85);
             rightPoint.range = 25;
 
-            // Fog
-            scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
-            scene.fogDensity = 0.008;
-            scene.fogColor = new BABYLON.Color3(0.08, 0.08, 0.12);
+            // Fog - adjusted for distant mountains
+            scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+            scene.fogDensity = 0.006;
+            scene.fogColor = new BABYLON.Color3(0.55, 0.65, 0.75);  // Blue-ish haze to match sky
 
             createGround(scene);
             createWalls(scene);
@@ -595,11 +597,21 @@
         }
 
         function createGround(scene) {
+            // === SKYBOX ===
+            const skybox = BABYLON.MeshBuilder.CreateBox('skyBox', { size: 1000 }, scene);
+            const skyboxMaterial = new BABYLON.StandardMaterial('skyBoxMat', scene);
+            skyboxMaterial.backFaceCulling = false;
+            skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(TEXTURE_URLS.skybox, scene);
+            skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+            skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+            skybox.material = skyboxMaterial;
+
+            // === ARENA GROUND (with physics) ===
             const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 20 }, scene);
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
-            // Use grass texture with tint
             mat.diffuseTexture = TEXTURES.grass;
-            mat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.6);  // Slight tint
+            mat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.6);
             mat.bumpTexture = TEXTURES.grassNormal;
             mat.bumpTexture.level = 0.8;
             mat.specularColor = new BABYLON.Color3(0.08, 0.08, 0.06);
@@ -608,7 +620,26 @@
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
 
-            // Rock material with texture
+            // === EXTENDED GROUND (horizon, no physics) ===
+            const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
+                width: 800, height: 800
+            }, scene);
+            horizonGround.position.y = -0.1;  // Slightly below arena
+            const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
+            // Clone grass texture for horizon with different tiling
+            const horizonGrass = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
+            horizonGrass.uScale = 80;
+            horizonGrass.vScale = 80;
+            horizonMat.diffuseTexture = horizonGrass;
+            horizonMat.diffuseColor = new BABYLON.Color3(0.5, 0.55, 0.45);  // Slightly darker/desaturated
+            horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
+            horizonMat.fogEnabled = true;  // Let fog blend it to horizon
+            horizonGround.material = horizonMat;
+
+            // === DISTANT MOUNTAINS ===
+            createMountains(scene);
+
+            // === ARENA ROCKS ===
             const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
             rockMat.diffuseTexture = TEXTURES.rock;
             rockMat.bumpTexture = TEXTURES.rockNormal;
@@ -616,7 +647,6 @@
             rockMat.diffuseColor = new BABYLON.Color3(0.6, 0.55, 0.5);
             rockMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
 
-            // Terrain details - rocks with texture
             for (let i = 0; i < 6; i++) {
                 const rock = BABYLON.MeshBuilder.CreateBox('rock' + i, {
                     width: 0.6 + Math.random() * 0.8,
@@ -627,6 +657,92 @@
                 rock.rotation.y = Math.random() * Math.PI;
                 rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+            }
+        }
+
+        function createMountains(scene) {
+            // Mountain material - dark silhouette that blends with fog
+            const mountainMat = new BABYLON.StandardMaterial('mountainMat', scene);
+            mountainMat.diffuseColor = new BABYLON.Color3(0.15, 0.18, 0.22);
+            mountainMat.specularColor = new BABYLON.Color3(0, 0, 0);
+            mountainMat.emissiveColor = new BABYLON.Color3(0.03, 0.04, 0.05);
+            mountainMat.fogEnabled = true;
+
+            // Create mountain ranges around the arena
+            const mountainRanges = [
+                { angle: 0, distance: 150, count: 8 },        // Front
+                { angle: Math.PI, distance: 150, count: 8 },  // Back
+                { angle: Math.PI/2, distance: 120, count: 6 },  // Right
+                { angle: -Math.PI/2, distance: 120, count: 6 }, // Left
+                // Corner fills
+                { angle: Math.PI/4, distance: 140, count: 4 },
+                { angle: 3*Math.PI/4, distance: 140, count: 4 },
+                { angle: -Math.PI/4, distance: 140, count: 4 },
+                { angle: -3*Math.PI/4, distance: 140, count: 4 }
+            ];
+
+            mountainRanges.forEach((range, rangeIdx) => {
+                for (let i = 0; i < range.count; i++) {
+                    // Randomize position along the range
+                    const spreadAngle = (i / range.count - 0.5) * 0.8;
+                    const finalAngle = range.angle + spreadAngle;
+                    const dist = range.distance + (Math.random() - 0.5) * 40;
+
+                    const x = Math.sin(finalAngle) * dist;
+                    const z = Math.cos(finalAngle) * dist;
+
+                    // Create jagged mountain peak using merged cones
+                    const baseHeight = 25 + Math.random() * 35;
+                    const baseWidth = 20 + Math.random() * 25;
+
+                    // Main peak
+                    const peak = BABYLON.MeshBuilder.CreateCylinder('mountain_' + rangeIdx + '_' + i, {
+                        diameterTop: 0,
+                        diameterBottom: baseWidth,
+                        height: baseHeight,
+                        tessellation: 6  // Hexagonal for more angular look
+                    }, scene);
+                    peak.position = new BABYLON.Vector3(x, baseHeight / 2 - 5, z);
+                    peak.rotation.y = Math.random() * Math.PI;
+                    peak.material = mountainMat;
+
+                    // Secondary peaks for more interesting silhouette
+                    if (Math.random() > 0.3) {
+                        const secondaryHeight = baseHeight * (0.5 + Math.random() * 0.3);
+                        const secondary = BABYLON.MeshBuilder.CreateCylinder('mountain_sec_' + rangeIdx + '_' + i, {
+                            diameterTop: 0,
+                            diameterBottom: baseWidth * 0.6,
+                            height: secondaryHeight,
+                            tessellation: 5
+                        }, scene);
+                        secondary.position = new BABYLON.Vector3(
+                            x + (Math.random() - 0.5) * baseWidth * 0.4,
+                            secondaryHeight / 2 - 5,
+                            z + (Math.random() - 0.5) * baseWidth * 0.4
+                        );
+                        secondary.rotation.y = Math.random() * Math.PI;
+                        secondary.material = mountainMat;
+                    }
+                }
+            });
+
+            // Add some very distant large mountains for depth
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const dist = 280 + Math.random() * 50;
+                const x = Math.sin(angle) * dist;
+                const z = Math.cos(angle) * dist;
+                const height = 60 + Math.random() * 40;
+                const width = 50 + Math.random() * 30;
+
+                const farMountain = BABYLON.MeshBuilder.CreateCylinder('farMountain_' + i, {
+                    diameterTop: 0,
+                    diameterBottom: width,
+                    height: height,
+                    tessellation: 6
+                }, scene);
+                farMountain.position = new BABYLON.Vector3(x, height / 2 - 10, z);
+                farMountain.material = mountainMat;
             }
         }
 

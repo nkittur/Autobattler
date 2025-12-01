@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.4</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.5</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
@@ -1934,20 +1934,41 @@
             const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
             const scale = 0.7;  // Smaller mech
 
+            // Materials with textures
             const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
-            primaryMat.diffuseColor = primary.scale(1.3);
+            primaryMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            primaryMat.diffuseTexture.uScale = 2;
+            primaryMat.diffuseTexture.vScale = 2;
+            primaryMat.diffuseColor = primary.scale(1.4);
+            primaryMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            primaryMat.bumpTexture.uScale = 2;
+            primaryMat.bumpTexture.vScale = 2;
+            primaryMat.bumpTexture.level = 0.5;
             primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            primaryMat.specularPower = 32;
 
             const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
-            secondaryMat.diffuseColor = secondary;
+            secondaryMat.diffuseTexture = TEXTURES.metal.clone();
+            secondaryMat.diffuseTexture.uScale = 2;
+            secondaryMat.diffuseTexture.vScale = 2;
+            secondaryMat.diffuseColor = secondary.scale(1.2);
             secondaryMat.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
 
             const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
             darkMat.diffuseColor = COLORS.darkMetal;
+            darkMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
 
             const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
-            metalMat.diffuseColor = COLORS.metal;
+            metalMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            metalMat.diffuseTexture.uScale = 3;
+            metalMat.diffuseTexture.vScale = 3;
+            metalMat.diffuseColor = COLORS.metal.scale(1.2);
+            metalMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            metalMat.bumpTexture.uScale = 3;
+            metalMat.bumpTexture.vScale = 3;
+            metalMat.bumpTexture.level = 0.4;
             metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+            metalMat.specularPower = 48;
 
             // Pelvis - smaller
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
@@ -2132,19 +2153,41 @@
             const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
             const scale = 0.85;
 
+            // Materials with textures
             const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
-            primaryMat.diffuseColor = primary.scale(1.2);
+            primaryMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            primaryMat.diffuseTexture.uScale = 2.5;
+            primaryMat.diffuseTexture.vScale = 2.5;
+            primaryMat.diffuseColor = primary.scale(1.3);
+            primaryMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            primaryMat.bumpTexture.uScale = 2.5;
+            primaryMat.bumpTexture.vScale = 2.5;
+            primaryMat.bumpTexture.level = 0.55;
             primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            primaryMat.specularPower = 32;
 
             const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
-            secondaryMat.diffuseColor = secondary;
+            secondaryMat.diffuseTexture = TEXTURES.metal.clone();
+            secondaryMat.diffuseTexture.uScale = 2;
+            secondaryMat.diffuseTexture.vScale = 2;
+            secondaryMat.diffuseColor = secondary.scale(1.2);
+            secondaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
             const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
             darkMat.diffuseColor = COLORS.darkMetal;
+            darkMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
 
             const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
-            metalMat.diffuseColor = COLORS.metal;
-            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+            metalMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            metalMat.diffuseTexture.uScale = 3;
+            metalMat.diffuseTexture.vScale = 3;
+            metalMat.diffuseColor = COLORS.metal.scale(1.2);
+            metalMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            metalMat.bumpTexture.uScale = 3;
+            metalMat.bumpTexture.vScale = 3;
+            metalMat.bumpTexture.level = 0.45;
+            metalMat.specularColor = new BABYLON.Color3(0.45, 0.45, 0.45);
+            metalMat.specularPower = 56;
 
             // Pelvis
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {

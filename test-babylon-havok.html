@@ -2906,24 +2906,24 @@
         }
 
         function animateLeg(leg, phase, scale) {
-            // Chicken-walker animation with backward-bent knees
-            const swing = phase * 0.25;
-            // Upper leg swings forward/back (base position is forward-tilted)
-            leg.upperLeg.rotation.x = 0.5 + swing;
-            // Lower leg bends backward more when stepping
-            const bend = (phase > 0 ? phase : 0) * 0.35;
-            leg.lowerLeg.rotation.x = -0.65 - bend;
+            // Lightning bolt digitigrade animation
+            const swing = phase * 0.2;  // Slightly reduced swing for new geometry
+            // Upper leg swings forward/back (base position is steeply forward-tilted at 0.85)
+            leg.upperLeg.rotation.x = 0.85 + swing;
+            // Lower leg bends backward more when stepping (base is -0.75)
+            const bend = (phase > 0 ? phase : 0) * 0.3;
+            leg.lowerLeg.rotation.x = -0.75 - bend;
             // Foot stays relatively flat
-            leg.foot.rotation.x = 0.1;
+            leg.foot.rotation.x = 0.15;
         }
 
         function dampLegs(mech, dt) {
             const d = 3 * dt;
             [mech.leftLeg, mech.rightLeg].forEach(leg => {
-                // Return to chicken-walker stance
-                leg.upperLeg.rotation.x = BABYLON.Scalar.Lerp(leg.upperLeg.rotation.x, 0.5, d);
-                leg.lowerLeg.rotation.x = BABYLON.Scalar.Lerp(leg.lowerLeg.rotation.x, -0.65, d);
-                leg.foot.rotation.x = BABYLON.Scalar.Lerp(leg.foot.rotation.x, 0.1, d);
+                // Return to lightning bolt digitigrade stance
+                leg.upperLeg.rotation.x = BABYLON.Scalar.Lerp(leg.upperLeg.rotation.x, 0.85, d);
+                leg.lowerLeg.rotation.x = BABYLON.Scalar.Lerp(leg.lowerLeg.rotation.x, -0.75, d);
+                leg.foot.rotation.x = BABYLON.Scalar.Lerp(leg.foot.rotation.x, 0.15, d);
             });
         }
 

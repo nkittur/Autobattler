@@ -1032,15 +1032,15 @@
             // Create a taller collision shape to represent the full mech standing height
             // The visual legs extend ~3 units below pelvis, so we use a tall box offset downward
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.5, 0),  // Center offset (shift down to cover legs)
+                new BABYLON.Vector3(0, -1.8, 0),  // Center offset lower for stability
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.8, 3.5, 0.9),  // Full standing height (wider)
+                new BABYLON.Vector3(2.0, 3.5, 1.0),  // Slightly wider base
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 75 });
-            pelvisBody.setAngularDamping(0.92);
+            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
             pelvisBody.setLinearDamping(0.25);
 
             // Set friction and restitution on the shape
@@ -1565,15 +1565,15 @@
             // Create a taller collision shape to represent the full mech standing height
             // Dire Wolf is bigger (scale 1.15), legs extend ~3.5 units below pelvis
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.7 * scale, 0),  // Center offset (shift down to cover legs)
+                new BABYLON.Vector3(0, -2.0 * scale, 0),  // Center offset lower for stability
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(2.0 * scale, 4.0 * scale, 1.0 * scale),  // Full standing height (wider)
+                new BABYLON.Vector3(2.2 * scale, 4.0 * scale, 1.1 * scale),  // Wider base
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 100 });
-            pelvisBody.setAngularDamping(0.93);
+            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
             pelvisBody.setLinearDamping(0.3);
 
             // Set friction and restitution on the shape
@@ -1946,15 +1946,15 @@
             pelvis.material = darkMat;
 
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.2, 0),
+                new BABYLON.Vector3(0, -1.5, 0),  // Lower center of mass
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.2 * scale, 2.8, 0.7 * scale),
+                new BABYLON.Vector3(1.4 * scale, 2.8, 0.8 * scale),  // Slightly wider
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 40 });
-            pelvisBody.setAngularDamping(0.90);
+            pelvisBody.setAngularDamping(0.97);  // Higher damping
             pelvisBody.setLinearDamping(0.20);
             pelvisShape.material = { friction: 0.1, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
@@ -2125,15 +2125,15 @@
             pelvis.material = darkMat;
 
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.3, 0),
+                new BABYLON.Vector3(0, -1.6, 0),  // Lower center of mass
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.5 * scale, 3.0, 0.8 * scale),
+                new BABYLON.Vector3(1.7 * scale, 3.0, 0.9 * scale),  // Wider base
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 60 });
-            pelvisBody.setAngularDamping(0.91);
+            pelvisBody.setAngularDamping(0.97);  // Higher damping
             pelvisBody.setLinearDamping(0.22);
             pelvisShape.material = { friction: 0.1, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
@@ -2313,15 +2313,15 @@
             pelvis.material = darkMat;
 
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.2, 0),
+                new BABYLON.Vector3(0, -1.5, 0),  // Lower center of mass
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.4 * scale, 2.9, 0.85 * scale),
+                new BABYLON.Vector3(1.6 * scale, 2.9, 0.95 * scale),  // Wider base
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 50 });
-            pelvisBody.setAngularDamping(0.90);
+            pelvisBody.setAngularDamping(0.97);  // Higher damping
             pelvisBody.setLinearDamping(0.18);
             pelvisShape.material = { friction: 0.1, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
@@ -2572,16 +2572,16 @@
             animateLeg(mech.leftLeg, leftPhase, mech.scale);
             animateLeg(mech.rightLeg, rightPhase, mech.scale);
 
-            // Body bob - dip down on each footfall (twice per cycle)
+            // Body bob - subtle dip on each footfall (twice per cycle)
             // Use absolute sine for double frequency, inverted for "stomp" feel
             const bobPhase = Math.abs(Math.sin(cycle));  // 0 at neutral, 1 at extremes
-            const bob = (1 - bobPhase) * 0.08 * mech.scale;  // Dip at footfalls
+            const bob = (1 - bobPhase) * 0.03 * mech.scale;  // Reduced dip for stability
 
-            // Side sway - shift toward planted foot
-            const sway = Math.sin(cycle) * 0.035;
+            // Side sway - subtle shift toward planted foot
+            const sway = Math.sin(cycle) * 0.02;  // Reduced for stability
 
-            // Forward/back rock - lean into the step
-            const rock = Math.sin(cycle) * 0.02;
+            // Forward/back rock - minimal lean
+            const rock = Math.sin(cycle) * 0.01;  // Reduced for stability
 
             // Get pelvis facing direction from its rotation
             const body = mech.pelvisAggregate.body;
@@ -2596,10 +2596,10 @@
                 forwardDir.normalize();
             }
 
-            // Apply body bob as a vertical impulse for weight feel
+            // Apply subtle body bob as a gentle impulse
             const linVel = body.getLinearVelocity();
-            const targetBobVel = -bob * 8;  // Downward velocity during dips
-            const bobCorrection = (targetBobVel - linVel.y) * 0.3;
+            const targetBobVel = -bob * 3;  // Reduced downward velocity
+            const bobCorrection = (targetBobVel - linVel.y) * 0.15;  // Gentler correction
             body.applyImpulse(
                 new BABYLON.Vector3(0, bobCorrection * mech.scale, 0),
                 mech.pelvis.getAbsolutePosition()
@@ -2612,9 +2612,9 @@
             const angVel = body.getAngularVelocity();
             body.setAngularVelocity(
                 new BABYLON.Vector3(
-                    angVel.x * 0.85 + rock * 2,  // Forward/back rock
-                    angVel.y * 0.9,
-                    sway * 2.5  // Side sway
+                    angVel.x * 0.9 + rock * 0.8,  // Subtle forward/back rock
+                    angVel.y * 0.92,
+                    angVel.z * 0.9 + sway * 1.0  // Subtle side sway
                 )
             );
         }
@@ -2907,26 +2907,41 @@
                 return;  // Skip normal stabilization during recovery
             }
 
-            // Normal stabilization for minor tilts
-            const maxTilt = 0.25;
+            // Constant gentle uprighting force - always active like a gyroscope
+            const gyroStrength = 30;
+            body.applyAngularImpulse(new BABYLON.Vector3(
+                -euler.x * gyroStrength * dt, 0, -euler.z * gyroStrength * dt
+            ));
+
+            // Progressive stabilization for larger tilts
+            const maxTilt = 0.15;  // Kick in earlier
             if (tiltMagnitude > maxTilt) {
-                // Progressive stabilization - stronger as tilt increases
-                const strength = 55 + (tiltMagnitude - maxTilt) * 100;
+                // Much stronger as tilt increases
+                const strength = 80 + (tiltMagnitude - maxTilt) * 200;
                 body.applyAngularImpulse(new BABYLON.Vector3(
                     -euler.x * strength * dt, 0, -euler.z * strength * dt
                 ));
             }
 
+            // Dampen angular velocity on X and Z axes (prevent tipping momentum)
+            const angVel = body.getAngularVelocity();
+            if (Math.abs(angVel.x) > 0.5 || Math.abs(angVel.z) > 0.5) {
+                body.setAngularVelocity(new BABYLON.Vector3(
+                    angVel.x * 0.92,
+                    angVel.y,
+                    angVel.z * 0.92
+                ));
+            }
+
             // Limit max velocity
             const vel = body.getLinearVelocity();
-            if (vel.length() > 5.5) {
-                body.setLinearVelocity(vel.normalize().scale(5.5));
+            if (vel.length() > 5.0) {
+                body.setLinearVelocity(vel.normalize().scale(5.0));
             }
 
             // Prevent Y-axis spinning
-            const angVel = body.getAngularVelocity();
-            if (Math.abs(angVel.y) > 1.5) {
-                body.setAngularVelocity(new BABYLON.Vector3(angVel.x, angVel.y * 0.8, angVel.z));
+            if (Math.abs(angVel.y) > 1.2) {
+                body.setAngularVelocity(new BABYLON.Vector3(angVel.x, angVel.y * 0.75, angVel.z));
             }
         }
 

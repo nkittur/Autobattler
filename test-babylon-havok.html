@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.9</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.0</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
@@ -306,8 +306,8 @@
         const WEAPONS = {
             erlaser: {
                 name: 'ER Large Laser',
-                damage: 20,
-                knockback: 10,
+                damage: 14,
+                knockback: 8,
                 recoil: 0.2,
                 isBeam: true,
                 beamDuration: 180,
@@ -315,8 +315,8 @@
             },
             lrm: {
                 name: 'LRM-20',
-                damage: 25,
-                knockback: 15,
+                damage: 18,
+                knockback: 12,
                 recoil: 0.15,
                 projectileSpeed: 38,  // Faster missiles
                 isCluster: true,
@@ -325,8 +325,8 @@
             },
             ac: {
                 name: 'UAC/5',
-                damage: 18,
-                knockback: 28,  // Much more impact
+                damage: 12,
+                knockback: 22,  // Still good impact
                 recoil: 0.12,
                 projectileSpeed: 45,  // Faster rounds
                 projectileSize: 0.1,
@@ -334,8 +334,8 @@
             },
             hatchet: {
                 name: 'Hatchet',
-                damage: 35,
-                knockback: 45,  // Huge knockback
+                damage: 25,
+                knockback: 40,  // Huge knockback
                 recoil: 0.3,
                 isMelee: true,
                 range: 3.5,  // Must be very close
@@ -3903,27 +3903,44 @@
             mech.isWalking = false;
 
             // Reduce damping so mech falls naturally
-            mech.pelvisAggregate.body.setLinearDamping(0.05);
-            mech.pelvisAggregate.body.setAngularDamping(0.05);
+            mech.pelvisAggregate.body.setLinearDamping(0.02);
+            mech.pelvisAggregate.body.setAngularDamping(0.02);
 
-            // Strong upward impulse - mech explodes upward
+            // Small upward pop, then fall
+            const fallDirection = (Math.random() > 0.5) ? 1 : -1;  // Fall forward or backward
             mech.pelvisAggregate.body.applyImpulse(
                 new BABYLON.Vector3(
-                    (Math.random() - 0.5) * 15,  // Slight random horizontal
-                    80 + Math.random() * 30,      // Strong upward explosion
+                    (Math.random() - 0.5) * 20,   // Random horizontal
+                    25 + Math.random() * 15,       // Small upward pop
                     (Math.random() - 0.5) * 10
                 ),
                 mech.pelvis.getAbsolutePosition()
             );
 
-            // Small random tilt to make it fall over when it lands
+            // Strong angular impulse to make it topple over
             mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                (Math.random() - 0.5) * 50,  // Slight tilt
-                0,                            // No spin
-                (Math.random() - 0.5) * 50   // Slight tilt
+                fallDirection * (80 + Math.random() * 40),  // Strong forward/back tilt
+                (Math.random() - 0.5) * 20,                  // Small spin
+                (Math.random() - 0.5) * 60                   // Side tilt
             ));
 
-            log(`💀💀💀 ${mechName} HAS BEEN DESTROYED! 💀💀💀`, 'error');
+            // Continue applying toppling force over time
+            let collapseTime = 0;
+            const collapseInterval = setInterval(() => {
+                collapseTime += 50;
+                if (collapseTime > 800 || !mech.pelvisAggregate.body) {
+                    clearInterval(collapseInterval);
+                    return;
+                }
+                // Keep pushing it to fall
+                mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
+                    fallDirection * 15,
+                    0,
+                    (Math.random() - 0.5) * 10
+                ));
+            }, 50);
+
+            log(`💀💀💀 ${mech.name} HAS BEEN DESTROYED! 💀💀💀`, 'error');
         }
 
         // ============================================
@@ -4045,12 +4062,13 @@
                 allMechs.forEach(mech => {
                     if (!mech || mech.isDestroyed) return;
                     mech.ai.enabled = true;
-                    mech.ai.state = 'advancing';
+                    // Melee mechs start charging immediately!
+                    mech.ai.state = mech.isMelee ? 'charging' : 'advancing';
                     mech.ai.target = findNewTarget(mech);  // Find initial target
                     mech.ai.lastDecision = gameTime;
                     mech.isWalking = true;
                     mech.walkDirection = mech.isPlayer ? 1 : -1;
-                    dbg(`${mech.name} init: ai.enabled=${mech.ai.enabled} target=${mech.ai.target?.name}`, 'ai');
+                    dbg(`${mech.name} init: ai.enabled=${mech.ai.enabled} state=${mech.ai.state} target=${mech.ai.target?.name}`, 'ai');
                 });
 
                 log(`Battle started: ${playerMechs.length} vs ${enemyMechs.length} mechs!`);

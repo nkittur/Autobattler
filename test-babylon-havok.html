@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.7</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.8</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
@@ -293,8 +293,8 @@
             idealRange: 10,         // Optimal combat distance
             minRange: 6,            // Too close - back up
             maxRange: 13,           // Too far - close in (slightly less than starting distance)
-            edgeBoundary: 16,       // X position to start avoiding edges
-            edgeForce: 45,          // Force to push away from edges
+            edgeBoundary: 14,       // X position to start avoiding edges (ground is ±20)
+            edgeForce: 80,          // Force to push away from edges
             moveForce: 150,         // Normal movement force (increased significantly)
             strafeForce: 60,        // Lateral movement force (increased significantly)
             decisionInterval: 0.2,  // How often AI makes decisions (faster for responsiveness)
@@ -2779,49 +2779,59 @@
                 dbg(`${name}: state=${mech.ai.state} walk=${mech.isWalking} dir=${mech.walkDirection}`, 'ai');
             }
 
-            // Edge avoidance - high priority
+            // Edge avoidance - HIGHEST priority, checked every frame
             // Note: applyForce() is integrated by physics engine, don't multiply by dt
             let edgeForce = new BABYLON.Vector3(0, 0, 0);
+            let nearEdge = false;
+
+            // X edges (main arena walls)
             if (myPos.x < -AI_CONFIG.edgeBoundary) {
                 edgeForce.x = AI_CONFIG.edgeForce;
-                mech.ai.state = 'edge-avoid';
+                nearEdge = true;
             } else if (myPos.x > AI_CONFIG.edgeBoundary) {
                 edgeForce.x = -AI_CONFIG.edgeForce;
-                mech.ai.state = 'edge-avoid';
+                nearEdge = true;
             }
+
+            // Z edges (side walls)
             if (Math.abs(myPos.z) > 7) {
-                edgeForce.z = -Math.sign(myPos.z) * AI_CONFIG.edgeForce * 0.5;
+                edgeForce.z = -Math.sign(myPos.z) * AI_CONFIG.edgeForce * 0.8;
+                nearEdge = true;
             }
 
-            // Apply edge avoidance force
-            if (edgeForce.length() > 0) {
+            // Apply edge avoidance force and override state
+            if (nearEdge) {
+                mech.ai.state = 'edge-avoid';
                 mech.pelvisAggregate.body.applyForce(edgeForce, myPos);
-                if (shouldLog) dbg(`${name}: edge force (${edgeForce.x.toFixed(0)},${edgeForce.z.toFixed(0)})`, 'phys');
+                if (shouldLog) dbg(`${name}: EDGE AVOID force (${edgeForce.x.toFixed(0)},${edgeForce.z.toFixed(0)})`, 'phys');
             }
 
-            // AI decision making (periodic, not every frame)
+            // AI decision making (periodic, not every frame) - SKIP if near edge
             if (gameTime - mech.ai.lastDecision > AI_CONFIG.decisionInterval) {
                 mech.ai.lastDecision = gameTime;
 
-                // Determine movement state based on range
-                if (distance > AI_CONFIG.maxRange) {
-                    mech.ai.state = 'advancing';
-                    mech.walkDirection = toTarget.x > 0 ? 1 : -1;
-                } else if (distance < AI_CONFIG.minRange) {
-                    mech.ai.state = 'retreating';
-                    mech.walkDirection = toTarget.x > 0 ? -1 : 1;
-                } else {
-                    // At optimal range - maybe strafe
-                    if (Math.random() < AI_CONFIG.strafeChance) {
-                        mech.ai.state = 'strafing';
-                        mech.ai.strafeDir = Math.random() < 0.5 ? -1 : 1;
-                        mech.ai.strafeEndTime = gameTime + AI_CONFIG.strafeDuration;
+                // Don't override edge-avoid state with other decisions
+                if (!nearEdge) {
+                    // Determine movement state based on range
+                    if (distance > AI_CONFIG.maxRange) {
+                        mech.ai.state = 'advancing';
+                        mech.walkDirection = toTarget.x > 0 ? 1 : -1;
+                    } else if (distance < AI_CONFIG.minRange) {
+                        mech.ai.state = 'retreating';
+                        mech.walkDirection = toTarget.x > 0 ? -1 : 1;
                     } else {
-                        mech.ai.state = 'optimal';
+                        // At optimal range - maybe strafe
+                        if (Math.random() < AI_CONFIG.strafeChance) {
+                            mech.ai.state = 'strafing';
+                            mech.ai.strafeDir = Math.random() < 0.5 ? -1 : 1;
+                            mech.ai.strafeEndTime = gameTime + AI_CONFIG.strafeDuration;
+                        } else {
+                            mech.ai.state = 'optimal';
+                        }
                     }
                 }
 
-                // Fire weapons when in range (increased range for more action)
+                // Fire weapons when in range (even while edge avoiding)
                 if (distance <= 18 && distance >= AI_CONFIG.minRange * 0.5) {
                     const now = Date.now();
                     const mechKey = mech.name + '_' + (mech.isPlayer ? 'p' : 'e');
@@ -2910,6 +2920,11 @@
 
                 case 'edge-avoid':
                     mech.isWalking = true;
+                    mech.walkDirection = -1;  // Walk backwards (retreat animation)
+                    // Additional retreat force in the direction away from edge
+                    // The edgeForce is already applied above, but also walk backwards
+                    forceApplied = pelvisForward.scale(-AI_CONFIG.moveForce * 0.5);
+                    body.applyForce(forceApplied, myPos);
                     break;
 
                 default:

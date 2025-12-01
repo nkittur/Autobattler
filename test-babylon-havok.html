@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.6</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.7</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
@@ -387,45 +387,57 @@
             scene = createScene();
 
             let lastTime = performance.now();
+            let frameCount = 0;
             engine.runRenderLoop(() => {
                 if (scene) {
-                    const now = performance.now();
-                    const dt = (now - lastTime) / 1000;
-                    lastTime = now;
-                    gameTime += dt;
+                    try {
+                        const now = performance.now();
+                        const dt = (now - lastTime) / 1000;
+                        lastTime = now;
+                        gameTime += dt;
+                        frameCount++;
 
-                    // Always update projectiles and beams (so they don't freeze)
-                    updateProjectiles(dt);
-                    updateBeams();
+                        // Log frame start occasionally
+                        if (frameCount % 60 === 0) {
+                            console.log(`[FRAME ${frameCount}] t=${gameTime.toFixed(2)}`);
+                        }
 
-                    // Only run AI/mech logic if battle hasn't ended
-                    if (!battleEnded) {
-                        updateMechs(dt);
-                        checkBattleEnd();
-                    } else {
-                        // Still update destroyed mech physics during death animation
-                        allMechs.forEach(mech => {
-                            if (mech && mech.isDestroyed) {
-                                // Keep feet horizontal even when falling
-                                const body = mech.pelvisAggregate.body;
-                                const quat = body.transformNode.rotationQuaternion;
-                                if (quat && mech.leftLeg.footGroup) {
-                                    const euler = quat.toEulerAngles();
-                                    mech.leftLeg.footGroup.rotation.x = -euler.x;
-                                    mech.rightLeg.footGroup.rotation.x = -euler.x;
-                                    mech.leftLeg.footGroup.rotation.z = -euler.z * 0.5;
-                                    mech.rightLeg.footGroup.rotation.z = -euler.z * 0.5;
+                        // Always update projectiles and beams (so they don't freeze)
+                        updateProjectiles(dt);
+                        updateBeams();
+
+                        // Only run AI/mech logic if battle hasn't ended
+                        if (!battleEnded) {
+                            updateMechs(dt);
+                            checkBattleEnd();
+                        } else {
+                            // Still update destroyed mech physics during death animation
+                            allMechs.forEach(mech => {
+                                if (mech && mech.isDestroyed) {
+                                    // Keep feet horizontal even when falling
+                                    const body = mech.pelvisAggregate.body;
+                                    const quat = body.transformNode.rotationQuaternion;
+                                    if (quat && mech.leftLeg.footGroup) {
+                                        const euler = quat.toEulerAngles();
+                                        mech.leftLeg.footGroup.rotation.x = -euler.x;
+                                        mech.rightLeg.footGroup.rotation.x = -euler.x;
+                                        mech.leftLeg.footGroup.rotation.z = -euler.z * 0.5;
+                                        mech.rightLeg.footGroup.rotation.z = -euler.z * 0.5;
+                                    }
                                 }
-                            }
-                        });
-                    }
-                    updateUI();
+                            });
+                        }
+                        updateUI();
 
-                    // Update debug timer AFTER all subsystems have had a chance to log
-                    if (gameTime - lastDebugTime > DEBUG_INTERVAL) {
-                        lastDebugTime = gameTime;
+                        // Update debug timer AFTER all subsystems have had a chance to log
+                        if (gameTime - lastDebugTime > DEBUG_INTERVAL) {
+                            lastDebugTime = gameTime;
+                        }
+                        scene.render();
+                    } catch (e) {
+                        console.error('[RENDER LOOP ERROR]', e);
+                        log(`[RENDER ERROR] ${e.message}`, 'error');
                     }
-                    scene.render();
                 }
             });
 
@@ -2962,78 +2974,178 @@
         // COMBAT
         // ============================================
         function fireWeapon(mech, type) {
-            const from = mech;
-            const to = mech.ai.target;
-            if (!from || !to || to.isDestroyed) return;
+            try {
+                const from = mech;
+                const to = mech.ai.target;
+                if (!from || !to || to.isDestroyed) return;
 
-            const weapon = WEAPONS[type];
-            from.recoilRecovery = weapon.recoil;
-            from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';
+                log(`[FIRE] ${from.name} attempting ${type}...`);
 
-            // Apply recoil in opposite direction of target
-            const toTarget = to.pelvis.getAbsolutePosition().subtract(from.pelvis.getAbsolutePosition()).normalize();
-            from.pelvisAggregate.body.applyImpulse(
-                toTarget.scale(-weapon.knockback * 0.25),
-                from.pelvis.getAbsolutePosition()
-            );
+                const weapon = WEAPONS[type];
+                if (!weapon) {
+                    log(`[ERROR] Unknown weapon type: ${type}`, 'error');
+                    return;
+                }
 
-            if (weapon.isBeam) fireBeam(from, to, weapon);
-            else if (weapon.isCluster) fireCluster(from, to, weapon);
-            else fireProjectile(from, to, weapon);
+                from.recoilRecovery = weapon.recoil;
+                from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';
 
-            log(`${from.name} fires ${weapon.name}!`);
+                // Validate required properties
+                if (!from.pelvis || !to.pelvis) {
+                    log(`[ERROR] Missing pelvis: from=${!!from.pelvis} to=${!!to.pelvis}`, 'error');
+                    return;
+                }
+
+                // Apply recoil in opposite direction of target
+                const toTarget = to.pelvis.getAbsolutePosition().subtract(from.pelvis.getAbsolutePosition()).normalize();
+                from.pelvisAggregate.body.applyImpulse(
+                    toTarget.scale(-weapon.knockback * 0.25),
+                    from.pelvis.getAbsolutePosition()
+                );
+
+                if (weapon.isBeam) fireBeam(from, to, weapon);
+                else if (weapon.isCluster) fireCluster(from, to, weapon);
+                else fireProjectile(from, to, weapon);
+
+                log(`${from.name} fires ${weapon.name}!`);
+            } catch (e) {
+                log(`[FIRE ERROR] ${e.message}`, 'error');
+                console.error('fireWeapon error:', e);
+            }
         }
 
         function fireProjectile(from, to, weapon) {
-            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
-            const start = arm.weaponPod.getAbsolutePosition();
-            start.z += 0.5;
-            const target = to.torso.getAbsolutePosition();
-            target.x += (Math.random() - 0.5) * 0.4;
-            target.y += (Math.random() - 0.5) * 0.4;
+            try {
+                log(`[PROJ] Starting fireProjectile...`);
+                const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
 
-            const dir = target.subtract(start).normalize();
-            const proj = BABYLON.MeshBuilder.CreateSphere('proj' + Date.now(), { diameter: weapon.projectileSize * 2 }, scene);
-            proj.position = start.clone();
+                // Validate arm structure
+                if (!arm) {
+                    log(`[ERROR] No arm found: lastFiredArm=${from.lastFiredArm}`, 'error');
+                    return;
+                }
+                if (!arm.weaponPod) {
+                    log(`[ERROR] No weaponPod on arm. Arm keys: ${Object.keys(arm).join(',')}`, 'error');
+                    return;
+                }
+                if (!to.torso) {
+                    log(`[ERROR] No torso on target`, 'error');
+                    return;
+                }
 
-            const mat = new BABYLON.StandardMaterial('projMat' + Date.now(), scene);
-            mat.emissiveColor = weapon.color;
-            proj.material = mat;
+                const start = arm.weaponPod.getAbsolutePosition();
+                start.z += 0.5;
+                const target = to.torso.getAbsolutePosition();
+                target.x += (Math.random() - 0.5) * 0.4;
+                target.y += (Math.random() - 0.5) * 0.4;
 
-            const agg = new BABYLON.PhysicsAggregate(proj, BABYLON.PhysicsShapeType.SPHERE,
-                { mass: 0.8, friction: 0, restitution: 0.1 }, scene);
-            agg.body.setLinearVelocity(dir.scale(weapon.projectileSpeed));
+                // Validate positions
+                if (isNaN(start.x) || isNaN(target.x)) {
+                    log(`[ERROR] NaN position: start=${start} target=${target}`, 'error');
+                    return;
+                }
 
-            projectiles.push({ mesh: proj, aggregate: agg, weapon, target: to, firedAt: Date.now() });
-            createMuzzleFlash(start, weapon.color);
+                const dir = target.subtract(start).normalize();
+                const projSize = weapon.projectileSize || 0.1;  // Default if missing
+                const proj = BABYLON.MeshBuilder.CreateSphere('proj' + Date.now(), { diameter: projSize * 2 }, scene);
+                proj.position = start.clone();
+
+                const mat = new BABYLON.StandardMaterial('projMat' + Date.now(), scene);
+                mat.emissiveColor = weapon.color;
+                proj.material = mat;
+
+                const agg = new BABYLON.PhysicsAggregate(proj, BABYLON.PhysicsShapeType.SPHERE,
+                    { mass: 0.8, friction: 0, restitution: 0.1 }, scene);
+                agg.body.setLinearVelocity(dir.scale(weapon.projectileSpeed));
+
+                projectiles.push({ mesh: proj, aggregate: agg, weapon, target: to, firedAt: Date.now() });
+                createMuzzleFlash(start, weapon.color);
+                log(`[PROJ] Projectile created successfully`);
+            } catch (e) {
+                log(`[PROJ ERROR] ${e.message}`, 'error');
+                console.error('fireProjectile error:', e);
+            }
         }
 
         function fireBeam(from, to, weapon) {
-            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
-            const start = arm.weaponPod.getAbsolutePosition();
-            start.z += 0.6;
-            const end = to.torso.getAbsolutePosition();
+            try {
+                log(`[BEAM] Starting fireBeam...`);
+                const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
 
-            const beam = BABYLON.MeshBuilder.CreateTube('beam' + Date.now(), {
-                path: [start, end], radius: 0.1, updatable: false
-            }, scene);
-            const mat = new BABYLON.StandardMaterial('beamMat' + Date.now(), scene);
-            mat.emissiveColor = weapon.color;
-            mat.alpha = 0.85;
-            beam.material = mat;
+                // Validate arm structure
+                if (!arm) {
+                    log(`[ERROR] No arm found: lastFiredArm=${from.lastFiredArm}`, 'error');
+                    return;
+                }
+                if (!arm.weaponPod) {
+                    log(`[ERROR] No weaponPod on arm. Arm keys: ${Object.keys(arm).join(',')}`, 'error');
+                    return;
+                }
+                if (!to.torso) {
+                    log(`[ERROR] No torso on target`, 'error');
+                    return;
+                }
 
-            beams.push({ mesh: beam, material: mat, createdAt: Date.now(), duration: weapon.beamDuration });
-            applyDamage(to, weapon, from.isPlayer ? 1 : -1);
-            createImpact(end.clone(), weapon.color);
+                const start = arm.weaponPod.getAbsolutePosition();
+                start.z += 0.6;
+                const end = to.torso.getAbsolutePosition();
+
+                // Validate positions and check for degenerate path
+                if (isNaN(start.x) || isNaN(end.x)) {
+                    log(`[ERROR] NaN position: start=${start} end=${end}`, 'error');
+                    return;
+                }
+                const dist = BABYLON.Vector3.Distance(start, end);
+                if (dist < 0.1) {
+                    log(`[ERROR] Beam path too short: ${dist}`, 'error');
+                    return;
+                }
+
+                log(`[BEAM] Creating tube: dist=${dist.toFixed(2)}`);
+                const beam = BABYLON.MeshBuilder.CreateTube('beam' + Date.now(), {
+                    path: [start, end], radius: 0.1, updatable: false
+                }, scene);
+                const mat = new BABYLON.StandardMaterial('beamMat' + Date.now(), scene);
+                mat.emissiveColor = weapon.color;
+                mat.alpha = 0.85;
+                beam.material = mat;
+
+                beams.push({ mesh: beam, material: mat, createdAt: Date.now(), duration: weapon.beamDuration });
+                applyDamage(to, weapon, from.isPlayer ? 1 : -1);
+                createImpact(end.clone(), weapon.color);
+                log(`[BEAM] Beam created successfully`);
+            } catch (e) {
+                log(`[BEAM ERROR] ${e.message}`, 'error');
+                console.error('fireBeam error:', e);
+            }
         }
 
         function fireCluster(from, to, weapon) {
-            // Use shoulder missile launchers (leftPod/rightPod) instead of arm weapons
-            const usePod = from.lastFiredArm === 'left' ? from.leftPod : from.rightPod;
-            from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';  // Alternate pods
+            try {
+                log(`[CLUSTER] Starting fireCluster...`);
 
-            const podPos = usePod.getAbsolutePosition();
-            const target = to.torso.getAbsolutePosition();
+                // Validate pods exist
+                if (!from.leftPod || !from.rightPod) {
+                    log(`[ERROR] Missing pods: left=${!!from.leftPod} right=${!!from.rightPod}`, 'error');
+                    return;
+                }
+                if (!to.torso) {
+                    log(`[ERROR] No torso on target`, 'error');
+                    return;
+                }
+
+                // Use shoulder missile launchers (leftPod/rightPod) instead of arm weapons
+                const usePod = from.lastFiredArm === 'left' ? from.leftPod : from.rightPod;
+                from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';  // Alternate pods
+
+                const podPos = usePod.getAbsolutePosition();
+                const target = to.torso.getAbsolutePosition();
+
+                // Validate positions
+                if (isNaN(podPos.x) || isNaN(target.x)) {
+                    log(`[ERROR] NaN position in cluster: pod=${podPos} target=${target}`, 'error');
+                    return;
+                }
 
             for (let i = 0; i < weapon.clusterCount; i++) {
                 setTimeout(() => {
@@ -3085,6 +3197,11 @@
                     createMuzzleFlash(start, weapon.color);
                 }, i * 40);
             }
+                log(`[CLUSTER] Cluster missiles launched`);
+            } catch (e) {
+                log(`[CLUSTER ERROR] ${e.message}`, 'error');
+                console.error('fireCluster error:', e);
+            }
         }
 
         function applyDamage(mech, weapon, dirSign) {
@@ -3120,24 +3237,37 @@
         function updateProjectiles(dt) {
             const now = Date.now();
             projectiles = projectiles.filter(p => {
-                if (now - p.firedAt > 3500) { p.mesh.dispose(); return false; }
+                try {
+                    if (now - p.firedAt > 3500) { p.mesh.dispose(); return false; }
 
-                const dist = BABYLON.Vector3.Distance(p.mesh.position, p.target.torso.getAbsolutePosition());
-                if (dist < 1.6) {
-                    applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1);
-                    log(`HIT! ${p.target.name} -${p.weapon.damage} (${p.target.currentHP}/${p.target.maxHP})`, 'warn');
-                    createImpact(p.mesh.position.clone(), p.weapon.color);
-                    p.mesh.dispose();
+                    // Safety check for target and torso
+                    if (!p.target || !p.target.torso) {
+                        log(`[WARN] Projectile has invalid target, removing`, 'warn');
+                        p.mesh.dispose();
+                        return false;
+                    }
+
+                    const dist = BABYLON.Vector3.Distance(p.mesh.position, p.target.torso.getAbsolutePosition());
+                    if (dist < 1.6) {
+                        applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1);
+                        log(`HIT! ${p.target.name} -${p.weapon.damage} (${p.target.currentHP}/${p.target.maxHP})`, 'warn');
+                        createImpact(p.mesh.position.clone(), p.weapon.color);
+                        p.mesh.dispose();
+                        return false;
+                    }
+
+                    if (p.mesh.position.y < -2 || Math.abs(p.mesh.position.x) > 22) {
+                        p.mesh.dispose();
+                        return false;
+                    }
+
+                    if (p.isMissile && Math.random() < 0.25) createSmoke(p.mesh.position.clone());
+                    return true;
+                } catch (e) {
+                    console.error('[PROJECTILE ERROR]', e);
+                    try { p.mesh.dispose(); } catch (e2) {}
                     return false;
                 }
-
-                if (p.mesh.position.y < -2 || Math.abs(p.mesh.position.x) > 22) {
-                    p.mesh.dispose();
-                    return false;
-                }
-
-                if (p.isMissile && Math.random() < 0.25) createSmoke(p.mesh.position.clone());
-                return true;
             });
         }
 

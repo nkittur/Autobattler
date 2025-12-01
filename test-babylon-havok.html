@@ -326,6 +326,28 @@
             ground: new BABYLON.Color3(0.22, 0.2, 0.18)
         };
 
+        // Texture URLs from Babylon.js assets
+        const TEXTURE_URLS = {
+            // Ground textures
+            grass: 'https://playground.babylonjs.com/textures/grass.png',
+            grassNormal: 'https://playground.babylonjs.com/textures/grassn.png',
+            rock: 'https://playground.babylonjs.com/textures/rock.png',
+            rockNormal: 'https://playground.babylonjs.com/textures/rockn.png',
+            // Metal textures
+            metal: 'https://playground.babylonjs.com/textures/floor.png',
+            metalNormal: 'https://playground.babylonjs.com/textures/floorNormal.png',
+            rustMetal: 'https://assets.babylonjs.com/textures/rustediron2_basecolor.png',
+            rustMetalNormal: 'https://assets.babylonjs.com/textures/rustediron2_normal.png',
+            // Detail textures
+            crate: 'https://playground.babylonjs.com/textures/crate.png',
+            wood: 'https://playground.babylonjs.com/textures/wood.jpg',
+            // Misc
+            distortion: 'https://playground.babylonjs.com/textures/distortion.png'
+        };
+
+        // Global texture cache
+        let TEXTURES = {};
+
         async function initEngine() {
             const canvas = document.getElementById('renderCanvas');
             engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
@@ -395,6 +417,32 @@
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
             scene.enablePhysics(new BABYLON.Vector3(0, -18, 0), havokPlugin);
 
+            // Load textures
+            TEXTURES.grass = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
+            TEXTURES.grass.uScale = 8;
+            TEXTURES.grass.vScale = 4;
+            TEXTURES.grassNormal = new BABYLON.Texture(TEXTURE_URLS.grassNormal, scene);
+            TEXTURES.grassNormal.uScale = 8;
+            TEXTURES.grassNormal.vScale = 4;
+
+            TEXTURES.rock = new BABYLON.Texture(TEXTURE_URLS.rock, scene);
+            TEXTURES.rock.uScale = 2;
+            TEXTURES.rock.vScale = 2;
+            TEXTURES.rockNormal = new BABYLON.Texture(TEXTURE_URLS.rockNormal, scene);
+            TEXTURES.rockNormal.uScale = 2;
+            TEXTURES.rockNormal.vScale = 2;
+
+            TEXTURES.metal = new BABYLON.Texture(TEXTURE_URLS.metal, scene);
+            TEXTURES.metal.uScale = 4;
+            TEXTURES.metal.vScale = 4;
+
+            TEXTURES.rustMetal = new BABYLON.Texture(TEXTURE_URLS.rustMetal, scene);
+            TEXTURES.rustMetal.uScale = 2;
+            TEXTURES.rustMetal.vScale = 2;
+            TEXTURES.rustMetalNormal = new BABYLON.Texture(TEXTURE_URLS.rustMetalNormal, scene);
+            TEXTURES.rustMetalNormal.uScale = 2;
+            TEXTURES.rustMetalNormal.vScale = 2;
+
             // Camera
             camera = new BABYLON.ArcRotateCamera('cam', -Math.PI/2, Math.PI/3.2, 24,
                 new BABYLON.Vector3(0, 3, 0), scene);
@@ -430,13 +478,26 @@
         function createGround(scene) {
             const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 20 }, scene);
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
-            mat.diffuseColor = COLORS.ground;
-            mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
+            // Use grass texture with tint
+            mat.diffuseTexture = TEXTURES.grass;
+            mat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.6);  // Slight tint
+            mat.bumpTexture = TEXTURES.grassNormal;
+            mat.bumpTexture.level = 0.8;
+            mat.specularColor = new BABYLON.Color3(0.08, 0.08, 0.06);
+            mat.specularPower = 16;
             ground.material = mat;
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
 
-            // Terrain details
+            // Rock material with texture
+            const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
+            rockMat.diffuseTexture = TEXTURES.rock;
+            rockMat.bumpTexture = TEXTURES.rockNormal;
+            rockMat.bumpTexture.level = 1.0;
+            rockMat.diffuseColor = new BABYLON.Color3(0.6, 0.55, 0.5);
+            rockMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+
+            // Terrain details - rocks with texture
             for (let i = 0; i < 6; i++) {
                 const rock = BABYLON.MeshBuilder.CreateBox('rock' + i, {
                     width: 0.6 + Math.random() * 0.8,
@@ -445,7 +506,7 @@
                 }, scene);
                 rock.position = new BABYLON.Vector3((Math.random() - 0.5) * 25, 0.15, (Math.random() - 0.5) * 10);
                 rock.rotation.y = Math.random() * Math.PI;
-                rock.material = mat;
+                rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
             }
         }
@@ -475,25 +536,46 @@
             const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
             const accent = isPlayer ? COLORS.playerAccent : COLORS.enemyAccent;
 
-            // Materials
+            // Materials with textures
             const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
-            primaryMat.diffuseColor = primary;
-            primaryMat.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
+            primaryMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            primaryMat.diffuseTexture.uScale = 3;
+            primaryMat.diffuseTexture.vScale = 3;
+            primaryMat.diffuseColor = primary.scale(1.5);  // Tint the texture
+            primaryMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            primaryMat.bumpTexture.uScale = 3;
+            primaryMat.bumpTexture.vScale = 3;
+            primaryMat.bumpTexture.level = 0.6;
+            primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            primaryMat.specularPower = 32;
 
             const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
-            secondaryMat.diffuseColor = secondary;
+            secondaryMat.diffuseTexture = TEXTURES.metal.clone();
+            secondaryMat.diffuseTexture.uScale = 2;
+            secondaryMat.diffuseTexture.vScale = 2;
+            secondaryMat.diffuseColor = secondary.scale(1.3);
+            secondaryMat.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
 
             const accentMat = new BABYLON.StandardMaterial(name + '_accent', scene);
             accentMat.diffuseColor = accent;
-            accentMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+            accentMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.3);
+            accentMat.specularPower = 48;
 
             const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
-            metalMat.diffuseColor = COLORS.metal;
-            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+            metalMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            metalMat.diffuseTexture.uScale = 4;
+            metalMat.diffuseTexture.vScale = 4;
+            metalMat.diffuseColor = COLORS.metal.scale(1.2);
+            metalMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            metalMat.bumpTexture.uScale = 4;
+            metalMat.bumpTexture.vScale = 4;
+            metalMat.bumpTexture.level = 0.5;
+            metalMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
             metalMat.specularPower = 64;
 
             const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
             darkMat.diffuseColor = COLORS.darkMetal;
+            darkMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
 
             const cockpitMat = new BABYLON.StandardMaterial(name + '_cockpit', scene);
             cockpitMat.diffuseColor = COLORS.cockpit;
@@ -502,7 +584,7 @@
 
             const chromeMat = new BABYLON.StandardMaterial(name + '_chrome', scene);
             chromeMat.diffuseColor = COLORS.chrome;
-            chromeMat.specularColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+            chromeMat.specularColor = new BABYLON.Color3(0.9, 0.9, 0.9);
             chromeMat.specularPower = 128;
 
             // === PELVIS / CENTER (Physics body) - Wide stance for stability ===
@@ -1188,24 +1270,55 @@
             const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
             const accent = isPlayer ? COLORS.playerAccent : COLORS.enemyAccent;
 
-            // Materials
+            // Materials with textures
             const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
-            primaryMat.diffuseColor = primary;
+            primaryMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            primaryMat.diffuseTexture.uScale = 3;
+            primaryMat.diffuseTexture.vScale = 3;
+            primaryMat.diffuseColor = primary.scale(1.5);
+            primaryMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            primaryMat.bumpTexture.uScale = 3;
+            primaryMat.bumpTexture.vScale = 3;
+            primaryMat.bumpTexture.level = 0.6;
+            primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            primaryMat.specularPower = 32;
+
             const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
-            secondaryMat.diffuseColor = secondary;
+            secondaryMat.diffuseTexture = TEXTURES.metal.clone();
+            secondaryMat.diffuseTexture.uScale = 2;
+            secondaryMat.diffuseTexture.vScale = 2;
+            secondaryMat.diffuseColor = secondary.scale(1.3);
+            secondaryMat.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
+
             const accentMat = new BABYLON.StandardMaterial(name + '_accent', scene);
             accentMat.diffuseColor = accent;
+            accentMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.3);
+            accentMat.specularPower = 48;
+
             const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
-            metalMat.diffuseColor = COLORS.metal;
+            metalMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            metalMat.diffuseTexture.uScale = 4;
+            metalMat.diffuseTexture.vScale = 4;
+            metalMat.diffuseColor = COLORS.metal.scale(1.2);
+            metalMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            metalMat.bumpTexture.uScale = 4;
+            metalMat.bumpTexture.vScale = 4;
+            metalMat.bumpTexture.level = 0.5;
+            metalMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
             metalMat.specularPower = 64;
+
             const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
             darkMat.diffuseColor = COLORS.darkMetal;
+            darkMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+
             const cockpitMat = new BABYLON.StandardMaterial(name + '_cockpit', scene);
             cockpitMat.diffuseColor = COLORS.cockpit;
             cockpitMat.emissiveColor = COLORS.cockpit.scale(0.5);
             cockpitMat.alpha = 0.8;
+
             const chromeMat = new BABYLON.StandardMaterial(name + '_chrome', scene);
             chromeMat.diffuseColor = COLORS.chrome;
+            chromeMat.specularColor = new BABYLON.Color3(0.9, 0.9, 0.9);
             chromeMat.specularPower = 128;
 
             const scale = 1.15; // Bigger mech
@@ -1914,11 +2027,34 @@
                 mech.rightLeg.legGroup.rotation.y = 0;
             }
 
-            // Feet can pitch slightly to stay level (X rotation only, no Y rotation)
+            // Feet should stay HORIZONTAL to ground regardless of pelvis tilt
+            // Counter-rotate feet to compensate for pelvis X rotation (forward/back tilt)
             if (mech.leftLeg.footGroup) {
-                mech.leftLeg.footGroup.rotation.y = 0;  // No left/right rotation
+                const body = mech.pelvisAggregate.body;
+                const quat = body.transformNode.rotationQuaternion;
+                if (quat) {
+                    const euler = quat.toEulerAngles();
+                    // Counter-rotate feet on X axis to cancel pelvis forward/back tilt
+                    // The foot is parented through ankle->lowerLeg->knee->upperLeg->hip->legGroup->pelvis
+                    // We need to cancel out the pelvis tilt to keep feet flat
+                    const pelvisTiltX = euler.x;  // Forward/back tilt
+                    const pelvisTiltZ = euler.z;  // Left/right tilt
+
+                    // Counter-rotate both feet to stay horizontal
+                    // Negative pelvisTiltX because we want to cancel it out
+                    mech.leftLeg.footGroup.rotation.x = -pelvisTiltX;
+                    mech.rightLeg.footGroup.rotation.x = -pelvisTiltX;
+
+                    // Z tilt affects left/right feet differently
+                    // Left foot needs more counter-rotation when tilting left
+                    // This is simplified - in reality legs would bend to compensate
+                    mech.leftLeg.footGroup.rotation.z = -pelvisTiltZ * 0.5;
+                    mech.rightLeg.footGroup.rotation.z = -pelvisTiltZ * 0.5;
+                }
+
+                // Never any Y rotation on feet
+                mech.leftLeg.footGroup.rotation.y = 0;
                 mech.rightLeg.footGroup.rotation.y = 0;
-                // Could add X rotation here for terrain adaptation later
             }
         }
 
@@ -2595,26 +2731,60 @@
             mech.ai.enabled = false;
             mech.isWalking = false;
 
-            // Reduce damping so mech falls freely
-            mech.pelvisAggregate.body.setLinearDamping(0.05);
-            mech.pelvisAggregate.body.setAngularDamping(0.05);
+            // Reduce damping to near zero so mech falls freely
+            mech.pelvisAggregate.body.setLinearDamping(0.01);
+            mech.pelvisAggregate.body.setAngularDamping(0.01);
 
-            // Massive angular impulse to make it spin and fall (much stronger)
+            // Pick a fall direction (forward, backward, left, or right)
+            const fallDirection = Math.random();
+            let fallTorqueX = 0, fallTorqueZ = 0;
+            if (fallDirection < 0.35) {
+                fallTorqueZ = 600;  // Fall forward
+            } else if (fallDirection < 0.7) {
+                fallTorqueZ = -600;  // Fall backward
+            } else if (fallDirection < 0.85) {
+                fallTorqueX = 500;  // Fall right
+            } else {
+                fallTorqueX = -500;  // Fall left
+            }
+
+            // Add some randomness to the fall direction
+            fallTorqueX += (Math.random() - 0.5) * 200;
+            fallTorqueZ += (Math.random() - 0.5) * 200;
+
+            // Massive initial angular impulse to topple the mech
             mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                (Math.random() - 0.5) * 150,
-                (Math.random() - 0.5) * 80,
-                (Math.random() - 0.5) * 150
+                fallTorqueX,
+                (Math.random() - 0.5) * 150,  // Some spin
+                fallTorqueZ
             ));
 
             // Strong upward then falling impulse
             mech.pelvisAggregate.body.applyImpulse(
                 new BABYLON.Vector3(
-                    (Math.random() - 0.5) * 25,
-                    15 + Math.random() * 10,
-                    (Math.random() - 0.5) * 15
+                    (Math.random() - 0.5) * 30,
+                    20 + Math.random() * 15,  // Pop up a bit
+                    (Math.random() - 0.5) * 20
                 ),
                 mech.pelvis.getAbsolutePosition()
             );
+
+            // Apply sustained torque over time to ensure collapse
+            const collapseInterval = setInterval(() => {
+                if (!mech || !mech.pelvisAggregate || !mech.pelvisAggregate.body) {
+                    clearInterval(collapseInterval);
+                    return;
+                }
+                // Keep pushing in fall direction
+                mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
+                    fallTorqueX * 0.3,
+                    0,
+                    fallTorqueZ * 0.3
+                ));
+            }, 50);
+
+            // Stop the collapse torque after 1.5 seconds
+            setTimeout(() => clearInterval(collapseInterval), 1500);
 
             log(`💀💀💀 ${mechName} HAS BEEN DESTROYED! 💀💀💀`, 'error');
         }

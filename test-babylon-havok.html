@@ -4403,7 +4403,7 @@
             let lookAt;
 
             switch (state.mode) {
-                case 'highOrbit':
+                case 'highOrbit': {
                     // High angle orbit around battle center (shows all mechs)
                     state.orbitAngle += dt * 0.3;
                     cameraPos = new BABYLON.Vector3(
@@ -4413,23 +4413,25 @@
                     );
                     lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
                     break;
+                }
 
-                case 'overShoulder':
+                case 'overShoulder': {
                     // Over-the-shoulder looking toward target's enemy
                     const enemy = state.target.ai.target;
                     const enemyPos = enemy ? enemy.pelvis.getAbsolutePosition() : battleCenter;
                     const toEnemy = enemyPos.subtract(targetPos).normalize();
                     const perpendicular = new BABYLON.Vector3(-toEnemy.z, 0, toEnemy.x);
-                    const side = Math.sin(state.transitionTime * 0.5) > 0 ? 1 : -1;
+                    const sideOS = Math.sin(state.transitionTime * 0.5) > 0 ? 1 : -1;
                     cameraPos = targetPos
                         .add(toEnemy.scale(-3.5))      // Behind
-                        .add(perpendicular.scale(1.8 * side))  // To the side
+                        .add(perpendicular.scale(1.8 * sideOS))  // To the side
                         .add(new BABYLON.Vector3(0, 3.5, 0));  // Above
                     // Look toward enemy (shows both mechs)
                     lookAt = targetPos.add(toEnemy.scale(6)).add(new BABYLON.Vector3(0, 2, 0));
                     break;
+                }
 
-                case 'lowBetween':
+                case 'lowBetween': {
                     // Low angle positioned between two fighting mechs
                     if (closestPair.mechA && closestPair.mechB) {
                         const posA = closestPair.mechA.pelvis.getAbsolutePosition();
@@ -4449,8 +4451,9 @@
                         lookAt = battleCenter.add(new BABYLON.Vector3(0, 2, 0));
                     }
                     break;
+                }
 
-                case 'sweep':
+                case 'sweep': {
                     // Panoramic sweep - high angle showing battlefield
                     state.sweepPhase += dt * 0.12;
                     const sweepAngle = state.sweepPhase * Math.PI * 2;
@@ -4463,8 +4466,9 @@
                     );
                     lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
                     break;
+                }
 
-                case 'chase':
+                case 'chase': {
                     // Chase cam - behind and slightly above moving mech
                     const chaseTarget = state.target.ai.target;
                     const chaseDir = chaseTarget
@@ -4476,8 +4480,9 @@
                     // Look ahead of the mech toward where it's going
                     lookAt = targetPos.add(chaseDir.scale(8)).add(new BABYLON.Vector3(0, 2, 0));
                     break;
+                }
 
-                case 'wideShot':
+                case 'wideShot': {
                     // Wide establishing shot from corner, high angle
                     const corner = state.transitionTime < state.modeDuration / 2 ? 1 : -1;
                     cameraPos = new BABYLON.Vector3(
@@ -4487,11 +4492,13 @@
                     );
                     lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
                     break;
+                }
 
-                default:
+                default: {
                     // Fallback
                     cameraPos = new BABYLON.Vector3(0, 15, 15);
                     lookAt = battleCenter;
+                }
             }
 
             // Smooth camera movement

@@ -155,9 +155,10 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.0</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.1</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
+        <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
         <button onclick="resetScene()">Reset</button>
     </div>
     <canvas id="renderCanvas"></canvas>
@@ -258,6 +259,21 @@
         let autoFireEnabled = false;
         let autoFireInterval = null;
         let battleEnded = false;  // Flag to stop AI loops when battle is over
+
+        // Cinematic camera system
+        let cinematicEnabled = false;
+        let cinematicState = {
+            mode: 'orbit',           // 'orbit', 'track', 'action', 'sweep'
+            target: null,            // Current mech being focused
+            orbitAngle: 0,           // Current orbit angle
+            orbitHeight: 8,          // Camera height
+            orbitRadius: 12,         // Distance from target
+            transitionTime: 0,       // Time in current mode
+            modeDuration: 4,         // Seconds before mode change
+            actionTarget: null,      // Mech that just fired/took damage
+            actionTime: 0,           // When action occurred
+            sweepPhase: 0            // Phase of panoramic sweep
+        };
 
         // Weapon cooldowns per mech (keyed by mech name)
         const mechCooldowns = {};
@@ -437,6 +453,7 @@
                             });
                         }
                         updateUI();
+                        updateCinematicCamera(dt);
 
                         // Update debug timer AFTER all subsystems have had a chance to log
                         if (gameTime - lastDebugTime > DEBUG_INTERVAL) {
@@ -550,18 +567,18 @@
             createWalls(scene);
 
             // Create teams of mechs - 4 per side at different Z positions
-            // Player team (left side, x = -7 to -11)
+            // Player team (left side, x = -7 to -14)
             playerMechs = [
                 createMadCatMech(scene, -7, 0, true),        // Center - heavy
-                createHatchetmanMech(scene, -8, 2, true),    // Front flank - melee
+                createHatchetmanMech(scene, -14, 2, true),   // Back flank - melee (starts behind to charge)
                 createCatapultMech(scene, -10, 4, true),     // Back left - support
                 createCommandoMech(scene, -10, -3, true)     // Back right - scout
             ];
 
-            // Enemy team (right side, x = 7 to 11)
+            // Enemy team (right side, x = 7 to 14)
             enemyMechs = [
                 createDireWolfMech(scene, 7, 0, false),      // Center - assault
-                createHatchetmanMech(scene, 8, -2, false),   // Front flank - melee
+                createHatchetmanMech(scene, 14, -2, false),  // Back flank - melee (starts behind to charge)
                 createCatapultMech(scene, 10, 4, false),     // Back left - support
                 createCommandoMech(scene, 10, -3, false)     // Back right - scout
             ];
@@ -3121,29 +3138,51 @@
 
             // Edge avoidance - HIGHEST priority, checked every frame
             // Note: applyForce() is integrated by physics engine, don't multiply by dt
+            // Small mechs need to be more careful about edges (mass-scaled avoidance)
+            const mechMass = mech.stats.mass || 75;
+            const massScale = 100 / mechMass;  // Lighter mechs get stronger avoidance (2.5x for Commando)
+            const effectiveBoundary = AI_CONFIG.edgeBoundary - (massScale - 1) * 2;  // Lighter mechs detect earlier
+            const effectiveEdgeForce = AI_CONFIG.edgeForce * massScale;  // Lighter mechs pushed harder
+
             let edgeForce = new BABYLON.Vector3(0, 0, 0);
             let nearEdge = false;
+            let veryNearEdge = false;  // Emergency zone
 
             // X edges (main arena walls)
-            if (myPos.x < -AI_CONFIG.edgeBoundary) {
-                edgeForce.x = AI_CONFIG.edgeForce;
+            if (myPos.x < -effectiveBoundary) {
+                const urgency = Math.min(2.0, 1 + (-effectiveBoundary - myPos.x) / 3);
+                edgeForce.x = effectiveEdgeForce * urgency;
                 nearEdge = true;
-            } else if (myPos.x > AI_CONFIG.edgeBoundary) {
-                edgeForce.x = -AI_CONFIG.edgeForce;
+                if (myPos.x < -17) veryNearEdge = true;
+            } else if (myPos.x > effectiveBoundary) {
+                const urgency = Math.min(2.0, 1 + (myPos.x - effectiveBoundary) / 3);
+                edgeForce.x = -effectiveEdgeForce * urgency;
                 nearEdge = true;
+                if (myPos.x > 17) veryNearEdge = true;
             }
 
-            // Z edges (side walls)
-            if (Math.abs(myPos.z) > 7) {
-                edgeForce.z = -Math.sign(myPos.z) * AI_CONFIG.edgeForce * 0.8;
+            // Z edges (side walls) - ground is 20 wide, so ±10
+            const zBoundary = 6 - (massScale - 1) * 0.5;  // Lighter mechs detect Z edges earlier too
+            if (Math.abs(myPos.z) > zBoundary) {
+                const urgency = Math.min(2.0, 1 + (Math.abs(myPos.z) - zBoundary) / 2);
+                edgeForce.z = -Math.sign(myPos.z) * effectiveEdgeForce * 0.9 * urgency;
                 nearEdge = true;
+                if (Math.abs(myPos.z) > 8) veryNearEdge = true;
             }
 
             // Apply edge avoidance force and override state
             if (nearEdge) {
                 mech.ai.state = 'edge-avoid';
-                mech.pelvisAggregate.body.applyForce(edgeForce, myPos);
-                if (shouldLog) dbg(`${name}: EDGE AVOID force (${edgeForce.x.toFixed(0)},${edgeForce.z.toFixed(0)})`, 'phys');
+                // Apply force with optional emergency boost
+                const emergencyBoost = veryNearEdge ? 1.5 : 1.0;
+                mech.pelvisAggregate.body.applyForce(edgeForce.scale(emergencyBoost), myPos);
+
+                // Also apply impulse if very near edge (immediate response)
+                if (veryNearEdge) {
+                    mech.pelvisAggregate.body.applyImpulse(edgeForce.scale(0.08), myPos);
+                }
+
+                if (shouldLog) dbg(`${name}: EDGE AVOID force (${edgeForce.x.toFixed(0)},${edgeForce.z.toFixed(0)}) mass=${mechMass} veryNear=${veryNearEdge}`, 'phys');
             }
 
             // AI decision making (periodic, not every frame) - SKIP if near edge
@@ -3414,16 +3453,20 @@
                 if (weapon.isMelee) {
                     if (fireMelee(from, to, weapon)) {
                         log(`${from.name} swings ${weapon.name}!`);
+                        triggerCinematicAction(from, 'fire');
                     }
                 } else if (weapon.isBeam) {
                     fireBeam(from, to, weapon);
                     log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
                 } else if (weapon.isCluster) {
                     fireCluster(from, to, weapon);
                     log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
                 } else {
                     fireProjectile(from, to, weapon);
                     log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
                 }
             } catch (e) {
                 log(`[FIRE ERROR] ${e.message}`, 'error');
@@ -3706,6 +3749,9 @@
                 (Math.random() - 0.5) * weapon.knockback * 0.04,
                 dirSign * weapon.knockback * 0.12
             ));
+
+            // Trigger cinematic camera to track damaged mech
+            triggerCinematicAction(mech, 'damage');
 
             if (mech.currentHP <= 0 && !mech.isDestroyed) {
                 log(`${mech.name} DESTROYED!`, 'error');
@@ -4088,6 +4134,191 @@
                     mech.isWalking = false;
                 });
             }
+        }
+
+        // ============================================
+        // CINEMATIC CAMERA SYSTEM
+        // ============================================
+        function toggleCinematicCamera() {
+            cinematicEnabled = !cinematicEnabled;
+            const btn = document.getElementById('cinematicBtn');
+
+            if (cinematicEnabled) {
+                btn.textContent = 'Cinematic: ON';
+                btn.style.background = 'rgba(136, 100, 255, 0.4)';
+                btn.style.borderColor = '#8864ff';
+                btn.style.color = '#8864ff';
+
+                // Detach regular camera controls
+                camera.detachControl();
+
+                // Initialize cinematic state
+                cinematicState.mode = 'sweep';
+                cinematicState.transitionTime = 0;
+                cinematicState.orbitAngle = camera.alpha;
+                cinematicState.sweepPhase = 0;
+
+                // Pick a random alive mech to start tracking
+                const aliveMechs = allMechs.filter(m => m && !m.isDestroyed);
+                if (aliveMechs.length > 0) {
+                    cinematicState.target = aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
+                }
+
+                log('Cinematic camera ENABLED');
+            } else {
+                btn.textContent = 'Cinematic: OFF';
+                btn.style.background = 'rgba(0, 255, 136, 0.2)';
+                btn.style.borderColor = '#00ff88';
+                btn.style.color = '#00ff88';
+
+                // Re-attach regular camera controls
+                camera.attachControl(document.getElementById('renderCanvas'), true);
+                log('Cinematic camera DISABLED');
+            }
+        }
+
+        function triggerCinematicAction(mech, actionType) {
+            // Called when interesting action happens (weapon fire, damage, destruction)
+            if (!cinematicEnabled) return;
+
+            cinematicState.actionTarget = mech;
+            cinematicState.actionTime = gameTime;
+
+            // Switch to action mode if the action is interesting enough
+            if (actionType === 'fire' && Math.random() < 0.3) {
+                cinematicState.mode = 'action';
+                cinematicState.target = mech;
+                cinematicState.transitionTime = 0;
+                cinematicState.modeDuration = 2;  // Quick action shot
+            } else if (actionType === 'damage' && Math.random() < 0.4) {
+                cinematicState.mode = 'track';
+                cinematicState.target = mech;
+                cinematicState.transitionTime = 0;
+                cinematicState.modeDuration = 3;
+            }
+        }
+
+        function updateCinematicCamera(dt) {
+            if (!cinematicEnabled) return;
+
+            const state = cinematicState;
+            state.transitionTime += dt;
+
+            // Get alive mechs
+            const aliveMechs = allMechs.filter(m => m && !m.isDestroyed);
+            if (aliveMechs.length === 0) return;
+
+            // Make sure target is still valid
+            if (!state.target || state.target.isDestroyed) {
+                state.target = aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
+            }
+
+            // Mode transitions
+            if (state.transitionTime > state.modeDuration) {
+                state.transitionTime = 0;
+
+                // Pick next mode with weighted random
+                const roll = Math.random();
+                if (roll < 0.35) {
+                    state.mode = 'orbit';
+                    state.modeDuration = 5 + Math.random() * 3;
+                    state.orbitRadius = 10 + Math.random() * 8;
+                    state.orbitHeight = 5 + Math.random() * 6;
+                } else if (roll < 0.6) {
+                    state.mode = 'track';
+                    state.modeDuration = 4 + Math.random() * 2;
+                    // Pick a new random target
+                    state.target = aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
+                } else if (roll < 0.85) {
+                    state.mode = 'sweep';
+                    state.modeDuration = 6 + Math.random() * 4;
+                    state.sweepPhase = 0;
+                } else {
+                    state.mode = 'action';
+                    state.modeDuration = 3 + Math.random() * 2;
+                    // Find mech with most enemies nearby for action shot
+                    let bestMech = state.target;
+                    let maxEnemies = 0;
+                    aliveMechs.forEach(mech => {
+                        const enemies = aliveMechs.filter(m => m.isPlayer !== mech.isPlayer);
+                        let nearby = 0;
+                        enemies.forEach(e => {
+                            const d = BABYLON.Vector3.Distance(mech.pelvis.getAbsolutePosition(), e.pelvis.getAbsolutePosition());
+                            if (d < 15) nearby++;
+                        });
+                        if (nearby > maxEnemies) {
+                            maxEnemies = nearby;
+                            bestMech = mech;
+                        }
+                    });
+                    state.target = bestMech;
+                }
+            }
+
+            // Calculate camera position based on mode
+            let targetPos = state.target.pelvis.getAbsolutePosition();
+            let cameraPos;
+            let lookAt;
+
+            switch (state.mode) {
+                case 'orbit':
+                    // Smooth orbit around target
+                    state.orbitAngle += dt * 0.4;  // Slow rotation
+                    cameraPos = new BABYLON.Vector3(
+                        targetPos.x + Math.cos(state.orbitAngle) * state.orbitRadius,
+                        targetPos.y + state.orbitHeight,
+                        targetPos.z + Math.sin(state.orbitAngle) * state.orbitRadius
+                    );
+                    lookAt = targetPos.add(new BABYLON.Vector3(0, 2, 0));
+                    break;
+
+                case 'track':
+                    // Over-the-shoulder tracking shot
+                    const forward = state.target.pelvis.getDirection(BABYLON.Vector3.Forward());
+                    const right = state.target.pelvis.getDirection(BABYLON.Vector3.Right());
+                    cameraPos = targetPos
+                        .add(forward.scale(-4))  // Behind
+                        .add(right.scale(2))     // To the side
+                        .add(new BABYLON.Vector3(0, 3.5, 0));  // Above
+                    // Look at target's front
+                    lookAt = targetPos.add(forward.scale(5)).add(new BABYLON.Vector3(0, 2.5, 0));
+                    break;
+
+                case 'sweep':
+                    // Panoramic sweep across the battlefield
+                    state.sweepPhase += dt * 0.15;
+                    const sweepAngle = state.sweepPhase * Math.PI * 2;
+                    const sweepRadius = 18 + Math.sin(state.sweepPhase * 2) * 5;
+                    const sweepHeight = 8 + Math.sin(state.sweepPhase * 3) * 4;
+                    cameraPos = new BABYLON.Vector3(
+                        Math.cos(sweepAngle) * sweepRadius,
+                        sweepHeight,
+                        Math.sin(sweepAngle) * sweepRadius * 0.5
+                    );
+                    // Look at battle center or nearest mech
+                    lookAt = new BABYLON.Vector3(0, 3, 0);
+                    break;
+
+                case 'action':
+                    // Low dramatic angle looking up at target
+                    const actionForward = state.target.pelvis.getDirection(BABYLON.Vector3.Forward());
+                    const actionRight = state.target.pelvis.getDirection(BABYLON.Vector3.Right());
+                    const actionSide = Math.sin(state.transitionTime * 2) > 0 ? 1 : -1;
+                    cameraPos = targetPos
+                        .add(actionForward.scale(3))
+                        .add(actionRight.scale(3 * actionSide))
+                        .add(new BABYLON.Vector3(0, 1.5, 0));  // Low angle
+                    lookAt = targetPos.add(new BABYLON.Vector3(0, 3.5, 0));  // Look up at torso
+                    break;
+            }
+
+            // Smooth camera movement
+            const smoothFactor = 1 - Math.pow(0.1, dt);
+            camera.position = BABYLON.Vector3.Lerp(camera.position, cameraPos, smoothFactor);
+
+            // Update camera target using setTarget for smooth look
+            const currentTarget = camera.target;
+            camera.setTarget(BABYLON.Vector3.Lerp(currentTarget, lookAt, smoothFactor));
         }
 
         function checkBattleEnd() {

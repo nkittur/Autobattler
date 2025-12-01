@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.5</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.6</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
@@ -3088,6 +3088,9 @@
         }
 
         function applyDamage(mech, weapon, dirSign) {
+            // Skip if mech is already destroyed
+            if (mech.isDestroyed) return;
+
             mech.currentHP -= weapon.damage;
             if (mech.currentHP < 0) mech.currentHP = 0;
 
@@ -3108,7 +3111,7 @@
                 dirSign * weapon.knockback * 0.12
             ));
 
-            if (mech.currentHP <= 0) {
+            if (mech.currentHP <= 0 && !mech.isDestroyed) {
                 log(`${mech.name} DESTROYED!`, 'error');
                 triggerDestruction(mech);
             }

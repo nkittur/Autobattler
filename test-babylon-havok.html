@@ -2731,60 +2731,26 @@
             mech.ai.enabled = false;
             mech.isWalking = false;
 
-            // Reduce damping to near zero so mech falls freely
-            mech.pelvisAggregate.body.setLinearDamping(0.01);
-            mech.pelvisAggregate.body.setAngularDamping(0.01);
+            // Reduce damping so mech falls naturally
+            mech.pelvisAggregate.body.setLinearDamping(0.05);
+            mech.pelvisAggregate.body.setAngularDamping(0.05);
 
-            // Pick a fall direction (forward, backward, left, or right)
-            const fallDirection = Math.random();
-            let fallTorqueX = 0, fallTorqueZ = 0;
-            if (fallDirection < 0.35) {
-                fallTorqueZ = 600;  // Fall forward
-            } else if (fallDirection < 0.7) {
-                fallTorqueZ = -600;  // Fall backward
-            } else if (fallDirection < 0.85) {
-                fallTorqueX = 500;  // Fall right
-            } else {
-                fallTorqueX = -500;  // Fall left
-            }
-
-            // Add some randomness to the fall direction
-            fallTorqueX += (Math.random() - 0.5) * 200;
-            fallTorqueZ += (Math.random() - 0.5) * 200;
-
-            // Massive initial angular impulse to topple the mech
-            mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                fallTorqueX,
-                (Math.random() - 0.5) * 150,  // Some spin
-                fallTorqueZ
-            ));
-
-            // Strong upward then falling impulse
+            // Strong upward impulse - mech explodes upward
             mech.pelvisAggregate.body.applyImpulse(
                 new BABYLON.Vector3(
-                    (Math.random() - 0.5) * 30,
-                    20 + Math.random() * 15,  // Pop up a bit
-                    (Math.random() - 0.5) * 20
+                    (Math.random() - 0.5) * 15,  // Slight random horizontal
+                    80 + Math.random() * 30,      // Strong upward explosion
+                    (Math.random() - 0.5) * 10
                 ),
                 mech.pelvis.getAbsolutePosition()
             );
 
-            // Apply sustained torque over time to ensure collapse
-            const collapseInterval = setInterval(() => {
-                if (!mech || !mech.pelvisAggregate || !mech.pelvisAggregate.body) {
-                    clearInterval(collapseInterval);
-                    return;
-                }
-                // Keep pushing in fall direction
-                mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                    fallTorqueX * 0.3,
-                    0,
-                    fallTorqueZ * 0.3
-                ));
-            }, 50);
-
-            // Stop the collapse torque after 1.5 seconds
-            setTimeout(() => clearInterval(collapseInterval), 1500);
+            // Small random tilt to make it fall over when it lands
+            mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
+                (Math.random() - 0.5) * 50,  // Slight tilt
+                0,                            // No spin
+                (Math.random() - 0.5) * 50   // Slight tilt
+            ));
 
             log(`💀💀💀 ${mechName} HAS BEEN DESTROYED! 💀💀💀`, 'error');
         }

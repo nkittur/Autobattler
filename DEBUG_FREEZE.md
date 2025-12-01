@@ -3,6 +3,12 @@
 ## Current Issue (v10.2)
 Canvas is blank after Havok initialized. No mechs render.
 
+## Resolution
+**REVERTED to v10.1 (commit 8cea02d)** - This was the last known working version.
+
+The leg geometry changes and cinematic camera improvements introduced breaking changes.
+Will need to re-apply these more carefully after confirming v10.1 works.
+
 ## Problem History
 1. v9.5-9.7: Freeze bug when weapons fired (fixed with defensive checks)
 2. v10.1: Working - mass-based wall avoidance, cinematic camera added

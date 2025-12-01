@@ -1898,64 +1898,27 @@
             }
 
             // =============================================
-            // LEGS/PELVIS FACE MOVEMENT DIRECTION
+            // LEGS/FEET - NO LEFT/RIGHT ROTATION
             // =============================================
-            const vel = mech.pelvisAggregate.body.getLinearVelocity();
-            const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+            // Legs and feet should NOT rotate left/right independently
+            // They are rigidly attached to the pelvis which handles all Y rotation
+            // Feet can only pitch up/down (X rotation) to stay flat on ground
 
-            // Initialize rotation trackers if not set
-            if (mech.pelvisRotation === undefined) mech.pelvisRotation = 0;
-            if (mech.footRotation === undefined) mech.footRotation = 0;
+            // Initialize foot pitch tracker if not set
+            if (mech.leftFootPitch === undefined) mech.leftFootPitch = 0;
+            if (mech.rightFootPitch === undefined) mech.rightFootPitch = 0;
 
-            if (speed > 0.5 && mech.isWalking) {
-                // Calculate movement direction angle
-                const moveAngle = Math.atan2(vel.z, vel.x);
-                // FIXED: Same left-handed coordinate fix as torso - use baseAngle - moveAngle
-                let legAngle = baseAngle - moveAngle;
+            // Ensure legGroups have no Y rotation (they follow pelvis)
+            if (mech.leftLeg.legGroup) {
+                mech.leftLeg.legGroup.rotation.y = 0;
+                mech.rightLeg.legGroup.rotation.y = 0;
+            }
 
-                // Normalize
-                while (legAngle > Math.PI) legAngle -= Math.PI * 2;
-                while (legAngle < -Math.PI) legAngle += Math.PI * 2;
-
-                // Clamp leg rotation (about 45 degrees each way)
-                const targetLegAngle = Math.max(-0.8, Math.min(0.8, legAngle));
-
-                // Smooth interpolation for leg rotation
-                mech.pelvisRotation = BABYLON.Scalar.Lerp(mech.pelvisRotation, targetLegAngle, dt * 4);
-                // Feet rotate more to fully face movement direction
-                mech.footRotation = BABYLON.Scalar.Lerp(mech.footRotation, targetLegAngle, dt * 6);
-
-                // Apply rotation to leg groups (they rotate the whole leg assembly)
-                if (mech.leftLeg.legGroup) {
-                    mech.leftLeg.legGroup.rotation.y = mech.pelvisRotation * 0.7;
-                    mech.rightLeg.legGroup.rotation.y = mech.pelvisRotation * 0.7;
-                }
-
-                // Apply rotation to feet (they face movement direction more directly)
-                if (mech.leftLeg.footGroup) {
-                    mech.leftLeg.footGroup.rotation.y = mech.footRotation;
-                    mech.rightLeg.footGroup.rotation.y = mech.footRotation;
-                }
-
-                // Diagnostic: Log leg rotation
-                if (shouldLog) {
-                    dbg(`${name}: legs moveAngle=${(moveAngle * 180/Math.PI).toFixed(1)}° legAngle=${(legAngle * 180/Math.PI).toFixed(1)}° footRot=${(mech.footRotation * 180/Math.PI).toFixed(1)}°`, 'torso');
-                }
-            } else if (!mech.isWalking) {
-                // When not walking, gradually return legs and feet to neutral
-                if (Math.abs(mech.pelvisRotation) > 0.01 || Math.abs(mech.footRotation) > 0.01) {
-                    mech.pelvisRotation = BABYLON.Scalar.Lerp(mech.pelvisRotation, 0, dt * 3);
-                    mech.footRotation = BABYLON.Scalar.Lerp(mech.footRotation, 0, dt * 4);
-
-                    if (mech.leftLeg.legGroup) {
-                        mech.leftLeg.legGroup.rotation.y = mech.pelvisRotation * 0.7;
-                        mech.rightLeg.legGroup.rotation.y = mech.pelvisRotation * 0.7;
-                    }
-                    if (mech.leftLeg.footGroup) {
-                        mech.leftLeg.footGroup.rotation.y = mech.footRotation;
-                        mech.rightLeg.footGroup.rotation.y = mech.footRotation;
-                    }
-                }
+            // Feet can pitch slightly to stay level (X rotation only, no Y rotation)
+            if (mech.leftLeg.footGroup) {
+                mech.leftLeg.footGroup.rotation.y = 0;  // No left/right rotation
+                mech.rightLeg.footGroup.rotation.y = 0;
+                // Could add X rotation here for terrain adaptation later
             }
         }
 
@@ -2275,9 +2238,9 @@
                 // This makes the mech constantly adjust its body to face the enemy
                 const rotationThreshold = 0.05;  // ~3 degrees - always trying to align
                 if (Math.abs(yawError) > rotationThreshold) {
-                    // Strong rotation force to actively turn toward target
-                    const rotationStrength = 50;  // Stronger force for active turning
-                    const maxRotationSpeed = 2.5;  // Allow faster rotation
+                    // Rate-limited rotation - mechs turn deliberately, not instantly
+                    const rotationStrength = 35;  // Moderate force for smooth turning
+                    const maxRotationSpeed = 1.2;  // Rate limit: ~70 deg/sec max
 
                     // Current angular velocity
                     const angVel = body.getAngularVelocity();
@@ -2793,19 +2756,20 @@
             if (battleEnded) return;  // Already ended
             if (!autoFireEnabled || !playerMech || !enemyMech) return;
             if (playerMech.currentHP <= 0 || enemyMech.currentHP <= 0) {
-                battleEnded = true;  // Stop all AI loops
-                autoFireEnabled = false;
-                const btn = document.getElementById('autoFireBtn');
-                btn.textContent = 'AI Battle: OFF';
-                btn.style.background = 'rgba(255, 200, 0, 0.3)';
-                btn.style.borderColor = '#ffcc00';
-                btn.style.color = '#ffcc00';
-
-                if (playerMech) playerMech.ai.enabled = false;
-                if (enemyMech) enemyMech.ai.enabled = false;
+                battleEnded = true;  // Mark as ended (AI already disabled in triggerDestruction)
 
                 const winner = playerMech.currentHP > 0 ? 'TIMBER WOLF' : 'DIRE WOLF';
                 log(`Battle ended! ${winner} WINS!`, 'warn');
+
+                // Delay UI update to allow destruction animation to play
+                setTimeout(() => {
+                    autoFireEnabled = false;
+                    const btn = document.getElementById('autoFireBtn');
+                    btn.textContent = 'AI Battle: OFF';
+                    btn.style.background = 'rgba(255, 200, 0, 0.3)';
+                    btn.style.borderColor = '#ffcc00';
+                    btn.style.color = '#ffcc00';
+                }, 4000);  // 4 second delay to watch destruction
             }
         }
 

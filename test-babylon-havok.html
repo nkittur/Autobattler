@@ -249,7 +249,9 @@
 
         // Globals
         let engine, scene, camera, havokInstance, havokPlugin;
-        let playerMech, enemyMech;
+        let playerMechs = [];  // Array of player team mechs
+        let enemyMechs = [];   // Array of enemy team mechs
+        let allMechs = [];     // Combined array for iteration
         let projectiles = [];
         let beams = [];
         let gameTime = 0;
@@ -257,12 +259,34 @@
         let autoFireInterval = null;
         let battleEnded = false;  // Flag to stop AI loops when battle is over
 
-        // Weapon cooldowns for AI
-        const weaponCooldowns = {
-            player: { erlaser: 0, lrm: 0, ac: 0 },
-            enemy: { erlaser: 0, lrm: 0, ac: 0 }
-        };
+        // Weapon cooldowns per mech (keyed by mech name)
+        const mechCooldowns = {};
         const COOLDOWN_TIMES = { erlaser: 2000, lrm: 3500, ac: 1500 };
+
+        // Helper to get alive mechs
+        function getAliveMechs(team) {
+            const mechs = team === 'player' ? playerMechs : enemyMechs;
+            return mechs.filter(m => m && m.currentHP > 0 && !m.isDestroyed);
+        }
+
+        // Helper to find a new target for a mech
+        function findNewTarget(mech) {
+            const enemies = mech.isPlayer ? enemyMechs : playerMechs;
+            const aliveEnemies = enemies.filter(e => e && e.currentHP > 0 && !e.isDestroyed);
+            if (aliveEnemies.length === 0) return null;
+            // Find closest enemy
+            const myPos = mech.pelvis.getAbsolutePosition();
+            let closest = null;
+            let closestDist = Infinity;
+            for (const enemy of aliveEnemies) {
+                const dist = BABYLON.Vector3.Distance(myPos, enemy.pelvis.getAbsolutePosition());
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closest = enemy;
+                }
+            }
+            return closest;
+        }
 
         // AI Configuration
         const AI_CONFIG = {
@@ -380,7 +404,7 @@
                         checkBattleEnd();
                     } else {
                         // Still update destroyed mech physics during death animation
-                        [playerMech, enemyMech].forEach(mech => {
+                        allMechs.forEach(mech => {
                             if (mech && mech.isDestroyed) {
                                 // Keep feet horizontal even when falling
                                 const body = mech.pelvisAggregate.body;
@@ -410,20 +434,15 @@
 
             // Log initial mech state for debugging
             setTimeout(() => {
-                if (playerMech) {
-                    const pos = playerMech.pelvis.getAbsolutePosition();
-                    const body = playerMech.pelvisAggregate.body;
-                    const motionTypes = ['STATIC', 'ANIMATED', 'DYNAMIC'];
-                    dbg(`P created: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)})`, 'ai');
-                    dbg(`P body: mass=${body.getMassProperties().mass} motion=${motionTypes[body.motionType] || body.motionType}`, 'phys');
-                }
-                if (enemyMech) {
-                    const pos = enemyMech.pelvis.getAbsolutePosition();
-                    const body = enemyMech.pelvisAggregate.body;
-                    const motionTypes = ['STATIC', 'ANIMATED', 'DYNAMIC'];
-                    dbg(`E created: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)})`, 'ai');
-                    dbg(`E body: mass=${body.getMassProperties().mass} motion=${motionTypes[body.motionType] || body.motionType}`, 'phys');
-                }
+                const motionTypes = ['STATIC', 'ANIMATED', 'DYNAMIC'];
+                dbg(`Created ${playerMechs.length} player mechs and ${enemyMechs.length} enemy mechs`, 'ai');
+                allMechs.forEach(mech => {
+                    if (!mech) return;
+                    const pos = mech.pelvis.getAbsolutePosition();
+                    const body = mech.pelvisAggregate.body;
+                    const side = mech.isPlayer ? 'P' : 'E';
+                    dbg(`${side} ${mech.name}: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)}) HP=${mech.maxHP}`, 'ai');
+                });
                 dbg('Click "AI Battle: OFF" to start battle', 'warn');
             }, 500);
         }
@@ -509,9 +528,28 @@
             createGround(scene);
             createWalls(scene);
 
-            // Create detailed mechs
-            playerMech = createMadCatMech(scene, -7, true);
-            enemyMech = createDireWolfMech(scene, 7, false);
+            // Create teams of mechs - 3 per side at different Z positions
+            // Player team (left side, x = -7 to -10)
+            playerMechs = [
+                createMadCatMech(scene, -7, 0, true),      // Center - heavy
+                createCatapultMech(scene, -9, 3, true),    // Back left - support
+                createCommandoMech(scene, -9, -3, true)   // Back right - scout
+            ];
+
+            // Enemy team (right side, x = 7 to 10)
+            enemyMechs = [
+                createDireWolfMech(scene, 7, 0, false),    // Center - assault
+                createCatapultMech(scene, 9, 3, false),    // Back left - support
+                createCommandoMech(scene, 9, -3, false)   // Back right - scout
+            ];
+
+            // Combined list for easy iteration
+            allMechs = [...playerMechs, ...enemyMechs];
+
+            // Initialize cooldowns for each mech
+            allMechs.forEach(mech => {
+                mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0 };
+            });
 
             return scene;
         }
@@ -571,7 +609,7 @@
         // ============================================
         // MAD CAT (Timber Wolf) - Highly Detailed
         // ============================================
-        function createMadCatMech(scene, xPos, isPlayer) {
+        function createMadCatMech(scene, xPos, zPos, isPlayer) {
             const name = isPlayer ? 'player' : 'enemy';
             const primary = isPlayer ? COLORS.playerPrimary : COLORS.enemyPrimary;
             const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
@@ -632,7 +670,7 @@
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
                 width: 1.8, height: 0.5, depth: 0.9  // Wider pelvis
             }, scene);
-            pelvis.position = new BABYLON.Vector3(xPos, 3.5, 0);  // Spawn height
+            pelvis.position = new BABYLON.Vector3(xPos, 3.5, zPos);  // Spawn height
             pelvis.material = darkMat;
 
             // Create a taller collision shape to represent the full mech standing height
@@ -1295,6 +1333,7 @@
                 ai: {
                     enabled: false,
                     state: 'idle',        // idle, advancing, retreating, optimal, strafing
+                    target: null,         // Current target mech
                     lastDecision: 0,
                     strafeDir: 0,         // -1 left, 0 none, 1 right
                     strafeEndTime: 0
@@ -1305,7 +1344,7 @@
         // ============================================
         // DIRE WOLF (Daishi) - Even More Detailed, Heavier
         // ============================================
-        function createDireWolfMech(scene, xPos, isPlayer) {
+        function createDireWolfMech(scene, xPos, zPos, isPlayer) {
             const name = isPlayer ? 'player' : 'enemy';
             const primary = isPlayer ? COLORS.playerPrimary : COLORS.enemyPrimary;
             const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
@@ -1368,7 +1407,7 @@
             const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
                 width: 2.0 * scale, height: 0.55 * scale, depth: 1.0 * scale  // Wider pelvis
             }, scene);
-            pelvis.position = new BABYLON.Vector3(xPos, 3.8, 0);  // Spawn height
+            pelvis.position = new BABYLON.Vector3(xPos, 3.8, zPos);  // Spawn height
             pelvis.material = darkMat;
 
             // Create a taller collision shape to represent the full mech standing height
@@ -1878,8 +1917,390 @@
                 ai: {
                     enabled: false,
                     state: 'idle',        // idle, advancing, retreating, optimal, strafing
+                    target: null,         // Current target mech
                     lastDecision: 0,
                     strafeDir: 0,         // -1 left, 0 none, 1 right
+                    strafeEndTime: 0
+                }
+            };
+        }
+
+        // ============================================
+        // COMMANDO - Light Scout Mech
+        // ============================================
+        function createCommandoMech(scene, xPos, zPos, isPlayer) {
+            const name = (isPlayer ? 'player' : 'enemy') + '_commando_' + Math.random().toString(36).substr(2, 4);
+            const primary = isPlayer ? COLORS.playerPrimary : COLORS.enemyPrimary;
+            const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
+            const scale = 0.7;  // Smaller mech
+
+            const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
+            primaryMat.diffuseColor = primary.scale(1.3);
+            primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+
+            const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
+            secondaryMat.diffuseColor = secondary;
+            secondaryMat.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
+
+            const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
+            darkMat.diffuseColor = COLORS.darkMetal;
+
+            const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
+            metalMat.diffuseColor = COLORS.metal;
+            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+
+            // Pelvis - smaller
+            const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
+                width: 1.2 * scale, height: 0.4 * scale, depth: 0.7 * scale
+            }, scene);
+            pelvis.position = new BABYLON.Vector3(xPos, 3.0, zPos);
+            pelvis.material = darkMat;
+
+            const pelvisShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, -1.2, 0),
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(1.2 * scale, 2.8, 0.7 * scale),
+                scene
+            );
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            pelvisBody.shape = pelvisShape;
+            pelvisBody.setMassProperties({ mass: 40 });
+            pelvisBody.setAngularDamping(0.90);
+            pelvisBody.setLinearDamping(0.20);
+            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+            const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
+
+            // Torso - compact, angular
+            const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torso', {
+                width: 1.0 * scale, height: 1.2 * scale, depth: 0.8 * scale
+            }, scene);
+            torsoCore.position.y = 0.8 * scale;
+            torsoCore.parent = pelvis;
+            torsoCore.material = primaryMat;
+
+            // Head - small sensor dome
+            const headBase = BABYLON.MeshBuilder.CreateCylinder(name + '_head', {
+                diameter: 0.5 * scale, height: 0.4 * scale
+            }, scene);
+            headBase.position.y = 0.9 * scale;
+            headBase.parent = torsoCore;
+            headBase.material = secondaryMat;
+
+            const canopy = BABYLON.MeshBuilder.CreateSphere(name + '_canopy', {
+                diameter: 0.35 * scale
+            }, scene);
+            canopy.position.y = 0.15 * scale;
+            canopy.parent = headBase;
+            canopy.material = new BABYLON.StandardMaterial(name + '_cockpit', scene);
+            canopy.material.diffuseColor = COLORS.cockpit;
+            canopy.material.emissiveColor = COLORS.cockpit.scale(0.5);
+            canopy.material.alpha = 0.8;
+
+            // Arms - simple laser mounts
+            function createArm(side) {
+                const sign = side === 'left' ? -1 : 1;
+                const shoulder = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Shoulder', {
+                    width: 0.25 * scale, height: 0.3 * scale, depth: 0.25 * scale
+                }, scene);
+                shoulder.position = new BABYLON.Vector3(sign * 0.55 * scale, 0.5 * scale, 0);
+                shoulder.parent = torsoCore;
+                shoulder.material = secondaryMat;
+
+                const arm = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Arm', {
+                    diameter: 0.18 * scale, height: 0.8 * scale
+                }, scene);
+                arm.rotation.z = sign * 0.2;
+                arm.position = new BABYLON.Vector3(sign * 0.15 * scale, -0.4 * scale, 0);
+                arm.parent = shoulder;
+                arm.material = metalMat;
+
+                return { shoulder, arm };
+            }
+
+            const leftArm = createArm('left');
+            const rightArm = createArm('right');
+
+            // Simple missile pod on shoulder
+            const leftPod = BABYLON.MeshBuilder.CreateBox(name + '_leftPod', {
+                width: 0.2 * scale, height: 0.15 * scale, depth: 0.3 * scale
+            }, scene);
+            leftPod.position = new BABYLON.Vector3(-0.5 * scale, 0.85 * scale, 0.1 * scale);
+            leftPod.parent = torsoCore;
+            leftPod.material = darkMat;
+
+            const rightPod = BABYLON.MeshBuilder.CreateBox(name + '_rightPod', {
+                width: 0.2 * scale, height: 0.15 * scale, depth: 0.3 * scale
+            }, scene);
+            rightPod.position = new BABYLON.Vector3(0.5 * scale, 0.85 * scale, 0.1 * scale);
+            rightPod.parent = torsoCore;
+            rightPod.material = darkMat;
+
+            // Legs - chicken walker style
+            function createLeg(side) {
+                const sign = side === 'left' ? -1 : 1;
+                const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
+                legGroup.parent = pelvis;
+
+                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.25 * scale }, scene);
+                hip.position = new BABYLON.Vector3(sign * 0.5 * scale, -0.15 * scale, 0);
+                hip.parent = legGroup;
+                hip.material = darkMat;
+
+                const upperLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Upper', {
+                    diameterTop: 0.18 * scale, diameterBottom: 0.14 * scale, height: 0.9 * scale
+                }, scene);
+                upperLeg.rotation.x = 0.5;
+                upperLeg.position = new BABYLON.Vector3(0, -0.45 * scale, 0.2 * scale);
+                upperLeg.parent = hip;
+                upperLeg.material = primaryMat;
+
+                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.16 * scale }, scene);
+                knee.position.y = -0.5 * scale;
+                knee.parent = upperLeg;
+                knee.material = metalMat;
+
+                const lowerLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Lower', {
+                    diameterTop: 0.14 * scale, diameterBottom: 0.1 * scale, height: 1.0 * scale
+                }, scene);
+                lowerLeg.rotation.x = -0.7;
+                lowerLeg.position = new BABYLON.Vector3(0, -0.5 * scale, 0);
+                lowerLeg.parent = knee;
+                lowerLeg.material = primaryMat;
+
+                const footGroup = new BABYLON.TransformNode(name + '_' + side + 'FootGroup', scene);
+                footGroup.position.y = -0.55 * scale;
+                footGroup.parent = lowerLeg;
+
+                const ankle = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Ankle', {
+                    width: 0.12 * scale, height: 0.1 * scale, depth: 0.15 * scale
+                }, scene);
+                ankle.parent = footGroup;
+                ankle.material = metalMat;
+
+                const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
+                    width: 0.2 * scale, height: 0.06 * scale, depth: 0.35 * scale
+                }, scene);
+                foot.position = new BABYLON.Vector3(0, -0.05 * scale, 0.08 * scale);
+                foot.parent = footGroup;
+                foot.material = darkMat;
+
+                return { hip, upperLeg, knee, lowerLeg, ankle, foot, legGroup, footGroup };
+            }
+
+            const leftLeg = createLeg('left');
+            const rightLeg = createLeg('right');
+
+            return {
+                name: 'COMMANDO',
+                pelvis, pelvisAggregate: pelvisAgg,
+                torso: torsoCore, head: headBase, cockpit: canopy,
+                leftArm, rightArm, leftLeg, rightLeg,
+                leftPod, rightPod,
+                isPlayer, scale,
+                stats: { maxHP: 80, mass: 40 },
+                currentHP: 80, maxHP: 80,
+                isWalking: false, walkCycle: 0, walkSpeed: 3.5,
+                walkDirection: isPlayer ? 1 : -1,
+                impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
+                staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
+                torsoTwist: 0, targetTorsoTwist: 0,
+                ai: {
+                    enabled: false,
+                    state: 'idle',
+                    target: null,
+                    lastDecision: 0,
+                    strafeDir: 0,
+                    strafeEndTime: 0
+                }
+            };
+        }
+
+        // ============================================
+        // CATAPULT - Medium Support Mech
+        // ============================================
+        function createCatapultMech(scene, xPos, zPos, isPlayer) {
+            const name = (isPlayer ? 'player' : 'enemy') + '_catapult_' + Math.random().toString(36).substr(2, 4);
+            const primary = isPlayer ? COLORS.playerPrimary : COLORS.enemyPrimary;
+            const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
+            const scale = 0.85;
+
+            const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
+            primaryMat.diffuseColor = primary.scale(1.2);
+            primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+
+            const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
+            secondaryMat.diffuseColor = secondary;
+
+            const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
+            darkMat.diffuseColor = COLORS.darkMetal;
+
+            const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
+            metalMat.diffuseColor = COLORS.metal;
+            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+
+            // Pelvis
+            const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
+                width: 1.5 * scale, height: 0.45 * scale, depth: 0.8 * scale
+            }, scene);
+            pelvis.position = new BABYLON.Vector3(xPos, 3.2, zPos);
+            pelvis.material = darkMat;
+
+            const pelvisShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, -1.3, 0),
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(1.5 * scale, 3.0, 0.8 * scale),
+                scene
+            );
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            pelvisBody.shape = pelvisShape;
+            pelvisBody.setMassProperties({ mass: 60 });
+            pelvisBody.setAngularDamping(0.91);
+            pelvisBody.setLinearDamping(0.22);
+            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+            const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
+
+            // Torso - boxy with rounded top
+            const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torso', {
+                width: 1.3 * scale, height: 1.0 * scale, depth: 0.9 * scale
+            }, scene);
+            torsoCore.position.y = 0.7 * scale;
+            torsoCore.parent = pelvis;
+            torsoCore.material = primaryMat;
+
+            // Head - sensor array
+            const headBase = BABYLON.MeshBuilder.CreateBox(name + '_head', {
+                width: 0.5 * scale, height: 0.35 * scale, depth: 0.4 * scale
+            }, scene);
+            headBase.position.y = 0.7 * scale;
+            headBase.parent = torsoCore;
+            headBase.material = secondaryMat;
+
+            const canopy = BABYLON.MeshBuilder.CreateBox(name + '_canopy', {
+                width: 0.35 * scale, height: 0.2 * scale, depth: 0.25 * scale
+            }, scene);
+            canopy.position = new BABYLON.Vector3(0, 0.1 * scale, 0.1 * scale);
+            canopy.parent = headBase;
+            canopy.material = new BABYLON.StandardMaterial(name + '_cockpit', scene);
+            canopy.material.diffuseColor = COLORS.cockpit;
+            canopy.material.emissiveColor = COLORS.cockpit.scale(0.5);
+            canopy.material.alpha = 0.8;
+
+            // Large missile pods on shoulders (Catapult's signature)
+            const leftPod = BABYLON.MeshBuilder.CreateCylinder(name + '_leftPod', {
+                diameter: 0.5 * scale, height: 0.9 * scale
+            }, scene);
+            leftPod.rotation.x = Math.PI / 2;
+            leftPod.position = new BABYLON.Vector3(-0.85 * scale, 0.6 * scale, 0.2 * scale);
+            leftPod.parent = torsoCore;
+            leftPod.material = secondaryMat;
+
+            const rightPod = BABYLON.MeshBuilder.CreateCylinder(name + '_rightPod', {
+                diameter: 0.5 * scale, height: 0.9 * scale
+            }, scene);
+            rightPod.rotation.x = Math.PI / 2;
+            rightPod.position = new BABYLON.Vector3(0.85 * scale, 0.6 * scale, 0.2 * scale);
+            rightPod.parent = torsoCore;
+            rightPod.material = secondaryMat;
+
+            // Arms - smaller, laser focused
+            function createArm(side) {
+                const sign = side === 'left' ? -1 : 1;
+                const shoulder = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Shoulder', {
+                    diameter: 0.3 * scale
+                }, scene);
+                shoulder.position = new BABYLON.Vector3(sign * 0.6 * scale, 0.2 * scale, 0);
+                shoulder.parent = torsoCore;
+                shoulder.material = metalMat;
+
+                const arm = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Arm', {
+                    diameter: 0.15 * scale, height: 0.7 * scale
+                }, scene);
+                arm.rotation.z = sign * 0.3;
+                arm.position = new BABYLON.Vector3(sign * 0.2 * scale, -0.35 * scale, 0);
+                arm.parent = shoulder;
+                arm.material = primaryMat;
+
+                return { shoulder, arm };
+            }
+
+            const leftArm = createArm('left');
+            const rightArm = createArm('right');
+
+            // Legs
+            function createLeg(side) {
+                const sign = side === 'left' ? -1 : 1;
+                const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
+                legGroup.parent = pelvis;
+
+                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.3 * scale }, scene);
+                hip.position = new BABYLON.Vector3(sign * 0.6 * scale, -0.2 * scale, 0);
+                hip.parent = legGroup;
+                hip.material = darkMat;
+
+                const upperLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Upper', {
+                    diameterTop: 0.22 * scale, diameterBottom: 0.18 * scale, height: 1.0 * scale
+                }, scene);
+                upperLeg.rotation.x = 0.5;
+                upperLeg.position = new BABYLON.Vector3(0, -0.5 * scale, 0.25 * scale);
+                upperLeg.parent = hip;
+                upperLeg.material = primaryMat;
+
+                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.2 * scale }, scene);
+                knee.position.y = -0.55 * scale;
+                knee.parent = upperLeg;
+                knee.material = metalMat;
+
+                const lowerLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Lower', {
+                    diameterTop: 0.18 * scale, diameterBottom: 0.12 * scale, height: 1.1 * scale
+                }, scene);
+                lowerLeg.rotation.x = -0.65;
+                lowerLeg.position = new BABYLON.Vector3(0, -0.55 * scale, 0);
+                lowerLeg.parent = knee;
+                lowerLeg.material = primaryMat;
+
+                const footGroup = new BABYLON.TransformNode(name + '_' + side + 'FootGroup', scene);
+                footGroup.position.y = -0.6 * scale;
+                footGroup.parent = lowerLeg;
+
+                const ankle = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Ankle', {
+                    width: 0.14 * scale, height: 0.12 * scale, depth: 0.18 * scale
+                }, scene);
+                ankle.parent = footGroup;
+                ankle.material = metalMat;
+
+                const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
+                    width: 0.25 * scale, height: 0.08 * scale, depth: 0.4 * scale
+                }, scene);
+                foot.position = new BABYLON.Vector3(0, -0.06 * scale, 0.1 * scale);
+                foot.parent = footGroup;
+                foot.material = darkMat;
+
+                return { hip, upperLeg, knee, lowerLeg, ankle, foot, legGroup, footGroup };
+            }
+
+            const leftLeg = createLeg('left');
+            const rightLeg = createLeg('right');
+
+            return {
+                name: 'CATAPULT',
+                pelvis, pelvisAggregate: pelvisAgg,
+                torso: torsoCore, head: headBase, cockpit: canopy,
+                leftArm, rightArm, leftLeg, rightLeg,
+                leftPod, rightPod,
+                isPlayer, scale,
+                stats: { maxHP: 120, mass: 60 },
+                currentHP: 120, maxHP: 120,
+                isWalking: false, walkCycle: 0, walkSpeed: 2.5,
+                walkDirection: isPlayer ? 1 : -1,
+                impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
+                staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
+                torsoTwist: 0, targetTorsoTwist: 0,
+                ai: {
+                    enabled: false,
+                    state: 'idle',
+                    target: null,
+                    lastDecision: 0,
+                    strafeDir: 0,
                     strafeEndTime: 0
                 }
             };
@@ -1889,8 +2310,8 @@
         // ANIMATION & PHYSICS
         // ============================================
         function updateMechs(dt) {
-            [playerMech, enemyMech].forEach(mech => {
-                if (!mech) return;
+            allMechs.forEach(mech => {
+                if (!mech || mech.isDestroyed) return;
                 updateAI(mech, dt);      // AI controls movement and firing
                 updateWalking(mech, dt);
                 updateImpact(mech, dt);
@@ -2005,15 +2426,16 @@
                 return;
             }
 
-            const target = mech.isPlayer ? enemyMech : playerMech;
+            // Get or find target
+            let target = mech.ai.target;
+            if (!target || target.currentHP <= 0 || target.isDestroyed) {
+                target = findNewTarget(mech);
+                mech.ai.target = target;
+            }
 
             // Diagnostic: Check target validity
             if (!target) {
-                if (shouldLog) dbg(`${name}: updateTorsoTrack - no target (${mech.isPlayer ? 'enemyMech' : 'playerMech'} is null)`, 'warn');
-                return;
-            }
-            if (target.currentHP <= 0) {
-                if (shouldLog) dbg(`${name}: updateTorsoTrack - target HP=${target.currentHP}, skipping`, 'warn');
+                if (shouldLog) dbg(`${name}: updateTorsoTrack - no valid target found`, 'warn');
                 return;
             }
             if (!target.pelvis) {
@@ -2262,8 +2684,13 @@
                 return;
             }
 
-            const target = mech.isPlayer ? enemyMech : playerMech;
-            if (!target || target.currentHP <= 0) {
+            // Get or find target
+            let target = mech.ai.target;
+            if (!target || target.currentHP <= 0 || target.isDestroyed) {
+                target = findNewTarget(mech);
+                mech.ai.target = target;
+            }
+            if (!target) {
                 if (shouldLog) dbg(`${name}: no valid target`, 'warn');
                 return;
             }
@@ -2326,13 +2753,15 @@
                 // Fire weapons when in range (increased range for more action)
                 if (distance <= 18 && distance >= AI_CONFIG.minRange * 0.5) {
                     const now = Date.now();
-                    const side = mech.isPlayer ? 'player' : 'enemy';
+                    const mechKey = mech.name + '_' + (mech.isPlayer ? 'p' : 'e');
+                    if (!mechCooldowns[mechKey]) mechCooldowns[mechKey] = { erlaser: 0, lrm: 0, ac: 0 };
+                    const cooldowns = mechCooldowns[mechKey];
                     const weaponPriority = ['erlaser', 'ac', 'lrm'];
 
                     for (const wtype of weaponPriority) {
-                        if (now >= weaponCooldowns[side][wtype]) {
-                            fireWeapon(mech.isPlayer, wtype);
-                            weaponCooldowns[side][wtype] = now + COOLDOWN_TIMES[wtype];
+                        if (now >= cooldowns[wtype]) {
+                            fireWeapon(mech, wtype);
+                            cooldowns[wtype] = now + COOLDOWN_TIMES[wtype];
                             break;
                         }
                     }
@@ -2473,17 +2902,19 @@
         // ============================================
         // COMBAT
         // ============================================
-        function fireWeapon(isPlayer, type) {
-            const from = isPlayer ? playerMech : enemyMech;
-            const to = isPlayer ? enemyMech : playerMech;
-            if (!from || !to) return;
+        function fireWeapon(mech, type) {
+            const from = mech;
+            const to = mech.ai.target;
+            if (!from || !to || to.isDestroyed) return;
 
             const weapon = WEAPONS[type];
             from.recoilRecovery = weapon.recoil;
             from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';
 
+            // Apply recoil in opposite direction of target
+            const toTarget = to.pelvis.getAbsolutePosition().subtract(from.pelvis.getAbsolutePosition()).normalize();
             from.pelvisAggregate.body.applyImpulse(
-                new BABYLON.Vector3((isPlayer ? -1 : 1) * weapon.knockback * 0.25, 0, 0),
+                toTarget.scale(-weapon.knockback * 0.25),
                 from.pelvis.getAbsolutePosition()
             );
 
@@ -2837,57 +3268,82 @@
         function resetScene() {
             // Disable AI battle mode
             autoFireEnabled = false;
+            battleEnded = false;
             const btn = document.getElementById('autoFireBtn');
             btn.textContent = 'AI Battle: OFF';
             btn.style.background = 'rgba(255, 200, 0, 0.3)';
             btn.style.borderColor = '#ffcc00';
             btn.style.color = '#ffcc00';
 
-            if (playerMech) {
-                playerMech.pelvis.position = new BABYLON.Vector3(-7, 3.5, 0);
-                playerMech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                playerMech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-                playerMech.pelvisAggregate.body.setAngularDamping(0.92);
-                playerMech.pelvisAggregate.body.setLinearDamping(0.25);
-                playerMech.currentHP = playerMech.maxHP;
-                playerMech.isWalking = false;
-                playerMech.impactRecovery = 0;
-                playerMech.recoilRecovery = 0;
-                playerMech.torso.rotation.setAll(0);
-                // Reset AI state
-                playerMech.ai.enabled = false;
-                playerMech.ai.state = 'idle';
-                playerMech.ai.lastDecision = 0;
-                playerMech.ai.strafeDir = 0;
-                playerMech.ai.strafeEndTime = 0;
-            }
-            if (enemyMech) {
-                enemyMech.pelvis.position = new BABYLON.Vector3(7, 3.8, 0);
-                enemyMech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
-                enemyMech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-                enemyMech.pelvisAggregate.body.setAngularDamping(0.93);
-                enemyMech.pelvisAggregate.body.setLinearDamping(0.3);
-                enemyMech.currentHP = enemyMech.maxHP;
-                enemyMech.isWalking = false;
-                enemyMech.impactRecovery = 0;
-                enemyMech.recoilRecovery = 0;
-                enemyMech.torso.rotation.setAll(0);
-                // Reset AI state
-                enemyMech.ai.enabled = false;
-                enemyMech.ai.state = 'idle';
-                enemyMech.ai.lastDecision = 0;
-                enemyMech.ai.strafeDir = 0;
-                enemyMech.ai.strafeEndTime = 0;
-            }
+            // Starting positions for each team
+            const playerPositions = [
+                { x: -7, y: 3.5, z: 0 },
+                { x: -9, y: 3.2, z: 3 },
+                { x: -9, y: 3.0, z: -3 }
+            ];
+            const enemyPositions = [
+                { x: 7, y: 3.8, z: 0 },
+                { x: 9, y: 3.2, z: 3 },
+                { x: 9, y: 3.0, z: -3 }
+            ];
+
+            // Reset player mechs
+            playerMechs.forEach((mech, i) => {
+                if (!mech) return;
+                const pos = playerPositions[i] || playerPositions[0];
+                mech.pelvis.position = new BABYLON.Vector3(pos.x, pos.y, pos.z);
+                mech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
+                mech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                mech.pelvisAggregate.body.setAngularDamping(0.92);
+                mech.pelvisAggregate.body.setLinearDamping(0.25);
+                mech.currentHP = mech.maxHP;
+                mech.isWalking = false;
+                mech.isDestroyed = false;
+                mech.isRecovering = false;
+                mech.impactRecovery = 0;
+                mech.recoilRecovery = 0;
+                mech.torso.rotation.setAll(0);
+                mech.ai.enabled = false;
+                mech.ai.state = 'idle';
+                mech.ai.target = null;
+                mech.ai.lastDecision = 0;
+                mech.ai.strafeDir = 0;
+                mech.ai.strafeEndTime = 0;
+            });
+
+            // Reset enemy mechs
+            enemyMechs.forEach((mech, i) => {
+                if (!mech) return;
+                const pos = enemyPositions[i] || enemyPositions[0];
+                mech.pelvis.position = new BABYLON.Vector3(pos.x, pos.y, pos.z);
+                mech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
+                mech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
+                mech.pelvisAggregate.body.setAngularDamping(0.92);
+                mech.pelvisAggregate.body.setLinearDamping(0.25);
+                mech.currentHP = mech.maxHP;
+                mech.isWalking = false;
+                mech.isDestroyed = false;
+                mech.isRecovering = false;
+                mech.impactRecovery = 0;
+                mech.recoilRecovery = 0;
+                mech.torso.rotation.setAll(0);
+                mech.ai.enabled = false;
+                mech.ai.state = 'idle';
+                mech.ai.target = null;
+                mech.ai.lastDecision = 0;
+                mech.ai.strafeDir = 0;
+                mech.ai.strafeEndTime = 0;
+            });
 
             projectiles.forEach(p => p.mesh.dispose());
             projectiles = [];
             beams.forEach(b => b.mesh.dispose());
             beams = [];
 
-            // Reset cooldowns
-            weaponCooldowns.player = { erlaser: 0, lrm: 0, ac: 0 };
-            weaponCooldowns.enemy = { erlaser: 0, lrm: 0, ac: 0 };
+            // Reset cooldowns for all mechs
+            Object.keys(mechCooldowns).forEach(key => {
+                mechCooldowns[key] = { erlaser: 0, lrm: 0, ac: 0 };
+            });
 
             log('Scene reset');
         }
@@ -2912,29 +3368,19 @@
                 lastDebugTime = 0;
                 dbg('=== AI BATTLE STARTED ===', 'ai');
 
-                // Enable AI on both mechs with proper initialization
-                if (playerMech) {
-                    playerMech.ai.enabled = true;
-                    playerMech.ai.state = 'advancing';
-                    playerMech.ai.lastDecision = gameTime; // Prevent immediate state override
-                    playerMech.isWalking = true;
-                    playerMech.walkDirection = 1; // Start moving toward enemy
-                    const pos = playerMech.pelvis.getAbsolutePosition();
-                    const body = playerMech.pelvisAggregate.body;
-                    dbg(`P init: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)}) ai.enabled=${playerMech.ai.enabled} state=${playerMech.ai.state}`, 'ai');
-                    dbg(`P body: mass=${body.getMassProperties().mass} type=${body.motionType}`, 'phys');
-                }
-                if (enemyMech) {
-                    enemyMech.ai.enabled = true;
-                    enemyMech.ai.state = 'advancing';
-                    enemyMech.ai.lastDecision = gameTime; // Prevent immediate state override
-                    enemyMech.isWalking = true;
-                    enemyMech.walkDirection = -1; // Start moving toward player
-                    const pos = enemyMech.pelvis.getAbsolutePosition();
-                    const body = enemyMech.pelvisAggregate.body;
-                    dbg(`E init: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)}) ai.enabled=${enemyMech.ai.enabled} state=${enemyMech.ai.state}`, 'ai');
-                    dbg(`E body: mass=${body.getMassProperties().mass} type=${body.motionType}`, 'phys');
-                }
+                // Enable AI on all mechs with proper initialization
+                allMechs.forEach(mech => {
+                    if (!mech || mech.isDestroyed) return;
+                    mech.ai.enabled = true;
+                    mech.ai.state = 'advancing';
+                    mech.ai.target = findNewTarget(mech);  // Find initial target
+                    mech.ai.lastDecision = gameTime;
+                    mech.isWalking = true;
+                    mech.walkDirection = mech.isPlayer ? 1 : -1;
+                    dbg(`${mech.name} init: ai.enabled=${mech.ai.enabled} target=${mech.ai.target?.name}`, 'ai');
+                });
+
+                log(`Battle started: ${playerMechs.length} vs ${enemyMechs.length} mechs!`);
             } else {
                 btn.textContent = 'AI Battle: OFF';
                 btn.style.background = 'rgba(255, 200, 0, 0.3)';
@@ -2943,27 +3389,28 @@
                 battleEnded = true;  // Stop the AI loop
                 log('AI DISABLED');
 
-                // Disable AI on both mechs
-                if (playerMech) {
-                    playerMech.ai.enabled = false;
-                    playerMech.ai.state = 'idle';
-                    playerMech.isWalking = false;
-                }
-                if (enemyMech) {
-                    enemyMech.ai.enabled = false;
-                    enemyMech.ai.state = 'idle';
-                    enemyMech.isWalking = false;
-                }
+                // Disable AI on all mechs
+                allMechs.forEach(mech => {
+                    if (!mech) return;
+                    mech.ai.enabled = false;
+                    mech.ai.state = 'idle';
+                    mech.isWalking = false;
+                });
             }
         }
 
         function checkBattleEnd() {
             if (battleEnded) return;  // Already ended
-            if (!autoFireEnabled || !playerMech || !enemyMech) return;
-            if (playerMech.currentHP <= 0 || enemyMech.currentHP <= 0) {
+            if (!autoFireEnabled) return;
+
+            // Check if either team is eliminated
+            const alivePlayerMechs = getAliveMechs('player');
+            const aliveEnemyMechs = getAliveMechs('enemy');
+
+            if (alivePlayerMechs.length === 0 || aliveEnemyMechs.length === 0) {
                 battleEnded = true;  // Mark as ended (AI already disabled in triggerDestruction)
 
-                const winner = playerMech.currentHP > 0 ? 'TIMBER WOLF' : 'DIRE WOLF';
+                const winner = alivePlayerMechs.length > 0 ? 'PLAYER TEAM' : 'ENEMY TEAM';
                 log(`Battle ended! ${winner} WINS!`, 'warn');
 
                 // Delay UI update to allow destruction animation to play
@@ -2985,45 +3432,39 @@
                 triCount.textContent = scene.getActiveIndices() / 3 | 0;
             }
 
-            // Calculate distance between mechs
-            let distance = 0;
-            if (playerMech && enemyMech) {
-                distance = BABYLON.Vector3.Distance(
-                    playerMech.pelvis.getAbsolutePosition(),
-                    enemyMech.pelvis.getAbsolutePosition()
-                );
-            }
+            // Calculate team HP totals
+            let playerTotalHP = 0, playerMaxHP = 0, playerAlive = 0;
+            let enemyTotalHP = 0, enemyMaxHP = 0, enemyAlive = 0;
 
-            if (playerMech) {
-                document.getElementById('playerHP').style.width = (playerMech.currentHP / playerMech.maxHP * 100) + '%';
-                document.getElementById('playerHPText').textContent = `HP: ${playerMech.currentHP}/${playerMech.maxHP}`;
+            playerMechs.forEach(mech => {
+                if (!mech) return;
+                playerMaxHP += mech.maxHP;
+                playerTotalHP += Math.max(0, mech.currentHP);
+                if (mech.currentHP > 0 && !mech.isDestroyed) playerAlive++;
+            });
 
-                let stateText = '';
-                if (playerMech.currentHP <= 0) {
-                    stateText = 'DESTROYED';
-                } else if (playerMech.staggerTime > 0) {
-                    stateText = 'Staggered!';
-                } else if (playerMech.ai.enabled) {
-                    stateText = playerMech.ai.state.toUpperCase();
-                } else {
-                    stateText = playerMech.isWalking ? 'Walking' : 'Idle';
-                }
+            enemyMechs.forEach(mech => {
+                if (!mech) return;
+                enemyMaxHP += mech.maxHP;
+                enemyTotalHP += Math.max(0, mech.currentHP);
+                if (mech.currentHP > 0 && !mech.isDestroyed) enemyAlive++;
+            });
+
+            // Player team status
+            if (playerMaxHP > 0) {
+                document.getElementById('playerHP').style.width = (playerTotalHP / playerMaxHP * 100) + '%';
+                document.getElementById('playerHPText').textContent = `Team HP: ${playerTotalHP}/${playerMaxHP} (${playerAlive} alive)`;
+
+                let stateText = playerAlive === 0 ? 'ELIMINATED' : `${playerAlive} mechs fighting`;
                 document.getElementById('playerState').textContent = stateText;
             }
-            if (enemyMech) {
-                document.getElementById('enemyHP').style.width = (enemyMech.currentHP / enemyMech.maxHP * 100) + '%';
-                document.getElementById('enemyHPText').textContent = `HP: ${enemyMech.currentHP}/${enemyMech.maxHP}`;
 
-                let stateText = '';
-                if (enemyMech.currentHP <= 0) {
-                    stateText = 'DESTROYED';
-                } else if (enemyMech.staggerTime > 0) {
-                    stateText = 'Staggered!';
-                } else if (enemyMech.ai.enabled) {
-                    stateText = `${enemyMech.ai.state.toUpperCase()} (${distance.toFixed(1)}m)`;
-                } else {
-                    stateText = enemyMech.isWalking ? 'Walking' : 'Idle';
-                }
+            // Enemy team status
+            if (enemyMaxHP > 0) {
+                document.getElementById('enemyHP').style.width = (enemyTotalHP / enemyMaxHP * 100) + '%';
+                document.getElementById('enemyHPText').textContent = `Team HP: ${enemyTotalHP}/${enemyMaxHP} (${enemyAlive} alive)`;
+
+                let stateText = enemyAlive === 0 ? 'ELIMINATED' : `${enemyAlive} mechs fighting`;
                 document.getElementById('enemyState').textContent = stateText;
             }
         }

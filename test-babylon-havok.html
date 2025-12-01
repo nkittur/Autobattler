@@ -673,40 +673,42 @@
             legGroup.position = hip.position.clone();
             legGroup.parent = parent;
 
-            // === UPPER LEG (THIGH) - Short, angled steeply forward ===
+            // === UPPER LEG (THIGH) ===
+            // upperLeg is a TransformNode at the HIP JOINT - this is what rotates
             const thighHeight = 0.7 * scale;
-            const upperLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'UpperLeg', {
+            const upperLeg = new BABYLON.TransformNode(name + '_' + side + 'UpperLeg', scene);
+            upperLeg.parent = legGroup;
+            upperLeg.rotation.x = 0.85;  // ~48 degrees forward, rotates from hip
+
+            // The actual thigh mesh hangs DOWN from the pivot
+            const upperLegMesh = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'UpperLegMesh', {
                 width: 0.32 * scale * b,
                 height: thighHeight,
                 depth: 0.34 * scale * b
             }, scene);
-            // CRITICAL: Move pivot to TOP of thigh so rotation happens at hip joint
-            upperLeg.setPivotPoint(new BABYLON.Vector3(0, thighHeight / 2, 0));
-            upperLeg.rotation.x = 0.85;  // ~48 degrees forward, pivots from top
-            upperLeg.position = new BABYLON.Vector3(0, 0, 0);  // Top is at legGroup origin (hip)
-            upperLeg.parent = legGroup;
-            upperLeg.material = primaryMat;
+            upperLegMesh.position = new BABYLON.Vector3(0, -thighHeight / 2, 0);  // Mesh center is half-height below pivot
+            upperLegMesh.parent = upperLeg;
+            upperLegMesh.material = primaryMat;
 
-            // Thigh armor plate (front) - positioned relative to thigh center
+            // Thigh armor plate (front)
             const thighArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ThighArmor', {
                 width: 0.36 * scale * b,
                 height: 0.45 * scale,
                 depth: 0.12 * scale
             }, scene);
-            thighArmor.position = new BABYLON.Vector3(0, -0.08 * scale, 0.2 * scale * b);
+            thighArmor.position = new BABYLON.Vector3(0, -thighHeight / 2, 0.2 * scale * b);
             thighArmor.parent = upperLeg;
             thighArmor.material = secondaryMat;
 
-            // === KNEE JOINT - Positioned at bottom of thigh ===
+            // === KNEE JOINT - at bottom of thigh ===
             const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', {
                 diameter: 0.32 * scale * b
             }, scene);
-            // Position at bottom of thigh (thigh extends down from pivot at top)
-            knee.position = new BABYLON.Vector3(0, -thighHeight, 0);
+            knee.position = new BABYLON.Vector3(0, -thighHeight, 0);  // Full thigh length below hip pivot
             knee.parent = upperLeg;
             knee.material = metalMat;
 
-            // Knee cap (pointing forward - distinctive look)
+            // Knee cap (pointing forward)
             const kneeCap = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'KneeCap', {
                 width: 0.24 * scale * b,
                 height: 0.22 * scale,
@@ -716,37 +718,40 @@
             kneeCap.parent = knee;
             kneeCap.material = secondaryMat;
 
-            // === LOWER LEG (SHIN/CALF) - Bulky, angled backward ===
+            // === LOWER LEG (SHIN/CALF) ===
+            // lowerLeg is a TransformNode at the KNEE JOINT - this is what rotates
             const shinHeight = 1.0 * scale;
-            const lowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'LowerLeg', {
+            const lowerLeg = new BABYLON.TransformNode(name + '_' + side + 'LowerLeg', scene);
+            lowerLeg.parent = knee;
+            lowerLeg.rotation.x = -0.75;  // ~43 degrees backward, rotates from knee
+
+            // The actual shin mesh hangs DOWN from the knee pivot
+            const lowerLegMesh = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'LowerLegMesh', {
                 width: 0.38 * scale * b,
                 height: shinHeight,
                 depth: 0.4 * scale * b
             }, scene);
-            // CRITICAL: Move pivot to TOP of shin so rotation happens at knee joint
-            lowerLeg.setPivotPoint(new BABYLON.Vector3(0, shinHeight / 2, 0));
-            lowerLeg.rotation.x = -0.75;  // ~43 degrees backward, pivots from top
-            lowerLeg.position = new BABYLON.Vector3(0, 0, 0);  // Top is at knee
-            lowerLeg.parent = knee;
-            lowerLeg.material = primaryMat;
+            lowerLegMesh.position = new BABYLON.Vector3(0, -shinHeight / 2, 0);  // Mesh center is half-height below pivot
+            lowerLegMesh.parent = lowerLeg;
+            lowerLegMesh.material = primaryMat;
 
-            // Calf bulge (rear actuator housing) - upper part of shin
+            // Calf bulge (rear actuator housing)
             const calfBulge = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'CalfBulge', {
                 width: 0.34 * scale * b,
                 height: 0.5 * scale,
                 depth: 0.18 * scale
             }, scene);
-            calfBulge.position = new BABYLON.Vector3(0, -0.2 * scale, -0.26 * scale * b);
+            calfBulge.position = new BABYLON.Vector3(0, -shinHeight * 0.35, -0.26 * scale * b);
             calfBulge.parent = lowerLeg;
             calfBulge.material = secondaryMat;
 
-            // Shin armor (front) - covers front of shin
+            // Shin armor (front)
             const shinArmor = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'ShinArmor', {
                 width: 0.34 * scale * b,
                 height: 0.65 * scale,
                 depth: 0.1 * scale
             }, scene);
-            shinArmor.position = new BABYLON.Vector3(0, -0.15 * scale, 0.22 * scale * b);
+            shinArmor.position = new BABYLON.Vector3(0, -shinHeight * 0.4, 0.22 * scale * b);
             shinArmor.parent = lowerLeg;
             shinArmor.material = secondaryMat;
 
@@ -754,8 +759,7 @@
             const ankle = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Ankle', {
                 diameter: 0.24 * scale * b
             }, scene);
-            // Position at bottom of shin (shin extends down from pivot at top)
-            ankle.position = new BABYLON.Vector3(0, -shinHeight, 0);
+            ankle.position = new BABYLON.Vector3(0, -shinHeight, 0);  // Full shin length below knee pivot
             ankle.parent = lowerLeg;
             ankle.material = metalMat;
 

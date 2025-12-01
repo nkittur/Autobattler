@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.8</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v9.9</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button onclick="resetScene()">Reset</button>
@@ -261,7 +261,7 @@
 
         // Weapon cooldowns per mech (keyed by mech name)
         const mechCooldowns = {};
-        const COOLDOWN_TIMES = { erlaser: 2000, lrm: 3500, ac: 1500 };
+        const COOLDOWN_TIMES = { erlaser: 2000, lrm: 3500, ac: 1500, hatchet: 1800 };
 
         // Helper to get alive mechs
         function getAliveMechs(team) {
@@ -331,6 +331,15 @@
                 projectileSpeed: 45,  // Faster rounds
                 projectileSize: 0.1,
                 color: new BABYLON.Color3(1, 0.9, 0.3)
+            },
+            hatchet: {
+                name: 'Hatchet',
+                damage: 35,
+                knockback: 45,  // Huge knockback
+                recoil: 0.3,
+                isMelee: true,
+                range: 3.5,  // Must be very close
+                color: new BABYLON.Color3(1, 0.3, 0.1)
             }
         };
 
@@ -540,19 +549,21 @@
             createGround(scene);
             createWalls(scene);
 
-            // Create teams of mechs - 3 per side at different Z positions
-            // Player team (left side, x = -7 to -10)
+            // Create teams of mechs - 4 per side at different Z positions
+            // Player team (left side, x = -7 to -11)
             playerMechs = [
-                createMadCatMech(scene, -7, 0, true),      // Center - heavy
-                createCatapultMech(scene, -9, 3, true),    // Back left - support
-                createCommandoMech(scene, -9, -3, true)   // Back right - scout
+                createMadCatMech(scene, -7, 0, true),        // Center - heavy
+                createHatchetmanMech(scene, -8, 2, true),    // Front flank - melee
+                createCatapultMech(scene, -10, 4, true),     // Back left - support
+                createCommandoMech(scene, -10, -3, true)     // Back right - scout
             ];
 
-            // Enemy team (right side, x = 7 to 10)
+            // Enemy team (right side, x = 7 to 11)
             enemyMechs = [
-                createDireWolfMech(scene, 7, 0, false),    // Center - assault
-                createCatapultMech(scene, 9, 3, false),    // Back left - support
-                createCommandoMech(scene, 9, -3, false)   // Back right - scout
+                createDireWolfMech(scene, 7, 0, false),      // Center - assault
+                createHatchetmanMech(scene, 8, -2, false),   // Front flank - melee
+                createCatapultMech(scene, 10, 4, false),     // Back left - support
+                createCommandoMech(scene, 10, -3, false)     // Back right - scout
             ];
 
             // Combined list for easy iteration
@@ -560,7 +571,7 @@
 
             // Initialize cooldowns for each mech
             allMechs.forEach(mech => {
-                mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0 };
+                mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
             });
 
             return scene;
@@ -2378,9 +2389,338 @@
         }
 
         // ============================================
+        // HATCHETMAN - Melee specialist mech
+        // ============================================
+        function createHatchetmanMech(scene, xPos, zPos, isPlayer) {
+            const name = (isPlayer ? 'player' : 'enemy') + '_hatchetman_' + Math.random().toString(36).substr(2, 4);
+            const primary = isPlayer ? COLORS.playerPrimary : COLORS.enemyPrimary;
+            const secondary = isPlayer ? COLORS.playerSecondary : COLORS.enemySecondary;
+            const scale = 0.8;  // Medium mech
+
+            // Materials with textures
+            const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
+            primaryMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            primaryMat.diffuseTexture.uScale = 2.5;
+            primaryMat.diffuseTexture.vScale = 2.5;
+            primaryMat.diffuseColor = primary.scale(1.3);
+            primaryMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            primaryMat.bumpTexture.uScale = 2.5;
+            primaryMat.bumpTexture.vScale = 2.5;
+            primaryMat.bumpTexture.level = 0.6;
+            primaryMat.specularColor = new BABYLON.Color3(0.25, 0.25, 0.25);
+            primaryMat.specularPower = 32;
+
+            const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
+            secondaryMat.diffuseTexture = TEXTURES.metal.clone();
+            secondaryMat.diffuseTexture.uScale = 2;
+            secondaryMat.diffuseTexture.vScale = 2;
+            secondaryMat.diffuseColor = secondary.scale(1.2);
+            secondaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+
+            const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
+            darkMat.diffuseColor = COLORS.darkMetal;
+            darkMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+
+            const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
+            metalMat.diffuseTexture = TEXTURES.rustMetal.clone();
+            metalMat.diffuseTexture.uScale = 3;
+            metalMat.diffuseTexture.vScale = 3;
+            metalMat.diffuseColor = COLORS.metal.scale(1.2);
+            metalMat.bumpTexture = TEXTURES.rustMetalNormal.clone();
+            metalMat.bumpTexture.uScale = 3;
+            metalMat.bumpTexture.vScale = 3;
+            metalMat.bumpTexture.level = 0.5;
+            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+            metalMat.specularPower = 48;
+
+            // Hatchet blade material - bright and shiny
+            const bladeMat = new BABYLON.StandardMaterial(name + '_blade', scene);
+            bladeMat.diffuseColor = new BABYLON.Color3(0.7, 0.7, 0.75);
+            bladeMat.specularColor = new BABYLON.Color3(0.9, 0.9, 0.9);
+            bladeMat.specularPower = 128;
+            bladeMat.emissiveColor = new BABYLON.Color3(0.1, 0.05, 0.0);
+
+            // Pelvis - sturdy build
+            const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', {
+                width: 1.4 * scale, height: 0.5 * scale, depth: 0.85 * scale
+            }, scene);
+            pelvis.position = new BABYLON.Vector3(xPos, 3.0, zPos);
+            pelvis.material = darkMat;
+
+            const pelvisShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, -1.2, 0),
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(1.4 * scale, 2.9, 0.85 * scale),
+                scene
+            );
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            pelvisBody.shape = pelvisShape;
+            pelvisBody.setMassProperties({ mass: 50 });
+            pelvisBody.setAngularDamping(0.90);
+            pelvisBody.setLinearDamping(0.18);
+            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+            const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
+
+            // Torso - hunched forward, aggressive stance
+            const torsoCore = BABYLON.MeshBuilder.CreateBox(name + '_torso', {
+                width: 1.2 * scale, height: 1.1 * scale, depth: 0.9 * scale
+            }, scene);
+            torsoCore.position.y = 0.75 * scale;
+            torsoCore.rotation.x = 0.15;  // Slight forward lean
+            torsoCore.parent = pelvis;
+            torsoCore.material = primaryMat;
+
+            // Head - angular, aggressive
+            const headBase = BABYLON.MeshBuilder.CreateBox(name + '_head', {
+                width: 0.45 * scale, height: 0.4 * scale, depth: 0.5 * scale
+            }, scene);
+            headBase.position = new BABYLON.Vector3(0, 0.75 * scale, 0.1 * scale);
+            headBase.parent = torsoCore;
+            headBase.material = secondaryMat;
+
+            const canopy = BABYLON.MeshBuilder.CreateBox(name + '_canopy', {
+                width: 0.3 * scale, height: 0.2 * scale, depth: 0.25 * scale
+            }, scene);
+            canopy.position = new BABYLON.Vector3(0, 0.1 * scale, 0.15 * scale);
+            canopy.parent = headBase;
+            canopy.material = new BABYLON.StandardMaterial(name + '_cockpit', scene);
+            canopy.material.diffuseColor = COLORS.cockpit;
+            canopy.material.emissiveColor = COLORS.cockpit.scale(0.5);
+            canopy.material.alpha = 0.8;
+
+            // Right arm - normal weapon arm with laser
+            function createWeaponArm() {
+                const shoulder = BABYLON.MeshBuilder.CreateSphere(name + '_rightShoulder', {
+                    diameter: 0.35 * scale
+                }, scene);
+                shoulder.position = new BABYLON.Vector3(0.65 * scale, 0.35 * scale, 0);
+                shoulder.parent = torsoCore;
+                shoulder.material = metalMat;
+
+                const arm = BABYLON.MeshBuilder.CreateCylinder(name + '_rightArm', {
+                    diameter: 0.2 * scale, height: 0.75 * scale
+                }, scene);
+                arm.rotation.z = 0.25;
+                arm.position = new BABYLON.Vector3(0.15 * scale, -0.4 * scale, 0);
+                arm.parent = shoulder;
+                arm.material = primaryMat;
+
+                const weaponPod = BABYLON.MeshBuilder.CreateBox(name + '_rightWeaponPod', {
+                    width: 0.15 * scale, height: 0.2 * scale, depth: 0.18 * scale
+                }, scene);
+                weaponPod.position = new BABYLON.Vector3(0, -0.45 * scale, 0);
+                weaponPod.parent = arm;
+                weaponPod.material = darkMat;
+
+                return { shoulder, arm, weaponPod };
+            }
+
+            // Left arm - THE HATCHET ARM
+            function createHatchetArm() {
+                const shoulder = BABYLON.MeshBuilder.CreateSphere(name + '_leftShoulder', {
+                    diameter: 0.4 * scale
+                }, scene);
+                shoulder.position = new BABYLON.Vector3(-0.65 * scale, 0.35 * scale, 0);
+                shoulder.parent = torsoCore;
+                shoulder.material = metalMat;
+
+                // Beefier arm for the hatchet
+                const arm = BABYLON.MeshBuilder.CreateCylinder(name + '_leftArm', {
+                    diameterTop: 0.25 * scale, diameterBottom: 0.2 * scale, height: 0.8 * scale
+                }, scene);
+                arm.rotation.z = -0.3;
+                arm.position = new BABYLON.Vector3(-0.18 * scale, -0.42 * scale, 0);
+                arm.parent = shoulder;
+                arm.material = primaryMat;
+
+                // Hatchet handle
+                const handle = BABYLON.MeshBuilder.CreateCylinder(name + '_hatchetHandle', {
+                    diameter: 0.08 * scale, height: 0.6 * scale
+                }, scene);
+                handle.position = new BABYLON.Vector3(0, -0.55 * scale, 0);
+                handle.parent = arm;
+                handle.material = darkMat;
+
+                // Hatchet head - large axe blade
+                const bladeMain = BABYLON.MeshBuilder.CreateBox(name + '_hatchetBlade', {
+                    width: 0.08 * scale, height: 0.5 * scale, depth: 0.35 * scale
+                }, scene);
+                bladeMain.position = new BABYLON.Vector3(0, -0.25 * scale, 0.2 * scale);
+                bladeMain.parent = handle;
+                bladeMain.material = bladeMat;
+
+                // Blade edge (tapered)
+                const bladeEdge = BABYLON.MeshBuilder.CreateBox(name + '_bladeEdge', {
+                    width: 0.04 * scale, height: 0.45 * scale, depth: 0.1 * scale
+                }, scene);
+                bladeEdge.position = new BABYLON.Vector3(0, 0, 0.2 * scale);
+                bladeEdge.parent = bladeMain;
+                bladeEdge.material = bladeMat;
+
+                // WeaponPod at hatchet for melee hit detection
+                const weaponPod = BABYLON.MeshBuilder.CreateBox(name + '_leftWeaponPod', {
+                    width: 0.1 * scale, height: 0.1 * scale, depth: 0.1 * scale
+                }, scene);
+                weaponPod.position = new BABYLON.Vector3(0, -0.35 * scale, 0.25 * scale);
+                weaponPod.parent = handle;
+                weaponPod.material = darkMat;
+                weaponPod.visibility = 0;  // Invisible, just for hit detection
+
+                return { shoulder, arm, handle, bladeMain, weaponPod };
+            }
+
+            const rightArm = createWeaponArm();
+            const leftArm = createHatchetArm();
+
+            // Small shoulder pods for backup weapons
+            const leftPod = BABYLON.MeshBuilder.CreateBox(name + '_leftPod', {
+                width: 0.2 * scale, height: 0.15 * scale, depth: 0.25 * scale
+            }, scene);
+            leftPod.position = new BABYLON.Vector3(-0.55 * scale, 0.8 * scale, 0.1 * scale);
+            leftPod.parent = torsoCore;
+            leftPod.material = darkMat;
+
+            const rightPod = BABYLON.MeshBuilder.CreateBox(name + '_rightPod', {
+                width: 0.2 * scale, height: 0.15 * scale, depth: 0.25 * scale
+            }, scene);
+            rightPod.position = new BABYLON.Vector3(0.55 * scale, 0.8 * scale, 0.1 * scale);
+            rightPod.parent = torsoCore;
+            rightPod.material = darkMat;
+
+            // Legs - chicken walker style, fast
+            function createLeg(side) {
+                const sign = side === 'left' ? -1 : 1;
+                const legGroup = new BABYLON.TransformNode(name + '_' + side + 'LegGroup', scene);
+                legGroup.parent = pelvis;
+
+                const hip = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Hip', { diameter: 0.28 * scale }, scene);
+                hip.position = new BABYLON.Vector3(sign * 0.55 * scale, -0.2 * scale, 0);
+                hip.parent = legGroup;
+                hip.material = darkMat;
+
+                const upperLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Upper', {
+                    diameterTop: 0.2 * scale, diameterBottom: 0.16 * scale, height: 0.95 * scale
+                }, scene);
+                upperLeg.rotation.x = 0.55;
+                upperLeg.position = new BABYLON.Vector3(0, -0.48 * scale, 0.25 * scale);
+                upperLeg.parent = hip;
+                upperLeg.material = primaryMat;
+
+                const knee = BABYLON.MeshBuilder.CreateSphere(name + '_' + side + 'Knee', { diameter: 0.18 * scale }, scene);
+                knee.position.y = -0.52 * scale;
+                knee.parent = upperLeg;
+                knee.material = metalMat;
+
+                const lowerLeg = BABYLON.MeshBuilder.CreateCylinder(name + '_' + side + 'Lower', {
+                    diameterTop: 0.16 * scale, diameterBottom: 0.11 * scale, height: 1.0 * scale
+                }, scene);
+                lowerLeg.rotation.x = -0.7;
+                lowerLeg.position = new BABYLON.Vector3(0, -0.52 * scale, 0);
+                lowerLeg.parent = knee;
+                lowerLeg.material = primaryMat;
+
+                const footGroup = new BABYLON.TransformNode(name + '_' + side + 'FootGroup', scene);
+                footGroup.position.y = -0.55 * scale;
+                footGroup.parent = lowerLeg;
+
+                const ankle = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Ankle', {
+                    width: 0.13 * scale, height: 0.11 * scale, depth: 0.16 * scale
+                }, scene);
+                ankle.parent = footGroup;
+                ankle.material = metalMat;
+
+                const foot = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'Foot', {
+                    width: 0.22 * scale, height: 0.07 * scale, depth: 0.38 * scale
+                }, scene);
+                foot.position = new BABYLON.Vector3(0, -0.06 * scale, 0.1 * scale);
+                foot.parent = footGroup;
+                foot.material = darkMat;
+
+                return { hip, upperLeg, knee, lowerLeg, ankle, foot, legGroup, footGroup };
+            }
+
+            const leftLeg = createLeg('left');
+            const rightLeg = createLeg('right');
+
+            return {
+                name: 'HATCHETMAN',
+                pelvis, pelvisAggregate: pelvisAgg,
+                torso: torsoCore, head: headBase, cockpit: canopy,
+                leftArm, rightArm, leftLeg, rightLeg,
+                leftPod, rightPod,
+                isPlayer, scale,
+                stats: { maxHP: 90, mass: 50 },
+                currentHP: 90, maxHP: 90,
+                isWalking: false, walkCycle: 0, walkSpeed: 3.2,  // Faster than average
+                walkDirection: isPlayer ? 1 : -1,
+                impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
+                staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
+                torsoTwist: 0, targetTorsoTwist: 0,
+                isMelee: true,  // Flag for melee AI behavior
+                ai: {
+                    enabled: false,
+                    state: 'idle',
+                    target: null,
+                    lastDecision: 0,
+                    strafeDir: 0,
+                    strafeEndTime: 0
+                }
+            };
+        }
+
+        // ============================================
         // ANIMATION & PHYSICS
         // ============================================
+        // Handle mech-to-mech collisions - push apart based on mass
+        function updateMechCollisions() {
+            const minDist = 2.5;  // Minimum distance between mech centers
+            for (let i = 0; i < allMechs.length; i++) {
+                const mechA = allMechs[i];
+                if (!mechA || mechA.isDestroyed) continue;
+
+                for (let j = i + 1; j < allMechs.length; j++) {
+                    const mechB = allMechs[j];
+                    if (!mechB || mechB.isDestroyed) continue;
+
+                    const posA = mechA.pelvis.getAbsolutePosition();
+                    const posB = mechB.pelvis.getAbsolutePosition();
+
+                    const diff = posB.subtract(posA);
+                    diff.y = 0;  // Only consider horizontal distance
+                    const dist = diff.length();
+
+                    if (dist < minDist && dist > 0.01) {
+                        // Mechs are overlapping - push them apart
+                        const pushDir = diff.normalize();
+                        const overlap = minDist - dist;
+
+                        // Calculate push ratio based on mass (lighter mech moves more)
+                        const massA = mechA.stats.mass || 75;
+                        const massB = mechB.stats.mass || 75;
+                        const totalMass = massA + massB;
+                        const ratioA = massB / totalMass;  // A moves more if B is heavier
+                        const ratioB = massA / totalMass;  // B moves more if A is heavier
+
+                        // Apply push force
+                        const pushForce = 200 * overlap;
+                        const forceA = pushDir.scale(-pushForce * ratioA);
+                        const forceB = pushDir.scale(pushForce * ratioB);
+
+                        mechA.pelvisAggregate.body.applyForce(forceA, posA);
+                        mechB.pelvisAggregate.body.applyForce(forceB, posB);
+
+                        // Also apply small impulse for immediate response
+                        const impulseA = pushDir.scale(-overlap * 5 * ratioA);
+                        const impulseB = pushDir.scale(overlap * 5 * ratioB);
+                        mechA.pelvisAggregate.body.applyImpulse(impulseA, posA);
+                        mechB.pelvisAggregate.body.applyImpulse(impulseB, posB);
+                    }
+                }
+            }
+        }
+
         function updateMechs(dt) {
+            updateMechCollisions();  // Handle mech-to-mech collisions first
             allMechs.forEach(mech => {
                 if (!mech || mech.isDestroyed) return;
                 updateAI(mech, dt);      // AI controls movement and firing
@@ -2812,38 +3152,66 @@
 
                 // Don't override edge-avoid state with other decisions
                 if (!nearEdge) {
-                    // Determine movement state based on range
-                    if (distance > AI_CONFIG.maxRange) {
-                        mech.ai.state = 'advancing';
-                        mech.walkDirection = toTarget.x > 0 ? 1 : -1;
-                    } else if (distance < AI_CONFIG.minRange) {
-                        mech.ai.state = 'retreating';
-                        mech.walkDirection = toTarget.x > 0 ? -1 : 1;
-                    } else {
-                        // At optimal range - maybe strafe
-                        if (Math.random() < AI_CONFIG.strafeChance) {
-                            mech.ai.state = 'strafing';
-                            mech.ai.strafeDir = Math.random() < 0.5 ? -1 : 1;
-                            mech.ai.strafeEndTime = gameTime + AI_CONFIG.strafeDuration;
+                    // MELEE MECHS: Always try to close distance
+                    if (mech.isMelee) {
+                        const meleeRange = WEAPONS.hatchet.range;
+                        if (distance > meleeRange + 1) {
+                            // Charge toward target
+                            mech.ai.state = 'charging';
+                            mech.walkDirection = toTarget.x > 0 ? 1 : -1;
                         } else {
-                            mech.ai.state = 'optimal';
+                            // In melee range - stay close
+                            mech.ai.state = 'melee';
+                        }
+                    } else {
+                        // RANGED MECHS: Normal behavior
+                        // Determine movement state based on range
+                        if (distance > AI_CONFIG.maxRange) {
+                            mech.ai.state = 'advancing';
+                            mech.walkDirection = toTarget.x > 0 ? 1 : -1;
+                        } else if (distance < AI_CONFIG.minRange) {
+                            mech.ai.state = 'retreating';
+                            mech.walkDirection = toTarget.x > 0 ? -1 : 1;
+                        } else {
+                            // At optimal range - maybe strafe
+                            if (Math.random() < AI_CONFIG.strafeChance) {
+                                mech.ai.state = 'strafing';
+                                mech.ai.strafeDir = Math.random() < 0.5 ? -1 : 1;
+                                mech.ai.strafeEndTime = gameTime + AI_CONFIG.strafeDuration;
+                            } else {
+                                mech.ai.state = 'optimal';
+                            }
                         }
                     }
                 }
 
                 // Fire weapons when in range (even while edge avoiding)
-                if (distance <= 18 && distance >= AI_CONFIG.minRange * 0.5) {
-                    const now = Date.now();
-                    const mechKey = mech.name + '_' + (mech.isPlayer ? 'p' : 'e');
-                    if (!mechCooldowns[mechKey]) mechCooldowns[mechKey] = { erlaser: 0, lrm: 0, ac: 0 };
-                    const cooldowns = mechCooldowns[mechKey];
-                    const weaponPriority = ['erlaser', 'ac', 'lrm'];
+                const now = Date.now();
+                const mechKey = mech.name + '_' + (mech.isPlayer ? 'p' : 'e');
+                if (!mechCooldowns[mechKey]) mechCooldowns[mechKey] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
+                const cooldowns = mechCooldowns[mechKey];
 
-                    for (const wtype of weaponPriority) {
-                        if (now >= cooldowns[wtype]) {
-                            fireWeapon(mech, wtype);
-                            cooldowns[wtype] = now + COOLDOWN_TIMES[wtype];
-                            break;
+                if (mech.isMelee) {
+                    // Melee mechs: hatchet first when in range, then backup laser
+                    const meleeRange = WEAPONS.hatchet.range;
+                    if (distance <= meleeRange && now >= cooldowns.hatchet) {
+                        fireWeapon(mech, 'hatchet');
+                        cooldowns.hatchet = now + COOLDOWN_TIMES.hatchet;
+                    } else if (distance <= 15 && now >= cooldowns.erlaser) {
+                        // Backup laser while closing distance
+                        fireWeapon(mech, 'erlaser');
+                        cooldowns.erlaser = now + COOLDOWN_TIMES.erlaser;
+                    }
+                } else {
+                    // Ranged mechs: normal weapon priority
+                    if (distance <= 18 && distance >= AI_CONFIG.minRange * 0.5) {
+                        const weaponPriority = ['erlaser', 'ac', 'lrm'];
+                        for (const wtype of weaponPriority) {
+                            if (now >= cooldowns[wtype]) {
+                                fireWeapon(mech, wtype);
+                                cooldowns[wtype] = now + COOLDOWN_TIMES[wtype];
+                                break;
+                            }
                         }
                     }
                 }
@@ -2916,6 +3284,31 @@
                     } else {
                         mech.isWalking = false;
                     }
+                    break;
+
+                case 'charging':
+                    // MELEE: Aggressive charge toward target
+                    mech.isWalking = true;
+                    mech.walkDirection = 1;  // Forward
+                    forceApplied = pelvisForward.scale(AI_CONFIG.moveForce * 1.4);  // Faster than normal
+                    body.applyForce(forceApplied, myPos);
+                    break;
+
+                case 'melee':
+                    // MELEE: In close range - stay mobile but close
+                    mech.isWalking = true;
+                    // Small movements to stay in melee range
+                    if (distance > WEAPONS.hatchet.range) {
+                        mech.walkDirection = 1;
+                        forceApplied = pelvisForward.scale(AI_CONFIG.moveForce * 0.8);
+                    } else if (distance < 2) {
+                        mech.walkDirection = -1;
+                        forceApplied = pelvisForward.scale(-AI_CONFIG.moveForce * 0.4);
+                    } else {
+                        // Circle strafe while in melee
+                        forceApplied = pelvisRight.scale(AI_CONFIG.strafeForce * 0.6);
+                    }
+                    body.applyForce(forceApplied, myPos);
                     break;
 
                 case 'edge-avoid':
@@ -3018,11 +3411,20 @@
                     from.pelvis.getAbsolutePosition()
                 );
 
-                if (weapon.isBeam) fireBeam(from, to, weapon);
-                else if (weapon.isCluster) fireCluster(from, to, weapon);
-                else fireProjectile(from, to, weapon);
-
-                log(`${from.name} fires ${weapon.name}!`);
+                if (weapon.isMelee) {
+                    if (fireMelee(from, to, weapon)) {
+                        log(`${from.name} swings ${weapon.name}!`);
+                    }
+                } else if (weapon.isBeam) {
+                    fireBeam(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                } else if (weapon.isCluster) {
+                    fireCluster(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                } else {
+                    fireProjectile(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                }
             } catch (e) {
                 log(`[FIRE ERROR] ${e.message}`, 'error');
                 console.error('fireWeapon error:', e);
@@ -3216,6 +3618,68 @@
             } catch (e) {
                 log(`[CLUSTER ERROR] ${e.message}`, 'error');
                 console.error('fireCluster error:', e);
+            }
+        }
+
+        function fireMelee(from, to, weapon) {
+            try {
+                log(`[MELEE] ${from.name} swinging hatchet!`);
+
+                // Check melee range
+                const fromPos = from.pelvis.getAbsolutePosition();
+                const toPos = to.pelvis.getAbsolutePosition();
+                const dist = BABYLON.Vector3.Distance(fromPos, toPos);
+
+                if (dist > weapon.range) {
+                    log(`[MELEE] Target too far: ${dist.toFixed(1)} > ${weapon.range}`, 'warn');
+                    return false;
+                }
+
+                // Create melee swing visual effect
+                const swingStart = from.leftArm.weaponPod ? from.leftArm.weaponPod.getAbsolutePosition() : fromPos.clone();
+                const swingEnd = to.torso.getAbsolutePosition();
+
+                // Orange arc flash for hatchet swing
+                const arc = BABYLON.MeshBuilder.CreateTube('meleeArc' + Date.now(), {
+                    path: [swingStart, swingEnd],
+                    radius: 0.15,
+                    updatable: false
+                }, scene);
+                const arcMat = new BABYLON.StandardMaterial('arcMat' + Date.now(), scene);
+                arcMat.emissiveColor = weapon.color;
+                arcMat.alpha = 0.9;
+                arc.material = arcMat;
+
+                // Fade and remove arc quickly
+                let arcAlpha = 0.9;
+                const arcFade = setInterval(() => {
+                    arcAlpha -= 0.15;
+                    if (arcAlpha <= 0) {
+                        clearInterval(arcFade);
+                        arc.dispose();
+                    } else {
+                        arcMat.alpha = arcAlpha;
+                    }
+                }, 30);
+
+                // Apply damage with massive knockback
+                applyDamage(to, weapon, from.isPlayer ? 1 : -1);
+
+                // Extra knockback for melee
+                const knockDir = toPos.subtract(fromPos).normalize();
+                knockDir.y = 0.3;  // Slight upward
+                to.pelvisAggregate.body.applyImpulse(knockDir.scale(weapon.knockback * 0.8), toPos);
+
+                // Create impact sparks
+                createImpact(swingEnd.clone(), weapon.color);
+                createImpact(swingEnd.clone(), new BABYLON.Color3(1, 0.8, 0.2));
+
+                log(`[MELEE] HATCHET HIT! ${to.name} takes ${weapon.damage} damage!`, 'warn');
+                return true;
+            } catch (e) {
+                log(`[MELEE ERROR] ${e.message}`, 'error');
+                console.error('fireMelee error:', e);
+                return false;
             }
         }
 
@@ -3482,16 +3946,18 @@
             btn.style.borderColor = '#ffcc00';
             btn.style.color = '#ffcc00';
 
-            // Starting positions for each team
+            // Starting positions for each team (4 mechs per side)
             const playerPositions = [
                 { x: -7, y: 3.5, z: 0 },
-                { x: -9, y: 3.2, z: 3 },
-                { x: -9, y: 3.0, z: -3 }
+                { x: -8, y: 3.0, z: 2 },
+                { x: -10, y: 3.2, z: 4 },
+                { x: -10, y: 3.0, z: -3 }
             ];
             const enemyPositions = [
                 { x: 7, y: 3.8, z: 0 },
-                { x: 9, y: 3.2, z: 3 },
-                { x: 9, y: 3.0, z: -3 }
+                { x: 8, y: 3.0, z: -2 },
+                { x: 10, y: 3.2, z: 4 },
+                { x: 10, y: 3.0, z: -3 }
             ];
 
             // Reset player mechs

@@ -4314,6 +4314,35 @@
             }
         }
 
+        // Helper: find battle center (average position of all alive mechs)
+        function getBattleCenter(mechs) {
+            if (mechs.length === 0) return new BABYLON.Vector3(0, 2, 0);
+            let sum = new BABYLON.Vector3(0, 0, 0);
+            mechs.forEach(m => sum.addInPlace(m.pelvis.getAbsolutePosition()));
+            return sum.scale(1 / mechs.length);
+        }
+
+        // Helper: find closest enemy pair for dramatic shots
+        function getClosestEnemyPair(mechs) {
+            let bestDist = Infinity;
+            let mechA = null, mechB = null;
+            for (let i = 0; i < mechs.length; i++) {
+                for (let j = i + 1; j < mechs.length; j++) {
+                    if (mechs[i].isPlayer === mechs[j].isPlayer) continue;
+                    const d = BABYLON.Vector3.Distance(
+                        mechs[i].pelvis.getAbsolutePosition(),
+                        mechs[j].pelvis.getAbsolutePosition()
+                    );
+                    if (d < bestDist) {
+                        bestDist = d;
+                        mechA = mechs[i];
+                        mechB = mechs[j];
+                    }
+                }
+            }
+            return { mechA, mechB, distance: bestDist };
+        }
+
         function updateCinematicCamera(dt) {
             if (!cinematicEnabled) return;
 
@@ -4329,45 +4358,42 @@
                 state.target = aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
             }
 
+            const battleCenter = getBattleCenter(aliveMechs);
+            const closestPair = getClosestEnemyPair(aliveMechs);
+
             // Mode transitions
             if (state.transitionTime > state.modeDuration) {
                 state.transitionTime = 0;
 
-                // Pick next mode with weighted random
+                // Pick next mode - prioritize multi-mech views
                 const roll = Math.random();
-                if (roll < 0.35) {
-                    state.mode = 'orbit';
-                    state.modeDuration = 5 + Math.random() * 3;
-                    state.orbitRadius = 10 + Math.random() * 8;
-                    state.orbitHeight = 5 + Math.random() * 6;
-                } else if (roll < 0.6) {
-                    state.mode = 'track';
+                if (roll < 0.25) {
+                    state.mode = 'highOrbit';  // High angle orbit around battle
+                    state.modeDuration = 6 + Math.random() * 3;
+                    state.orbitRadius = 16 + Math.random() * 6;
+                    state.orbitHeight = 12 + Math.random() * 5;
+                } else if (roll < 0.45) {
+                    state.mode = 'overShoulder';  // Behind mech looking at target
                     state.modeDuration = 4 + Math.random() * 2;
-                    // Pick a new random target
                     state.target = aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
-                } else if (roll < 0.85) {
-                    state.mode = 'sweep';
-                    state.modeDuration = 6 + Math.random() * 4;
-                    state.sweepPhase = 0;
+                } else if (roll < 0.6) {
+                    state.mode = 'lowBetween';  // Low angle between fighting mechs
+                    state.modeDuration = 4 + Math.random() * 2;
+                } else if (roll < 0.75) {
+                    state.mode = 'sweep';  // Panoramic sweep
+                    state.modeDuration = 7 + Math.random() * 4;
+                    state.sweepPhase = Math.random() * Math.PI;
+                } else if (roll < 0.9) {
+                    state.mode = 'chase';  // Following behind moving mech
+                    state.modeDuration = 5 + Math.random() * 2;
+                    // Pick a mech that's moving toward enemy
+                    const movingMechs = aliveMechs.filter(m => m.isWalking);
+                    state.target = movingMechs.length > 0
+                        ? movingMechs[Math.floor(Math.random() * movingMechs.length)]
+                        : aliveMechs[Math.floor(Math.random() * aliveMechs.length)];
                 } else {
-                    state.mode = 'action';
-                    state.modeDuration = 3 + Math.random() * 2;
-                    // Find mech with most enemies nearby for action shot
-                    let bestMech = state.target;
-                    let maxEnemies = 0;
-                    aliveMechs.forEach(mech => {
-                        const enemies = aliveMechs.filter(m => m.isPlayer !== mech.isPlayer);
-                        let nearby = 0;
-                        enemies.forEach(e => {
-                            const d = BABYLON.Vector3.Distance(mech.pelvis.getAbsolutePosition(), e.pelvis.getAbsolutePosition());
-                            if (d < 15) nearby++;
-                        });
-                        if (nearby > maxEnemies) {
-                            maxEnemies = nearby;
-                            bestMech = mech;
-                        }
-                    });
-                    state.target = bestMech;
+                    state.mode = 'wideShot';  // Wide establishing shot
+                    state.modeDuration = 5 + Math.random() * 3;
                 }
             }
 
@@ -4377,55 +4403,95 @@
             let lookAt;
 
             switch (state.mode) {
-                case 'orbit':
-                    // Smooth orbit around target
-                    state.orbitAngle += dt * 0.4;  // Slow rotation
+                case 'highOrbit':
+                    // High angle orbit around battle center (shows all mechs)
+                    state.orbitAngle += dt * 0.3;
                     cameraPos = new BABYLON.Vector3(
-                        targetPos.x + Math.cos(state.orbitAngle) * state.orbitRadius,
-                        targetPos.y + state.orbitHeight,
-                        targetPos.z + Math.sin(state.orbitAngle) * state.orbitRadius
+                        battleCenter.x + Math.cos(state.orbitAngle) * state.orbitRadius,
+                        state.orbitHeight,
+                        battleCenter.z + Math.sin(state.orbitAngle) * state.orbitRadius * 0.6
                     );
-                    lookAt = targetPos.add(new BABYLON.Vector3(0, 2, 0));
+                    lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
                     break;
 
-                case 'track':
-                    // Over-the-shoulder tracking shot
-                    const forward = state.target.pelvis.getDirection(BABYLON.Vector3.Forward());
-                    const right = state.target.pelvis.getDirection(BABYLON.Vector3.Right());
+                case 'overShoulder':
+                    // Over-the-shoulder looking toward target's enemy
+                    const enemy = state.target.ai.target;
+                    const enemyPos = enemy ? enemy.pelvis.getAbsolutePosition() : battleCenter;
+                    const toEnemy = enemyPos.subtract(targetPos).normalize();
+                    const perpendicular = new BABYLON.Vector3(-toEnemy.z, 0, toEnemy.x);
+                    const side = Math.sin(state.transitionTime * 0.5) > 0 ? 1 : -1;
                     cameraPos = targetPos
-                        .add(forward.scale(-4))  // Behind
-                        .add(right.scale(2))     // To the side
+                        .add(toEnemy.scale(-3.5))      // Behind
+                        .add(perpendicular.scale(1.8 * side))  // To the side
                         .add(new BABYLON.Vector3(0, 3.5, 0));  // Above
-                    // Look at target's front
-                    lookAt = targetPos.add(forward.scale(5)).add(new BABYLON.Vector3(0, 2.5, 0));
+                    // Look toward enemy (shows both mechs)
+                    lookAt = targetPos.add(toEnemy.scale(6)).add(new BABYLON.Vector3(0, 2, 0));
+                    break;
+
+                case 'lowBetween':
+                    // Low angle positioned between two fighting mechs
+                    if (closestPair.mechA && closestPair.mechB) {
+                        const posA = closestPair.mechA.pelvis.getAbsolutePosition();
+                        const posB = closestPair.mechB.pelvis.getAbsolutePosition();
+                        const midpoint = posA.add(posB).scale(0.5);
+                        const axis = posB.subtract(posA).normalize();
+                        const perpAxis = new BABYLON.Vector3(-axis.z, 0, axis.x);
+                        // Position to the side, low down
+                        const offsetDist = Math.min(closestPair.distance * 0.6, 5);
+                        cameraPos = midpoint
+                            .add(perpAxis.scale(offsetDist))
+                            .add(new BABYLON.Vector3(0, 1.2, 0));  // Low angle
+                        lookAt = midpoint.add(new BABYLON.Vector3(0, 2.5, 0));
+                    } else {
+                        // Fallback to battle center
+                        cameraPos = battleCenter.add(new BABYLON.Vector3(5, 1.5, 5));
+                        lookAt = battleCenter.add(new BABYLON.Vector3(0, 2, 0));
+                    }
                     break;
 
                 case 'sweep':
-                    // Panoramic sweep across the battlefield
-                    state.sweepPhase += dt * 0.15;
+                    // Panoramic sweep - high angle showing battlefield
+                    state.sweepPhase += dt * 0.12;
                     const sweepAngle = state.sweepPhase * Math.PI * 2;
-                    const sweepRadius = 18 + Math.sin(state.sweepPhase * 2) * 5;
-                    const sweepHeight = 8 + Math.sin(state.sweepPhase * 3) * 4;
+                    const sweepRadius = 20 + Math.sin(state.sweepPhase * 1.5) * 4;
+                    const sweepHeight = 10 + Math.sin(state.sweepPhase * 2) * 3;
                     cameraPos = new BABYLON.Vector3(
                         Math.cos(sweepAngle) * sweepRadius,
                         sweepHeight,
                         Math.sin(sweepAngle) * sweepRadius * 0.5
                     );
-                    // Look at battle center or nearest mech
-                    lookAt = new BABYLON.Vector3(0, 3, 0);
+                    lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
                     break;
 
-                case 'action':
-                    // Low dramatic angle looking up at target
-                    const actionForward = state.target.pelvis.getDirection(BABYLON.Vector3.Forward());
-                    const actionRight = state.target.pelvis.getDirection(BABYLON.Vector3.Right());
-                    const actionSide = Math.sin(state.transitionTime * 2) > 0 ? 1 : -1;
+                case 'chase':
+                    // Chase cam - behind and slightly above moving mech
+                    const chaseTarget = state.target.ai.target;
+                    const chaseDir = chaseTarget
+                        ? chaseTarget.pelvis.getAbsolutePosition().subtract(targetPos).normalize()
+                        : new BABYLON.Vector3(state.target.isPlayer ? 1 : -1, 0, 0);
                     cameraPos = targetPos
-                        .add(actionForward.scale(3))
-                        .add(actionRight.scale(3 * actionSide))
-                        .add(new BABYLON.Vector3(0, 1.5, 0));  // Low angle
-                    lookAt = targetPos.add(new BABYLON.Vector3(0, 3.5, 0));  // Look up at torso
+                        .add(chaseDir.scale(-6))  // Behind
+                        .add(new BABYLON.Vector3(0, 4, 0));  // Above
+                    // Look ahead of the mech toward where it's going
+                    lookAt = targetPos.add(chaseDir.scale(8)).add(new BABYLON.Vector3(0, 2, 0));
                     break;
+
+                case 'wideShot':
+                    // Wide establishing shot from corner, high angle
+                    const corner = state.transitionTime < state.modeDuration / 2 ? 1 : -1;
+                    cameraPos = new BABYLON.Vector3(
+                        corner * 22,
+                        14,
+                        8 * Math.sin(state.transitionTime * 0.3)
+                    );
+                    lookAt = battleCenter.add(new BABYLON.Vector3(0, 1, 0));
+                    break;
+
+                default:
+                    // Fallback
+                    cameraPos = new BABYLON.Vector3(0, 15, 15);
+                    lookAt = battleCenter;
             }
 
             // Smooth camera movement

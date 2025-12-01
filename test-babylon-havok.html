@@ -2014,7 +2014,15 @@
                 arm.parent = shoulder;
                 arm.material = metalMat;
 
-                return { shoulder, arm };
+                // Weapon pod at end of arm (required for firing)
+                const weaponPod = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'WeaponPod', {
+                    width: 0.12 * scale, height: 0.2 * scale, depth: 0.15 * scale
+                }, scene);
+                weaponPod.position = new BABYLON.Vector3(0, -0.45 * scale, 0);
+                weaponPod.parent = arm;
+                weaponPod.material = darkMat;
+
+                return { shoulder, arm, weaponPod };
             }
 
             const leftArm = createArm('left');
@@ -2220,7 +2228,15 @@
                 arm.parent = shoulder;
                 arm.material = primaryMat;
 
-                return { shoulder, arm };
+                // Weapon pod at end of arm (required for firing)
+                const weaponPod = BABYLON.MeshBuilder.CreateBox(name + '_' + side + 'WeaponPod', {
+                    width: 0.12 * scale, height: 0.18 * scale, depth: 0.14 * scale
+                }, scene);
+                weaponPod.position = new BABYLON.Vector3(0, -0.4 * scale, 0);
+                weaponPod.parent = arm;
+                weaponPod.material = darkMat;
+
+                return { shoulder, arm, weaponPod };
             }
 
             const leftArm = createArm('left');

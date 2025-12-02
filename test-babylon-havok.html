@@ -359,6 +359,40 @@
             }
         };
 
+        // ============================================
+        // HYBRID STATE MACHINE - Mech States
+        // Phase 1: WALKING (Kinematic/ANIMATED) - Perfect control
+        // Phase 2: FLINCH (Kinematic + additive animation)
+        // Phase 3: RAGDOLL (Dynamic) - Physics takes over
+        // Phase 4: RECOVERING (Blend back to kinematic)
+        // ============================================
+        const MechState = {
+            WALKING: 'walking',     // Kinematic mode - controlled movement
+            RAGDOLL: 'ragdoll',     // Dynamic mode - physics simulation
+            RECOVERING: 'recovering' // Transitioning from ragdoll back to walking
+        };
+
+        // Stability and impact thresholds
+        const STABILITY_CONFIG = {
+            maxStability: 100,           // Full stability value
+            flinchThreshold: 15,         // Knockback below this = flinch only
+            knockdownThreshold: 35,      // Knockback above this = ragdoll
+            stabilityRecoveryRate: 25,   // Stability recovered per second
+            ragdollSettleVelocity: 0.3,  // Velocity threshold for ragdoll settle
+            ragdollSettleTime: 0.5,      // Time at low velocity before recovery starts
+            recoveryBlendTime: 0.4,      // Time to blend from ragdoll to standing
+            mechAngularDamping: 0.85,    // Mechs are stiff, not floppy
+            mechLinearDamping: 0.3       // Some resistance to sliding
+        };
+
+        // Arena bounds - HARD limits for kinematic movement
+        const ARENA_BOUNDS = {
+            minX: -18,
+            maxX: 18,
+            minZ: -8,
+            maxZ: 8
+        };
+
         // Colors
         const COLORS = {
             playerPrimary: new BABYLON.Color3(0.15, 0.35, 0.2),
@@ -520,12 +554,12 @@
             TEXTURES.rustMetalNormal.uScale = 2;
             TEXTURES.rustMetalNormal.vScale = 2;
 
-            // Camera
-            camera = new BABYLON.ArcRotateCamera('cam', -Math.PI/2, Math.PI/3.2, 24,
-                new BABYLON.Vector3(0, 3, 0), scene);
+            // Camera - zoomed out to show all mechs
+            camera = new BABYLON.ArcRotateCamera('cam', -Math.PI/2, Math.PI/3.5, 32,
+                new BABYLON.Vector3(0, 2, 0), scene);
             camera.attachControl(document.getElementById('renderCanvas'), true);
-            camera.lowerRadiusLimit = 10;
-            camera.upperRadiusLimit = 120;  // Allow zooming out to see environment
+            camera.lowerRadiusLimit = 15;
+            camera.upperRadiusLimit = 120;
             camera.wheelPrecision = 30;
 
             // Lighting - multiple sources for better illumination
@@ -1037,15 +1071,17 @@
                 new BABYLON.Vector3(1.8, 3.5, 0.9),  // Full standing height
                 scene
             );
-            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            // HYBRID ARCHITECTURE: Start in ANIMATED (kinematic) mode for perfect walking control
+            // Switch to DYNAMIC only when ragdolling from heavy impacts
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.ANIMATED, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 75 });
-            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
-            pelvisBody.setLinearDamping(0.25);
+            // High angular damping for stiff mech feel (robots aren't floppy)
+            pelvisBody.setAngularDamping(STABILITY_CONFIG.mechAngularDamping);
+            pelvisBody.setLinearDamping(STABILITY_CONFIG.mechLinearDamping);
 
             // Set friction and restitution on the shape
-            // Low friction (0.1) allows movement - friction 1.0 was blocking all forces
-            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+            pelvisShape.material = { friction: 0.3, restitution: 0.05 };
 
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
@@ -1474,6 +1510,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale: 1.0,
+                standingHeight: 3.25,  // Pelvis Y for feet to touch ground
+                optimalRange: 10,      // Ideal combat distance for this mech
                 stats: { maxHP: 150, mass: 75 },
                 currentHP: 150, maxHP: 150,
                 isWalking: false, walkCycle: 0, walkSpeed: 2.8,
@@ -1481,6 +1519,13 @@
                 impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
                 staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
                 torsoTwist: 0, targetTorsoTwist: 0,
+                // HYBRID STATE MACHINE properties
+                mechState: MechState.WALKING,
+                stability: STABILITY_CONFIG.maxStability,
+                ragdollSettleTimer: 0,
+                recoveryTimer: 0,
+                lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
+                flinchIntensity: 0,
                 // AI state
                 ai: {
                     enabled: false,
@@ -1570,15 +1615,15 @@
                 new BABYLON.Vector3(2.0 * scale, 4.0 * scale, 1.0 * scale),  // Full standing height
                 scene
             );
-            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            // HYBRID ARCHITECTURE: Start in ANIMATED (kinematic) mode for perfect walking control
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.ANIMATED, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 100 });
-            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
-            pelvisBody.setLinearDamping(0.3);
+            pelvisBody.setAngularDamping(STABILITY_CONFIG.mechAngularDamping);
+            pelvisBody.setLinearDamping(STABILITY_CONFIG.mechLinearDamping);
 
             // Set friction and restitution on the shape
-            // Low friction (0.1) allows movement - friction 1.0 was blocking all forces
-            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+            pelvisShape.material = { friction: 0.3, restitution: 0.05 };
 
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };  // Compatibility wrapper
 
@@ -1874,6 +1919,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
+                standingHeight: 4.25,   // Pelvis Y for feet to touch ground (taller mech)
+                optimalRange: 12,       // Heavier mech prefers longer range
                 stats: { maxHP: 200, mass: 100 },
                 currentHP: 200, maxHP: 200,
                 isWalking: false, walkCycle: 0, walkSpeed: 2.2,
@@ -1881,6 +1928,13 @@
                 impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
                 staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
                 torsoTwist: 0, targetTorsoTwist: 0,
+                // HYBRID STATE MACHINE properties
+                mechState: MechState.WALKING,
+                stability: STABILITY_CONFIG.maxStability,
+                ragdollSettleTimer: 0,
+                recoveryTimer: 0,
+                lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
+                flinchIntensity: 0,
                 // AI state
                 ai: {
                     enabled: false,
@@ -1951,12 +2005,13 @@
                 new BABYLON.Vector3(1.2 * scale, 2.8, 0.7 * scale),
                 scene
             );
-            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            // HYBRID ARCHITECTURE: Start in ANIMATED (kinematic) mode for perfect walking control
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.ANIMATED, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 40 });
-            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
-            pelvisBody.setLinearDamping(0.20);
-            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+            pelvisBody.setAngularDamping(STABILITY_CONFIG.mechAngularDamping);
+            pelvisBody.setLinearDamping(STABILITY_CONFIG.mechLinearDamping);
+            pelvisShape.material = { friction: 0.3, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
 
             // Torso - compact, angular
@@ -2054,6 +2109,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
+                standingHeight: 2.6,    // Pelvis Y for feet to touch ground (smaller mech)
+                optimalRange: 8,        // Light mech prefers closer range, fast hit and run
                 stats: { maxHP: 80, mass: 40 },
                 currentHP: 80, maxHP: 80,
                 isWalking: false, walkCycle: 0, walkSpeed: 3.5,
@@ -2061,6 +2118,13 @@
                 impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
                 staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
                 torsoTwist: 0, targetTorsoTwist: 0,
+                // HYBRID STATE MACHINE properties
+                mechState: MechState.WALKING,
+                stability: STABILITY_CONFIG.maxStability,
+                ragdollSettleTimer: 0,
+                recoveryTimer: 0,
+                lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
+                flinchIntensity: 0,
                 ai: {
                     enabled: false,
                     state: 'idle',
@@ -2130,12 +2194,13 @@
                 new BABYLON.Vector3(1.5 * scale, 3.0, 0.8 * scale),
                 scene
             );
-            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            // HYBRID ARCHITECTURE: Start in ANIMATED (kinematic) mode for perfect walking control
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.ANIMATED, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 60 });
-            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
-            pelvisBody.setLinearDamping(0.22);
-            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+            pelvisBody.setAngularDamping(STABILITY_CONFIG.mechAngularDamping);
+            pelvisBody.setLinearDamping(STABILITY_CONFIG.mechLinearDamping);
+            pelvisShape.material = { friction: 0.3, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
 
             // Torso - boxy with rounded top
@@ -2235,6 +2300,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
+                standingHeight: 2.8,    // Pelvis Y for feet to touch ground
+                optimalRange: 14,       // Missile boat prefers long range
                 stats: { maxHP: 120, mass: 60 },
                 currentHP: 120, maxHP: 120,
                 isWalking: false, walkCycle: 0, walkSpeed: 2.5,
@@ -2242,6 +2309,13 @@
                 impactRecovery: 0, impactDirection: new BABYLON.Vector3(0,0,0),
                 staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
                 torsoTwist: 0, targetTorsoTwist: 0,
+                // HYBRID STATE MACHINE properties
+                mechState: MechState.WALKING,
+                stability: STABILITY_CONFIG.maxStability,
+                ragdollSettleTimer: 0,
+                recoveryTimer: 0,
+                lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
+                flinchIntensity: 0,
                 ai: {
                     enabled: false,
                     state: 'idle',
@@ -2318,12 +2392,13 @@
                 new BABYLON.Vector3(1.4 * scale, 2.9, 0.85 * scale),
                 scene
             );
-            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+            // HYBRID ARCHITECTURE: Start in ANIMATED (kinematic) mode for perfect walking control
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.ANIMATED, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 50 });
-            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
-            pelvisBody.setLinearDamping(0.18);
-            pelvisShape.material = { friction: 0.1, restitution: 0.05 };
+            pelvisBody.setAngularDamping(STABILITY_CONFIG.mechAngularDamping);
+            pelvisBody.setLinearDamping(STABILITY_CONFIG.mechLinearDamping);
+            pelvisShape.material = { friction: 0.3, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
 
             // Torso - hunched forward, aggressive stance
@@ -2474,6 +2549,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
+                standingHeight: 2.65,   // Pelvis Y for feet to touch ground
+                optimalRange: 3,        // Melee mech wants to be in your face
                 stats: { maxHP: 90, mass: 50 },
                 currentHP: 90, maxHP: 90,
                 isWalking: false, walkCycle: 0, walkSpeed: 3.2,  // Faster than average
@@ -2482,6 +2559,13 @@
                 staggerTime: 0, recoilRecovery: 0, lastFiredArm: 'right',
                 torsoTwist: 0, targetTorsoTwist: 0,
                 isMelee: true,  // Flag for melee AI behavior
+                // HYBRID STATE MACHINE properties
+                mechState: MechState.WALKING,
+                stability: STABILITY_CONFIG.maxStability,
+                ragdollSettleTimer: 0,
+                recoveryTimer: 0,
+                lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
+                flinchIntensity: 0,
                 ai: {
                     enabled: false,
                     state: 'idle',
@@ -2497,6 +2581,7 @@
         // ANIMATION & PHYSICS
         // ============================================
         // Handle mech-to-mech collisions - push apart based on mass
+        // HYBRID ARCHITECTURE: For kinematic mechs, directly adjust positions
         function updateMechCollisions() {
             const minDist = 2.5;  // Minimum distance between mech centers
             for (let i = 0; i < allMechs.length; i++) {
@@ -2523,22 +2608,28 @@
                         const massA = mechA.stats.mass || 75;
                         const massB = mechB.stats.mass || 75;
                         const totalMass = massA + massB;
-                        const ratioA = massB / totalMass;  // A moves more if B is heavier
-                        const ratioB = massA / totalMass;  // B moves more if A is heavier
+                        const ratioA = massB / totalMass;
+                        const ratioB = massA / totalMass;
 
-                        // Apply push force
-                        const pushForce = 200 * overlap;
-                        const forceA = pushDir.scale(-pushForce * ratioA);
-                        const forceB = pushDir.scale(pushForce * ratioB);
+                        // HYBRID: Handle differently based on mech states
+                        // Kinematic mechs get position adjustments, dynamic get impulses
+                        if (mechA.mechState === MechState.WALKING) {
+                            // Directly adjust position for kinematic mech
+                            const pushA = pushDir.scale(-overlap * ratioA * 0.5);
+                            mechA.pelvis.position.addInPlace(pushA);
+                        } else if (mechA.mechState === MechState.RAGDOLL) {
+                            // Apply impulse for dynamic mech
+                            const impulseA = pushDir.scale(-overlap * 15 * ratioA);
+                            mechA.pelvisAggregate.body.applyImpulse(impulseA, posA);
+                        }
 
-                        mechA.pelvisAggregate.body.applyForce(forceA, posA);
-                        mechB.pelvisAggregate.body.applyForce(forceB, posB);
-
-                        // Also apply small impulse for immediate response
-                        const impulseA = pushDir.scale(-overlap * 5 * ratioA);
-                        const impulseB = pushDir.scale(overlap * 5 * ratioB);
-                        mechA.pelvisAggregate.body.applyImpulse(impulseA, posA);
-                        mechB.pelvisAggregate.body.applyImpulse(impulseB, posB);
+                        if (mechB.mechState === MechState.WALKING) {
+                            const pushB = pushDir.scale(overlap * ratioB * 0.5);
+                            mechB.pelvis.position.addInPlace(pushB);
+                        } else if (mechB.mechState === MechState.RAGDOLL) {
+                            const impulseB = pushDir.scale(overlap * 15 * ratioB);
+                            mechB.pelvisAggregate.body.applyImpulse(impulseB, posB);
+                        }
                     }
                 }
             }
@@ -2548,22 +2639,81 @@
             updateMechCollisions();  // Handle mech-to-mech collisions first
             allMechs.forEach(mech => {
                 if (!mech || mech.isDestroyed) return;
-                updateAI(mech, dt);      // AI controls movement and firing
-                updateWalking(mech, dt);
-                updateImpact(mech, dt);
-                updateRecoil(mech, dt);
-                updateTorsoTrack(mech, dt);
-                stabilize(mech, dt);
+
+                // HYBRID STATE MACHINE - Route to appropriate update based on state
+                switch (mech.mechState) {
+                    case MechState.WALKING:
+                        // Perfect kinematic control - no physics fighting us
+                        updateAI(mech, dt);
+                        updateWalkingKinematic(mech, dt);
+                        updateFlinch(mech, dt);
+                        updateRecoil(mech, dt);
+                        updateTorsoTrack(mech, dt);
+                        recoverStability(mech, dt);
+                        break;
+
+                    case MechState.RAGDOLL:
+                        // Physics takes over - just check if we've settled
+                        updateRagdoll(mech, dt);
+                        break;
+
+                    case MechState.RECOVERING:
+                        // Blending from ragdoll back to standing
+                        updateRecovery(mech, dt);
+                        break;
+                }
             });
         }
 
-        function updateWalking(mech, dt) {
+        // ============================================
+        // PHASE 1: KINEMATIC WALKING (ANIMATED Mode)
+        // Perfect control - mech is an unstoppable force
+        // ============================================
+        function updateWalkingKinematic(mech, dt) {
+            const body = mech.pelvisAggregate.body;
+            const myPos = mech.pelvis.getAbsolutePosition();
+
+            // Handle body rotation toward target (from AI)
+            const yawError = mech.ai.desiredYawError || 0;
+            const maxRotationSpeed = 2.0;  // rad/s - mechs turn deliberately
+            const rotationThreshold = 0.05;  // ~3 degrees
+            let yawVelocity = 0;
+
+            if (Math.abs(yawError) > rotationThreshold) {
+                // Rate-limited rotation
+                yawVelocity = Math.sign(yawError) * Math.min(Math.abs(yawError) * 3, maxRotationSpeed);
+            }
+
+            // === SMOOTH STRAFE RAMPING ===
+            // Gradually transition strafe amount instead of snapping
+            if (!mech.currentStrafeAmount) mech.currentStrafeAmount = 0;
+            const targetStrafe = mech.ai.strafeAmount || 0;
+            const strafeRampSpeed = 2.0;  // How fast strafe ramps up/down
+            if (Math.abs(targetStrafe - mech.currentStrafeAmount) > 0.01) {
+                mech.currentStrafeAmount += Math.sign(targetStrafe - mech.currentStrafeAmount) * strafeRampSpeed * dt;
+                // Clamp to target
+                if ((targetStrafe > 0 && mech.currentStrafeAmount > targetStrafe) ||
+                    (targetStrafe < 0 && mech.currentStrafeAmount < targetStrafe) ||
+                    (targetStrafe === 0 && Math.abs(mech.currentStrafeAmount) < 0.05)) {
+                    mech.currentStrafeAmount = targetStrafe;
+                }
+            }
+
             if (!mech.isWalking) {
+                // When not walking, stay in place but still rotate toward target
+                // Still need ground-seeking even when stationary
+                const targetY = mech.standingHeight || 3.0;
+                const heightError = targetY - myPos.y;
+                const groundSeekSpeed = 8.0;
+                body.setLinearVelocity(new BABYLON.Vector3(0, heightError * groundSeekSpeed, 0));
+                body.setAngularVelocity(new BABYLON.Vector3(0, yawVelocity, 0));
                 dampLegs(mech, dt);
+                mech.lastKinematicVelocity.setAll(0);
                 return;
             }
 
-            mech.walkCycle += dt * mech.walkSpeed * 2;
+            // Walk cycle speed tied to movement - heavier mechs have slower cycles
+            mech.walkCycle += dt * mech.walkSpeed * 1.6;
             const cycle = mech.walkCycle;
 
             const leftPhase = Math.sin(cycle);
@@ -2572,74 +2722,98 @@
             animateLeg(mech.leftLeg, leftPhase, mech.scale);
             animateLeg(mech.rightLeg, rightPhase, mech.scale);
 
-            // Body bob - subtle dip on each footfall (twice per cycle)
-            // Use absolute sine for double frequency, inverted for "stomp" feel
-            const bobPhase = Math.abs(Math.sin(cycle));  // 0 at neutral, 1 at extremes
-            const bob = (1 - bobPhase) * 0.03 * mech.scale;  // Reduced dip for stability
+            // Body bob - pronounced dip on each footfall for grounded feel
+            const bobPhase = Math.abs(Math.sin(cycle));
+            const bob = (1 - bobPhase) * 0.06 * mech.scale;  // Increased bob
 
-            // Side sway - subtle shift toward planted foot
-            const sway = Math.sin(cycle) * 0.02;  // Reduced for stability
+            // Hip sway for weight transfer - side to side with each step
+            const hipSway = Math.sin(cycle) * 0.02;
 
-            // Forward/back rock - minimal lean
-            const rock = Math.sin(cycle) * 0.01;  // Reduced for stability
-
-            // Get pelvis facing direction from its rotation
-            const body = mech.pelvisAggregate.body;
+            // Get pelvis facing direction
             const quat = body.transformNode.rotationQuaternion;
-            let forwardDir = new BABYLON.Vector3(1, 0, 0);  // Default forward is +X
+            let forwardDir = new BABYLON.Vector3(1, 0, 0);
+            let rightDir = new BABYLON.Vector3(0, 0, 1);
             if (quat) {
-                // Get the forward vector from pelvis rotation (local +X in world space)
                 const rotMatrix = new BABYLON.Matrix();
                 quat.toRotationMatrix(rotMatrix);
                 forwardDir = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
-                forwardDir.y = 0;  // Keep movement horizontal
+                forwardDir.y = 0;
                 forwardDir.normalize();
+                rightDir = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
+                rightDir.y = 0;
+                rightDir.normalize();
             }
 
-            // Apply subtle body bob as a gentle impulse
-            const linVel = body.getLinearVelocity();
-            const targetBobVel = -bob * 3;  // Reduced downward velocity
-            const bobCorrection = (targetBobVel - linVel.y) * 0.15;  // Gentler correction
-            body.applyImpulse(
-                new BABYLON.Vector3(0, bobCorrection * mech.scale, 0),
-                mech.pelvis.getAbsolutePosition()
-            );
+            // KINEMATIC MODE: Set velocity directly instead of applying forces
+            // Slightly reduced speed for heavier, more grounded feel
+            const walkSpeed = 3.0 * mech.scale;  // Units per second
+            const strafeSpeed = 1.8 * mech.scale;  // Strafe is slower than walking
 
-            // Walking force in pelvis facing direction - scaled by mech mass
-            // Use stronger force to overcome stabilization and damping
-            const massMultiplier = (mech.stats.mass || 50) / 50;  // Heavier mechs need more force
-            const walkForce = forwardDir.scale(mech.walkDirection * 250 * mech.scale * massMultiplier);
-            body.applyForce(walkForce, mech.pelvis.getAbsolutePosition());
+            // Calculate velocity from walk direction and strafe (using smoothed strafe)
+            let velocity = forwardDir.scale(mech.walkDirection * walkSpeed);
+            velocity.addInPlace(rightDir.scale(mech.currentStrafeAmount * strafeSpeed));
 
-            const angVel = body.getAngularVelocity();
-            body.setAngularVelocity(
-                new BABYLON.Vector3(
-                    angVel.x * 0.9 + rock * 0.8,  // Subtle forward/back rock
-                    angVel.y * 0.92,
-                    angVel.z * 0.9 + sway * 1.0  // Subtle side sway
-                )
-            );
+            // === GROUND-SEEKING FOR KINEMATIC MODE ===
+            // In ANIMATED mode, gravity doesn't apply, so we need to manually seek ground level
+            const targetY = mech.standingHeight || 3.0;  // Fallback if not defined
+            const heightError = targetY - myPos.y;
+            const groundSeekSpeed = 8.0;  // How fast we correct height
+            // Apply ground-seeking with bob effect on top
+            velocity.y = heightError * groundSeekSpeed - bob * 2;
+
+            // === HARD BOUNDARY CLAMPING ===
+            // If we're at or past the boundary, zero velocity in that direction
+            const boundaryMargin = 0.5;
+            if (myPos.x <= ARENA_BOUNDS.minX + boundaryMargin) {
+                // At left edge - only allow movement toward center (positive X)
+                if (velocity.x < 0) velocity.x = 0;
+            } else if (myPos.x >= ARENA_BOUNDS.maxX - boundaryMargin) {
+                // At right edge - only allow movement toward center (negative X)
+                if (velocity.x > 0) velocity.x = 0;
+            }
+            if (myPos.z <= ARENA_BOUNDS.minZ + boundaryMargin) {
+                // At back edge - only allow movement toward center (positive Z)
+                if (velocity.z < 0) velocity.z = 0;
+            } else if (myPos.z >= ARENA_BOUNDS.maxZ - boundaryMargin) {
+                // At front edge - only allow movement toward center (negative Z)
+                if (velocity.z > 0) velocity.z = 0;
+            }
+
+            // Store velocity for ragdoll inheritance
+            mech.lastKinematicVelocity = velocity.clone();
+
+            // Set the kinematic body velocity
+            body.setLinearVelocity(velocity);
+
+            // Apply body rotation - combines target tracking with visual motion
+            // Rock = forward/back tilt, sway = side-to-side tilt, hipSway = rolling motion
+            const sway = Math.sin(cycle) * 0.02;  // Side-to-side lean with each step
+            const rock = Math.sin(cycle * 2) * 0.01;  // Subtle double-frequency rock
+
+            // In ANIMATED mode, set angular velocity for rotation + visual feel
+            // Add hipSway for rolling weight transfer motion
+            body.setAngularVelocity(new BABYLON.Vector3(rock + hipSway, yawVelocity, sway));
         }
 
         function animateLeg(leg, phase, scale) {
             // Lightning bolt digitigrade animation - matched to new geometry
             // Base rotations: upperLeg = 0.5, lowerLeg = -0.4
 
-            // Upper leg swings forward/back from hip
-            const swing = phase * 0.25;  // More pronounced swing
+            // Upper leg swings forward/back from hip - more pronounced for grounded feel
+            const swing = phase * 0.35;  // Increased swing for visible stepping
             leg.upperLeg.rotation.x = 0.5 + swing;
 
             // Lower leg bends more during lift phase (phase > 0 = leg lifting)
             const liftPhase = Math.max(0, phase);
             const plantPhase = Math.max(0, -phase);
 
-            // Knee bends more during lift, straightens during plant
-            const kneeBend = liftPhase * 0.4;  // More bend when lifting
-            leg.lowerLeg.rotation.x = -0.4 - kneeBend + plantPhase * 0.1;
+            // Knee bends more during lift, straightens during plant - exaggerated
+            const kneeBend = liftPhase * 0.5;  // More pronounced bend when lifting
+            leg.lowerLeg.rotation.x = -0.4 - kneeBend + plantPhase * 0.15;
 
             // Foot tilts up during lift, plants flat during ground contact
-            const footLift = liftPhase * 0.3;  // Toe points up when lifting
-            const footPlant = plantPhase * 0.15;  // Slight forward tilt when planting
+            const footLift = liftPhase * 0.4;  // Toe points up more when lifting
+            const footPlant = plantPhase * 0.2;  // More tilt when planting
             leg.foot.rotation.x = 0.1 - footLift + footPlant;
         }
 
@@ -2653,18 +2827,425 @@
             });
         }
 
-        function updateImpact(mech, dt) {
-            if (mech.impactRecovery <= 0) return;
-            mech.impactRecovery -= dt * 2.2;
-            if (mech.impactRecovery < 0) mech.impactRecovery = 0;
+        // ============================================
+        // PHASE 2: FLINCH SYSTEM (Additive Animation)
+        // Small hits - mech keeps walking but jerks visually
+        // ============================================
+        function updateFlinch(mech, dt) {
+            // Decay flinch intensity
+            if (mech.flinchIntensity > 0) {
+                mech.flinchIntensity -= dt * 3.0;  // Quick recovery
+                if (mech.flinchIntensity < 0) mech.flinchIntensity = 0;
 
-            const tilt = mech.impactRecovery * 0.28;
-            mech.torso.rotation.x = mech.impactDirection.z * tilt;
-            mech.torso.rotation.z = -mech.impactDirection.x * tilt;
+                // Apply additive animation to torso
+                const tilt = mech.flinchIntensity * 0.35;
+                mech.torso.rotation.x = mech.impactDirection.z * tilt;
+                mech.torso.rotation.z = -mech.impactDirection.x * tilt;
+            } else {
+                // Return torso to neutral
+                mech.torso.rotation.x = BABYLON.Scalar.Lerp(mech.torso.rotation.x, 0, dt * 5);
+                mech.torso.rotation.z = BABYLON.Scalar.Lerp(mech.torso.rotation.z, 0, dt * 5);
+            }
 
+            // Handle stagger (brief pause in walking)
             if (mech.staggerTime > 0) {
                 mech.staggerTime -= dt;
                 mech.isWalking = false;
+            }
+        }
+
+        // Stability recovery - regenerate stability over time
+        function recoverStability(mech, dt) {
+            if (mech.stability < STABILITY_CONFIG.maxStability) {
+                mech.stability += STABILITY_CONFIG.stabilityRecoveryRate * dt;
+                if (mech.stability > STABILITY_CONFIG.maxStability) {
+                    mech.stability = STABILITY_CONFIG.maxStability;
+                }
+            }
+        }
+
+        // ============================================
+        // PHASE 3: RAGDOLL MODE (Dynamic Physics)
+        // Heavy hits - physics takes over completely
+        // ============================================
+        function triggerRagdoll(mech, hitForce) {
+            if (mech.mechState === MechState.RAGDOLL) return;  // Already ragdolling
+
+            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RAGDOLL triggered!`, 'warn');
+
+            mech.mechState = MechState.RAGDOLL;
+            mech.ragdollSettleTimer = 0;
+            mech.isWalking = false;
+
+            const body = mech.pelvisAggregate.body;
+            const pos = mech.pelvis.getAbsolutePosition();
+
+            // 1. Switch from ANIMATED to DYNAMIC - physics now controls us
+            body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC);
+
+            // 2. Set proper mass and reduce damping for ragdoll physics
+            body.setMassProperties({ mass: mech.stats.mass || 75 });
+            body.setLinearDamping(0.1);
+            body.setAngularDamping(0.2);
+
+            // 3. CRITICAL: Inherit velocity from animation to avoid dead-fish effect
+            const inheritedVel = mech.lastKinematicVelocity || new BABYLON.Vector3(0, 0, 0);
+            body.setLinearVelocity(inheritedVel);
+
+            // 4. Apply knockback force - throw mech backwards from strike
+            // Scale force by mass for consistent knockback across mech sizes
+            const massScale = 75 / (mech.stats.mass || 75);
+            const scaledHitForce = hitForce.scale(massScale * 2.5);
+
+            // Add significant upward component to lift mech off ground
+            scaledHitForce.y = Math.max(scaledHitForce.y, hitForce.length() * 0.5);
+
+            body.applyImpulse(scaledHitForce, pos);
+
+            // 5. Strong angular impulse for dramatic spin/tumble
+            const hitDir = hitForce.normalizeToNew();
+            body.applyAngularImpulse(new BABYLON.Vector3(
+                hitDir.z * hitForce.length() * 0.3,  // Pitch based on Z hit direction
+                (Math.random() - 0.5) * hitForce.length() * 0.1,  // Random yaw spin
+                -hitDir.x * hitForce.length() * 0.3  // Roll based on X hit direction
+            ));
+
+            // 6. DRAMATIC LIMB FLINGING - arms and legs fly outward on impact
+            flingLimbs(mech, hitForce);
+
+            // 7. Shake camera - mechs are HEAVY
+            const shakeIntensity = Math.min(1.0, hitForce.length() / 50);
+            triggerCameraShake(shakeIntensity, 0.5 + shakeIntensity * 0.3);
+
+            // 8. Spawn impact sparks
+            createImpactSparks(pos, hitDir);
+        }
+
+        // Dramatic limb animation when ragdolling
+        function flingLimbs(mech, hitForce) {
+            const hitDir = hitForce.normalizeToNew();
+            const intensity = Math.min(1.5, hitForce.length() / 30);
+
+            // Arms fling outward and back
+            if (mech.leftArm) {
+                const leftArmFling = () => {
+                    let t = 0;
+                    const startRot = mech.leftArm.rotation.clone();
+                    const flingInterval = setInterval(() => {
+                        t += 0.05;
+                        if (t >= 1 || mech.mechState !== MechState.RAGDOLL) {
+                            clearInterval(flingInterval);
+                            return;
+                        }
+                        // Fling arm outward and back with easing
+                        const ease = Math.sin(t * Math.PI);
+                        mech.leftArm.rotation.z = startRot.z - intensity * 1.2 * ease;  // Out to side
+                        mech.leftArm.rotation.x = startRot.x + intensity * 0.8 * ease;  // Back
+                        mech.leftArm.rotation.y = startRot.y + (hitDir.x * 0.5 + 0.3) * ease;  // Twist from impact
+                    }, 16);
+                };
+                leftArmFling();
+            }
+
+            if (mech.rightArm) {
+                const rightArmFling = () => {
+                    let t = 0;
+                    const startRot = mech.rightArm.rotation.clone();
+                    const flingInterval = setInterval(() => {
+                        t += 0.05;
+                        if (t >= 1 || mech.mechState !== MechState.RAGDOLL) {
+                            clearInterval(flingInterval);
+                            return;
+                        }
+                        const ease = Math.sin(t * Math.PI);
+                        mech.rightArm.rotation.z = startRot.z + intensity * 1.2 * ease;  // Out to side (opposite)
+                        mech.rightArm.rotation.x = startRot.x + intensity * 0.8 * ease;  // Back
+                        mech.rightArm.rotation.y = startRot.y - (hitDir.x * 0.5 + 0.3) * ease;  // Twist from impact
+                    }, 16);
+                };
+                rightArmFling();
+            }
+
+            // Legs kick outward on big hits
+            if (intensity > 0.8) {
+                if (mech.leftLeg && mech.leftLeg.upperLeg) {
+                    const leftLegKick = () => {
+                        let t = 0;
+                        const startRot = mech.leftLeg.upperLeg.rotation.x;
+                        const flingInterval = setInterval(() => {
+                            t += 0.04;
+                            if (t >= 1 || mech.mechState !== MechState.RAGDOLL) {
+                                clearInterval(flingInterval);
+                                return;
+                            }
+                            const ease = Math.sin(t * Math.PI);
+                            mech.leftLeg.upperLeg.rotation.x = startRot - intensity * 0.6 * ease;
+                        }, 16);
+                    };
+                    leftLegKick();
+                }
+
+                if (mech.rightLeg && mech.rightLeg.upperLeg) {
+                    const rightLegKick = () => {
+                        let t = 0;
+                        const startRot = mech.rightLeg.upperLeg.rotation.x;
+                        const flingInterval = setInterval(() => {
+                            t += 0.04;
+                            if (t >= 1 || mech.mechState !== MechState.RAGDOLL) {
+                                clearInterval(flingInterval);
+                                return;
+                            }
+                            const ease = Math.sin(t * Math.PI);
+                            mech.rightLeg.upperLeg.rotation.x = startRot - intensity * 0.6 * ease;
+                        }, 16);
+                    };
+                    rightLegKick();
+                }
+            }
+        }
+
+        // Extra chaotic limb movement for destruction - more extreme than regular ragdoll
+        function destroyedLimbChaos(mech) {
+            // Arms flail wildly
+            if (mech.leftArm) {
+                let t = 0;
+                const chaosInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 2.0 || !mech.leftArm) {
+                        clearInterval(chaosInterval);
+                        return;
+                    }
+                    // Wild oscillating movement
+                    const chaos = Math.sin(t * 8) * Math.exp(-t * 0.8);
+                    mech.leftArm.rotation.z = -1.5 + chaos * 1.0;
+                    mech.leftArm.rotation.x = 0.5 + chaos * 0.8;
+                }, 16);
+            }
+
+            if (mech.rightArm) {
+                let t = 0;
+                const chaosInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 2.0 || !mech.rightArm) {
+                        clearInterval(chaosInterval);
+                        return;
+                    }
+                    const chaos = Math.sin(t * 8 + 1) * Math.exp(-t * 0.8);
+                    mech.rightArm.rotation.z = 1.5 - chaos * 1.0;
+                    mech.rightArm.rotation.x = 0.5 + chaos * 0.8;
+                }, 16);
+            }
+
+            // Legs kick wildly
+            if (mech.leftLeg && mech.leftLeg.upperLeg) {
+                let t = 0;
+                const chaosInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 2.0 || !mech.leftLeg) {
+                        clearInterval(chaosInterval);
+                        return;
+                    }
+                    const chaos = Math.sin(t * 6) * Math.exp(-t * 1.0);
+                    mech.leftLeg.upperLeg.rotation.x = 0.5 - chaos * 0.8;
+                    if (mech.leftLeg.lowerLeg) {
+                        mech.leftLeg.lowerLeg.rotation.x = -0.4 - Math.abs(chaos) * 0.5;
+                    }
+                }, 16);
+            }
+
+            if (mech.rightLeg && mech.rightLeg.upperLeg) {
+                let t = 0;
+                const chaosInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 2.0 || !mech.rightLeg) {
+                        clearInterval(chaosInterval);
+                        return;
+                    }
+                    const chaos = Math.sin(t * 6 + 2) * Math.exp(-t * 1.0);
+                    mech.rightLeg.upperLeg.rotation.x = 0.5 - chaos * 0.8;
+                    if (mech.rightLeg.lowerLeg) {
+                        mech.rightLeg.lowerLeg.rotation.x = -0.4 - Math.abs(chaos) * 0.5;
+                    }
+                }, 16);
+            }
+
+            // Torso twist
+            if (mech.torso) {
+                let t = 0;
+                const torsoInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 1.5 || !mech.torso) {
+                        clearInterval(torsoInterval);
+                        return;
+                    }
+                    const chaos = Math.sin(t * 10) * Math.exp(-t * 1.5);
+                    mech.torso.rotation.y = chaos * 0.4;
+                    mech.torso.rotation.x = -Math.abs(chaos) * 0.3;  // Slump forward
+                }, 16);
+            }
+        }
+
+        function updateRagdoll(mech, dt) {
+            const body = mech.pelvisAggregate.body;
+            const velocity = body.getLinearVelocity();
+            const speed = velocity.length();
+
+            // Check if mech has settled (low velocity)
+            if (speed < STABILITY_CONFIG.ragdollSettleVelocity) {
+                mech.ragdollSettleTimer += dt;
+
+                // If settled for long enough, start recovery
+                if (mech.ragdollSettleTimer > STABILITY_CONFIG.ragdollSettleTime) {
+                    startRecovery(mech);
+                }
+            } else {
+                // Still moving - reset settle timer
+                mech.ragdollSettleTimer = 0;
+            }
+
+            // Keep feet somewhat level during ragdoll for visual consistency
+            const quat = body.transformNode.rotationQuaternion;
+            if (quat && mech.leftLeg.footGroup) {
+                const euler = quat.toEulerAngles();
+                mech.leftLeg.footGroup.rotation.x = -euler.x * 0.5;
+                mech.rightLeg.footGroup.rotation.x = -euler.x * 0.5;
+            }
+        }
+
+        // ============================================
+        // PHASE 4: RECOVERY (Ragdoll → Standing)
+        // ============================================
+        function startRecovery(mech) {
+            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Starting RECOVERY`, 'ai');
+
+            mech.mechState = MechState.RECOVERING;
+            mech.recoveryTimer = 0;
+
+            const body = mech.pelvisAggregate.body;
+
+            // Detect orientation - are we face up or face down?
+            const quat = body.transformNode.rotationQuaternion;
+            const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
+
+            // Check if face down (torso pointing to ground)
+            const forward = new BABYLON.Vector3(0, 0, 1);
+            if (quat) {
+                const rotMatrix = new BABYLON.Matrix();
+                quat.toRotationMatrix(rotMatrix);
+                forward.copyFrom(BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 1, 0), rotMatrix));
+            }
+            mech.isFaceDown = forward.y < 0;
+
+            // Stop all motion before recovery
+            body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
+            body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+        }
+
+        function updateRecovery(mech, dt) {
+            mech.recoveryTimer += dt;
+            const body = mech.pelvisAggregate.body;
+            const pos = mech.pelvis.getAbsolutePosition();
+            const quat = body.transformNode.rotationQuaternion;
+            const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
+
+            const blendTime = STABILITY_CONFIG.recoveryBlendTime;
+
+            if (mech.recoveryTimer < blendTime) {
+                // Phase 1: Blend rotation to upright
+                const t = mech.recoveryTimer / blendTime;
+                const easeT = t * t * (3 - 2 * t);  // Smoothstep for nice easing
+
+                // Blend to upright (keep Y rotation for facing)
+                const targetQuat = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
+                const blendedQuat = BABYLON.Quaternion.Slerp(quat, targetQuat, easeT);
+                body.transformNode.rotationQuaternion = blendedQuat;
+
+                // Also lift to standing height
+                const standingY = 3.5 * mech.scale;
+                const targetY = Math.max(pos.y, standingY);
+                mech.pelvis.position.y = BABYLON.Scalar.Lerp(pos.y, targetY, easeT);
+
+                // Reset leg positions during blend
+                dampLegs(mech, dt * 3);
+
+            } else if (mech.recoveryTimer < blendTime + 0.3) {
+                // Phase 2: Switch back to kinematic and stabilize
+                if (body.getMotionType() !== BABYLON.PhysicsMotionType.ANIMATED) {
+                    body.setMotionType(BABYLON.PhysicsMotionType.ANIMATED);
+                    body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
+                    body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+
+                    // Make sure we're upright
+                    body.transformNode.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
+
+                    dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Switched back to ANIMATED`, 'ai');
+                }
+
+            } else {
+                // Phase 3: Recovery complete - back to walking state
+                mech.mechState = MechState.WALKING;
+                mech.stability = STABILITY_CONFIG.maxStability * 0.5;  // Partial stability after recovery
+
+                dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RECOVERED! Back to WALKING`, 'ai');
+            }
+        }
+
+        // ============================================
+        // CAMERA SHAKE & EFFECTS
+        // ============================================
+        function triggerCameraShake(intensity, duration) {
+            if (!camera) return;
+
+            const originalPos = camera.position.clone();
+            let shakeTime = 0;
+            const shakeInterval = setInterval(() => {
+                shakeTime += 30;
+                if (shakeTime > duration * 1000) {
+                    clearInterval(shakeInterval);
+                    camera.position = originalPos;
+                } else {
+                    const remaining = 1 - (shakeTime / (duration * 1000));
+                    const shake = intensity * remaining;
+                    camera.position = originalPos.add(new BABYLON.Vector3(
+                        (Math.random() - 0.5) * shake,
+                        (Math.random() - 0.5) * shake * 0.5,
+                        (Math.random() - 0.5) * shake
+                    ));
+                }
+            }, 30);
+        }
+
+        function createImpactSparks(position, direction) {
+            // Create spark particles at impact point
+            for (let i = 0; i < 8; i++) {
+                const spark = BABYLON.MeshBuilder.CreateSphere('spark', { diameter: 0.08 }, scene);
+                spark.position = position.clone();
+
+                const sparkMat = new BABYLON.StandardMaterial('sparkMat', scene);
+                sparkMat.emissiveColor = new BABYLON.Color3(1, 0.7, 0.2);
+                sparkMat.disableLighting = true;
+                spark.material = sparkMat;
+
+                // Random velocity with bias in impact direction
+                const vel = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 5 + direction.x * 3,
+                    Math.random() * 4 + 1,
+                    (Math.random() - 0.5) * 5 + direction.z * 3
+                );
+
+                let age = 0;
+                const sparkUpdate = setInterval(() => {
+                    age += 30;
+                    if (age > 500) {
+                        clearInterval(sparkUpdate);
+                        spark.dispose();
+                        return;
+                    }
+
+                    spark.position.addInPlace(vel.scale(0.03));
+                    vel.y -= 0.3;  // Gravity
+                    sparkMat.alpha = 1 - (age / 500);
+                }, 30);
             }
         }
 
@@ -2806,158 +3387,28 @@
             }
         }
 
+        // ============================================
+        // HYBRID ARCHITECTURE: No active stabilization needed!
+        // In WALKING mode (ANIMATED), the body is kinematic - no tipping possible
+        // In RAGDOLL mode (DYNAMIC), physics handles everything naturally
+        // This function is kept for legacy compatibility but does minimal work
+        // ============================================
         function stabilize(mech, dt) {
-            // Don't stabilize destroyed mechs - let them collapse!
-            if (mech.currentHP <= 0 || mech.isDestroyed) return;
-
-            const body = mech.pelvisAggregate.body;
-            const quat = body.transformNode.rotationQuaternion;
-            if (!quat) return;
-
-            const euler = quat.toEulerAngles();
-            const tiltMagnitude = Math.sqrt(euler.x * euler.x + euler.z * euler.z);
-            const pos = mech.pelvis.getAbsolutePosition();
-
-            // Initialize recovery state if not set
-            if (mech.isRecovering === undefined) mech.isRecovering = false;
-            if (mech.recoveryTime === undefined) mech.recoveryTime = 0;
-            if (mech.fallCount === undefined) mech.fallCount = 0;
-
-            // Detect if mech has fallen (tilt > 45 degrees - detect earlier)
-            const fallenThreshold = 0.8; // ~45 degrees - start recovery sooner
-            const severelyFallenThreshold = 1.2; // ~70 degrees - definitely fallen
-            const groundLevel = 1.5;  // If pelvis is below this, mech is on ground
-
-            // Check for fall: tilted too much OR pelvis too low (lying down)
-            const isFallen = (tiltMagnitude > severelyFallenThreshold) ||
-                            (tiltMagnitude > fallenThreshold && pos.y < groundLevel);
-
-            if (isFallen && !mech.isRecovering) {
-                // Mech has fallen - start recovery process
-                mech.isRecovering = true;
-                mech.recoveryTime = 0;
-                mech.isWalking = false;
-                mech.fallCount++;
-                dbg(`${mech.isPlayer ? 'P' : 'E'}: FALLEN! (tilt=${(tiltMagnitude * 57.3).toFixed(0)}° y=${pos.y.toFixed(1)}) Starting recovery #${mech.fallCount}...`, 'warn');
-            }
-
-            if (mech.isRecovering) {
-                mech.recoveryTime += dt;
-
-                // Phase 1 (0-0.5s): Stop all motion and prepare
-                if (mech.recoveryTime < 0.5) {
-                    body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
-                    body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
-                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Recovery phase 1 - stopping...`, 'torso');
-                }
-                // Phase 2 (0.5-1.5s): Apply strong uprighting forces and lift
-                else if (mech.recoveryTime < 1.5) {
-                    // Very strong uprighting torque
-                    const recoveryStrength = 400;
-                    body.applyAngularImpulse(new BABYLON.Vector3(
-                        -euler.x * recoveryStrength * dt,
-                        -euler.y * 100 * dt,
-                        -euler.z * recoveryStrength * dt
-                    ));
-
-                    // Strong upward force to lift mech
-                    const normalHeight = 3.8;
-                    if (pos.y < normalHeight) {
-                        const liftForce = (normalHeight - pos.y) * 150;
-                        body.applyForce(new BABYLON.Vector3(0, liftForce, 0), pos);
-                    }
-
-                    // Keep horizontal velocity low during lift
-                    const vel = body.getLinearVelocity();
-                    body.setLinearVelocity(new BABYLON.Vector3(vel.x * 0.9, vel.y, vel.z * 0.9));
-                }
-                // Phase 3 (1.5-2.5s): Check if recovered
-                else if (mech.recoveryTime < 2.5) {
-                    // Continue mild uprighting
-                    body.applyAngularImpulse(new BABYLON.Vector3(
-                        -euler.x * 150 * dt,
-                        -euler.y * 50 * dt,
-                        -euler.z * 150 * dt
-                    ));
-                }
-
-                // End recovery when mostly upright and at good height
-                if (tiltMagnitude < 0.25 && pos.y > 3.0 && mech.recoveryTime > 0.8) {
-                    mech.isRecovering = false;
-                    mech.recoveryTime = 0;
-                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Recovered! (tilt=${(tiltMagnitude * 57.3).toFixed(0)}° y=${pos.y.toFixed(1)})`, 'ai');
-                }
-
-                // Force reset after 2.5 seconds - teleport mech upright
-                if (mech.recoveryTime > 2.5) {
-                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Force reset! Teleporting upright...`, 'warn');
-
-                    // Stop all motion
-                    body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
-                    body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
-
-                    // Teleport to standing position - keep X/Z, reset Y and rotation
-                    const standingY = 4.0;
-                    body.disablePreStep = false;
-                    mech.pelvis.position.y = standingY;
-
-                    // Reset rotation to upright (keep Y rotation for facing)
-                    const facingAngle = euler.y;
-                    body.transformNode.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(0, facingAngle, 0);
-
-                    mech.isRecovering = false;
-                    mech.recoveryTime = 0;
-                    dbg(`${mech.isPlayer ? 'P' : 'E'}: Teleported to y=${standingY}, facing=${(facingAngle * 57.3).toFixed(0)}°`, 'ai');
-                }
-
-                return;  // Skip normal stabilization during recovery
-            }
-
-            // Constant gentle uprighting force - always active like a gyroscope
-            const gyroStrength = 30;
-            body.applyAngularImpulse(new BABYLON.Vector3(
-                -euler.x * gyroStrength * dt, 0, -euler.z * gyroStrength * dt
-            ));
-
-            // Progressive stabilization for larger tilts
-            const maxTilt = 0.15;  // Kick in earlier
-            if (tiltMagnitude > maxTilt) {
-                // Much stronger as tilt increases
-                const strength = 80 + (tiltMagnitude - maxTilt) * 200;
-                body.applyAngularImpulse(new BABYLON.Vector3(
-                    -euler.x * strength * dt, 0, -euler.z * strength * dt
-                ));
-            }
-
-            // Dampen angular velocity on X and Z axes (prevent tipping momentum)
-            const angVel = body.getAngularVelocity();
-            if (Math.abs(angVel.x) > 0.5 || Math.abs(angVel.z) > 0.5) {
-                body.setAngularVelocity(new BABYLON.Vector3(
-                    angVel.x * 0.92,
-                    angVel.y,
-                    angVel.z * 0.92
-                ));
-            }
-
-            // Limit max velocity
-            const vel = body.getLinearVelocity();
-            if (vel.length() > 5.0) {
-                body.setLinearVelocity(vel.normalize().scale(5.0));
-            }
-
-            // Prevent Y-axis spinning
-            if (Math.abs(angVel.y) > 1.2) {
-                body.setAngularVelocity(new BABYLON.Vector3(angVel.x, angVel.y * 0.75, angVel.z));
-            }
+            // In hybrid mode, stabilization is handled by the state machine
+            // This function is called but does nothing in walking mode
+            // Ragdoll and recovery are handled by updateRagdoll() and updateRecovery()
         }
 
         // ============================================
-        // MECH AI SYSTEM
+        // GOAL-BASED MECH AI SYSTEM
+        // Each mech has goals that combine into movement:
+        // 1. Range Goal: Move to optimal weapon range
+        // 2. Avoidance Goal: Stay away from other mechs (unless melee)
+        // 3. Boundary Goal: Stay inside arena
+        // 4. Strafe Goal: Lateral movement when other goals satisfied
         // ============================================
         function updateAI(mech, dt) {
             const name = mech.isPlayer ? 'P' : 'E';
-
-            // Periodic verbose logging
             const shouldLog = gameTime - lastDebugTime > DEBUG_INTERVAL;
 
             if (!mech.ai.enabled) {
@@ -2981,6 +3432,7 @@
             }
             if (!target) {
                 if (shouldLog) dbg(`${name}: no valid target`, 'warn');
+                mech.isWalking = false;
                 return;
             }
 
@@ -2988,123 +3440,211 @@
             const myPos = mech.pelvis.getAbsolutePosition();
             const targetPos = target.pelvis.getAbsolutePosition();
             const distance = BABYLON.Vector3.Distance(myPos, targetPos);
-            const toTarget = targetPos.subtract(myPos).normalize();
-            const vel = body.getLinearVelocity();
 
             // Log physics state periodically
             if (shouldLog) {
-                dbg(`${name}: pos=(${myPos.x.toFixed(1)},${myPos.y.toFixed(1)},${myPos.z.toFixed(1)}) vel=(${vel.x.toFixed(2)},${vel.y.toFixed(2)},${vel.z.toFixed(2)}) dist=${distance.toFixed(1)}`, 'phys');
-                dbg(`${name}: state=${mech.ai.state} walk=${mech.isWalking} dir=${mech.walkDirection}`, 'ai');
+                const vel = body.getLinearVelocity();
+                dbg(`${name}: pos=(${myPos.x.toFixed(1)},${myPos.y.toFixed(1)},${myPos.z.toFixed(1)}) dist=${distance.toFixed(1)}`, 'phys');
             }
 
-            // Edge avoidance - HIGHEST priority, checked every frame
-            // Note: applyForce() is integrated by physics engine, don't multiply by dt
-            // Small mechs need to be more careful about edges (mass-scaled avoidance)
-            const mechMass = mech.stats.mass || 75;
-            const massScale = 100 / mechMass;  // Lighter mechs get stronger avoidance (2.5x for Commando)
-            const effectiveBoundary = AI_CONFIG.edgeBoundary - (massScale - 1) * 2;  // Lighter mechs detect earlier
-            const effectiveEdgeForce = AI_CONFIG.edgeForce * massScale;  // Lighter mechs pushed harder
+            // ============================================
+            // GOAL 1: RANGE - Move toward optimal weapon range
+            // ============================================
+            const optimalRange = mech.optimalRange || 10;
+            const rangeTolerance = 2.0;  // Acceptable range variance
+            let rangeGoal = new BABYLON.Vector3(0, 0, 0);
+            let rangeUrgency = 0;
 
-            let edgeForce = new BABYLON.Vector3(0, 0, 0);
-            let nearEdge = false;
-            let veryNearEdge = false;  // Emergency zone
+            const rangeError = distance - optimalRange;
+            if (Math.abs(rangeError) > rangeTolerance) {
+                // Direction toward/away from target based on range error
+                const toTarget = targetPos.subtract(myPos);
+                toTarget.y = 0;
+                toTarget.normalize();
 
-            // X edges (main arena walls)
-            if (myPos.x < -effectiveBoundary) {
-                const urgency = Math.min(2.0, 1 + (-effectiveBoundary - myPos.x) / 3);
-                edgeForce.x = effectiveEdgeForce * urgency;
-                nearEdge = true;
-                if (myPos.x < -17) veryNearEdge = true;
-            } else if (myPos.x > effectiveBoundary) {
-                const urgency = Math.min(2.0, 1 + (myPos.x - effectiveBoundary) / 3);
-                edgeForce.x = -effectiveEdgeForce * urgency;
-                nearEdge = true;
-                if (myPos.x > 17) veryNearEdge = true;
+                // Positive rangeError = too far, need to move closer
+                // Negative rangeError = too close, need to back up
+                rangeUrgency = Math.min(1.0, Math.abs(rangeError) / 8.0);
+                rangeGoal = toTarget.scale(Math.sign(rangeError) * rangeUrgency);
             }
 
-            // Z edges (side walls) - ground is 20 wide, so ±10
-            const zBoundary = 6 - (massScale - 1) * 0.5;  // Lighter mechs detect Z edges earlier too
-            if (Math.abs(myPos.z) > zBoundary) {
-                const urgency = Math.min(2.0, 1 + (Math.abs(myPos.z) - zBoundary) / 2);
-                edgeForce.z = -Math.sign(myPos.z) * effectiveEdgeForce * 0.9 * urgency;
-                nearEdge = true;
-                if (Math.abs(myPos.z) > 8) veryNearEdge = true;
+            // ============================================
+            // GOAL 2: AVOIDANCE - Stay away from other mechs
+            // Importance scales with inverse square of distance
+            // ============================================
+            let avoidGoal = new BABYLON.Vector3(0, 0, 0);
+            let avoidUrgency = 0;
+            const avoidRadius = 6.0;  // Start avoiding at this distance
+            const minSeparation = 3.0;  // Minimum desired distance
+
+            // Check all mechs for avoidance
+            allMechs.forEach(other => {
+                if (other === mech || other.isDestroyed || other.currentHP <= 0) return;
+
+                const otherPos = other.pelvis.getAbsolutePosition();
+                const toOther = otherPos.subtract(myPos);
+                toOther.y = 0;
+                const mechDist = toOther.length();
+
+                if (mechDist < avoidRadius && mechDist > 0.1) {
+                    // Skip avoidance for melee mechs toward their target
+                    if (mech.isMelee && other === target && mechDist > minSeparation * 0.5) {
+                        return;  // Melee mech wants to be close to target
+                    }
+
+                    // Inverse square falloff - very strong when close, zero at avoidRadius
+                    const normalizedDist = (mechDist - minSeparation) / (avoidRadius - minSeparation);
+                    const clampedDist = Math.max(0.1, Math.min(1.0, normalizedDist));
+                    const avoidStrength = 1.0 / (clampedDist * clampedDist) - 1.0;
+
+                    // Push away from this mech
+                    const awayDir = toOther.normalize().scale(-1);
+                    avoidGoal.addInPlace(awayDir.scale(Math.min(avoidStrength, 3.0)));
+                    avoidUrgency = Math.max(avoidUrgency, 1.0 - clampedDist);
+                }
+            });
+
+            // Normalize avoidance if it got too strong
+            if (avoidGoal.length() > 1.5) {
+                avoidGoal.normalize().scaleInPlace(1.5);
             }
 
-            // Apply edge avoidance force and override state
-            if (nearEdge) {
-                mech.ai.state = 'edge-avoid';
-                // Apply force with optional emergency boost
-                const emergencyBoost = veryNearEdge ? 1.5 : 1.0;
-                mech.pelvisAggregate.body.applyForce(edgeForce.scale(emergencyBoost), myPos);
+            // ============================================
+            // GOAL 3: BOUNDARY - Stay inside arena
+            // ============================================
+            let boundaryGoal = new BABYLON.Vector3(0, 0, 0);
+            let boundaryUrgency = 0;
+            const softBoundaryX = 14;  // Start pushing back
+            const softBoundaryZ = 6;
 
-                // Also apply impulse if very near edge (immediate response)
-                if (veryNearEdge) {
-                    mech.pelvisAggregate.body.applyImpulse(edgeForce.scale(0.08), myPos);
+            // X boundaries
+            if (myPos.x < -softBoundaryX) {
+                const depth = (-softBoundaryX - myPos.x) / 4;
+                boundaryGoal.x = Math.min(2.0, 0.5 + depth);
+                boundaryUrgency = Math.max(boundaryUrgency, Math.min(1.0, depth));
+            } else if (myPos.x > softBoundaryX) {
+                const depth = (myPos.x - softBoundaryX) / 4;
+                boundaryGoal.x = -Math.min(2.0, 0.5 + depth);
+                boundaryUrgency = Math.max(boundaryUrgency, Math.min(1.0, depth));
+            }
+
+            // Z boundaries
+            if (myPos.z < -softBoundaryZ) {
+                const depth = (-softBoundaryZ - myPos.z) / 2;
+                boundaryGoal.z = Math.min(2.0, 0.5 + depth);
+                boundaryUrgency = Math.max(boundaryUrgency, Math.min(1.0, depth));
+            } else if (myPos.z > softBoundaryZ) {
+                const depth = (myPos.z - softBoundaryZ) / 2;
+                boundaryGoal.z = -Math.min(2.0, 0.5 + depth);
+                boundaryUrgency = Math.max(boundaryUrgency, Math.min(1.0, depth));
+            }
+
+            // ============================================
+            // GOAL 4: STRAFE - Lateral movement when stable
+            // Only active when other goals are satisfied
+            // ============================================
+            let strafeGoal = new BABYLON.Vector3(0, 0, 0);
+
+            // Initialize strafe timer if needed
+            if (!mech.ai.strafeTimer) mech.ai.strafeTimer = 0;
+            if (!mech.ai.currentStrafeDir) mech.ai.currentStrafeDir = 0;
+
+            // Only strafe when range is good and not urgently avoiding
+            const canStrafe = rangeUrgency < 0.3 && avoidUrgency < 0.5 && boundaryUrgency < 0.3;
+
+            if (canStrafe) {
+                mech.ai.strafeTimer -= dt;
+                if (mech.ai.strafeTimer <= 0) {
+                    // Pick new strafe direction with random intensity and duration
+                    if (Math.random() < 0.7) {  // 70% chance to strafe
+                        const intensity = 0.3 + Math.random() * 0.5;
+                        mech.ai.currentStrafeDir = (Math.random() < 0.5 ? -1 : 1) * intensity;
+                    } else {
+                        mech.ai.currentStrafeDir = 0;  // Brief pause
+                    }
+                    mech.ai.strafeTimer = 1.0 + Math.random() * 2.0;  // 1-3 seconds
                 }
 
-                if (shouldLog) dbg(`${name}: EDGE AVOID force (${edgeForce.x.toFixed(0)},${edgeForce.z.toFixed(0)}) mass=${mechMass} veryNear=${veryNearEdge}`, 'phys');
+                // Calculate strafe direction (perpendicular to target)
+                if (Math.abs(mech.ai.currentStrafeDir) > 0.1) {
+                    const toTarget = targetPos.subtract(myPos);
+                    toTarget.y = 0;
+                    toTarget.normalize();
+                    // Cross product with up to get perpendicular
+                    const strafeDir = new BABYLON.Vector3(-toTarget.z, 0, toTarget.x);
+                    strafeGoal = strafeDir.scale(mech.ai.currentStrafeDir * 0.6);
+                }
             }
 
-            // AI decision making (periodic, not every frame) - SKIP if near edge
+            // ============================================
+            // COMBINE GOALS with priority weighting
+            // ============================================
+            // Weights: boundary > avoidance > range > strafe
+            const boundaryWeight = 2.0;
+            const avoidWeight = 1.5;
+            const rangeWeight = 1.0;
+            const strafeWeight = 0.5;
+
+            let desiredVelocity = new BABYLON.Vector3(0, 0, 0);
+            desiredVelocity.addInPlace(boundaryGoal.scale(boundaryWeight));
+            desiredVelocity.addInPlace(avoidGoal.scale(avoidWeight));
+            desiredVelocity.addInPlace(rangeGoal.scale(rangeWeight));
+            desiredVelocity.addInPlace(strafeGoal.scale(strafeWeight));
+
+            // ============================================
+            // CONVERT TO MECH-RELATIVE MOVEMENT
+            // ============================================
+            const pelvisQuat = body.transformNode.rotationQuaternion;
+            let mechForward = new BABYLON.Vector3(1, 0, 0);
+            let mechRight = new BABYLON.Vector3(0, 0, 1);
+            if (pelvisQuat) {
+                const rotMatrix = new BABYLON.Matrix();
+                pelvisQuat.toRotationMatrix(rotMatrix);
+                mechForward = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
+                mechForward.y = 0;
+                mechForward.normalize();
+                mechRight = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
+                mechRight.y = 0;
+                mechRight.normalize();
+            }
+
+            // Project desired velocity onto mech's forward and right axes
+            const forwardComponent = desiredVelocity.x * mechForward.x + desiredVelocity.z * mechForward.z;
+            const rightComponent = desiredVelocity.x * mechRight.x + desiredVelocity.z * mechRight.z;
+
+            // Set movement parameters
+            const velocityMagnitude = desiredVelocity.length();
+            mech.isWalking = velocityMagnitude > 0.15;
+            mech.walkDirection = Math.max(-1, Math.min(1, forwardComponent));
+            mech.ai.strafeAmount = Math.max(-1, Math.min(1, rightComponent));
+
+            if (shouldLog) {
+                dbg(`${name}: goals range=${rangeUrgency.toFixed(2)} avoid=${avoidUrgency.toFixed(2)} bound=${boundaryUrgency.toFixed(2)}`, 'ai');
+                dbg(`${name}: walk=${mech.walkDirection.toFixed(2)} strafe=${mech.ai.strafeAmount.toFixed(2)}`, 'ai');
+            }
+
+            // ============================================
+            // WEAPON FIRING (separate from movement)
+            // ============================================
             if (gameTime - mech.ai.lastDecision > AI_CONFIG.decisionInterval) {
                 mech.ai.lastDecision = gameTime;
 
-                // Don't override edge-avoid state with other decisions
-                if (!nearEdge) {
-                    // MELEE MECHS: Always try to close distance
-                    if (mech.isMelee) {
-                        const meleeRange = WEAPONS.hatchet.range;
-                        if (distance > meleeRange + 1) {
-                            // Charge toward target
-                            mech.ai.state = 'charging';
-                            mech.walkDirection = toTarget.x > 0 ? 1 : -1;
-                        } else {
-                            // In melee range - stay close
-                            mech.ai.state = 'melee';
-                        }
-                    } else {
-                        // RANGED MECHS: Normal behavior
-                        // Determine movement state based on range
-                        if (distance > AI_CONFIG.maxRange) {
-                            mech.ai.state = 'advancing';
-                            mech.walkDirection = toTarget.x > 0 ? 1 : -1;
-                        } else if (distance < AI_CONFIG.minRange) {
-                            mech.ai.state = 'retreating';
-                            mech.walkDirection = toTarget.x > 0 ? -1 : 1;
-                        } else {
-                            // At optimal range - maybe strafe
-                            if (Math.random() < AI_CONFIG.strafeChance) {
-                                mech.ai.state = 'strafing';
-                                mech.ai.strafeDir = Math.random() < 0.5 ? -1 : 1;
-                                mech.ai.strafeEndTime = gameTime + AI_CONFIG.strafeDuration;
-                            } else {
-                                mech.ai.state = 'optimal';
-                            }
-                        }
-                    }
-                }
-
-                // Fire weapons when in range (even while edge avoiding)
                 const now = Date.now();
                 const mechKey = mech.name + '_' + (mech.isPlayer ? 'p' : 'e');
                 if (!mechCooldowns[mechKey]) mechCooldowns[mechKey] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
                 const cooldowns = mechCooldowns[mechKey];
 
                 if (mech.isMelee) {
-                    // Melee mechs: hatchet first when in range, then backup laser
                     const meleeRange = WEAPONS.hatchet.range;
                     if (distance <= meleeRange && now >= cooldowns.hatchet) {
                         fireWeapon(mech, 'hatchet');
                         cooldowns.hatchet = now + COOLDOWN_TIMES.hatchet;
                     } else if (distance <= 15 && now >= cooldowns.erlaser) {
-                        // Backup laser while closing distance
                         fireWeapon(mech, 'erlaser');
                         cooldowns.erlaser = now + COOLDOWN_TIMES.erlaser;
                     }
                 } else {
-                    // Ranged mechs: normal weapon priority
-                    if (distance <= 18 && distance >= AI_CONFIG.minRange * 0.5) {
+                    if (distance <= 18 && distance >= 3) {
                         const weaponPriority = ['erlaser', 'ac', 'lrm'];
                         for (const wtype of weaponPriority) {
                             if (now >= cooldowns[wtype]) {
@@ -3117,118 +3657,11 @@
                 }
             }
 
-            // Check if strafing should end
-            if (mech.ai.state === 'strafing' && gameTime > mech.ai.strafeEndTime) {
-                mech.ai.state = 'optimal';
-                mech.ai.strafeDir = 0;
-            }
-
-            // Get pelvis forward direction for movement
-            const pelvisQuat = body.transformNode.rotationQuaternion;
-            let pelvisForward = new BABYLON.Vector3(1, 0, 0);
-            let pelvisRight = new BABYLON.Vector3(0, 0, 1);
-            if (pelvisQuat) {
-                const rotMatrix = new BABYLON.Matrix();
-                pelvisQuat.toRotationMatrix(rotMatrix);
-                pelvisForward = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
-                pelvisForward.y = 0;
-                pelvisForward.normalize();
-                pelvisRight = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
-                pelvisRight.y = 0;
-                pelvisRight.normalize();
-            }
-
-            // Apply movement based on state - mech moves in pelvis facing direction
-            // Note: applyForce() is integrated by physics engine, don't multiply by dt
-            let forceApplied = new BABYLON.Vector3(0, 0, 0);
-            switch (mech.ai.state) {
-                case 'advancing':
-                    mech.isWalking = true;
-                    mech.walkDirection = 1;  // Forward
-                    forceApplied = pelvisForward.scale(AI_CONFIG.moveForce);
-                    body.applyForce(forceApplied, myPos);
-                    break;
-
-                case 'retreating':
-                    mech.isWalking = true;
-                    mech.walkDirection = -1;  // Backward
-                    forceApplied = pelvisForward.scale(-AI_CONFIG.moveForce * 1.2);
-                    body.applyForce(forceApplied, myPos);
-                    break;
-
-                case 'strafing':
-                    mech.isWalking = true;
-                    // Strafe perpendicular to pelvis facing (sideways)
-                    forceApplied = pelvisRight.scale(mech.ai.strafeDir * AI_CONFIG.strafeForce);
-                    body.applyForce(forceApplied, myPos);
-                    // Small forward/back adjustment toward ideal range
-                    if (distance > AI_CONFIG.idealRange + 1) {
-                        body.applyForce(pelvisForward.scale(AI_CONFIG.moveForce * 0.3), myPos);
-                    } else if (distance < AI_CONFIG.idealRange - 1) {
-                        body.applyForce(pelvisForward.scale(-AI_CONFIG.moveForce * 0.3), myPos);
-                    }
-                    break;
-
-                case 'optimal':
-                    // Small adjustments to stay at ideal range
-                    if (distance > AI_CONFIG.idealRange + 2) {
-                        mech.isWalking = true;
-                        mech.walkDirection = 1;
-                        forceApplied = pelvisForward.scale(AI_CONFIG.moveForce * 0.5);
-                        body.applyForce(forceApplied, myPos);
-                    } else if (distance < AI_CONFIG.idealRange - 2) {
-                        mech.isWalking = true;
-                        mech.walkDirection = -1;
-                        forceApplied = pelvisForward.scale(-AI_CONFIG.moveForce * 0.5);
-                        body.applyForce(forceApplied, myPos);
-                    } else {
-                        mech.isWalking = false;
-                    }
-                    break;
-
-                case 'charging':
-                    // MELEE: Aggressive charge toward target
-                    mech.isWalking = true;
-                    mech.walkDirection = 1;  // Forward
-                    forceApplied = pelvisForward.scale(AI_CONFIG.moveForce * 1.4);  // Faster than normal
-                    body.applyForce(forceApplied, myPos);
-                    break;
-
-                case 'melee':
-                    // MELEE: In close range - stay mobile but close
-                    mech.isWalking = true;
-                    // Small movements to stay in melee range
-                    if (distance > WEAPONS.hatchet.range) {
-                        mech.walkDirection = 1;
-                        forceApplied = pelvisForward.scale(AI_CONFIG.moveForce * 0.8);
-                    } else if (distance < 2) {
-                        mech.walkDirection = -1;
-                        forceApplied = pelvisForward.scale(-AI_CONFIG.moveForce * 0.4);
-                    } else {
-                        // Circle strafe while in melee
-                        forceApplied = pelvisRight.scale(AI_CONFIG.strafeForce * 0.6);
-                    }
-                    body.applyForce(forceApplied, myPos);
-                    break;
-
-                case 'edge-avoid':
-                    mech.isWalking = true;
-                    mech.walkDirection = -1;  // Walk backwards (retreat animation)
-                    // Additional retreat force in the direction away from edge
-                    // The edgeForce is already applied above, but also walk backwards
-                    forceApplied = pelvisForward.scale(-AI_CONFIG.moveForce * 0.5);
-                    body.applyForce(forceApplied, myPos);
-                    break;
-
-                default:
-                    mech.isWalking = false;
-            }
-
-            // === FULL BODY ROTATION TOWARD TARGET ===
+            // === FULL BODY ROTATION TOWARD TARGET (KINEMATIC MODE) ===
             // The whole mech (pelvis/legs) should always try to face the target
-            // This is independent of torso twist - the body should orient toward enemy
+            // In ANIMATED mode, we set angular velocity directly instead of applying impulses
             const quat = body.transformNode.rotationQuaternion;
-            if (quat && !mech.isRecovering && !mech.isDestroyed) {
+            if (quat && mech.mechState === MechState.WALKING && !mech.isDestroyed) {
                 const euler = quat.toEulerAngles();
                 const currentYaw = euler.y;  // Current facing direction
 
@@ -3247,34 +3680,14 @@
                 while (yawError > Math.PI) yawError -= 2 * Math.PI;
                 while (yawError < -Math.PI) yawError += 2 * Math.PI;
 
-                // ALWAYS try to face target - very low threshold (3 degrees)
-                // This makes the mech constantly adjust its body to face the enemy
-                const rotationThreshold = 0.05;  // ~3 degrees - always trying to align
-                if (Math.abs(yawError) > rotationThreshold) {
-                    // Rate-limited rotation - mechs turn deliberately, not instantly
-                    const rotationStrength = 35;  // Moderate force for smooth turning
-                    const maxRotationSpeed = 1.2;  // Rate limit: ~70 deg/sec max
+                // Store the desired rotation for the kinematic walking function
+                mech.ai.desiredYawError = yawError;
 
-                    // Current angular velocity
-                    const angVel = body.getAngularVelocity();
-
-                    // Calculate desired angular velocity (proportional to error, clamped)
-                    const desiredAngVel = Math.sign(yawError) * Math.min(Math.abs(yawError) * 3, maxRotationSpeed);
-
-                    // Apply torque to reach desired velocity
-                    const yawCorrection = (desiredAngVel - angVel.y) * rotationStrength * dt;
-                    body.applyAngularImpulse(new BABYLON.Vector3(0, yawCorrection, 0));
-
-                    if (shouldLog) {
-                        dbg(`${name}: BODY ROTATE yaw=${(currentYaw * 57.3).toFixed(0)}° target=${(desiredYaw * 57.3).toFixed(0)}° err=${(yawError * 57.3).toFixed(0)}°`, 'torso');
-                    }
+                if (shouldLog) {
+                    dbg(`${name}: BODY ROTATE yaw=${(currentYaw * 57.3).toFixed(0)}° target=${(desiredYaw * 57.3).toFixed(0)}° err=${(yawError * 57.3).toFixed(0)}°`, 'torso');
                 }
             }
 
-            // Log force applied
-            if (shouldLog && forceApplied.length() > 0) {
-                dbg(`${name}: FORCE (${forceApplied.x.toFixed(0)},${forceApplied.z.toFixed(0)}) state=${mech.ai.state}`, 'phys');
-            }
             // Note: lastDebugTime is updated in the main render loop after all subsystems log
         }
 
@@ -3588,36 +4001,68 @@
         }
 
         function applyDamage(mech, weapon, dirSign) {
-            // Skip if mech is already destroyed
+            // Skip if mech is already destroyed or recovering
             if (mech.isDestroyed) return;
+            if (mech.mechState === MechState.RECOVERING) return;  // Don't damage during recovery
 
             mech.currentHP -= weapon.damage;
             if (mech.currentHP < 0) mech.currentHP = 0;
 
+            const knockback = weapon.knockback;
             const impactDir = new BABYLON.Vector3(dirSign, 0, 0);
-            mech.pelvisAggregate.body.applyImpulse(impactDir.scale(weapon.knockback), mech.pelvis.getAbsolutePosition());
-
-            mech.impactRecovery = Math.min(1.0, weapon.knockback / 18);
             mech.impactDirection = impactDir;
-
-            if (weapon.damage >= 22) {
-                mech.staggerTime = 0.45;
-                log(`${mech.name} STAGGERS!`, 'warn');
-            }
-
-            mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                (Math.random() - 0.5) * weapon.knockback * 0.08,
-                (Math.random() - 0.5) * weapon.knockback * 0.04,
-                dirSign * weapon.knockback * 0.12
-            ));
 
             // Trigger cinematic camera to track damaged mech
             triggerCinematicAction(mech, 'damage');
 
+            // Check for destruction first
             if (mech.currentHP <= 0 && !mech.isDestroyed) {
                 log(`${mech.name} DESTROYED!`, 'error');
                 triggerDestruction(mech);
+                return;
             }
+
+            // HYBRID DAMAGE SYSTEM: Determine flinch vs ragdoll based on knockback and stability
+
+            // Reduce stability based on knockback
+            mech.stability -= knockback * 0.8;
+            if (mech.stability < 0) mech.stability = 0;
+
+            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Hit! KB=${knockback} Stability=${mech.stability.toFixed(0)}`, 'phys');
+
+            // Case 1: Massive hit - immediate ragdoll regardless of stability
+            if (knockback >= STABILITY_CONFIG.knockdownThreshold) {
+                const hitForce = impactDir.scale(knockback * 1.5);
+                hitForce.y = knockback * 0.3;  // Some upward lift
+                triggerRagdoll(mech, hitForce);
+                log(`${mech.name} KNOCKED DOWN!`, 'warn');
+                return;
+            }
+
+            // Case 2: Stability depleted - ragdoll
+            if (mech.stability <= 0 && mech.mechState === MechState.WALKING) {
+                const hitForce = impactDir.scale(knockback * 1.2);
+                hitForce.y = knockback * 0.2;
+                triggerRagdoll(mech, hitForce);
+                log(`${mech.name} STABILITY BROKEN!`, 'warn');
+                return;
+            }
+
+            // Case 3: Medium hit - flinch and stagger
+            if (knockback >= STABILITY_CONFIG.flinchThreshold) {
+                mech.flinchIntensity = Math.min(1.0, knockback / 25);
+                mech.staggerTime = 0.3;  // Brief pause
+                log(`${mech.name} staggers!`, 'warn');
+
+                // Small camera shake for medium hits
+                triggerCameraShake(0.2, 0.15);
+            } else {
+                // Case 4: Small hit - minor flinch only
+                mech.flinchIntensity = Math.min(0.5, knockback / 30);
+            }
+
+            // Visual flash effect for any hit
+            createImpactSparks(mech.torso.getAbsolutePosition(), impactDir);
         }
 
         function updateProjectiles(dt) {
@@ -3803,48 +4248,72 @@
             // ========================================
             // MAKE MECH COLLAPSE DRAMATICALLY
             // ========================================
-            // Mark as destroyed so stabilize() and AI don't interfere
+            // Mark as destroyed so state machine and AI don't interfere
             mech.isDestroyed = true;
-            mech.isRecovering = false;
+            mech.mechState = MechState.RAGDOLL;
             mech.ai.enabled = false;
             mech.isWalking = false;
 
-            // Reduce damping so mech falls naturally
-            mech.pelvisAggregate.body.setLinearDamping(0.02);
-            mech.pelvisAggregate.body.setAngularDamping(0.02);
+            const body = mech.pelvisAggregate.body;
 
-            // Small upward pop, then fall
-            const fallDirection = (Math.random() > 0.5) ? 1 : -1;  // Fall forward or backward
-            mech.pelvisAggregate.body.applyImpulse(
-                new BABYLON.Vector3(
-                    (Math.random() - 0.5) * 20,   // Random horizontal
-                    25 + Math.random() * 15,       // Small upward pop
-                    (Math.random() - 0.5) * 10
-                ),
-                mech.pelvis.getAbsolutePosition()
-            );
+            // HYBRID: Switch to DYNAMIC mode so physics can take over for dramatic fall
+            body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC);
 
-            // Strong angular impulse to make it topple over
-            mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                fallDirection * (80 + Math.random() * 40),  // Strong forward/back tilt
-                (Math.random() - 0.5) * 20,                  // Small spin
-                (Math.random() - 0.5) * 60                   // Side tilt
+            // Set proper mass and very low damping for dramatic physics
+            body.setMassProperties({ mass: mech.stats.mass || 75 });
+            body.setLinearDamping(0.05);
+            body.setAngularDamping(0.1);
+
+            // Get the impact direction from the last damage
+            const impactDir = mech.impactDirection || new BABYLON.Vector3(1, 0, 0);
+
+            // Inherit velocity from kinematic movement
+            const inheritedVel = mech.lastKinematicVelocity || new BABYLON.Vector3(0, 0, 0);
+            body.setLinearVelocity(inheritedVel);
+
+            // DRAMATIC EXPLOSION KNOCKBACK - throw mech up and back from explosion
+            const explosionForce = impactDir.scale(-80);  // Away from impact direction
+            explosionForce.y = 60 + Math.random() * 40;    // Strong upward lift
+            explosionForce.x += (Math.random() - 0.5) * 30;
+            explosionForce.z += (Math.random() - 0.5) * 20;
+
+            body.applyImpulse(explosionForce, pos);
+
+            // Strong angular impulse to make it tumble dramatically
+            const fallDirection = (Math.random() > 0.5) ? 1 : -1;
+            body.applyAngularImpulse(new BABYLON.Vector3(
+                (impactDir.z + fallDirection) * 60,  // Pitch backward from explosion
+                (Math.random() - 0.5) * 30,          // Random spin
+                (-impactDir.x + (Math.random() - 0.5)) * 50  // Roll from impact
             ));
 
-            // Continue applying toppling force over time
+            // DRAMATIC LIMB FLINGING - arms and legs fly outward from explosion
+            const destructionHitForce = impactDir.scale(60);
+            destructionHitForce.y = 30;
+            flingLimbs(mech, destructionHitForce);
+
+            // Additional limb chaos for destruction - more extreme than normal ragdoll
+            destroyedLimbChaos(mech);
+
+            // Continue applying forces to ensure dramatic fall
             let collapseTime = 0;
             const collapseInterval = setInterval(() => {
                 collapseTime += 50;
-                if (collapseTime > 800 || !mech.pelvisAggregate.body) {
+                if (collapseTime > 1200 || !mech.pelvisAggregate.body) {
                     clearInterval(collapseInterval);
                     return;
                 }
-                // Keep pushing it to fall
-                mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                    fallDirection * 15,
-                    0,
-                    (Math.random() - 0.5) * 10
+                // Keep applying angular impulse for dramatic tumbling
+                body.applyAngularImpulse(new BABYLON.Vector3(
+                    fallDirection * 20,
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 15
                 ));
+                // Small downward force to ensure it falls
+                body.applyImpulse(
+                    new BABYLON.Vector3(0, -15, 0),
+                    mech.pelvis.getAbsolutePosition()
+                );
             }, 50);
 
             log(`💀💀💀 ${mech.name} HAS BEEN DESTROYED! 💀💀💀`, 'error');
@@ -3889,14 +4358,22 @@
                 if (!mech) return;
                 const pos = playerPositions[i] || playerPositions[0];
                 mech.pelvis.position = new BABYLON.Vector3(pos.x, pos.y, pos.z);
+                // HYBRID: Reset to ANIMATED mode for kinematic walking
+                mech.pelvisAggregate.body.setMotionType(BABYLON.PhysicsMotionType.ANIMATED);
                 mech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 mech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-                mech.pelvisAggregate.body.setAngularDamping(0.92);
-                mech.pelvisAggregate.body.setLinearDamping(0.25);
+                mech.pelvisAggregate.body.setAngularDamping(STABILITY_CONFIG.mechAngularDamping);
+                mech.pelvisAggregate.body.setLinearDamping(STABILITY_CONFIG.mechLinearDamping);
                 mech.currentHP = mech.maxHP;
                 mech.isWalking = false;
                 mech.isDestroyed = false;
-                mech.isRecovering = false;
+                // HYBRID state reset
+                mech.mechState = MechState.WALKING;
+                mech.stability = STABILITY_CONFIG.maxStability;
+                mech.ragdollSettleTimer = 0;
+                mech.recoveryTimer = 0;
+                mech.flinchIntensity = 0;
+                mech.lastKinematicVelocity = new BABYLON.Vector3(0, 0, 0);
                 mech.impactRecovery = 0;
                 mech.recoilRecovery = 0;
                 mech.torso.rotation.setAll(0);
@@ -3906,6 +4383,8 @@
                 mech.ai.lastDecision = 0;
                 mech.ai.strafeDir = 0;
                 mech.ai.strafeEndTime = 0;
+                mech.ai.strafeAmount = 0;
+                mech.ai.desiredYawError = 0;
             });
 
             // Reset enemy mechs
@@ -3913,14 +4392,22 @@
                 if (!mech) return;
                 const pos = enemyPositions[i] || enemyPositions[0];
                 mech.pelvis.position = new BABYLON.Vector3(pos.x, pos.y, pos.z);
+                // HYBRID: Reset to ANIMATED mode for kinematic walking
+                mech.pelvisAggregate.body.setMotionType(BABYLON.PhysicsMotionType.ANIMATED);
                 mech.pelvisAggregate.body.setLinearVelocity(BABYLON.Vector3.Zero());
                 mech.pelvisAggregate.body.setAngularVelocity(BABYLON.Vector3.Zero());
-                mech.pelvisAggregate.body.setAngularDamping(0.92);
-                mech.pelvisAggregate.body.setLinearDamping(0.25);
+                mech.pelvisAggregate.body.setAngularDamping(STABILITY_CONFIG.mechAngularDamping);
+                mech.pelvisAggregate.body.setLinearDamping(STABILITY_CONFIG.mechLinearDamping);
                 mech.currentHP = mech.maxHP;
                 mech.isWalking = false;
                 mech.isDestroyed = false;
-                mech.isRecovering = false;
+                // HYBRID state reset
+                mech.mechState = MechState.WALKING;
+                mech.stability = STABILITY_CONFIG.maxStability;
+                mech.ragdollSettleTimer = 0;
+                mech.recoveryTimer = 0;
+                mech.flinchIntensity = 0;
+                mech.lastKinematicVelocity = new BABYLON.Vector3(0, 0, 0);
                 mech.impactRecovery = 0;
                 mech.recoilRecovery = 0;
                 mech.torso.rotation.setAll(0);
@@ -3930,6 +4417,8 @@
                 mech.ai.lastDecision = 0;
                 mech.ai.strafeDir = 0;
                 mech.ai.strafeEndTime = 0;
+                mech.ai.strafeAmount = 0;
+                mech.ai.desiredYawError = 0;
             });
 
             projectiles.forEach(p => p.mesh.dispose());

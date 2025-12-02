@@ -682,50 +682,38 @@
             hemi.groundColor = new BABYLON.Color3(0.3, 0.28, 0.25);  // Warmer ground bounce
             hemi.specular = new BABYLON.Color3(0.1, 0.1, 0.1);  // Reduce specular from ambient
 
-            // Primary directional (sun) light - THIS CASTS SHADOWS
-            const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, 1).normalize(), scene);
-            sunLight.intensity = 1.1;
+            // Primary shadow-casting light - using SpotLight for reliable shadows
+            // SpotLights have simpler shadow frustum calculations than DirectionalLights
+            const sunLight = new BABYLON.SpotLight(
+                'sunLight',
+                new BABYLON.Vector3(0, 40, -20),      // Position: high above, slightly behind
+                new BABYLON.Vector3(0, -1, 0.3).normalize(),  // Direction: mostly down
+                Math.PI / 2,                          // Angle: 90 degrees cone (wide)
+                1,                                    // Exponent: 1 for even lighting
+                scene
+            );
+            sunLight.intensity = 1.5;
             sunLight.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
-            sunLight.specular = new BABYLON.Color3(0.8, 0.75, 0.7);
-            // Position light to cover the arena (40x20 units centered at origin)
-            sunLight.position = new BABYLON.Vector3(25, 30, -25);
+            sunLight.specular = new BABYLON.Color3(0.5, 0.5, 0.5);
 
-            // CRITICAL: Set shadow frustum to include ground (y=0) not just shadow casters
-            // Without this, shadows only calculate for caster positions, missing the ground
-            sunLight.shadowMinZ = 1;
-            sunLight.shadowMaxZ = 120;
-            // Set orthographic extents to cover the arena (40x20)
-            sunLight.orthoLeft = -30;
-            sunLight.orthoRight = 30;
-            sunLight.orthoTop = 20;
-            sunLight.orthoBottom = -20;
-
-            // Secondary fill light from opposite side (cooler, no shadows)
-            const fillLight = new BABYLON.DirectionalLight('fill', new BABYLON.Vector3(1, -1, -0.5), scene);
-            fillLight.intensity = 0.5;
+            // Secondary fill light (no shadows)
+            const fillLight = new BABYLON.HemisphericLight('fill', new BABYLON.Vector3(0.5, 0.3, -1), scene);
+            fillLight.intensity = 0.4;
             fillLight.diffuse = new BABYLON.Color3(0.7, 0.8, 1.0);
-            fillLight.specular = new BABYLON.Color3(0.2, 0.2, 0.3);
+            fillLight.groundColor = new BABYLON.Color3(0.2, 0.2, 0.25);
 
             // ============================================
-            // SHADOW GENERATOR - Basic setup for reliability
+            // SHADOW GENERATOR
             // ============================================
             if (SHADOW_CONFIG.enabled) {
                 shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
 
-                // Use the simplest shadow technique - standard shadow map with filtering
+                // Basic shadow map - most compatible
                 shadowGenerator.usePoissonSampling = true;
+                shadowGenerator.setDarkness(0.4);
+                shadowGenerator.bias = 0.001;
 
-                // Make shadows visible (0 = pitch black, 1 = invisible)
-                shadowGenerator.setDarkness(0.3);
-
-                // Bias to prevent shadow acne
-                shadowGenerator.bias = 0.0001;
-
-                // Ensure the shadow map includes the ground plane
-                shadowGenerator.useCloseExponentialShadowMap = false;
-                shadowGenerator.useExponentialShadowMap = false;
-
-                log(`[SHADOWS] Generator: ${SHADOW_CONFIG.mapSize}px Poisson`);
+                log(`[SHADOWS] SpotLight + ${SHADOW_CONFIG.mapSize}px`);
             }
 
             // Fog - adjusted for distant mountains

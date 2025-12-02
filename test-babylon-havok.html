@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.1</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.2-shadows</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -676,31 +676,31 @@
             // Reduced from 7 lights to 3 for better performance
             // ============================================
 
-            // Main ambient light - increased intensity to compensate for removed lights
-            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.8;  // Slightly higher to compensate for removed point lights
-            hemi.groundColor = new BABYLON.Color3(0.3, 0.28, 0.25);  // Warmer ground bounce
-            hemi.specular = new BABYLON.Color3(0.1, 0.1, 0.1);  // Reduce specular from ambient
+            log('>>> v10.2-shadows LOADED <<<');
 
-            // Primary shadow-casting light - using SpotLight for reliable shadows
-            // SpotLights have simpler shadow frustum calculations than DirectionalLights
+            // Main ambient light
+            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
+            hemi.intensity = 0.6;
+            hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+
+            // DEBUG: Bright colored point light to confirm code is updating
+            const debugLight = new BABYLON.PointLight('debugLight', new BABYLON.Vector3(0, 8, 0), scene);
+            debugLight.intensity = 0.8;
+            debugLight.diffuse = new BABYLON.Color3(1, 0.5, 0);  // ORANGE tint - very visible
+            debugLight.range = 50;
+
+            // Primary shadow-casting SpotLight - positioned high, pointing down
             const sunLight = new BABYLON.SpotLight(
                 'sunLight',
-                new BABYLON.Vector3(0, 40, -20),      // Position: high above, slightly behind
-                new BABYLON.Vector3(0, -1, 0.3).normalize(),  // Direction: mostly down
-                Math.PI / 2,                          // Angle: 90 degrees cone (wide)
-                1,                                    // Exponent: 1 for even lighting
+                new BABYLON.Vector3(0, 35, 0),        // Directly above center
+                new BABYLON.Vector3(0, -1, 0),        // Pointing straight down
+                Math.PI * 0.8,                        // Very wide angle (144 degrees)
+                1,                                    // Exponent
                 scene
             );
-            sunLight.intensity = 1.5;
-            sunLight.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
-            sunLight.specular = new BABYLON.Color3(0.5, 0.5, 0.5);
-
-            // Secondary fill light (no shadows)
-            const fillLight = new BABYLON.HemisphericLight('fill', new BABYLON.Vector3(0.5, 0.3, -1), scene);
-            fillLight.intensity = 0.4;
-            fillLight.diffuse = new BABYLON.Color3(0.7, 0.8, 1.0);
-            fillLight.groundColor = new BABYLON.Color3(0.2, 0.2, 0.25);
+            sunLight.intensity = 2.0;
+            sunLight.diffuse = new BABYLON.Color3(1, 1, 0.9);
+            sunLight.specular = new BABYLON.Color3(0.3, 0.3, 0.3);
 
             // ============================================
             // SHADOW GENERATOR
@@ -708,12 +708,16 @@
             if (SHADOW_CONFIG.enabled) {
                 shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
 
-                // Basic shadow map - most compatible
-                shadowGenerator.usePoissonSampling = true;
-                shadowGenerator.setDarkness(0.4);
+                // Very dark shadows for visibility
+                shadowGenerator.setDarkness(0.1);  // Almost black shadows
                 shadowGenerator.bias = 0.001;
+                shadowGenerator.normalBias = 0.01;
 
-                log(`[SHADOWS] SpotLight + ${SHADOW_CONFIG.mapSize}px`);
+                // Try different filtering
+                shadowGenerator.useBlurExponentialShadowMap = true;
+                shadowGenerator.blurKernel = 32;
+
+                log(`[SHADOWS] v10.2 SpotLight ${SHADOW_CONFIG.mapSize}px`);
             }
 
             // Fog - adjusted for distant mountains

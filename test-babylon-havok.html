@@ -1032,9 +1032,9 @@
             // Create a taller collision shape to represent the full mech standing height
             // The visual legs extend ~3 units below pelvis, so we use a tall box offset downward
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.8, 0),  // Center offset lower for stability
+                new BABYLON.Vector3(0, -1.5, 0),  // Center offset (shift down to cover legs)
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(2.0, 3.5, 1.0),  // Slightly wider base
+                new BABYLON.Vector3(1.8, 3.5, 0.9),  // Full standing height
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
@@ -1565,9 +1565,9 @@
             // Create a taller collision shape to represent the full mech standing height
             // Dire Wolf is bigger (scale 1.15), legs extend ~3.5 units below pelvis
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -2.0 * scale, 0),  // Center offset lower for stability
+                new BABYLON.Vector3(0, -1.7 * scale, 0),  // Center offset (shift down to cover legs)
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(2.2 * scale, 4.0 * scale, 1.1 * scale),  // Wider base
+                new BABYLON.Vector3(2.0 * scale, 4.0 * scale, 1.0 * scale),  // Full standing height
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
@@ -1946,15 +1946,15 @@
             pelvis.material = darkMat;
 
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.5, 0),  // Lower center of mass
+                new BABYLON.Vector3(0, -1.2, 0),
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.4 * scale, 2.8, 0.8 * scale),  // Slightly wider
+                new BABYLON.Vector3(1.2 * scale, 2.8, 0.7 * scale),
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 40 });
-            pelvisBody.setAngularDamping(0.97);  // Higher damping
+            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
             pelvisBody.setLinearDamping(0.20);
             pelvisShape.material = { friction: 0.1, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
@@ -2125,15 +2125,15 @@
             pelvis.material = darkMat;
 
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.6, 0),  // Lower center of mass
+                new BABYLON.Vector3(0, -1.3, 0),
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.7 * scale, 3.0, 0.9 * scale),  // Wider base
+                new BABYLON.Vector3(1.5 * scale, 3.0, 0.8 * scale),
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 60 });
-            pelvisBody.setAngularDamping(0.97);  // Higher damping
+            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
             pelvisBody.setLinearDamping(0.22);
             pelvisShape.material = { friction: 0.1, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };
@@ -2313,15 +2313,15 @@
             pelvis.material = darkMat;
 
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1.5, 0),  // Lower center of mass
+                new BABYLON.Vector3(0, -1.2, 0),
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.6 * scale, 2.9, 0.95 * scale),  // Wider base
+                new BABYLON.Vector3(1.4 * scale, 2.9, 0.85 * scale),
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
             pelvisBody.shape = pelvisShape;
             pelvisBody.setMassProperties({ mass: 50 });
-            pelvisBody.setAngularDamping(0.97);  // Higher damping
+            pelvisBody.setAngularDamping(0.97);  // Higher damping to resist tipping
             pelvisBody.setLinearDamping(0.18);
             pelvisShape.material = { friction: 0.1, restitution: 0.05 };
             const pelvisAgg = { body: pelvisBody, shape: pelvisShape };

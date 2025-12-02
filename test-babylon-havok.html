@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.1</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.17-ground</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -393,6 +393,74 @@
             maxZ: 8
         };
 
+        // ============================================
+        // SHADOW & QUALITY CONFIGURATION
+        // Mobile-optimized shadow system with adaptive quality
+        // ============================================
+        const SHADOW_CONFIG = {
+            enabled: true,                    // Master shadow toggle
+            mapSize: 1024,                    // Shadow map resolution (512/1024/2048)
+            blurKernel: 32,                   // Blur kernel size for soft shadows
+            darkness: 0.35,                   // Shadow darkness (0=black, 1=invisible)
+        };
+
+        // Detect mobile and adjust quality
+        function detectMobileAndSetQuality() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isLowPower = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
+            const canvas = document.getElementById('renderCanvas');
+            const isSmallScreen = canvas && (canvas.width < 800 || canvas.height < 600);
+
+            if (isMobile || isLowPower || isSmallScreen) {
+                // Mobile/low-end settings
+                SHADOW_CONFIG.mapSize = 512;
+                SHADOW_CONFIG.blurKernel = 16;
+                log('[SHADOWS] Mobile mode (512px)');
+            } else {
+                // Desktop settings
+                SHADOW_CONFIG.mapSize = 1024;
+                SHADOW_CONFIG.blurKernel = 32;
+                log('[SHADOWS] Desktop mode (1024px)');
+            }
+        }
+
+        // Global shadow generator reference
+        let shadowGenerator = null;
+
+        // Helper to add mesh as shadow caster (call after creating important meshes)
+        function addShadowCaster(mesh, includeChildren = false) {
+            if (shadowGenerator && mesh) {
+                shadowGenerator.addShadowCaster(mesh, includeChildren);
+            }
+        }
+
+        // Configure shadow casters for all mechs
+        // For performance, we only add key body parts instead of all 30-40 meshes per mech
+        function configureMechShadows(mechs, shadowGen) {
+            if (!shadowGen || !mechs) return;
+
+            let casterCount = 0;
+
+            mechs.forEach(mech => {
+                if (!mech || !mech.pelvis) return;
+
+                // Use getDescendants() which gets ALL descendants recursively
+                // This is more reliable than manual recursion
+                const allNodes = mech.pelvis.getDescendants(false);
+                allNodes.unshift(mech.pelvis); // Include pelvis itself
+
+                allNodes.forEach(node => {
+                    // Only add actual meshes (have getBoundingInfo)
+                    if (node && typeof node.getBoundingInfo === 'function') {
+                        shadowGen.addShadowCaster(node);
+                        casterCount++;
+                    }
+                });
+            });
+
+            log(`[SHADOWS] ${casterCount} casters from ${mechs.length} mechs`);
+        }
+
         // Colors
         const COLORS = {
             playerPrimary: new BABYLON.Color3(0.15, 0.35, 0.2),
@@ -436,6 +504,9 @@
         async function initEngine() {
             const canvas = document.getElementById('renderCanvas');
             engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+
+            // Detect device capabilities and adjust shadow quality
+            detectMobileAndSetQuality();
 
             try {
                 havokInstance = await HavokPhysics();
@@ -562,75 +633,75 @@
             camera.upperRadiusLimit = 120;
             camera.wheelPrecision = 30;
 
-            // Lighting - multiple sources for better illumination
-            // Main ambient light from above
+            // ============================================
+            // LIGHTING + SHADOWS (v10.7 - Texture test)
+            // ============================================
+
+            // ============================================
+            // v10.14: FULL SCENE WITH MECH SHADOWS
+            // ============================================
+
+            // Ambient light
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.7;
-            hemi.groundColor = new BABYLON.Color3(0.2, 0.18, 0.15);
+            hemi.intensity = 0.5;
+            hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
-            // Primary directional (sun) light
-            const dir = new BABYLON.DirectionalLight('dir', new BABYLON.Vector3(-1, -2.5, 1), scene);
-            dir.intensity = 1.0;
-            dir.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
+            // DirectionalLight for shadows - positioned to cover entire arena
+            const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
+            sunLight.position = new BABYLON.Vector3(0, 30, 0);  // Centered above arena
+            sunLight.intensity = 1.5;
 
-            // Secondary fill light from opposite side
-            const fillLight = new BABYLON.DirectionalLight('fill', new BABYLON.Vector3(1, -1, -0.5), scene);
-            fillLight.intensity = 0.4;
-            fillLight.diffuse = new BABYLON.Color3(0.7, 0.8, 1.0);  // Slight blue tint
+            // Expand shadow frustum to cover all mechs
+            sunLight.shadowMinZ = 1;
+            sunLight.shadowMaxZ = 60;
+            sunLight.shadowFrustumSize = 50;  // Fixed frustum size to cover arena
 
-            // Rim/back light for mech silhouettes
-            const rimLight = new BABYLON.DirectionalLight('rim', new BABYLON.Vector3(0, -0.5, -1), scene);
-            rimLight.intensity = 0.3;
-            rimLight.diffuse = new BABYLON.Color3(1, 0.9, 0.7);
+            // Shadow generator with PCF filtering
+            if (SHADOW_CONFIG.enabled) {
+                shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
+                shadowGenerator.bias = 0.0005;
+                shadowGenerator.normalBias = 0.005;
+                shadowGenerator.usePercentageCloserFiltering = true;
+                shadowGenerator.filteringQuality = BABYLON.ShadowGenerator.QUALITY_MEDIUM;
+                log(`[v10.16] Shadows: PCF, frustum=50, ${SHADOW_CONFIG.mapSize}px`);
+            }
 
-            // Point lights on each side of arena for extra fill
-            const leftPoint = new BABYLON.PointLight('leftPoint', new BABYLON.Vector3(-12, 6, 0), scene);
-            leftPoint.intensity = 0.5;
-            leftPoint.diffuse = new BABYLON.Color3(0.9, 0.95, 1.0);
-            leftPoint.range = 25;
-
-            const rightPoint = new BABYLON.PointLight('rightPoint', new BABYLON.Vector3(12, 6, 0), scene);
-            rightPoint.intensity = 0.5;
-            rightPoint.diffuse = new BABYLON.Color3(1.0, 0.9, 0.85);
-            rightPoint.range = 25;
-
-            // Fog - adjusted for distant mountains
+            // Fog
             scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
             scene.fogDensity = 0.006;
-            scene.fogColor = new BABYLON.Color3(0.55, 0.65, 0.75);  // Blue-ish haze to match sky
+            scene.fogColor = new BABYLON.Color3(0.55, 0.65, 0.75);
 
-            createGround(scene);
+            // Create ground and walls
+            createGround(scene, shadowGenerator);
             createWalls(scene);
 
-            // Create teams of mechs - 4 per side at different Z positions
-            // Player team (left side, x = -7 to -14)
+            // Create mechs
             playerMechs = [
-                createMadCatMech(scene, -7, 0, true),        // Center - heavy
-                createHatchetmanMech(scene, -14, 2, true),   // Back flank - melee (starts behind to charge)
-                createCatapultMech(scene, -10, 4, true),     // Back left - support
-                createCommandoMech(scene, -10, -3, true)     // Back right - scout
+                createMadCatMech(scene, -7, 0, true),
+                createHatchetmanMech(scene, -14, 2, true),
+                createCatapultMech(scene, -10, 4, true),
+                createCommandoMech(scene, -10, -3, true)
             ];
-
-            // Enemy team (right side, x = 7 to 14)
             enemyMechs = [
-                createDireWolfMech(scene, 7, 0, false),      // Center - assault
-                createHatchetmanMech(scene, 14, -2, false),  // Back flank - melee (starts behind to charge)
-                createCatapultMech(scene, 10, 4, false),     // Back left - support
-                createCommandoMech(scene, 10, -3, false)     // Back right - scout
+                createDireWolfMech(scene, 7, 0, false),
+                createHatchetmanMech(scene, 14, -2, false),
+                createCatapultMech(scene, 10, 4, false),
+                createCommandoMech(scene, 10, -3, false)
             ];
-
-            // Combined list for easy iteration
             allMechs = [...playerMechs, ...enemyMechs];
-
-            // Initialize cooldowns for each mech
             allMechs.forEach(mech => {
                 mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
             });
 
+            // Add mech shadows
+            if (shadowGenerator) {
+                configureMechShadows(allMechs, shadowGenerator);
+            }
+
             return scene;
         }
 
-        function createGround(scene) {
+        function createGround(scene, shadowGen) {
             // === SKYBOX ===
             const skybox = BABYLON.MeshBuilder.CreateBox('skyBox', { size: 1000 }, scene);
             const skyboxMaterial = new BABYLON.StandardMaterial('skyBoxMat', scene);
@@ -640,40 +711,62 @@
             skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
             skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             skybox.material = skyboxMaterial;
+            // Skybox should NOT receive or cast shadows
+            skybox.receiveShadows = false;
 
-            // === ARENA GROUND (with physics) ===
-            const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 20 }, scene);
+            // === ARENA GROUND (with physics) - RECEIVES SHADOWS ===
+            // Use higher subdivisions for more organic look
+            const ground = BABYLON.MeshBuilder.CreateGround('ground', {
+                width: 40, height: 20, subdivisions: 32
+            }, scene);
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
-            mat.diffuseTexture = TEXTURES.grass;
-            mat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.6);
-            mat.bumpTexture = TEXTURES.grassNormal;
-            mat.bumpTexture.level = 0.8;
-            mat.specularColor = new BABYLON.Color3(0.08, 0.08, 0.06);
-            mat.specularPower = 16;
+
+            // Higher tiling for less obvious pattern repetition
+            const groundTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
+            groundTex.uScale = 20;  // More tiling = smaller pattern = less obvious
+            groundTex.vScale = 10;
+            mat.diffuseTexture = groundTex;
+            mat.diffuseColor = new BABYLON.Color3(0.6, 0.65, 0.5);  // Earthy tone
+
+            const groundNormal = new BABYLON.Texture(TEXTURE_URLS.grassNormal, scene);
+            groundNormal.uScale = 20;
+            groundNormal.vScale = 10;
+            mat.bumpTexture = groundNormal;
+            mat.bumpTexture.level = 1.2;  // More bump for organic feel
+            mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.04);
+            mat.specularPower = 8;
             ground.material = mat;
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
 
+            // Ground receives shadows from mechs and rocks
+            if (shadowGen) {
+                ground.receiveShadows = true;
+                log('[SHADOWS] Ground receiving');
+            }
+
             // === EXTENDED GROUND (horizon, no physics) ===
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
-                width: 800, height: 800
+                width: 800, height: 800, subdivisions: 4
             }, scene);
             horizonGround.position.y = -0.1;  // Slightly below arena
             const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
-            // Clone grass texture for horizon with different tiling
+            // Much higher tiling for horizon - pattern invisible at distance
             const horizonGrass = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
-            horizonGrass.uScale = 80;
-            horizonGrass.vScale = 80;
+            horizonGrass.uScale = 200;
+            horizonGrass.vScale = 200;
             horizonMat.diffuseTexture = horizonGrass;
-            horizonMat.diffuseColor = new BABYLON.Color3(0.5, 0.55, 0.45);  // Slightly darker/desaturated
+            horizonMat.diffuseColor = new BABYLON.Color3(0.45, 0.5, 0.4);  // Muted earth tone
             horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
             horizonMat.fogEnabled = true;  // Let fog blend it to horizon
             horizonGround.material = horizonMat;
+            // Horizon ground does NOT need shadows (too far, performance waste)
+            horizonGround.receiveShadows = false;
 
             // === DISTANT MOUNTAINS ===
             createMountains(scene);
 
-            // === ARENA ROCKS ===
+            // === ARENA ROCKS - Cast AND receive shadows ===
             const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
             rockMat.diffuseTexture = TEXTURES.rock;
             rockMat.bumpTexture = TEXTURES.rockNormal;
@@ -691,7 +784,15 @@
                 rock.rotation.y = Math.random() * Math.PI;
                 rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+
+                // Rocks cast and receive shadows - DISABLED in v10.8
+                // if (shadowGen) {
+                //     shadowGen.addShadowCaster(rock);
+                //     rock.receiveShadows = true;
+                // }
             }
+
+            // Rocks don't cast shadows (only mechs do)
         }
 
         function createMountains(scene) {
@@ -1510,7 +1611,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale: 1.0,
-                standingHeight: 3.25,  // Pelvis Y for feet to touch ground
+                standingHeight: 2.5,  // Pelvis Y for feet to touch ground
                 optimalRange: 10,      // Ideal combat distance for this mech
                 stats: { maxHP: 150, mass: 75 },
                 currentHP: 150, maxHP: 150,
@@ -1920,7 +2021,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
-                standingHeight: 4.25,   // Pelvis Y for feet to touch ground (taller mech)
+                standingHeight: 3.2,   // Pelvis Y for feet to touch ground
                 optimalRange: 12,       // Heavier mech prefers longer range
                 stats: { maxHP: 200, mass: 100 },
                 currentHP: 200, maxHP: 200,
@@ -2111,7 +2212,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
-                standingHeight: 2.6,    // Pelvis Y for feet to touch ground (smaller mech)
+                standingHeight: 1.9,    // Pelvis Y for feet to touch ground
                 optimalRange: 8,        // Light mech prefers closer range, fast hit and run
                 stats: { maxHP: 80, mass: 40 },
                 currentHP: 80, maxHP: 80,
@@ -2303,7 +2404,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
-                standingHeight: 2.8,    // Pelvis Y for feet to touch ground
+                standingHeight: 2.1,    // Pelvis Y for feet to touch ground
                 optimalRange: 14,       // Missile boat prefers long range
                 stats: { maxHP: 120, mass: 60 },
                 currentHP: 120, maxHP: 120,
@@ -2553,7 +2654,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
-                standingHeight: 2.65,   // Pelvis Y for feet to touch ground
+                standingHeight: 1.95,   // Pelvis Y for feet to touch ground
                 optimalRange: 3,        // Melee mech wants to be in your face
                 stats: { maxHP: 90, mass: 50 },
                 currentHP: 90, maxHP: 90,
@@ -4205,27 +4306,44 @@
             const mechName = mech.isPlayer ? 'TIMBER WOLF' : 'DIRE WOLF';
 
             // ========================================
-            // SCREEN FLASH - bright orange/white
+            // SCREEN FLASH - bright orange/white (with guaranteed cleanup)
             // ========================================
-            const flashPlane = BABYLON.MeshBuilder.CreatePlane('flash', { size: 100 }, scene);
+            const flashPlane = BABYLON.MeshBuilder.CreatePlane('explosionFlash_' + Date.now(), { size: 100 }, scene);
             flashPlane.position = camera.position.add(camera.getForwardRay().direction.scale(5));
             flashPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
-            const flashMat = new BABYLON.StandardMaterial('flashMat', scene);
+            const flashMat = new BABYLON.StandardMaterial('flashMat_' + Date.now(), scene);
             flashMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0.2);
             flashMat.disableLighting = true;
-            flashMat.alpha = 0.8;
+            flashMat.alpha = 0.7;
             flashPlane.material = flashMat;
 
-            let flashAlpha = 0.8;
-            const flashFade = setInterval(() => {
-                flashAlpha -= 0.04;
-                if (flashAlpha <= 0) {
-                    clearInterval(flashFade);
-                    flashPlane.dispose();
-                } else {
-                    flashMat.alpha = flashAlpha;
+            // Use requestAnimationFrame for smoother fade and guaranteed cleanup
+            const flashStartTime = performance.now();
+            const flashDuration = 500; // ms
+            function fadeFlash() {
+                const elapsed = performance.now() - flashStartTime;
+                const progress = elapsed / flashDuration;
+                if (progress >= 1 || !flashPlane || flashPlane.isDisposed()) {
+                    // Guaranteed cleanup
+                    if (flashPlane && !flashPlane.isDisposed()) {
+                        flashPlane.dispose();
+                    }
+                    if (flashMat && !flashMat.isDisposed) {
+                        flashMat.dispose();
+                    }
+                    return;
                 }
-            }, 30);
+                flashMat.alpha = 0.7 * (1 - progress);
+                requestAnimationFrame(fadeFlash);
+            }
+            requestAnimationFrame(fadeFlash);
+
+            // Failsafe: force dispose after 1 second no matter what
+            setTimeout(() => {
+                if (flashPlane && !flashPlane.isDisposed()) {
+                    flashPlane.dispose();
+                }
+            }, 1000);
 
             // ========================================
             // CAMERA SHAKE
@@ -4306,31 +4424,26 @@
             const inheritedVel = mech.lastKinematicVelocity || new BABYLON.Vector3(0, 0, 0);
             body.setLinearVelocity(inheritedVel);
 
-            // DRAMATIC EXPLOSION KNOCKBACK - throw mech up and back from explosion
-            const explosionForce = impactDir.scale(-80);  // Away from impact direction
-            explosionForce.y = 60 + Math.random() * 40;    // Strong upward lift
-            explosionForce.x += (Math.random() - 0.5) * 30;
-            explosionForce.z += (Math.random() - 0.5) * 20;
+            // DRAMATIC EXPLOSION KNOCKBACK - 5x impulse for massive launch
+            const explosionForce = impactDir.scale(-400);  // 5x: Away from impact direction
+            explosionForce.y = 300 + Math.random() * 200;    // 5x: Strong upward lift
+            explosionForce.x += (Math.random() - 0.5) * 150;
+            explosionForce.z += (Math.random() - 0.5) * 100;
 
             body.applyImpulse(explosionForce, pos);
 
-            // Strong angular impulse to make it tumble dramatically
+            // No spinning - just let physics handle natural tumbling
             const fallDirection = (Math.random() > 0.5) ? 1 : -1;
-            body.applyAngularImpulse(new BABYLON.Vector3(
-                (impactDir.z + fallDirection) * 60,  // Pitch backward from explosion
-                (Math.random() - 0.5) * 30,          // Random spin
-                (-impactDir.x + (Math.random() - 0.5)) * 50  // Roll from impact
-            ));
 
-            // DRAMATIC LIMB FLINGING - arms and legs fly outward from explosion
-            const destructionHitForce = impactDir.scale(60);
-            destructionHitForce.y = 30;
+            // DRAMATIC LIMB FLINGING - 5x force for limbs
+            const destructionHitForce = impactDir.scale(300);
+            destructionHitForce.y = 150;
             flingLimbs(mech, destructionHitForce);
 
             // Additional limb chaos for destruction - more extreme than normal ragdoll
             destroyedLimbChaos(mech);
 
-            // Continue applying forces to ensure dramatic fall
+            // Continue applying downward force to ensure it falls
             let collapseTime = 0;
             const collapseInterval = setInterval(() => {
                 collapseTime += 50;
@@ -4338,13 +4451,7 @@
                     clearInterval(collapseInterval);
                     return;
                 }
-                // Keep applying angular impulse for dramatic tumbling
-                body.applyAngularImpulse(new BABYLON.Vector3(
-                    fallDirection * 20,
-                    (Math.random() - 0.5) * 15,
-                    (Math.random() - 0.5) * 15
-                ));
-                // Small downward force to ensure it falls
+                // Just downward force, no spinning
                 body.applyImpulse(
                     new BABYLON.Vector3(0, -15, 0),
                     mech.pelvis.getAbsolutePosition()

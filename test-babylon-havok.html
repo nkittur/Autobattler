@@ -587,19 +587,8 @@
 
             dbg("createScene: lights created", 'phys');
 
-            // Shadow generator
-            try {
-                dbg("createScene: creating shadow gen...", 'phys');
-                const shadowGen = new BABYLON.ShadowGenerator(1024, dir);
-                shadowGen.useBlurExponentialShadowMap = true;
-                shadowGen.blurKernel = 16;
-                shadowGen.darkness = 0.5;
-                scene.shadowGenerator = shadowGen;
-                dbg("createScene: shadow gen OK", 'phys');
-            } catch (e) {
-                dbg("createScene: shadow FAILED: " + e.message, 'err');
-                console.error("Shadow setup failed:", e);
-            }
+            // Shadow generator - DISABLED for debugging
+            dbg("createScene: shadows DISABLED", 'warn');
 
             // Secondary fill light from opposite side
             const fillLight = new BABYLON.DirectionalLight('fill', new BABYLON.Vector3(1, -1, -0.5), scene);
@@ -712,7 +701,7 @@
             mat.specularColor = new BABYLON.Color3(0.08, 0.08, 0.06);
             mat.specularPower = 16;
             ground.material = mat;
-            ground.receiveShadows = true;
+            // ground.receiveShadows = true;  // DISABLED for debugging
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
             dbg("createGround: arena ground OK", 'phys');

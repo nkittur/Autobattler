@@ -2878,28 +2878,211 @@
             mech.isWalking = false;
 
             const body = mech.pelvisAggregate.body;
+            const pos = mech.pelvis.getAbsolutePosition();
 
             // 1. Switch from ANIMATED to DYNAMIC - physics now controls us
             body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC);
 
-            // 2. CRITICAL: Inherit velocity from animation to avoid dead-fish effect
-            body.setLinearVelocity(mech.lastKinematicVelocity);
+            // 2. Set proper mass and reduce damping for ragdoll physics
+            body.setMassProperties({ mass: mech.stats.mass || 75 });
+            body.setLinearDamping(0.1);
+            body.setAngularDamping(0.2);
 
-            // 3. Apply the knockback force that caused the ragdoll
-            body.applyImpulse(hitForce, mech.pelvis.getAbsolutePosition());
+            // 3. CRITICAL: Inherit velocity from animation to avoid dead-fish effect
+            const inheritedVel = mech.lastKinematicVelocity || new BABYLON.Vector3(0, 0, 0);
+            body.setLinearVelocity(inheritedVel);
 
-            // 4. Add angular impulse for dramatic spin
+            // 4. Apply knockback force - throw mech backwards from strike
+            // Scale force by mass for consistent knockback across mech sizes
+            const massScale = 75 / (mech.stats.mass || 75);
+            const scaledHitForce = hitForce.scale(massScale * 2.5);
+
+            // Add significant upward component to lift mech off ground
+            scaledHitForce.y = Math.max(scaledHitForce.y, hitForce.length() * 0.5);
+
+            body.applyImpulse(scaledHitForce, pos);
+
+            // 5. Strong angular impulse for dramatic spin/tumble
+            const hitDir = hitForce.normalizeToNew();
             body.applyAngularImpulse(new BABYLON.Vector3(
-                hitForce.z * 0.15,
-                (Math.random() - 0.5) * hitForce.length() * 0.05,
-                -hitForce.x * 0.15
+                hitDir.z * hitForce.length() * 0.3,  // Pitch based on Z hit direction
+                (Math.random() - 0.5) * hitForce.length() * 0.1,  // Random yaw spin
+                -hitDir.x * hitForce.length() * 0.3  // Roll based on X hit direction
             ));
 
-            // 5. Shake camera - mechs are HEAVY
-            triggerCameraShake(0.8, 0.6);
+            // 6. DRAMATIC LIMB FLINGING - arms and legs fly outward on impact
+            flingLimbs(mech, hitForce);
 
-            // 6. Spawn impact sparks
-            createImpactSparks(mech.pelvis.getAbsolutePosition(), hitForce.normalize());
+            // 7. Shake camera - mechs are HEAVY
+            const shakeIntensity = Math.min(1.0, hitForce.length() / 50);
+            triggerCameraShake(shakeIntensity, 0.5 + shakeIntensity * 0.3);
+
+            // 8. Spawn impact sparks
+            createImpactSparks(pos, hitDir);
+        }
+
+        // Dramatic limb animation when ragdolling
+        function flingLimbs(mech, hitForce) {
+            const hitDir = hitForce.normalizeToNew();
+            const intensity = Math.min(1.5, hitForce.length() / 30);
+
+            // Arms fling outward and back
+            if (mech.leftArm) {
+                const leftArmFling = () => {
+                    let t = 0;
+                    const startRot = mech.leftArm.rotation.clone();
+                    const flingInterval = setInterval(() => {
+                        t += 0.05;
+                        if (t >= 1 || mech.mechState !== MechState.RAGDOLL) {
+                            clearInterval(flingInterval);
+                            return;
+                        }
+                        // Fling arm outward and back with easing
+                        const ease = Math.sin(t * Math.PI);
+                        mech.leftArm.rotation.z = startRot.z - intensity * 1.2 * ease;  // Out to side
+                        mech.leftArm.rotation.x = startRot.x + intensity * 0.8 * ease;  // Back
+                        mech.leftArm.rotation.y = startRot.y + (hitDir.x * 0.5 + 0.3) * ease;  // Twist from impact
+                    }, 16);
+                };
+                leftArmFling();
+            }
+
+            if (mech.rightArm) {
+                const rightArmFling = () => {
+                    let t = 0;
+                    const startRot = mech.rightArm.rotation.clone();
+                    const flingInterval = setInterval(() => {
+                        t += 0.05;
+                        if (t >= 1 || mech.mechState !== MechState.RAGDOLL) {
+                            clearInterval(flingInterval);
+                            return;
+                        }
+                        const ease = Math.sin(t * Math.PI);
+                        mech.rightArm.rotation.z = startRot.z + intensity * 1.2 * ease;  // Out to side (opposite)
+                        mech.rightArm.rotation.x = startRot.x + intensity * 0.8 * ease;  // Back
+                        mech.rightArm.rotation.y = startRot.y - (hitDir.x * 0.5 + 0.3) * ease;  // Twist from impact
+                    }, 16);
+                };
+                rightArmFling();
+            }
+
+            // Legs kick outward on big hits
+            if (intensity > 0.8) {
+                if (mech.leftLeg && mech.leftLeg.upperLeg) {
+                    const leftLegKick = () => {
+                        let t = 0;
+                        const startRot = mech.leftLeg.upperLeg.rotation.x;
+                        const flingInterval = setInterval(() => {
+                            t += 0.04;
+                            if (t >= 1 || mech.mechState !== MechState.RAGDOLL) {
+                                clearInterval(flingInterval);
+                                return;
+                            }
+                            const ease = Math.sin(t * Math.PI);
+                            mech.leftLeg.upperLeg.rotation.x = startRot - intensity * 0.6 * ease;
+                        }, 16);
+                    };
+                    leftLegKick();
+                }
+
+                if (mech.rightLeg && mech.rightLeg.upperLeg) {
+                    const rightLegKick = () => {
+                        let t = 0;
+                        const startRot = mech.rightLeg.upperLeg.rotation.x;
+                        const flingInterval = setInterval(() => {
+                            t += 0.04;
+                            if (t >= 1 || mech.mechState !== MechState.RAGDOLL) {
+                                clearInterval(flingInterval);
+                                return;
+                            }
+                            const ease = Math.sin(t * Math.PI);
+                            mech.rightLeg.upperLeg.rotation.x = startRot - intensity * 0.6 * ease;
+                        }, 16);
+                    };
+                    rightLegKick();
+                }
+            }
+        }
+
+        // Extra chaotic limb movement for destruction - more extreme than regular ragdoll
+        function destroyedLimbChaos(mech) {
+            // Arms flail wildly
+            if (mech.leftArm) {
+                let t = 0;
+                const chaosInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 2.0 || !mech.leftArm) {
+                        clearInterval(chaosInterval);
+                        return;
+                    }
+                    // Wild oscillating movement
+                    const chaos = Math.sin(t * 8) * Math.exp(-t * 0.8);
+                    mech.leftArm.rotation.z = -1.5 + chaos * 1.0;
+                    mech.leftArm.rotation.x = 0.5 + chaos * 0.8;
+                }, 16);
+            }
+
+            if (mech.rightArm) {
+                let t = 0;
+                const chaosInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 2.0 || !mech.rightArm) {
+                        clearInterval(chaosInterval);
+                        return;
+                    }
+                    const chaos = Math.sin(t * 8 + 1) * Math.exp(-t * 0.8);
+                    mech.rightArm.rotation.z = 1.5 - chaos * 1.0;
+                    mech.rightArm.rotation.x = 0.5 + chaos * 0.8;
+                }, 16);
+            }
+
+            // Legs kick wildly
+            if (mech.leftLeg && mech.leftLeg.upperLeg) {
+                let t = 0;
+                const chaosInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 2.0 || !mech.leftLeg) {
+                        clearInterval(chaosInterval);
+                        return;
+                    }
+                    const chaos = Math.sin(t * 6) * Math.exp(-t * 1.0);
+                    mech.leftLeg.upperLeg.rotation.x = 0.5 - chaos * 0.8;
+                    if (mech.leftLeg.lowerLeg) {
+                        mech.leftLeg.lowerLeg.rotation.x = -0.4 - Math.abs(chaos) * 0.5;
+                    }
+                }, 16);
+            }
+
+            if (mech.rightLeg && mech.rightLeg.upperLeg) {
+                let t = 0;
+                const chaosInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 2.0 || !mech.rightLeg) {
+                        clearInterval(chaosInterval);
+                        return;
+                    }
+                    const chaos = Math.sin(t * 6 + 2) * Math.exp(-t * 1.0);
+                    mech.rightLeg.upperLeg.rotation.x = 0.5 - chaos * 0.8;
+                    if (mech.rightLeg.lowerLeg) {
+                        mech.rightLeg.lowerLeg.rotation.x = -0.4 - Math.abs(chaos) * 0.5;
+                    }
+                }, 16);
+            }
+
+            // Torso twist
+            if (mech.torso) {
+                let t = 0;
+                const torsoInterval = setInterval(() => {
+                    t += 0.03;
+                    if (t >= 1.5 || !mech.torso) {
+                        clearInterval(torsoInterval);
+                        return;
+                    }
+                    const chaos = Math.sin(t * 10) * Math.exp(-t * 1.5);
+                    mech.torso.rotation.y = chaos * 0.4;
+                    mech.torso.rotation.x = -Math.abs(chaos) * 0.3;  // Slump forward
+                }, 16);
+            }
         }
 
         function updateRagdoll(mech, dt) {
@@ -4067,52 +4250,70 @@
             // ========================================
             // Mark as destroyed so state machine and AI don't interfere
             mech.isDestroyed = true;
-            mech.mechState = MechState.RAGDOLL;  // Switch to ragdoll for destruction
+            mech.mechState = MechState.RAGDOLL;
             mech.ai.enabled = false;
             mech.isWalking = false;
 
-            // HYBRID: Switch to DYNAMIC mode so physics can take over for dramatic fall
-            mech.pelvisAggregate.body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC);
+            const body = mech.pelvisAggregate.body;
 
-            // Reduce damping so mech falls naturally
-            mech.pelvisAggregate.body.setLinearDamping(0.02);
-            mech.pelvisAggregate.body.setAngularDamping(0.02);
+            // HYBRID: Switch to DYNAMIC mode so physics can take over for dramatic fall
+            body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC);
+
+            // Set proper mass and very low damping for dramatic physics
+            body.setMassProperties({ mass: mech.stats.mass || 75 });
+            body.setLinearDamping(0.05);
+            body.setAngularDamping(0.1);
+
+            // Get the impact direction from the last damage
+            const impactDir = mech.impactDirection || new BABYLON.Vector3(1, 0, 0);
 
             // Inherit velocity from kinematic movement
-            mech.pelvisAggregate.body.setLinearVelocity(mech.lastKinematicVelocity || new BABYLON.Vector3(0, 0, 0));
+            const inheritedVel = mech.lastKinematicVelocity || new BABYLON.Vector3(0, 0, 0);
+            body.setLinearVelocity(inheritedVel);
 
-            // Small upward pop, then fall
-            const fallDirection = (Math.random() > 0.5) ? 1 : -1;  // Fall forward or backward
-            mech.pelvisAggregate.body.applyImpulse(
-                new BABYLON.Vector3(
-                    (Math.random() - 0.5) * 20,   // Random horizontal
-                    25 + Math.random() * 15,       // Small upward pop
-                    (Math.random() - 0.5) * 10
-                ),
-                mech.pelvis.getAbsolutePosition()
-            );
+            // DRAMATIC EXPLOSION KNOCKBACK - throw mech up and back from explosion
+            const explosionForce = impactDir.scale(-80);  // Away from impact direction
+            explosionForce.y = 60 + Math.random() * 40;    // Strong upward lift
+            explosionForce.x += (Math.random() - 0.5) * 30;
+            explosionForce.z += (Math.random() - 0.5) * 20;
 
-            // Strong angular impulse to make it topple over
-            mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                fallDirection * (80 + Math.random() * 40),  // Strong forward/back tilt
-                (Math.random() - 0.5) * 20,                  // Small spin
-                (Math.random() - 0.5) * 60                   // Side tilt
+            body.applyImpulse(explosionForce, pos);
+
+            // Strong angular impulse to make it tumble dramatically
+            const fallDirection = (Math.random() > 0.5) ? 1 : -1;
+            body.applyAngularImpulse(new BABYLON.Vector3(
+                (impactDir.z + fallDirection) * 60,  // Pitch backward from explosion
+                (Math.random() - 0.5) * 30,          // Random spin
+                (-impactDir.x + (Math.random() - 0.5)) * 50  // Roll from impact
             ));
 
-            // Continue applying toppling force over time
+            // DRAMATIC LIMB FLINGING - arms and legs fly outward from explosion
+            const destructionHitForce = impactDir.scale(60);
+            destructionHitForce.y = 30;
+            flingLimbs(mech, destructionHitForce);
+
+            // Additional limb chaos for destruction - more extreme than normal ragdoll
+            destroyedLimbChaos(mech);
+
+            // Continue applying forces to ensure dramatic fall
             let collapseTime = 0;
             const collapseInterval = setInterval(() => {
                 collapseTime += 50;
-                if (collapseTime > 800 || !mech.pelvisAggregate.body) {
+                if (collapseTime > 1200 || !mech.pelvisAggregate.body) {
                     clearInterval(collapseInterval);
                     return;
                 }
-                // Keep pushing it to fall
-                mech.pelvisAggregate.body.applyAngularImpulse(new BABYLON.Vector3(
-                    fallDirection * 15,
-                    0,
-                    (Math.random() - 0.5) * 10
+                // Keep applying angular impulse for dramatic tumbling
+                body.applyAngularImpulse(new BABYLON.Vector3(
+                    fallDirection * 20,
+                    (Math.random() - 0.5) * 15,
+                    (Math.random() - 0.5) * 15
                 ));
+                // Small downward force to ensure it falls
+                body.applyImpulse(
+                    new BABYLON.Vector3(0, -15, 0),
+                    mech.pelvis.getAbsolutePosition()
+                );
             }, 50);
 
             log(`💀💀💀 ${mech.name} HAS BEEN DESTROYED! 💀💀💀`, 'error');

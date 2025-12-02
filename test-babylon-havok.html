@@ -385,6 +385,14 @@
             mechLinearDamping: 0.3       // Some resistance to sliding
         };
 
+        // Arena bounds - HARD limits for kinematic movement
+        const ARENA_BOUNDS = {
+            minX: -18,
+            maxX: 18,
+            minZ: -8,
+            maxZ: 8
+        };
+
         // Colors
         const COLORS = {
             playerPrimary: new BABYLON.Color3(0.15, 0.35, 0.2),
@@ -2653,6 +2661,7 @@
         // ============================================
         function updateWalkingKinematic(mech, dt) {
             const body = mech.pelvisAggregate.body;
+            const myPos = mech.pelvis.getAbsolutePosition();
 
             // Handle body rotation toward target (from AI)
             const yawError = mech.ai.desiredYawError || 0;
@@ -2665,6 +2674,21 @@
                 yawVelocity = Math.sign(yawError) * Math.min(Math.abs(yawError) * 3, maxRotationSpeed);
             }
 
+            // === SMOOTH STRAFE RAMPING ===
+            // Gradually transition strafe amount instead of snapping
+            if (!mech.currentStrafeAmount) mech.currentStrafeAmount = 0;
+            const targetStrafe = mech.ai.strafeAmount || 0;
+            const strafeRampSpeed = 2.0;  // How fast strafe ramps up/down
+            if (Math.abs(targetStrafe - mech.currentStrafeAmount) > 0.01) {
+                mech.currentStrafeAmount += Math.sign(targetStrafe - mech.currentStrafeAmount) * strafeRampSpeed * dt;
+                // Clamp to target
+                if ((targetStrafe > 0 && mech.currentStrafeAmount > targetStrafe) ||
+                    (targetStrafe < 0 && mech.currentStrafeAmount < targetStrafe) ||
+                    (targetStrafe === 0 && Math.abs(mech.currentStrafeAmount) < 0.05)) {
+                    mech.currentStrafeAmount = targetStrafe;
+                }
+            }
+
             if (!mech.isWalking) {
                 // When not walking, stay in place but still rotate toward target
                 body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
@@ -2674,7 +2698,8 @@
                 return;
             }
 
-            mech.walkCycle += dt * mech.walkSpeed * 2;
+            // Walk cycle speed tied to movement - heavier mechs have slower cycles
+            mech.walkCycle += dt * mech.walkSpeed * 1.6;
             const cycle = mech.walkCycle;
 
             const leftPhase = Math.sin(cycle);
@@ -2683,9 +2708,12 @@
             animateLeg(mech.leftLeg, leftPhase, mech.scale);
             animateLeg(mech.rightLeg, rightPhase, mech.scale);
 
-            // Body bob - subtle dip on each footfall
+            // Body bob - pronounced dip on each footfall for grounded feel
             const bobPhase = Math.abs(Math.sin(cycle));
-            const bob = (1 - bobPhase) * 0.04 * mech.scale;
+            const bob = (1 - bobPhase) * 0.06 * mech.scale;  // Increased bob
+
+            // Hip sway for weight transfer - side to side with each step
+            const hipSway = Math.sin(cycle) * 0.02;
 
             // Get pelvis facing direction
             const quat = body.transformNode.rotationQuaternion;
@@ -2703,14 +2731,32 @@
             }
 
             // KINEMATIC MODE: Set velocity directly instead of applying forces
-            const walkSpeed = 3.5 * mech.scale;  // Units per second
-            const strafeSpeed = 2.5 * mech.scale;  // Strafe is slower than walking
+            // Slightly reduced speed for heavier, more grounded feel
+            const walkSpeed = 3.0 * mech.scale;  // Units per second
+            const strafeSpeed = 1.8 * mech.scale;  // Strafe is slower than walking
 
-            // Calculate velocity from walk direction and strafe
-            const strafeAmount = mech.ai.strafeAmount || 0;
+            // Calculate velocity from walk direction and strafe (using smoothed strafe)
             let velocity = forwardDir.scale(mech.walkDirection * walkSpeed);
-            velocity.addInPlace(rightDir.scale(strafeAmount * strafeSpeed));
+            velocity.addInPlace(rightDir.scale(mech.currentStrafeAmount * strafeSpeed));
             velocity.y = -bob * 2;  // Subtle bob effect
+
+            // === HARD BOUNDARY CLAMPING ===
+            // If we're at or past the boundary, zero velocity in that direction
+            const boundaryMargin = 0.5;
+            if (myPos.x <= ARENA_BOUNDS.minX + boundaryMargin) {
+                // At left edge - only allow movement toward center (positive X)
+                if (velocity.x < 0) velocity.x = 0;
+            } else if (myPos.x >= ARENA_BOUNDS.maxX - boundaryMargin) {
+                // At right edge - only allow movement toward center (negative X)
+                if (velocity.x > 0) velocity.x = 0;
+            }
+            if (myPos.z <= ARENA_BOUNDS.minZ + boundaryMargin) {
+                // At back edge - only allow movement toward center (positive Z)
+                if (velocity.z < 0) velocity.z = 0;
+            } else if (myPos.z >= ARENA_BOUNDS.maxZ - boundaryMargin) {
+                // At front edge - only allow movement toward center (negative Z)
+                if (velocity.z > 0) velocity.z = 0;
+            }
 
             // Store velocity for ragdoll inheritance
             mech.lastKinematicVelocity = velocity.clone();
@@ -2718,33 +2764,35 @@
             // Set the kinematic body velocity
             body.setLinearVelocity(velocity);
 
-            // Apply body rotation - combines target tracking with visual sway
-            const sway = Math.sin(cycle) * 0.012;
-            const rock = Math.sin(cycle) * 0.006;
+            // Apply body rotation - combines target tracking with visual motion
+            // Rock = forward/back tilt, sway = side-to-side tilt, hipSway = rolling motion
+            const sway = Math.sin(cycle) * 0.02;  // Side-to-side lean with each step
+            const rock = Math.sin(cycle * 2) * 0.01;  // Subtle double-frequency rock
 
             // In ANIMATED mode, set angular velocity for rotation + visual feel
-            body.setAngularVelocity(new BABYLON.Vector3(rock, yawVelocity, sway));
+            // Add hipSway for rolling weight transfer motion
+            body.setAngularVelocity(new BABYLON.Vector3(rock + hipSway, yawVelocity, sway));
         }
 
         function animateLeg(leg, phase, scale) {
             // Lightning bolt digitigrade animation - matched to new geometry
             // Base rotations: upperLeg = 0.5, lowerLeg = -0.4
 
-            // Upper leg swings forward/back from hip
-            const swing = phase * 0.25;  // More pronounced swing
+            // Upper leg swings forward/back from hip - more pronounced for grounded feel
+            const swing = phase * 0.35;  // Increased swing for visible stepping
             leg.upperLeg.rotation.x = 0.5 + swing;
 
             // Lower leg bends more during lift phase (phase > 0 = leg lifting)
             const liftPhase = Math.max(0, phase);
             const plantPhase = Math.max(0, -phase);
 
-            // Knee bends more during lift, straightens during plant
-            const kneeBend = liftPhase * 0.4;  // More bend when lifting
-            leg.lowerLeg.rotation.x = -0.4 - kneeBend + plantPhase * 0.1;
+            // Knee bends more during lift, straightens during plant - exaggerated
+            const kneeBend = liftPhase * 0.5;  // More pronounced bend when lifting
+            leg.lowerLeg.rotation.x = -0.4 - kneeBend + plantPhase * 0.15;
 
             // Foot tilts up during lift, plants flat during ground contact
-            const footLift = liftPhase * 0.3;  // Toe points up when lifting
-            const footPlant = plantPhase * 0.15;  // Slight forward tilt when planting
+            const footLift = liftPhase * 0.4;  // Toe points up more when lifting
+            const footPlant = plantPhase * 0.2;  // More tilt when planting
             leg.foot.rotation.x = 0.1 - footLift + footPlant;
         }
 
@@ -3261,11 +3309,16 @@
                             mech.ai.state = 'retreating';
                             mech.walkDirection = toTarget.x > 0 ? -1 : 1;
                         } else {
-                            // At optimal range - maybe strafe
-                            if (Math.random() < AI_CONFIG.strafeChance) {
+                            // At optimal range - maybe strafe with natural randomness
+                            const strafeRoll = Math.random();
+                            if (strafeRoll < AI_CONFIG.strafeChance * 0.5) {
                                 mech.ai.state = 'strafing';
-                                mech.ai.strafeDir = Math.random() < 0.5 ? -1 : 1;
-                                mech.ai.strafeEndTime = gameTime + AI_CONFIG.strafeDuration;
+                                // Vary strafe intensity (0.4 to 1.0 instead of always 1)
+                                const strafeIntensity = 0.4 + Math.random() * 0.6;
+                                mech.ai.strafeDir = (Math.random() < 0.5 ? -1 : 1) * strafeIntensity;
+                                // Vary duration (0.8 to 2.5 seconds)
+                                const strafeDur = 0.8 + Math.random() * 1.7;
+                                mech.ai.strafeEndTime = gameTime + strafeDur;
                             } else {
                                 mech.ai.state = 'optimal';
                             }
@@ -3344,14 +3397,15 @@
 
                 case 'strafing':
                     mech.isWalking = true;
-                    mech.ai.strafeAmount = mech.ai.strafeDir;  // -1 or 1 for sideways movement
-                    // Small forward/back adjustment toward ideal range
-                    if (distance > AI_CONFIG.idealRange + 1) {
-                        mech.walkDirection = 1;
-                    } else if (distance < AI_CONFIG.idealRange - 1) {
-                        mech.walkDirection = -1;
+                    // strafeDir now includes intensity variance (-1 to 1 with random magnitude)
+                    mech.ai.strafeAmount = mech.ai.strafeDir;
+                    // Small forward/back adjustment toward ideal range with small randomness
+                    if (distance > AI_CONFIG.idealRange + 1.5) {
+                        mech.walkDirection = 0.7 + Math.random() * 0.3;  // Variable forward speed
+                    } else if (distance < AI_CONFIG.idealRange - 1.5) {
+                        mech.walkDirection = -(0.5 + Math.random() * 0.3);  // Variable backward
                     } else {
-                        mech.walkDirection = 0;  // Pure strafe
+                        mech.walkDirection = (Math.random() - 0.5) * 0.3;  // Subtle drift while strafing
                     }
                     break;
 
@@ -3389,11 +3443,45 @@
                     break;
 
                 case 'edge-avoid':
+                    // Edge avoid needs to move toward CENTER in WORLD space
+                    // not relative to where the mech is facing!
                     mech.isWalking = true;
-                    mech.walkDirection = -1;  // Walk backwards (retreat animation)
-                    // Add strafe toward center of arena
-                    if (myPos.z > 0) mech.ai.strafeAmount = -0.5;
-                    else if (myPos.z < 0) mech.ai.strafeAmount = 0.5;
+
+                    // Calculate world-space direction toward arena center
+                    let toCenterX = -myPos.x;  // Toward X=0
+                    let toCenterZ = -myPos.z;  // Toward Z=0
+
+                    // Normalize the direction
+                    const toCenterLen = Math.sqrt(toCenterX * toCenterX + toCenterZ * toCenterZ);
+                    if (toCenterLen > 0.1) {
+                        toCenterX /= toCenterLen;
+                        toCenterZ /= toCenterLen;
+                    }
+
+                    // Get mech's forward and right directions in world space
+                    const edgeQuat = body.transformNode.rotationQuaternion;
+                    let mechForward = new BABYLON.Vector3(1, 0, 0);
+                    let mechRight = new BABYLON.Vector3(0, 0, 1);
+                    if (edgeQuat) {
+                        const rotMatrix = new BABYLON.Matrix();
+                        edgeQuat.toRotationMatrix(rotMatrix);
+                        mechForward = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
+                        mechForward.y = 0;
+                        mechForward.normalize();
+                        mechRight = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
+                        mechRight.y = 0;
+                        mechRight.normalize();
+                    }
+
+                    // Project toCenter onto mech's forward and right to get mech-relative movement
+                    const forwardComponent = toCenterX * mechForward.x + toCenterZ * mechForward.z;
+                    const rightComponent = toCenterX * mechRight.x + toCenterZ * mechRight.z;
+
+                    // Set walk direction based on forward component
+                    mech.walkDirection = forwardComponent > 0.1 ? 1 : (forwardComponent < -0.1 ? -1 : 0);
+
+                    // Set strafe based on right component
+                    mech.ai.strafeAmount = rightComponent * 0.8;  // Scale down slightly
                     break;
 
                 default:

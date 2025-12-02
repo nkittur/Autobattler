@@ -415,12 +415,12 @@
                 // Mobile/low-end settings
                 SHADOW_CONFIG.mapSize = 512;
                 SHADOW_CONFIG.blurKernel = 16;
-                console.log('[SHADOWS] Using mobile-optimized settings (512px)');
+                log('[SHADOWS] Mobile mode (512px)');
             } else {
                 // Desktop settings
                 SHADOW_CONFIG.mapSize = 1024;
                 SHADOW_CONFIG.blurKernel = 32;
-                console.log('[SHADOWS] Using desktop settings (1024px)');
+                log('[SHADOWS] Desktop mode (1024px)');
             }
         }
 
@@ -496,7 +496,7 @@
                 }
             });
 
-            console.log(`[SHADOWS] Configured ${casterCount} shadow casters from ${mechs.length} mechs`);
+            log(`[SHADOWS] ${casterCount} casters from ${mechs.length} mechs`);
         }
 
         // Colors
@@ -725,7 +725,7 @@
                 // Force shadow map to update
                 shadowGenerator.forceBackFacesOnly = false;
 
-                console.log(`[SHADOWS] Generator created: ${SHADOW_CONFIG.mapSize}px, Blurred ESM`);
+                log(`[SHADOWS] Generator: ${SHADOW_CONFIG.mapSize}px ESM`);
             }
 
             // Fog - adjusted for distant mountains
@@ -801,7 +801,7 @@
             // Ground receives shadows from mechs and rocks
             if (shadowGen) {
                 ground.receiveShadows = true;
-                console.log('[SHADOWS] Arena ground set to receive shadows');
+                log('[SHADOWS] Ground receiving');
             }
 
             // === EXTENDED GROUND (horizon, no physics) ===
@@ -852,7 +852,7 @@
             }
 
             if (shadowGen) {
-                console.log('[SHADOWS] 6 arena rocks configured as shadow casters');
+                log('[SHADOWS] 6 rocks casting');
             }
         }
 

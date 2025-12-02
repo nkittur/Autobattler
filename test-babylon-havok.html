@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.4-shadow-debug</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.5-shadows-working</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -672,57 +672,28 @@
             camera.wheelPrecision = 30;
 
             // ============================================
-            // OPTIMIZED LIGHTING FOR MOBILE + SHADOWS
-            // Reduced from 7 lights to 3 for better performance
+            // LIGHTING + SHADOWS (v10.5 - Working Setup)
             // ============================================
 
-            log('>>> v10.4 SHADOW DEBUG <<<');
+            // Ambient/fill light
+            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
+            hemi.intensity = 0.6;
+            hemi.groundColor = new BABYLON.Color3(0.3, 0.25, 0.2);
 
-            // ============================================
-            // MINIMAL SHADOW TEST SETUP
-            // ============================================
+            // Primary sun light - DirectionalLight for shadows
+            const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, 1), scene);
+            sunLight.position = new BABYLON.Vector3(20, 40, -20);
+            sunLight.intensity = 1.2;
+            sunLight.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
+            sunLight.specular = new BABYLON.Color3(0.5, 0.5, 0.5);
 
-            // 1. Create a small test ground directly below test sphere
-            const testGround = BABYLON.MeshBuilder.CreateGround('testGround', { width: 10, height: 10 }, scene);
-            testGround.position = new BABYLON.Vector3(0, 0.01, 0);  // Slightly above main ground
-            const testGroundMat = new BABYLON.StandardMaterial('testGroundMat', scene);
-            testGroundMat.diffuseColor = new BABYLON.Color3(0.8, 0.8, 0.8);  // Light gray
-            testGround.material = testGroundMat;
-            testGround.receiveShadows = true;  // CRITICAL!
-            log('[DEBUG] Test ground created, receiveShadows=true');
-
-            // 2. Create test sphere above the test ground
-            const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', { diameter: 2 }, scene);
-            testSphere.position = new BABYLON.Vector3(0, 4, 0);
-            const testMat = new BABYLON.StandardMaterial('testMat', scene);
-            testMat.diffuseColor = new BABYLON.Color3(1, 0, 0);  // RED sphere - easy to see
-            testSphere.material = testMat;
-            log('[DEBUG] Red test sphere created');
-
-            // 3. Single DirectionalLight for shadows (simpler than SpotLight)
-            const shadowLight = new BABYLON.DirectionalLight('shadowLight', new BABYLON.Vector3(-1, -2, -1), scene);
-            shadowLight.position = new BABYLON.Vector3(10, 20, 10);
-            shadowLight.intensity = 1.5;
-            log('[DEBUG] DirectionalLight created for shadows');
-
-            // 4. Ambient light so we can see everything
-            const ambient = new BABYLON.HemisphericLight('ambient', new BABYLON.Vector3(0, 1, 0), scene);
-            ambient.intensity = 0.5;
-
-            // ============================================
-            // SHADOW GENERATOR - Minimal setup
-            // ============================================
+            // Shadow generator
             if (SHADOW_CONFIG.enabled) {
-                shadowGenerator = new BABYLON.ShadowGenerator(1024, shadowLight);
-
-                // Add ONLY the test sphere as shadow caster first
-                shadowGenerator.addShadowCaster(testSphere);
-
-                // Log shadow generator state
-                log(`[SHADOW] mapSize: ${shadowGenerator.mapSize}`);
-                log(`[SHADOW] light: ${shadowLight.name}`);
-                log(`[SHADOW] casters: ${shadowGenerator.getShadowMap().renderList.length}`);
-                log(`[SHADOW] testGround.receiveShadows: ${testGround.receiveShadows}`);
+                const mapSize = SHADOW_CONFIG.mapSize || 1024;
+                shadowGenerator = new BABYLON.ShadowGenerator(mapSize, sunLight);
+                shadowGenerator.bias = 0.001;
+                shadowGenerator.normalBias = 0.02;
+                log(`[SHADOWS] v10.5 DirectionalLight ${mapSize}px`);
             }
 
             // Fog - adjusted for distant mountains

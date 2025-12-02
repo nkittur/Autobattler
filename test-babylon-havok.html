@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.15-all-mechs</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.16-fixes</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -441,33 +441,21 @@
 
             let casterCount = 0;
 
-            // Helper to safely add a mesh as shadow caster
-            function addIfMesh(obj) {
-                if (obj && typeof obj.getBoundingInfo === 'function') {
-                    shadowGen.addShadowCaster(obj);
-                    casterCount++;
-                    return true;
-                }
-                return false;
-            }
-
-            // Recursively add all mesh children of a node
-            function addAllMeshChildren(node) {
-                if (!node) return;
-                if (typeof node.getBoundingInfo === 'function') {
-                    shadowGen.addShadowCaster(node);
-                    casterCount++;
-                }
-                if (node.getChildren) {
-                    node.getChildren().forEach(child => addAllMeshChildren(child));
-                }
-            }
-
             mechs.forEach(mech => {
-                if (!mech) return;
+                if (!mech || !mech.pelvis) return;
 
-                // Add pelvis and all its children (this gets everything)
-                addAllMeshChildren(mech.pelvis);
+                // Use getDescendants() which gets ALL descendants recursively
+                // This is more reliable than manual recursion
+                const allNodes = mech.pelvis.getDescendants(false);
+                allNodes.unshift(mech.pelvis); // Include pelvis itself
+
+                allNodes.forEach(node => {
+                    // Only add actual meshes (have getBoundingInfo)
+                    if (node && typeof node.getBoundingInfo === 'function') {
+                        shadowGen.addShadowCaster(node);
+                        casterCount++;
+                    }
+                });
             });
 
             log(`[SHADOWS] ${casterCount} casters from ${mechs.length} mechs`);
@@ -658,19 +646,24 @@
             hemi.intensity = 0.5;
             hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
-            // DirectionalLight for shadows (working config from v10.13)
+            // DirectionalLight for shadows - positioned to cover entire arena
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
-            sunLight.position = new BABYLON.Vector3(10, 20, 10);
+            sunLight.position = new BABYLON.Vector3(0, 30, 0);  // Centered above arena
             sunLight.intensity = 1.5;
+
+            // Expand shadow frustum to cover all mechs
+            sunLight.shadowMinZ = 1;
+            sunLight.shadowMaxZ = 60;
+            sunLight.shadowFrustumSize = 50;  // Fixed frustum size to cover arena
 
             // Shadow generator with PCF filtering
             if (SHADOW_CONFIG.enabled) {
                 shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
-                shadowGenerator.bias = 0.001;
-                shadowGenerator.normalBias = 0.01;
+                shadowGenerator.bias = 0.0005;
+                shadowGenerator.normalBias = 0.005;
                 shadowGenerator.usePercentageCloserFiltering = true;
                 shadowGenerator.filteringQuality = BABYLON.ShadowGenerator.QUALITY_MEDIUM;
-                log(`[v10.14] Shadows: PCF, ${SHADOW_CONFIG.mapSize}px`);
+                log(`[v10.16] Shadows: PCF, frustum=50, ${SHADOW_CONFIG.mapSize}px`);
             }
 
             // Fog
@@ -4301,27 +4294,44 @@
             const mechName = mech.isPlayer ? 'TIMBER WOLF' : 'DIRE WOLF';
 
             // ========================================
-            // SCREEN FLASH - bright orange/white
+            // SCREEN FLASH - bright orange/white (with guaranteed cleanup)
             // ========================================
-            const flashPlane = BABYLON.MeshBuilder.CreatePlane('flash', { size: 100 }, scene);
+            const flashPlane = BABYLON.MeshBuilder.CreatePlane('explosionFlash_' + Date.now(), { size: 100 }, scene);
             flashPlane.position = camera.position.add(camera.getForwardRay().direction.scale(5));
             flashPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
-            const flashMat = new BABYLON.StandardMaterial('flashMat', scene);
+            const flashMat = new BABYLON.StandardMaterial('flashMat_' + Date.now(), scene);
             flashMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0.2);
             flashMat.disableLighting = true;
-            flashMat.alpha = 0.8;
+            flashMat.alpha = 0.7;
             flashPlane.material = flashMat;
 
-            let flashAlpha = 0.8;
-            const flashFade = setInterval(() => {
-                flashAlpha -= 0.04;
-                if (flashAlpha <= 0) {
-                    clearInterval(flashFade);
-                    flashPlane.dispose();
-                } else {
-                    flashMat.alpha = flashAlpha;
+            // Use requestAnimationFrame for smoother fade and guaranteed cleanup
+            const flashStartTime = performance.now();
+            const flashDuration = 500; // ms
+            function fadeFlash() {
+                const elapsed = performance.now() - flashStartTime;
+                const progress = elapsed / flashDuration;
+                if (progress >= 1 || !flashPlane || flashPlane.isDisposed()) {
+                    // Guaranteed cleanup
+                    if (flashPlane && !flashPlane.isDisposed()) {
+                        flashPlane.dispose();
+                    }
+                    if (flashMat && !flashMat.isDisposed) {
+                        flashMat.dispose();
+                    }
+                    return;
                 }
-            }, 30);
+                flashMat.alpha = 0.7 * (1 - progress);
+                requestAnimationFrame(fadeFlash);
+            }
+            requestAnimationFrame(fadeFlash);
+
+            // Failsafe: force dispose after 1 second no matter what
+            setTimeout(() => {
+                if (flashPlane && !flashPlane.isDisposed()) {
+                    flashPlane.dispose();
+                }
+            }, 1000);
 
             // ========================================
             // CAMERA SHAKE

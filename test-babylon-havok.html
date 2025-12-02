@@ -393,6 +393,119 @@
             maxZ: 8
         };
 
+        // ============================================
+        // SHADOW & QUALITY CONFIGURATION
+        // Mobile-optimized shadow system with adaptive quality
+        // ============================================
+        const SHADOW_CONFIG = {
+            enabled: true,                    // Master shadow toggle
+            mapSize: 1024,                    // Shadow map resolution (512/1024/2048)
+            useBlur: true,                    // Use contact hardening (soft shadows)
+            blurKernel: 32,                   // Blur kernel size for soft shadows
+            darkness: 0.4,                    // Shadow darkness (0=black, 1=invisible)
+            bias: 0.00005,                    // Depth bias to prevent shadow acne
+            normalBias: 0.02,                 // Normal bias for curved surfaces
+            frustumEdgeFalloff: 0.5,          // Soften shadow edges at frustum boundary
+            filteringQuality: 1,              // 0=low, 1=medium, 2=high (PCF quality)
+            autoCalcDepthBounds: true,        // Auto-calculate optimal depth range
+        };
+
+        // Detect mobile and adjust quality
+        function detectMobileAndSetQuality() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isLowPower = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
+            const canvas = document.getElementById('renderCanvas');
+            const isSmallScreen = canvas && (canvas.width < 800 || canvas.height < 600);
+
+            if (isMobile || isLowPower || isSmallScreen) {
+                // Mobile/low-end settings
+                SHADOW_CONFIG.mapSize = 512;
+                SHADOW_CONFIG.blurKernel = 16;
+                SHADOW_CONFIG.filteringQuality = 0;
+                SHADOW_CONFIG.useBlur = true;  // Keep blur for soft look
+                console.log('[SHADOWS] Using mobile-optimized settings (512px)');
+            } else {
+                // Desktop settings
+                SHADOW_CONFIG.mapSize = 1024;
+                SHADOW_CONFIG.blurKernel = 32;
+                SHADOW_CONFIG.filteringQuality = 1;
+                console.log('[SHADOWS] Using desktop settings (1024px)');
+            }
+        }
+
+        // Global shadow generator reference
+        let shadowGenerator = null;
+
+        // Helper to add mesh as shadow caster (call after creating important meshes)
+        function addShadowCaster(mesh, includeChildren = false) {
+            if (shadowGenerator && mesh) {
+                shadowGenerator.addShadowCaster(mesh, includeChildren);
+            }
+        }
+
+        // Configure shadow casters for all mechs
+        // For performance, we only add key body parts instead of all 30-40 meshes per mech
+        function configureMechShadows(mechs, shadowGen) {
+            if (!shadowGen || !mechs) return;
+
+            let casterCount = 0;
+
+            mechs.forEach(mech => {
+                if (!mech) return;
+
+                // Add pelvis (main body) - this is the core shadow-casting part
+                if (mech.pelvis) {
+                    shadowGen.addShadowCaster(mech.pelvis);
+                    casterCount++;
+                }
+
+                // Add torso (upper body) - very visible from above
+                if (mech.torso) {
+                    shadowGen.addShadowCaster(mech.torso);
+                    casterCount++;
+                }
+
+                // Add shoulder weapon pods - distinctive silhouette
+                if (mech.leftPod) {
+                    shadowGen.addShadowCaster(mech.leftPod);
+                    casterCount++;
+                }
+                if (mech.rightPod) {
+                    shadowGen.addShadowCaster(mech.rightPod);
+                    casterCount++;
+                }
+
+                // Add arm groups for better silhouette
+                if (mech.leftArm && mech.leftArm.armGroup) {
+                    shadowGen.addShadowCaster(mech.leftArm.armGroup);
+                    casterCount++;
+                } else if (mech.leftArm && mech.leftArm.shoulder) {
+                    shadowGen.addShadowCaster(mech.leftArm.shoulder);
+                    casterCount++;
+                }
+
+                if (mech.rightArm && mech.rightArm.armGroup) {
+                    shadowGen.addShadowCaster(mech.rightArm.armGroup);
+                    casterCount++;
+                } else if (mech.rightArm && mech.rightArm.shoulder) {
+                    shadowGen.addShadowCaster(mech.rightArm.shoulder);
+                    casterCount++;
+                }
+
+                // Add leg hip joints for grounding effect (optional for extra detail)
+                if (mech.leftLeg && mech.leftLeg.hip) {
+                    shadowGen.addShadowCaster(mech.leftLeg.hip);
+                    casterCount++;
+                }
+                if (mech.rightLeg && mech.rightLeg.hip) {
+                    shadowGen.addShadowCaster(mech.rightLeg.hip);
+                    casterCount++;
+                }
+            });
+
+            console.log(`[SHADOWS] Configured ${casterCount} shadow casters from ${mechs.length} mechs`);
+        }
+
         // Colors
         const COLORS = {
             playerPrimary: new BABYLON.Color3(0.15, 0.35, 0.2),
@@ -436,6 +549,9 @@
         async function initEngine() {
             const canvas = document.getElementById('renderCanvas');
             engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+
+            // Detect device capabilities and adjust shadow quality
+            detectMobileAndSetQuality();
 
             try {
                 havokInstance = await HavokPhysics();
@@ -562,44 +678,81 @@
             camera.upperRadiusLimit = 120;
             camera.wheelPrecision = 30;
 
-            // Lighting - multiple sources for better illumination
-            // Main ambient light from above
+            // ============================================
+            // OPTIMIZED LIGHTING FOR MOBILE + SHADOWS
+            // Reduced from 7 lights to 3 for better performance
+            // ============================================
+
+            // Main ambient light - increased intensity to compensate for removed lights
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.7;
-            hemi.groundColor = new BABYLON.Color3(0.2, 0.18, 0.15);
+            hemi.intensity = 0.8;  // Slightly higher to compensate for removed point lights
+            hemi.groundColor = new BABYLON.Color3(0.3, 0.28, 0.25);  // Warmer ground bounce
+            hemi.specular = new BABYLON.Color3(0.1, 0.1, 0.1);  // Reduce specular from ambient
 
-            // Primary directional (sun) light
-            const dir = new BABYLON.DirectionalLight('dir', new BABYLON.Vector3(-1, -2.5, 1), scene);
-            dir.intensity = 1.0;
-            dir.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
+            // Primary directional (sun) light - THIS CASTS SHADOWS
+            const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2.5, 1), scene);
+            sunLight.intensity = 1.1;  // Slightly increased
+            sunLight.diffuse = new BABYLON.Color3(1, 0.95, 0.85);  // Warm sunlight
+            sunLight.specular = new BABYLON.Color3(0.8, 0.75, 0.7);
+            // Position the light for better shadow projection over the arena
+            sunLight.position = new BABYLON.Vector3(20, 40, -20);
 
-            // Secondary fill light from opposite side
+            // Configure shadow frustum to cover the arena bounds (40x20 units)
+            // Using orthographic projection for consistent shadow quality across the arena
+            sunLight.shadowMinZ = 1;
+            sunLight.shadowMaxZ = 100;
+            sunLight.shadowOrthoScale = 0.5;  // Tighten the frustum for better shadow quality
+
+            // Secondary fill light from opposite side (cooler, no shadows)
             const fillLight = new BABYLON.DirectionalLight('fill', new BABYLON.Vector3(1, -1, -0.5), scene);
-            fillLight.intensity = 0.4;
-            fillLight.diffuse = new BABYLON.Color3(0.7, 0.8, 1.0);  // Slight blue tint
+            fillLight.intensity = 0.5;  // Increased to compensate for removed rim/point lights
+            fillLight.diffuse = new BABYLON.Color3(0.7, 0.8, 1.0);  // Cool blue fill
+            fillLight.specular = new BABYLON.Color3(0.2, 0.2, 0.3);
 
-            // Rim/back light for mech silhouettes
-            const rimLight = new BABYLON.DirectionalLight('rim', new BABYLON.Vector3(0, -0.5, -1), scene);
-            rimLight.intensity = 0.3;
-            rimLight.diffuse = new BABYLON.Color3(1, 0.9, 0.7);
+            // ============================================
+            // SHADOW GENERATOR - Mobile Optimized
+            // ============================================
+            if (SHADOW_CONFIG.enabled) {
+                shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
 
-            // Point lights on each side of arena for extra fill
-            const leftPoint = new BABYLON.PointLight('leftPoint', new BABYLON.Vector3(-12, 6, 0), scene);
-            leftPoint.intensity = 0.5;
-            leftPoint.diffuse = new BABYLON.Color3(0.9, 0.95, 1.0);
-            leftPoint.range = 25;
+                // Use PCF (Percentage Closer Filtering) for soft shadows
+                // This is the best balance of quality and performance on mobile
+                shadowGenerator.usePercentageCloserFiltering = true;
+                shadowGenerator.filteringQuality = SHADOW_CONFIG.filteringQuality;
 
-            const rightPoint = new BABYLON.PointLight('rightPoint', new BABYLON.Vector3(12, 6, 0), scene);
-            rightPoint.intensity = 0.5;
-            rightPoint.diffuse = new BABYLON.Color3(1.0, 0.9, 0.85);
-            rightPoint.range = 25;
+                // Soft shadow blur (contact hardening simulation)
+                if (SHADOW_CONFIG.useBlur) {
+                    shadowGenerator.useContactHardeningShadow = true;
+                    shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
+                    shadowGenerator.setDarkness(SHADOW_CONFIG.darkness);
+                }
+
+                // Bias settings to prevent shadow acne and peter-panning
+                shadowGenerator.bias = SHADOW_CONFIG.bias;
+                shadowGenerator.normalBias = SHADOW_CONFIG.normalBias;
+
+                // Frustum settings for the shadow camera
+                shadowGenerator.frustumEdgeFalloff = SHADOW_CONFIG.frustumEdgeFalloff;
+
+                // Auto-calculate optimal depth bounds for tighter shadow map utilization
+                if (SHADOW_CONFIG.autoCalcDepthBounds) {
+                    shadowGenerator.autoCalcDepthBounds = true;
+                    shadowGenerator.autoCalcDepthBoundsRefreshRate = 2;  // Every 2 frames
+                }
+
+                // Optimize shadow map rendering
+                shadowGenerator.enableSoftTransparentShadow = false;  // Better perf
+                shadowGenerator.useOpacityTextureForTransparentShadow = false;
+
+                console.log(`[SHADOWS] Generator created: ${SHADOW_CONFIG.mapSize}px, PCF quality ${SHADOW_CONFIG.filteringQuality}`);
+            }
 
             // Fog - adjusted for distant mountains
             scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
             scene.fogDensity = 0.006;
             scene.fogColor = new BABYLON.Color3(0.55, 0.65, 0.75);  // Blue-ish haze to match sky
 
-            createGround(scene);
+            createGround(scene, shadowGenerator);
             createWalls(scene);
 
             // Create teams of mechs - 4 per side at different Z positions
@@ -627,10 +780,18 @@
                 mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
             });
 
+            // ============================================
+            // CONFIGURE MECH SHADOWS
+            // Only add key parts as shadow casters for performance
+            // ============================================
+            if (shadowGenerator) {
+                configureMechShadows(allMechs, shadowGenerator);
+            }
+
             return scene;
         }
 
-        function createGround(scene) {
+        function createGround(scene, shadowGen) {
             // === SKYBOX ===
             const skybox = BABYLON.MeshBuilder.CreateBox('skyBox', { size: 1000 }, scene);
             const skyboxMaterial = new BABYLON.StandardMaterial('skyBoxMat', scene);
@@ -640,8 +801,10 @@
             skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
             skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             skybox.material = skyboxMaterial;
+            // Skybox should NOT receive or cast shadows
+            skybox.receiveShadows = false;
 
-            // === ARENA GROUND (with physics) ===
+            // === ARENA GROUND (with physics) - RECEIVES SHADOWS ===
             const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 20 }, scene);
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
             mat.diffuseTexture = TEXTURES.grass;
@@ -653,6 +816,12 @@
             ground.material = mat;
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
+
+            // Ground receives shadows from mechs and rocks
+            if (shadowGen) {
+                ground.receiveShadows = true;
+                console.log('[SHADOWS] Arena ground set to receive shadows');
+            }
 
             // === EXTENDED GROUND (horizon, no physics) ===
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
@@ -669,11 +838,13 @@
             horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
             horizonMat.fogEnabled = true;  // Let fog blend it to horizon
             horizonGround.material = horizonMat;
+            // Horizon ground does NOT need shadows (too far, performance waste)
+            horizonGround.receiveShadows = false;
 
             // === DISTANT MOUNTAINS ===
             createMountains(scene);
 
-            // === ARENA ROCKS ===
+            // === ARENA ROCKS - Cast AND receive shadows ===
             const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
             rockMat.diffuseTexture = TEXTURES.rock;
             rockMat.bumpTexture = TEXTURES.rockNormal;
@@ -691,6 +862,16 @@
                 rock.rotation.y = Math.random() * Math.PI;
                 rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+
+                // Rocks cast and receive shadows
+                if (shadowGen) {
+                    shadowGen.addShadowCaster(rock);
+                    rock.receiveShadows = true;
+                }
+            }
+
+            if (shadowGen) {
+                console.log('[SHADOWS] 6 arena rocks configured as shadow casters');
             }
         }
 

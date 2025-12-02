@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.13-PCF-filter</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.14-mech-shadows</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -676,69 +676,39 @@
             // ============================================
 
             // ============================================
-            // v10.12: MINIMAL SHADOW TEST - FULL SCENE DISABLED
+            // v10.14: FULL SCENE WITH MECH SHADOWS
             // ============================================
-            log('[v10.12] MINIMAL TEST - Full scene DISABLED');
 
-            // Simple ambient light
+            // Ambient light
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.4;
+            hemi.intensity = 0.5;
+            hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
-            // DirectionalLight for shadows (EXACT v10.4 setup that worked)
+            // DirectionalLight for shadows (working config from v10.13)
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
             sunLight.position = new BABYLON.Vector3(10, 20, 10);
             sunLight.intensity = 1.5;
-            log(`[v10.13] DirectionalLight created`);
 
-            // Shadow generator with PCF filtering (more compatible)
+            // Shadow generator with PCF filtering
             if (SHADOW_CONFIG.enabled) {
-                shadowGenerator = new BABYLON.ShadowGenerator(1024, sunLight);
+                shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
                 shadowGenerator.bias = 0.001;
                 shadowGenerator.normalBias = 0.01;
-                // Try PCF which is more widely compatible
                 shadowGenerator.usePercentageCloserFiltering = true;
                 shadowGenerator.filteringQuality = BABYLON.ShadowGenerator.QUALITY_MEDIUM;
-                log(`[v10.13] ShadowGenerator with PCF filtering`);
+                log(`[v10.14] Shadows: PCF, ${SHADOW_CONFIG.mapSize}px`);
             }
 
-            // Test ground at origin
-            const testGround = BABYLON.MeshBuilder.CreateGround('testGround', { width: 10, height: 10 }, scene);
-            testGround.position = new BABYLON.Vector3(0, 0, 0);
-            const testGroundMat = new BABYLON.StandardMaterial('testGroundMat', scene);
-            testGroundMat.diffuseColor = new BABYLON.Color3(0.8, 0.8, 0.8);
-            testGround.material = testGroundMat;
-            testGround.receiveShadows = true;
-            log(`[v10.13] Ground created, receiveShadows=true`);
+            // Fog
+            scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+            scene.fogDensity = 0.006;
+            scene.fogColor = new BABYLON.Color3(0.55, 0.65, 0.75);
 
-            // Red test sphere
-            const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', { diameter: 2 }, scene);
-            testSphere.position = new BABYLON.Vector3(0, 4, 0);
-            const sphereMat = new BABYLON.StandardMaterial('sphereMat', scene);
-            sphereMat.diffuseColor = new BABYLON.Color3(1, 0, 0);
-            testSphere.material = sphereMat;
+            // Create ground and walls
+            createGround(scene, shadowGenerator);
+            createWalls(scene);
 
-            if (shadowGenerator) {
-                shadowGenerator.addShadowCaster(testSphere);
-                const shadowMap = shadowGenerator.getShadowMap();
-                const renderList = shadowMap ? shadowMap.renderList : null;
-                log(`[v10.13] Sphere added. Casters: ${renderList ? renderList.length : 'null'}`);
-
-                // Debug info
-                const isWebGL2 = engine.webGLVersion >= 2;
-                log(`[v10.13] WebGL${isWebGL2 ? '2' : '1'}, PCF: ${shadowGenerator.usePercentageCloserFiltering}`);
-                log(`[v10.13] Light pos: ${sunLight.position.toString()}`);
-            }
-
-            // NO fog, NO createGround, NO createWalls, NO mechs
-            // This is a completely minimal test
-
-            // Skip all scene creation:
-            // createGround(scene, shadowGenerator);
-            // createWalls(scene);
-            log('[v10.13] createGround and createWalls SKIPPED');
-
-            // v10.13: ALL MECH CREATION DISABLED FOR MINIMAL TEST
-            /*
+            // Create mechs
             playerMechs = [
                 createMadCatMech(scene, -7, 0, true),
                 createHatchetmanMech(scene, -14, 2, true),
@@ -755,11 +725,11 @@
             allMechs.forEach(mech => {
                 mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
             });
-            */
-            playerMechs = [];
-            enemyMechs = [];
-            allMechs = [];
-            log('[v10.13] All mech creation DISABLED');
+
+            // Add mech shadows
+            if (shadowGenerator) {
+                configureMechShadows(allMechs, shadowGenerator);
+            }
 
             return scene;
         }
@@ -843,9 +813,7 @@
                 // }
             }
 
-            if (shadowGen) {
-                log('[v10.11] Rock shadows DISABLED for testing');
-            }
+            // Rocks don't cast shadows (only mechs do)
         }
 
         function createMountains(scene) {

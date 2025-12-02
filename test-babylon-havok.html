@@ -2606,7 +2606,9 @@
             );
 
             // Walking force in pelvis facing direction - scaled by mech mass
-            const walkForce = forwardDir.scale(mech.walkDirection * 140 * mech.scale);
+            // Use stronger force to overcome stabilization and damping
+            const massMultiplier = (mech.stats.mass || 50) / 50;  // Heavier mechs need more force
+            const walkForce = forwardDir.scale(mech.walkDirection * 250 * mech.scale * massMultiplier);
             body.applyForce(walkForce, mech.pelvis.getAbsolutePosition());
 
             const angVel = body.getAngularVelocity();

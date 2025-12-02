@@ -522,11 +522,14 @@
         }
 
         function createScene() {
+            dbg("createScene: starting", 'phys');
             const scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color3(0.5, 0.6, 0.75);  // Sky blue fallback
+            dbg("createScene: scene created", 'phys');
 
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
             scene.enablePhysics(new BABYLON.Vector3(0, -18, 0), havokPlugin);
+            dbg("createScene: physics enabled", 'phys');
 
             // Load textures
             TEXTURES.grass = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
@@ -554,6 +557,8 @@
             TEXTURES.rustMetalNormal.uScale = 2;
             TEXTURES.rustMetalNormal.vScale = 2;
 
+            dbg("createScene: textures loaded", 'phys');
+
             // Camera - positioned to show all mechs on battlefield
             camera = new BABYLON.ArcRotateCamera('cam',
                 -Math.PI/2,      // Alpha: looking from the side
@@ -566,6 +571,7 @@
             camera.lowerBetaLimit = 0.3;
             camera.upperBetaLimit = Math.PI / 2.2;
             camera.wheelPrecision = 30;
+            dbg("createScene: camera created", 'phys');
 
             // Lighting - multiple sources for better illumination
             // Main ambient light from above
@@ -579,14 +585,19 @@
             dir.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
             dir.position = new BABYLON.Vector3(20, 40, -20);
 
+            dbg("createScene: lights created", 'phys');
+
             // Shadow generator
             try {
+                dbg("createScene: creating shadow gen...", 'phys');
                 const shadowGen = new BABYLON.ShadowGenerator(1024, dir);
                 shadowGen.useBlurExponentialShadowMap = true;
                 shadowGen.blurKernel = 16;
                 shadowGen.darkness = 0.5;
                 scene.shadowGenerator = shadowGen;
+                dbg("createScene: shadow gen OK", 'phys');
             } catch (e) {
+                dbg("createScene: shadow FAILED: " + e.message, 'err');
                 console.error("Shadow setup failed:", e);
             }
 
@@ -615,9 +626,13 @@
             scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
             scene.fogDensity = 0.006;
             scene.fogColor = new BABYLON.Color3(0.55, 0.65, 0.75);  // Blue-ish haze to match sky
+            dbg("createScene: fog set", 'phys');
 
+            dbg("createScene: calling createGround...", 'phys');
             createGround(scene);
+            dbg("createScene: createGround done", 'phys');
             createWalls(scene);
+            dbg("createScene: createWalls done", 'phys');
 
             // Create teams of mechs - 4 per side at different Z positions
             // Player team (left side, x = -7 to -14)
@@ -666,15 +681,22 @@
         }
 
         function createGround(scene) {
+            dbg("createGround: starting", 'phys');
+
             // === SKYBOX ===
-            const skybox = BABYLON.MeshBuilder.CreateBox('skyBox', { size: 1000 }, scene);
-            const skyboxMaterial = new BABYLON.StandardMaterial('skyBoxMat', scene);
-            skyboxMaterial.backFaceCulling = false;
-            skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(TEXTURE_URLS.skybox, scene);
-            skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-            skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-            skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-            skybox.material = skyboxMaterial;
+            try {
+                const skybox = BABYLON.MeshBuilder.CreateBox('skyBox', { size: 1000 }, scene);
+                const skyboxMaterial = new BABYLON.StandardMaterial('skyBoxMat', scene);
+                skyboxMaterial.backFaceCulling = false;
+                skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(TEXTURE_URLS.skybox, scene);
+                skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+                skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+                skybox.material = skyboxMaterial;
+                dbg("createGround: skybox OK", 'phys');
+            } catch (e) {
+                dbg("createGround: skybox FAILED: " + e.message, 'err');
+            }
 
             // === ARENA GROUND (with physics and shadows) ===
             const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 20 }, scene);
@@ -693,6 +715,7 @@
             ground.receiveShadows = true;
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
+            dbg("createGround: arena ground OK", 'phys');
 
             // === EXTENDED GROUND (horizon, no physics) ===
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
@@ -711,7 +734,9 @@
             horizonGround.material = horizonMat;
 
             // === DISTANT MOUNTAINS ===
+            dbg("createGround: calling createMountains...", 'phys');
             createMountains(scene);
+            dbg("createGround: mountains done", 'phys');
 
             // === ARENA ROCKS ===
             const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
@@ -732,6 +757,7 @@
                 rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
             }
+            dbg("createGround: complete", 'phys');
         }
 
         function createMountains(scene) {

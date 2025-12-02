@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.5-shadows-working</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.6</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -672,28 +672,24 @@
             camera.wheelPrecision = 30;
 
             // ============================================
-            // LIGHTING + SHADOWS (v10.5 - Working Setup)
+            // LIGHTING + SHADOWS (v10.6 - Exact v10.4 config)
             // ============================================
 
             // Ambient/fill light
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.6;
-            hemi.groundColor = new BABYLON.Color3(0.3, 0.25, 0.2);
+            hemi.intensity = 0.5;
+            hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
-            // Primary sun light - DirectionalLight for shadows
-            const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, 1), scene);
-            sunLight.position = new BABYLON.Vector3(20, 40, -20);
-            sunLight.intensity = 1.2;
-            sunLight.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
-            sunLight.specular = new BABYLON.Color3(0.5, 0.5, 0.5);
+            // Primary sun light - EXACT v10.4 settings that worked
+            const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
+            sunLight.position = new BABYLON.Vector3(10, 20, 10);  // v10.4 position
+            sunLight.intensity = 1.5;
 
-            // Shadow generator
+            // Shadow generator - 1024 hardcoded like v10.4
             if (SHADOW_CONFIG.enabled) {
-                const mapSize = SHADOW_CONFIG.mapSize || 1024;
-                shadowGenerator = new BABYLON.ShadowGenerator(mapSize, sunLight);
+                shadowGenerator = new BABYLON.ShadowGenerator(1024, sunLight);  // 1024 worked
                 shadowGenerator.bias = 0.001;
-                shadowGenerator.normalBias = 0.02;
-                log(`[SHADOWS] v10.5 DirectionalLight ${mapSize}px`);
+                log(`[SHADOWS] v10.6 DirectionalLight 1024px (v10.4 config)`);
             }
 
             // Fog - adjusted for distant mountains

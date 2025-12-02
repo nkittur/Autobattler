@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.8-isolate-test</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.9-auto-frustum</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -680,16 +680,22 @@
             hemi.intensity = 0.5;
             hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
-            // Primary sun light - EXACT v10.4 settings that worked
+            // Primary sun light with shadow frustum configuration
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
             sunLight.position = new BABYLON.Vector3(10, 20, 10);
             sunLight.intensity = 1.5;
+
+            // Auto-calculate shadow frustum bounds (added in Babylon 4.1)
+            sunLight.autoCalcShadowZBounds = true;
+            // Fixed frustum size to cover the arena
+            sunLight.shadowFrustumSize = 50;
+            log(`[v10.9] autoCalcShadowZBounds=true, shadowFrustumSize=50`);
 
             // Shadow generator - 1024 hardcoded like v10.4
             if (SHADOW_CONFIG.enabled) {
                 shadowGenerator = new BABYLON.ShadowGenerator(1024, sunLight);
                 shadowGenerator.bias = 0.001;
-                log(`[SHADOWS] v10.7 Generator created`);
+                log(`[v10.9] ShadowGenerator created`);
             }
 
             // TEST: Add simple ground (no texture) to compare with textured arena ground
@@ -710,7 +716,7 @@
             if (shadowGenerator) {
                 shadowGenerator.addShadowCaster(testSphere);
                 const renderList = shadowGenerator.getShadowMap().renderList;
-                log(`[v10.8] Sphere added. RenderList size: ${renderList ? renderList.length : 'null'}`);
+                log(`[v10.9] Sphere caster added. RenderList: ${renderList ? renderList.length : 'null'}`);
             }
 
             // Fog - adjusted for distant mountains
@@ -753,7 +759,7 @@
             // if (shadowGenerator) {
             //     configureMechShadows(allMechs, shadowGenerator);
             // }
-            log('[v10.8] Mech shadow casters DISABLED for testing');
+            log('[v10.9] Mech shadows DISABLED for testing');
 
             return scene;
         }
@@ -838,7 +844,7 @@
             }
 
             if (shadowGen) {
-                log('[v10.8] Rock shadow casters DISABLED for testing');
+                log('[v10.9] Rock shadows DISABLED for testing');
             }
         }
 

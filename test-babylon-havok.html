@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.9-auto-frustum</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.10-CSM</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -680,22 +680,26 @@
             hemi.intensity = 0.5;
             hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
-            // Primary sun light with shadow frustum configuration
+            // Primary sun light for shadows
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
             sunLight.position = new BABYLON.Vector3(10, 20, 10);
             sunLight.intensity = 1.5;
+            log(`[v10.10] DirectionalLight created`);
 
-            // Auto-calculate shadow frustum bounds (added in Babylon 4.1)
-            sunLight.autoCalcShadowZBounds = true;
-            // Fixed frustum size to cover the arena
-            sunLight.shadowFrustumSize = 50;
-            log(`[v10.9] autoCalcShadowZBounds=true, shadowFrustumSize=50`);
-
-            // Shadow generator - 1024 hardcoded like v10.4
+            // Use CascadedShadowGenerator for better large-scene support
             if (SHADOW_CONFIG.enabled) {
-                shadowGenerator = new BABYLON.ShadowGenerator(1024, sunLight);
-                shadowGenerator.bias = 0.001;
-                log(`[v10.9] ShadowGenerator created`);
+                // Check if CSM is available (Babylon 4.1+)
+                if (BABYLON.CascadedShadowGenerator) {
+                    shadowGenerator = new BABYLON.CascadedShadowGenerator(1024, sunLight);
+                    shadowGenerator.bias = 0.001;
+                    shadowGenerator.autoCalcDepthBounds = true;
+                    log(`[v10.10] CascadedShadowGenerator created (CSM)`);
+                } else {
+                    // Fallback to regular ShadowGenerator
+                    shadowGenerator = new BABYLON.ShadowGenerator(1024, sunLight);
+                    shadowGenerator.bias = 0.001;
+                    log(`[v10.10] Regular ShadowGenerator (CSM not available)`);
+                }
             }
 
             // TEST: Add simple ground (no texture) to compare with textured arena ground
@@ -715,8 +719,9 @@
             testSphere.material = sphereMat;
             if (shadowGenerator) {
                 shadowGenerator.addShadowCaster(testSphere);
-                const renderList = shadowGenerator.getShadowMap().renderList;
-                log(`[v10.9] Sphere caster added. RenderList: ${renderList ? renderList.length : 'null'}`);
+                const shadowMap = shadowGenerator.getShadowMap();
+                const renderList = shadowMap ? shadowMap.renderList : null;
+                log(`[v10.10] Sphere caster added. RenderList: ${renderList ? renderList.length : 'null'}`);
             }
 
             // Fog - adjusted for distant mountains
@@ -759,7 +764,7 @@
             // if (shadowGenerator) {
             //     configureMechShadows(allMechs, shadowGenerator);
             // }
-            log('[v10.9] Mech shadows DISABLED for testing');
+            log('[v10.10] Mech shadows DISABLED for testing');
 
             return scene;
         }
@@ -844,7 +849,7 @@
             }
 
             if (shadowGen) {
-                log('[v10.9] Rock shadows DISABLED for testing');
+                log('[v10.10] Rock shadows DISABLED for testing');
             }
         }
 

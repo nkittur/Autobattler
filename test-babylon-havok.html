@@ -554,12 +554,17 @@
             TEXTURES.rustMetalNormal.uScale = 2;
             TEXTURES.rustMetalNormal.vScale = 2;
 
-            // Camera
-            camera = new BABYLON.ArcRotateCamera('cam', -Math.PI/2, Math.PI/3.2, 24,
-                new BABYLON.Vector3(0, 3, 0), scene);
+            // Camera - positioned to show all mechs on battlefield
+            camera = new BABYLON.ArcRotateCamera('cam',
+                -Math.PI/2,      // Alpha: looking from the side
+                Math.PI/4,       // Beta: 45 degrees from vertical
+                38,              // Radius: far enough to see all mechs
+                new BABYLON.Vector3(0, 2, 0), scene);
             camera.attachControl(document.getElementById('renderCanvas'), true);
-            camera.lowerRadiusLimit = 10;
-            camera.upperRadiusLimit = 120;  // Allow zooming out to see environment
+            camera.lowerRadiusLimit = 15;
+            camera.upperRadiusLimit = 120;
+            camera.lowerBetaLimit = 0.3;
+            camera.upperBetaLimit = Math.PI / 2.2;
             camera.wheelPrecision = 30;
 
             // Lighting - multiple sources for better illumination
@@ -568,10 +573,22 @@
             hemi.intensity = 0.7;
             hemi.groundColor = new BABYLON.Color3(0.2, 0.18, 0.15);
 
-            // Primary directional (sun) light
+            // Primary directional (sun) light - casts shadows
             const dir = new BABYLON.DirectionalLight('dir', new BABYLON.Vector3(-1, -2.5, 1), scene);
-            dir.intensity = 1.0;
+            dir.intensity = 1.1;
             dir.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
+            dir.position = new BABYLON.Vector3(20, 40, -20);
+
+            // Shadow generator
+            try {
+                const shadowGen = new BABYLON.ShadowGenerator(1024, dir);
+                shadowGen.useBlurExponentialShadowMap = true;
+                shadowGen.blurKernel = 16;
+                shadowGen.darkness = 0.5;
+                scene.shadowGenerator = shadowGen;
+            } catch (e) {
+                console.error("Shadow setup failed:", e);
+            }
 
             // Secondary fill light from opposite side
             const fillLight = new BABYLON.DirectionalLight('fill', new BABYLON.Vector3(1, -1, -0.5), scene);
@@ -627,6 +644,24 @@
                 mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
             });
 
+            // Add mechs as shadow casters
+            if (scene.shadowGenerator) {
+                allMechs.forEach(mech => {
+                    const parts = [mech.pelvis, mech.torso, mech.head, mech.leftArm, mech.rightArm];
+                    if (mech.leftLeg) {
+                        if (mech.leftLeg.upperLeg) parts.push(mech.leftLeg.upperLeg);
+                        if (mech.leftLeg.lowerLeg) parts.push(mech.leftLeg.lowerLeg);
+                        if (mech.leftLeg.foot) parts.push(mech.leftLeg.foot);
+                    }
+                    if (mech.rightLeg) {
+                        if (mech.rightLeg.upperLeg) parts.push(mech.rightLeg.upperLeg);
+                        if (mech.rightLeg.lowerLeg) parts.push(mech.rightLeg.lowerLeg);
+                        if (mech.rightLeg.foot) parts.push(mech.rightLeg.foot);
+                    }
+                    parts.forEach(p => { if (p) scene.shadowGenerator.addShadowCaster(p, true); });
+                });
+            }
+
             return scene;
         }
 
@@ -641,16 +676,21 @@
             skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             skybox.material = skyboxMaterial;
 
-            // === ARENA GROUND (with physics) ===
+            // === ARENA GROUND (with physics and shadows) ===
             const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 20 }, scene);
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
             mat.diffuseTexture = TEXTURES.grass;
+            mat.diffuseTexture.uScale = 4;  // Reduced tiling for less repetition
+            mat.diffuseTexture.vScale = 2;
             mat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.6);
             mat.bumpTexture = TEXTURES.grassNormal;
-            mat.bumpTexture.level = 0.8;
+            mat.bumpTexture.uScale = 4;
+            mat.bumpTexture.vScale = 2;
+            mat.bumpTexture.level = 1.0;
             mat.specularColor = new BABYLON.Color3(0.08, 0.08, 0.06);
             mat.specularPower = 16;
             ground.material = mat;
+            ground.receiveShadows = true;
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
 

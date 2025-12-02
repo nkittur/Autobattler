@@ -450,56 +450,58 @@
 
             let casterCount = 0;
 
+            // Helper to safely add a mesh as shadow caster
+            // Only adds if it's a valid mesh (has getBoundingInfo method)
+            function addIfMesh(obj) {
+                if (obj && typeof obj.getBoundingInfo === 'function') {
+                    shadowGen.addShadowCaster(obj);
+                    casterCount++;
+                    return true;
+                }
+                return false;
+            }
+
             mechs.forEach(mech => {
                 if (!mech) return;
 
-                // Add pelvis (main body) - this is the core shadow-casting part
-                if (mech.pelvis) {
-                    shadowGen.addShadowCaster(mech.pelvis);
-                    casterCount++;
+                // Add pelvis (main body) - this is always a mesh
+                addIfMesh(mech.pelvis);
+
+                // Add torso (upper body) - always a mesh
+                addIfMesh(mech.torso);
+
+                // Add shoulder weapon pods - always meshes
+                addIfMesh(mech.leftPod);
+                addIfMesh(mech.rightPod);
+
+                // Add arm components - check for actual meshes, not TransformNodes
+                // Different mech types have different arm structures:
+                // - Mad Cat/Dire Wolf: { armGroup (TransformNode), upperArm (Mesh), weaponPod (Mesh) }
+                // - Commando/Catapult/Hatchetman: { shoulder (Mesh), arm (Mesh), weaponPod (Mesh) }
+                if (mech.leftArm) {
+                    addIfMesh(mech.leftArm.shoulder);     // Mesh in some mechs
+                    addIfMesh(mech.leftArm.arm);          // Mesh in some mechs
+                    addIfMesh(mech.leftArm.upperArm);     // Mesh in other mechs
+                    addIfMesh(mech.leftArm.weaponPod);    // Always a mesh
+                }
+                if (mech.rightArm) {
+                    addIfMesh(mech.rightArm.shoulder);
+                    addIfMesh(mech.rightArm.arm);
+                    addIfMesh(mech.rightArm.upperArm);
+                    addIfMesh(mech.rightArm.weaponPod);
                 }
 
-                // Add torso (upper body) - very visible from above
-                if (mech.torso) {
-                    shadowGen.addShadowCaster(mech.torso);
-                    casterCount++;
+                // Add leg hip joints - these are meshes (CreateSphere)
+                // legGroup and upperLeg are TransformNodes, so skip those
+                if (mech.leftLeg) {
+                    addIfMesh(mech.leftLeg.hip);          // Mesh
+                    addIfMesh(mech.leftLeg.thighArmor);   // Mesh
+                    addIfMesh(mech.leftLeg.shinArmor);    // Mesh
                 }
-
-                // Add shoulder weapon pods - distinctive silhouette
-                if (mech.leftPod) {
-                    shadowGen.addShadowCaster(mech.leftPod);
-                    casterCount++;
-                }
-                if (mech.rightPod) {
-                    shadowGen.addShadowCaster(mech.rightPod);
-                    casterCount++;
-                }
-
-                // Add arm groups for better silhouette
-                if (mech.leftArm && mech.leftArm.armGroup) {
-                    shadowGen.addShadowCaster(mech.leftArm.armGroup);
-                    casterCount++;
-                } else if (mech.leftArm && mech.leftArm.shoulder) {
-                    shadowGen.addShadowCaster(mech.leftArm.shoulder);
-                    casterCount++;
-                }
-
-                if (mech.rightArm && mech.rightArm.armGroup) {
-                    shadowGen.addShadowCaster(mech.rightArm.armGroup);
-                    casterCount++;
-                } else if (mech.rightArm && mech.rightArm.shoulder) {
-                    shadowGen.addShadowCaster(mech.rightArm.shoulder);
-                    casterCount++;
-                }
-
-                // Add leg hip joints for grounding effect (optional for extra detail)
-                if (mech.leftLeg && mech.leftLeg.hip) {
-                    shadowGen.addShadowCaster(mech.leftLeg.hip);
-                    casterCount++;
-                }
-                if (mech.rightLeg && mech.rightLeg.hip) {
-                    shadowGen.addShadowCaster(mech.rightLeg.hip);
-                    casterCount++;
+                if (mech.rightLeg) {
+                    addIfMesh(mech.rightLeg.hip);
+                    addIfMesh(mech.rightLeg.thighArmor);
+                    addIfMesh(mech.rightLeg.shinArmor);
                 }
             });
 

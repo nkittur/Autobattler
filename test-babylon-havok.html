@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.7-texture-test</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.8-isolate-test</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -709,7 +709,8 @@
             testSphere.material = sphereMat;
             if (shadowGenerator) {
                 shadowGenerator.addShadowCaster(testSphere);
-                log('[TEST] Red sphere added as shadow caster');
+                const renderList = shadowGenerator.getShadowMap().renderList;
+                log(`[v10.8] Sphere added. RenderList size: ${renderList ? renderList.length : 'null'}`);
             }
 
             // Fog - adjusted for distant mountains
@@ -747,11 +748,12 @@
 
             // ============================================
             // CONFIGURE MECH SHADOWS
-            // Only add key parts as shadow casters for performance
+            // DISABLED in v10.8 to test if too many casters breaks shadows
             // ============================================
-            if (shadowGenerator) {
-                configureMechShadows(allMechs, shadowGenerator);
-            }
+            // if (shadowGenerator) {
+            //     configureMechShadows(allMechs, shadowGenerator);
+            // }
+            log('[v10.8] Mech shadow casters DISABLED for testing');
 
             return scene;
         }
@@ -828,15 +830,15 @@
                 rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
 
-                // Rocks cast and receive shadows
-                if (shadowGen) {
-                    shadowGen.addShadowCaster(rock);
-                    rock.receiveShadows = true;
-                }
+                // Rocks cast and receive shadows - DISABLED in v10.8
+                // if (shadowGen) {
+                //     shadowGen.addShadowCaster(rock);
+                //     rock.receiveShadows = true;
+                // }
             }
 
             if (shadowGen) {
-                log('[SHADOWS] 6 rocks casting');
+                log('[v10.8] Rock shadow casters DISABLED for testing');
             }
         }
 

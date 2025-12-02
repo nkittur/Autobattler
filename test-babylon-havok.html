@@ -711,68 +711,105 @@
             skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
             skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             skybox.material = skyboxMaterial;
-            // Skybox should NOT receive or cast shadows
             skybox.receiveShadows = false;
 
-            // === ARENA GROUND (with physics) - RECEIVES SHADOWS ===
-            // Use higher subdivisions for more organic look
+            // ================================================================
+            // === ARENA GROUND with Anti-Tiling Techniques ===
+            // ================================================================
+            // Technique 1: PBR Material with Detail Map (macro noise overlay)
+            // Technique 2: ThinInstance debris scatter
+            // ================================================================
+
             const ground = BABYLON.MeshBuilder.CreateGround('ground', {
                 width: 40, height: 20, subdivisions: 32
             }, scene);
-            const mat = new BABYLON.StandardMaterial('groundMat', scene);
 
-            // Higher tiling for less obvious pattern repetition
+            // Use PBRMaterial for detail map support (anti-tiling technique)
+            const mat = new BABYLON.PBRMaterial('groundMat', scene);
+
+            // Base grass texture with moderate tiling
             const groundTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
-            groundTex.uScale = 20;  // More tiling = smaller pattern = less obvious
-            groundTex.vScale = 10;
-            mat.diffuseTexture = groundTex;
-            mat.diffuseColor = new BABYLON.Color3(0.6, 0.65, 0.5);  // Earthy tone
+            groundTex.uScale = 16;
+            groundTex.vScale = 8;
+            mat.albedoTexture = groundTex;
+            mat.albedoColor = new BABYLON.Color3(0.55, 0.6, 0.45);  // Earthy green
 
+            // Normal map for surface detail
             const groundNormal = new BABYLON.Texture(TEXTURE_URLS.grassNormal, scene);
-            groundNormal.uScale = 20;
-            groundNormal.vScale = 10;
+            groundNormal.uScale = 16;
+            groundNormal.vScale = 8;
             mat.bumpTexture = groundNormal;
-            mat.bumpTexture.level = 1.2;  // More bump for organic feel
-            mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.04);
-            mat.specularPower = 8;
+
+            // PBR settings for matte ground
+            mat.metallic = 0;
+            mat.roughness = 0.95;
+
+            // === DETAIL MAP (Macro Noise) - KEY ANTI-TILING TECHNIQUE ===
+            // This overlays a large-scale noise pattern that breaks up repetition
+            // The distortion texture works well as organic noise
+            mat.detailMap.texture = new BABYLON.Texture(TEXTURE_URLS.distortion, scene);
+            mat.detailMap.texture.uScale = 0.8;  // Large scale - covers most of arena
+            mat.detailMap.texture.vScale = 0.4;
+            mat.detailMap.isEnabled = true;
+            mat.detailMap.diffuseBlendLevel = 0.4;  // Subtle but noticeable variation
+            mat.detailMap.bumpLevel = 0.3;
+            mat.detailMap.roughnessBlendLevel = 0.2;
+
             ground.material = mat;
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
 
-            // Ground receives shadows from mechs and rocks
             if (shadowGen) {
                 ground.receiveShadows = true;
-                log('[SHADOWS] Ground receiving');
+                log('[GROUND] PBR with detail map + shadows');
             }
 
-            // === EXTENDED GROUND (horizon, no physics) ===
+            // ================================================================
+            // === THIN INSTANCE DEBRIS SCATTER - Visual Variety ===
+            // ================================================================
+            // Scatter small rocks/pebbles using ThinInstances (mobile-friendly)
+            // This hides tiling by drawing the eye to 3D objects
+
+            createDebrisScatter(scene, shadowGen);
+
+            // ================================================================
+            // === EXTENDED HORIZON GROUND ===
+            // ================================================================
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
                 width: 800, height: 800, subdivisions: 4
             }, scene);
-            horizonGround.position.y = -0.1;  // Slightly below arena
-            const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
-            // Much higher tiling for horizon - pattern invisible at distance
+            horizonGround.position.y = -0.1;
+
+            // PBR for horizon too with detail map
+            const horizonMat = new BABYLON.PBRMaterial('horizonMat', scene);
             const horizonGrass = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
-            horizonGrass.uScale = 200;
-            horizonGrass.vScale = 200;
-            horizonMat.diffuseTexture = horizonGrass;
-            horizonMat.diffuseColor = new BABYLON.Color3(0.45, 0.5, 0.4);  // Muted earth tone
-            horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
-            horizonMat.fogEnabled = true;  // Let fog blend it to horizon
+            horizonGrass.uScale = 160;
+            horizonGrass.vScale = 160;
+            horizonMat.albedoTexture = horizonGrass;
+            horizonMat.albedoColor = new BABYLON.Color3(0.4, 0.45, 0.35);  // Muted
+            horizonMat.metallic = 0;
+            horizonMat.roughness = 1.0;
+
+            // Detail map for horizon (larger scale to reduce tiling at distance)
+            horizonMat.detailMap.texture = new BABYLON.Texture(TEXTURE_URLS.distortion, scene);
+            horizonMat.detailMap.texture.uScale = 4;
+            horizonMat.detailMap.texture.vScale = 4;
+            horizonMat.detailMap.isEnabled = true;
+            horizonMat.detailMap.diffuseBlendLevel = 0.5;
+
             horizonGround.material = horizonMat;
-            // Horizon ground does NOT need shadows (too far, performance waste)
             horizonGround.receiveShadows = false;
 
             // === DISTANT MOUNTAINS ===
             createMountains(scene);
 
-            // === ARENA ROCKS - Cast AND receive shadows ===
-            const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
-            rockMat.diffuseTexture = TEXTURES.rock;
+            // === ARENA ROCKS (larger, decorative) ===
+            const rockMat = new BABYLON.PBRMaterial('rockMat', scene);
+            rockMat.albedoTexture = TEXTURES.rock;
             rockMat.bumpTexture = TEXTURES.rockNormal;
-            rockMat.bumpTexture.level = 1.0;
-            rockMat.diffuseColor = new BABYLON.Color3(0.6, 0.55, 0.5);
-            rockMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+            rockMat.albedoColor = new BABYLON.Color3(0.55, 0.5, 0.45);
+            rockMat.metallic = 0;
+            rockMat.roughness = 0.9;
 
             for (let i = 0; i < 6; i++) {
                 const rock = BABYLON.MeshBuilder.CreateBox('rock' + i, {
@@ -784,15 +821,155 @@
                 rock.rotation.y = Math.random() * Math.PI;
                 rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+            }
+        }
 
-                // Rocks cast and receive shadows - DISABLED in v10.8
-                // if (shadowGen) {
-                //     shadowGen.addShadowCaster(rock);
-                //     rock.receiveShadows = true;
-                // }
+        // ================================================================
+        // === THIN INSTANCE DEBRIS SCATTER ===
+        // ================================================================
+        // Creates hundreds of small debris items with the cost of ~1 draw call
+        // This is the "Cover-Up" technique that hides ground tiling
+
+        function createDebrisScatter(scene, shadowGen) {
+            // Small pebble/debris mesh (single instance, many copies)
+            const pebble = BABYLON.MeshBuilder.CreateBox('pebble', {
+                width: 0.15, height: 0.08, depth: 0.12
+            }, scene);
+            pebble.isVisible = false;  // Template is invisible
+
+            // Debris material - earthy rock color
+            const debrisMat = new BABYLON.PBRMaterial('debrisMat', scene);
+            debrisMat.albedoColor = new BABYLON.Color3(0.45, 0.4, 0.35);
+            debrisMat.metallic = 0;
+            debrisMat.roughness = 0.95;
+            pebble.material = debrisMat;
+
+            // Create transformation matrices for each debris piece
+            const debrisCount = 200;  // Plenty of coverage, minimal performance cost
+            const matrices = [];
+
+            for (let i = 0; i < debrisCount; i++) {
+                // Random position across arena (40x20)
+                const x = (Math.random() - 0.5) * 38;
+                const z = (Math.random() - 0.5) * 18;
+                const y = 0.02 + Math.random() * 0.03;  // Slightly above ground
+
+                // Random scale variation (0.5x to 2x)
+                const scale = 0.5 + Math.random() * 1.5;
+
+                // Random Y rotation
+                const rotY = Math.random() * Math.PI * 2;
+
+                // Build transformation matrix
+                const matrix = BABYLON.Matrix.Compose(
+                    new BABYLON.Vector3(scale, scale * (0.5 + Math.random() * 0.5), scale),
+                    BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
+                    new BABYLON.Vector3(x, y, z)
+                );
+                matrices.push(matrix);
             }
 
-            // Rocks don't cast shadows (only mechs do)
+            // Add all instances at once (single draw call)
+            pebble.thinInstanceAdd(matrices);
+            pebble.thinInstanceEnablePicking = false;
+
+            log(`[DEBRIS] ${debrisCount} thin instances added`);
+
+            // === Additional debris type: flat rocks/dirt patches ===
+            const flatRock = BABYLON.MeshBuilder.CreateCylinder('flatRock', {
+                diameter: 0.3, height: 0.04, tessellation: 6
+            }, scene);
+            flatRock.isVisible = false;
+
+            const flatMat = new BABYLON.PBRMaterial('flatMat', scene);
+            flatMat.albedoColor = new BABYLON.Color3(0.5, 0.45, 0.4);
+            flatMat.metallic = 0;
+            flatMat.roughness = 1.0;
+            flatRock.material = flatMat;
+
+            const flatMatrices = [];
+            for (let i = 0; i < 80; i++) {
+                const x = (Math.random() - 0.5) * 36;
+                const z = (Math.random() - 0.5) * 16;
+                const scale = 0.8 + Math.random() * 1.5;
+                const rotY = Math.random() * Math.PI * 2;
+
+                const matrix = BABYLON.Matrix.Compose(
+                    new BABYLON.Vector3(scale, 1, scale),
+                    BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
+                    new BABYLON.Vector3(x, 0.01, z)
+                );
+                flatMatrices.push(matrix);
+            }
+
+            flatRock.thinInstanceAdd(flatMatrices);
+            flatRock.thinInstanceEnablePicking = false;
+
+            // === Dirt/mud patches using decal-style flat planes ===
+            createDirtPatches(scene);
+        }
+
+        // ================================================================
+        // === DIRT PATCHES - Texture Splatting Lite ===
+        // ================================================================
+        // Overlays dirt texture patches on the ground to simulate paths/wear
+        // This is a lightweight alternative to full terrain splatting
+
+        function createDirtPatches(scene) {
+            // Create a flat plane for dirt patches
+            const dirtPatch = BABYLON.MeshBuilder.CreateGround('dirtPatch', {
+                width: 1, height: 1
+            }, scene);
+            dirtPatch.isVisible = false;
+
+            // Dirt material with transparency for blending
+            const dirtMat = new BABYLON.PBRMaterial('dirtMat', scene);
+            const dirtTex = new BABYLON.Texture(TEXTURE_URLS.rock, scene);  // Rock texture as dirt
+            dirtMat.albedoTexture = dirtTex;
+            dirtMat.albedoColor = new BABYLON.Color3(0.5, 0.4, 0.3);  // Brown dirt
+            dirtMat.metallic = 0;
+            dirtMat.roughness = 1.0;
+            dirtMat.alpha = 0.6;  // Semi-transparent for blending
+            dirtMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+            dirtPatch.material = dirtMat;
+
+            // Create dirt patches along typical "battle lanes"
+            const patchMatrices = [];
+
+            // Center battle lane (horizontal strip)
+            for (let i = 0; i < 15; i++) {
+                const x = -14 + i * 2 + (Math.random() - 0.5) * 2;
+                const z = (Math.random() - 0.5) * 4;  // Near center
+                const scale = 2 + Math.random() * 3;
+                const rotY = Math.random() * Math.PI;
+
+                const matrix = BABYLON.Matrix.Compose(
+                    new BABYLON.Vector3(scale, 1, scale * (0.6 + Math.random() * 0.4)),
+                    BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
+                    new BABYLON.Vector3(x, 0.005, z)  // Just above ground
+                );
+                patchMatrices.push(matrix);
+            }
+
+            // Scattered patches elsewhere
+            for (let i = 0; i < 10; i++) {
+                const x = (Math.random() - 0.5) * 30;
+                const z = (Math.random() - 0.5) * 15;
+                const scale = 1.5 + Math.random() * 2;
+                const rotY = Math.random() * Math.PI;
+
+                const matrix = BABYLON.Matrix.Compose(
+                    new BABYLON.Vector3(scale, 1, scale),
+                    BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
+                    new BABYLON.Vector3(x, 0.005, z)
+                );
+                patchMatrices.push(matrix);
+            }
+
+            dirtPatch.thinInstanceAdd(patchMatrices);
+            dirtPatch.thinInstanceEnablePicking = false;
+
+            log('[DIRT] 25 patches for battle lane wear');
         }
 
         function createMountains(scene) {

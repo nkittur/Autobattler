@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.14-mech-shadows</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.15-all-mechs</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -442,7 +442,6 @@
             let casterCount = 0;
 
             // Helper to safely add a mesh as shadow caster
-            // Only adds if it's a valid mesh (has getBoundingInfo method)
             function addIfMesh(obj) {
                 if (obj && typeof obj.getBoundingInfo === 'function') {
                     shadowGen.addShadowCaster(obj);
@@ -452,48 +451,23 @@
                 return false;
             }
 
+            // Recursively add all mesh children of a node
+            function addAllMeshChildren(node) {
+                if (!node) return;
+                if (typeof node.getBoundingInfo === 'function') {
+                    shadowGen.addShadowCaster(node);
+                    casterCount++;
+                }
+                if (node.getChildren) {
+                    node.getChildren().forEach(child => addAllMeshChildren(child));
+                }
+            }
+
             mechs.forEach(mech => {
                 if (!mech) return;
 
-                // Add pelvis (main body) - this is always a mesh
-                addIfMesh(mech.pelvis);
-
-                // Add torso (upper body) - always a mesh
-                addIfMesh(mech.torso);
-
-                // Add shoulder weapon pods - always meshes
-                addIfMesh(mech.leftPod);
-                addIfMesh(mech.rightPod);
-
-                // Add arm components - check for actual meshes, not TransformNodes
-                // Different mech types have different arm structures:
-                // - Mad Cat/Dire Wolf: { armGroup (TransformNode), upperArm (Mesh), weaponPod (Mesh) }
-                // - Commando/Catapult/Hatchetman: { shoulder (Mesh), arm (Mesh), weaponPod (Mesh) }
-                if (mech.leftArm) {
-                    addIfMesh(mech.leftArm.shoulder);     // Mesh in some mechs
-                    addIfMesh(mech.leftArm.arm);          // Mesh in some mechs
-                    addIfMesh(mech.leftArm.upperArm);     // Mesh in other mechs
-                    addIfMesh(mech.leftArm.weaponPod);    // Always a mesh
-                }
-                if (mech.rightArm) {
-                    addIfMesh(mech.rightArm.shoulder);
-                    addIfMesh(mech.rightArm.arm);
-                    addIfMesh(mech.rightArm.upperArm);
-                    addIfMesh(mech.rightArm.weaponPod);
-                }
-
-                // Add leg hip joints - these are meshes (CreateSphere)
-                // legGroup and upperLeg are TransformNodes, so skip those
-                if (mech.leftLeg) {
-                    addIfMesh(mech.leftLeg.hip);          // Mesh
-                    addIfMesh(mech.leftLeg.thighArmor);   // Mesh
-                    addIfMesh(mech.leftLeg.shinArmor);    // Mesh
-                }
-                if (mech.rightLeg) {
-                    addIfMesh(mech.rightLeg.hip);
-                    addIfMesh(mech.rightLeg.thighArmor);
-                    addIfMesh(mech.rightLeg.shinArmor);
-                }
+                // Add pelvis and all its children (this gets everything)
+                addAllMeshChildren(mech.pelvis);
             });
 
             log(`[SHADOWS] ${casterCount} casters from ${mechs.length} mechs`);
@@ -1632,7 +1606,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale: 1.0,
-                standingHeight: 2.95,  // Pelvis Y for feet to touch ground (lowered)
+                standingHeight: 2.5,  // Pelvis Y for feet to touch ground
                 optimalRange: 10,      // Ideal combat distance for this mech
                 stats: { maxHP: 150, mass: 75 },
                 currentHP: 150, maxHP: 150,
@@ -2042,7 +2016,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
-                standingHeight: 3.85,   // Pelvis Y for feet to touch ground (lowered)
+                standingHeight: 3.2,   // Pelvis Y for feet to touch ground
                 optimalRange: 12,       // Heavier mech prefers longer range
                 stats: { maxHP: 200, mass: 100 },
                 currentHP: 200, maxHP: 200,
@@ -2233,7 +2207,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
-                standingHeight: 2.3,    // Pelvis Y for feet to touch ground (lowered)
+                standingHeight: 1.9,    // Pelvis Y for feet to touch ground
                 optimalRange: 8,        // Light mech prefers closer range, fast hit and run
                 stats: { maxHP: 80, mass: 40 },
                 currentHP: 80, maxHP: 80,
@@ -2425,7 +2399,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
-                standingHeight: 2.5,    // Pelvis Y for feet to touch ground (lowered)
+                standingHeight: 2.1,    // Pelvis Y for feet to touch ground
                 optimalRange: 14,       // Missile boat prefers long range
                 stats: { maxHP: 120, mass: 60 },
                 currentHP: 120, maxHP: 120,
@@ -2675,7 +2649,7 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
-                standingHeight: 2.35,   // Pelvis Y for feet to touch ground (lowered)
+                standingHeight: 1.95,   // Pelvis Y for feet to touch ground
                 optimalRange: 3,        // Melee mech wants to be in your face
                 stats: { maxHP: 90, mass: 50 },
                 currentHP: 90, maxHP: 90,
@@ -4428,25 +4402,25 @@
             const inheritedVel = mech.lastKinematicVelocity || new BABYLON.Vector3(0, 0, 0);
             body.setLinearVelocity(inheritedVel);
 
-            // DRAMATIC EXPLOSION KNOCKBACK - throw mech up and back from explosion
-            const explosionForce = impactDir.scale(-80);  // Away from impact direction
-            explosionForce.y = 60 + Math.random() * 40;    // Strong upward lift
-            explosionForce.x += (Math.random() - 0.5) * 30;
-            explosionForce.z += (Math.random() - 0.5) * 20;
+            // DRAMATIC EXPLOSION KNOCKBACK - 5x impulse for massive launch
+            const explosionForce = impactDir.scale(-400);  // 5x: Away from impact direction
+            explosionForce.y = 300 + Math.random() * 200;    // 5x: Strong upward lift
+            explosionForce.x += (Math.random() - 0.5) * 150;
+            explosionForce.z += (Math.random() - 0.5) * 100;
 
             body.applyImpulse(explosionForce, pos);
 
-            // Strong angular impulse to make it tumble dramatically
+            // Strong angular impulse to make it tumble dramatically (5x)
             const fallDirection = (Math.random() > 0.5) ? 1 : -1;
             body.applyAngularImpulse(new BABYLON.Vector3(
-                (impactDir.z + fallDirection) * 60,  // Pitch backward from explosion
-                (Math.random() - 0.5) * 30,          // Random spin
-                (-impactDir.x + (Math.random() - 0.5)) * 50  // Roll from impact
+                (impactDir.z + fallDirection) * 300,  // 5x: Pitch backward from explosion
+                (Math.random() - 0.5) * 150,          // 5x: Random spin
+                (-impactDir.x + (Math.random() - 0.5)) * 250  // 5x: Roll from impact
             ));
 
-            // DRAMATIC LIMB FLINGING - arms and legs fly outward from explosion
-            const destructionHitForce = impactDir.scale(60);
-            destructionHitForce.y = 30;
+            // DRAMATIC LIMB FLINGING - 5x force for limbs
+            const destructionHitForce = impactDir.scale(300);
+            destructionHitForce.y = 150;
             flingLimbs(mech, destructionHitForce);
 
             // Additional limb chaos for destruction - more extreme than normal ragdoll

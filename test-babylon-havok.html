@@ -1524,6 +1524,7 @@
                 stability: STABILITY_CONFIG.maxStability,
                 ragdollSettleTimer: 0,
                 recoveryTimer: 0,
+                destroyedTimer: 0,
                 lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
                 flinchIntensity: 0,
                 // AI state
@@ -1933,6 +1934,7 @@
                 stability: STABILITY_CONFIG.maxStability,
                 ragdollSettleTimer: 0,
                 recoveryTimer: 0,
+                destroyedTimer: 0,
                 lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
                 flinchIntensity: 0,
                 // AI state
@@ -2123,6 +2125,7 @@
                 stability: STABILITY_CONFIG.maxStability,
                 ragdollSettleTimer: 0,
                 recoveryTimer: 0,
+                destroyedTimer: 0,
                 lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
                 flinchIntensity: 0,
                 ai: {
@@ -2314,6 +2317,7 @@
                 stability: STABILITY_CONFIG.maxStability,
                 ragdollSettleTimer: 0,
                 recoveryTimer: 0,
+                destroyedTimer: 0,
                 lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
                 flinchIntensity: 0,
                 ai: {
@@ -2564,6 +2568,7 @@
                 stability: STABILITY_CONFIG.maxStability,
                 ragdollSettleTimer: 0,
                 recoveryTimer: 0,
+                destroyedTimer: 0,
                 lastKinematicVelocity: new BABYLON.Vector3(0, 0, 0),
                 flinchIntensity: 0,
                 ai: {
@@ -3089,6 +3094,35 @@
             const body = mech.pelvisAggregate.body;
             const velocity = body.getLinearVelocity();
             const speed = velocity.length();
+
+            // Handle destroyed mechs differently - they don't recover, but need friction
+            if (mech.isDestroyed) {
+                mech.destroyedTimer += dt;
+
+                // After dramatic phase (1.5s), gradually ramp up friction to stop sliding
+                const dramaticPhase = 1.5;
+                const frictionRampTime = 2.0;  // Time to ramp from low to high friction
+
+                if (mech.destroyedTimer > dramaticPhase) {
+                    const frictionT = Math.min(1.0, (mech.destroyedTimer - dramaticPhase) / frictionRampTime);
+                    // Ramp linear damping from 0.05 to 0.8 for strong friction
+                    const targetLinearDamping = 0.05 + frictionT * 0.75;
+                    // Ramp angular damping from 0.1 to 0.9
+                    const targetAngularDamping = 0.1 + frictionT * 0.8;
+
+                    body.setLinearDamping(targetLinearDamping);
+                    body.setAngularDamping(targetAngularDamping);
+                }
+
+                // Keep feet somewhat level during ragdoll for visual consistency
+                const quat = body.transformNode.rotationQuaternion;
+                if (quat && mech.leftLeg.footGroup) {
+                    const euler = quat.toEulerAngles();
+                    mech.leftLeg.footGroup.rotation.x = -euler.x * 0.5;
+                    mech.rightLeg.footGroup.rotation.x = -euler.x * 0.5;
+                }
+                return;  // Destroyed mechs don't recover
+            }
 
             // Check if mech has settled (low velocity)
             if (speed < STABILITY_CONFIG.ragdollSettleVelocity) {
@@ -4250,6 +4284,7 @@
             // ========================================
             // Mark as destroyed so state machine and AI don't interfere
             mech.isDestroyed = true;
+            mech.destroyedTimer = 0;  // Track time since destruction for friction ramping
             mech.mechState = MechState.RAGDOLL;
             mech.ai.enabled = false;
             mech.isWalking = false;
@@ -4367,6 +4402,7 @@
                 mech.currentHP = mech.maxHP;
                 mech.isWalking = false;
                 mech.isDestroyed = false;
+                mech.destroyedTimer = 0;
                 // HYBRID state reset
                 mech.mechState = MechState.WALKING;
                 mech.stability = STABILITY_CONFIG.maxStability;
@@ -4401,6 +4437,7 @@
                 mech.currentHP = mech.maxHP;
                 mech.isWalking = false;
                 mech.isDestroyed = false;
+                mech.destroyedTimer = 0;
                 // HYBRID state reset
                 mech.mechState = MechState.WALKING;
                 mech.stability = STABILITY_CONFIG.maxStability;

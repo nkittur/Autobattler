@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.11-PointLight</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.12-minimal-only</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -675,89 +675,82 @@
             // LIGHTING + SHADOWS (v10.7 - Texture test)
             // ============================================
 
-            // Ambient/fill light
+            // ============================================
+            // v10.12: MINIMAL SHADOW TEST - FULL SCENE DISABLED
+            // ============================================
+            log('[v10.12] MINIMAL TEST - Full scene DISABLED');
+
+            // Simple ambient light
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.5;
-            hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            hemi.intensity = 0.4;
 
-            // Try PointLight for simpler shadow mechanics (no frustum issues)
-            const pointLight = new BABYLON.PointLight('pointLight', new BABYLON.Vector3(0, 10, 0), scene);
-            pointLight.intensity = 1.5;
-            pointLight.range = 50;  // Light range
-            log(`[v10.11] PointLight at (0, 10, 0)`);
+            // DirectionalLight for shadows (EXACT v10.4 setup that worked)
+            const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
+            sunLight.position = new BABYLON.Vector3(10, 20, 10);
+            sunLight.intensity = 1.5;
+            log(`[v10.12] DirectionalLight created`);
 
-            // PointLight shadow generator
+            // Shadow generator (EXACT v10.4 setup)
             if (SHADOW_CONFIG.enabled) {
-                shadowGenerator = new BABYLON.ShadowGenerator(1024, pointLight);
+                shadowGenerator = new BABYLON.ShadowGenerator(1024, sunLight);
                 shadowGenerator.bias = 0.001;
-                shadowGenerator.useBlurExponentialShadowMap = true;
-                shadowGenerator.blurKernel = 32;
-                log(`[v10.11] ShadowGenerator with BlurESM created`);
+                log(`[v10.12] ShadowGenerator created`);
             }
 
-            // TEST: Add simple ground (no texture) to compare with textured arena ground
-            const simpleGround = BABYLON.MeshBuilder.CreateGround('simpleGround', { width: 8, height: 8 }, scene);
-            simpleGround.position = new BABYLON.Vector3(0, 0.02, 0);  // Slightly above arena ground
-            const simpleGroundMat = new BABYLON.StandardMaterial('simpleGroundMat', scene);
-            simpleGroundMat.diffuseColor = new BABYLON.Color3(0.9, 0.9, 0.9);  // Light gray, no texture
-            simpleGround.material = simpleGroundMat;
-            simpleGround.receiveShadows = true;
-            log('[TEST] Simple gray ground at center (no texture)');
+            // Test ground at origin
+            const testGround = BABYLON.MeshBuilder.CreateGround('testGround', { width: 10, height: 10 }, scene);
+            testGround.position = new BABYLON.Vector3(0, 0, 0);
+            const testGroundMat = new BABYLON.StandardMaterial('testGroundMat', scene);
+            testGroundMat.diffuseColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+            testGround.material = testGroundMat;
+            testGround.receiveShadows = true;
+            log(`[v10.12] Test ground created, receiveShadows=true`);
 
-            // TEST: Add red sphere that casts shadow
+            // Red test sphere
             const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', { diameter: 2 }, scene);
             testSphere.position = new BABYLON.Vector3(0, 4, 0);
             const sphereMat = new BABYLON.StandardMaterial('sphereMat', scene);
-            sphereMat.diffuseColor = new BABYLON.Color3(1, 0, 0);  // Red
+            sphereMat.diffuseColor = new BABYLON.Color3(1, 0, 0);
             testSphere.material = sphereMat;
+
             if (shadowGenerator) {
                 shadowGenerator.addShadowCaster(testSphere);
-                const shadowMap = shadowGenerator.getShadowMap();
-                const renderList = shadowMap ? shadowMap.renderList : null;
-                log(`[v10.11] Sphere caster added. RenderList: ${renderList ? renderList.length : 'null'}`);
+                const renderList = shadowGenerator.getShadowMap().renderList;
+                log(`[v10.12] Sphere caster added. RenderList: ${renderList ? renderList.length : 'null'}`);
+                log(`[v10.12] testGround.receiveShadows: ${testGround.receiveShadows}`);
             }
 
-            // Fog - adjusted for distant mountains
-            scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-            scene.fogDensity = 0.006;
-            scene.fogColor = new BABYLON.Color3(0.55, 0.65, 0.75);  // Blue-ish haze to match sky
+            // NO fog, NO createGround, NO createWalls, NO mechs
+            // This is a completely minimal test
 
-            createGround(scene, shadowGenerator);
-            createWalls(scene);
+            // Skip all scene creation:
+            // createGround(scene, shadowGenerator);
+            // createWalls(scene);
+            log('[v10.12] createGround and createWalls SKIPPED');
 
-            // Create teams of mechs - 4 per side at different Z positions
-            // Player team (left side, x = -7 to -14)
+            // v10.12: ALL MECH CREATION DISABLED FOR MINIMAL TEST
+            /*
             playerMechs = [
-                createMadCatMech(scene, -7, 0, true),        // Center - heavy
-                createHatchetmanMech(scene, -14, 2, true),   // Back flank - melee (starts behind to charge)
-                createCatapultMech(scene, -10, 4, true),     // Back left - support
-                createCommandoMech(scene, -10, -3, true)     // Back right - scout
+                createMadCatMech(scene, -7, 0, true),
+                createHatchetmanMech(scene, -14, 2, true),
+                createCatapultMech(scene, -10, 4, true),
+                createCommandoMech(scene, -10, -3, true)
             ];
-
-            // Enemy team (right side, x = 7 to 14)
             enemyMechs = [
-                createDireWolfMech(scene, 7, 0, false),      // Center - assault
-                createHatchetmanMech(scene, 14, -2, false),  // Back flank - melee (starts behind to charge)
-                createCatapultMech(scene, 10, 4, false),     // Back left - support
-                createCommandoMech(scene, 10, -3, false)     // Back right - scout
+                createDireWolfMech(scene, 7, 0, false),
+                createHatchetmanMech(scene, 14, -2, false),
+                createCatapultMech(scene, 10, 4, false),
+                createCommandoMech(scene, 10, -3, false)
             ];
-
-            // Combined list for easy iteration
             allMechs = [...playerMechs, ...enemyMechs];
-
-            // Initialize cooldowns for each mech
             allMechs.forEach(mech => {
                 mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
             });
-
-            // ============================================
-            // CONFIGURE MECH SHADOWS
-            // DISABLED in v10.8 to test if too many casters breaks shadows
-            // ============================================
-            // if (shadowGenerator) {
-            //     configureMechShadows(allMechs, shadowGenerator);
-            // }
-            log('[v10.11] Mech shadows DISABLED for testing');
+            */
+            playerMechs = [];
+            enemyMechs = [];
+            allMechs = [];
+            log('[v10.12] All mech creation DISABLED');
 
             return scene;
         }

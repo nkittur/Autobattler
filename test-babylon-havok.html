@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.6</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.7-texture-test</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -672,7 +672,7 @@
             camera.wheelPrecision = 30;
 
             // ============================================
-            // LIGHTING + SHADOWS (v10.6 - Exact v10.4 config)
+            // LIGHTING + SHADOWS (v10.7 - Texture test)
             // ============================================
 
             // Ambient/fill light
@@ -682,14 +682,34 @@
 
             // Primary sun light - EXACT v10.4 settings that worked
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
-            sunLight.position = new BABYLON.Vector3(10, 20, 10);  // v10.4 position
+            sunLight.position = new BABYLON.Vector3(10, 20, 10);
             sunLight.intensity = 1.5;
 
             // Shadow generator - 1024 hardcoded like v10.4
             if (SHADOW_CONFIG.enabled) {
-                shadowGenerator = new BABYLON.ShadowGenerator(1024, sunLight);  // 1024 worked
+                shadowGenerator = new BABYLON.ShadowGenerator(1024, sunLight);
                 shadowGenerator.bias = 0.001;
-                log(`[SHADOWS] v10.6 DirectionalLight 1024px (v10.4 config)`);
+                log(`[SHADOWS] v10.7 Generator created`);
+            }
+
+            // TEST: Add simple ground (no texture) to compare with textured arena ground
+            const simpleGround = BABYLON.MeshBuilder.CreateGround('simpleGround', { width: 8, height: 8 }, scene);
+            simpleGround.position = new BABYLON.Vector3(0, 0.02, 0);  // Slightly above arena ground
+            const simpleGroundMat = new BABYLON.StandardMaterial('simpleGroundMat', scene);
+            simpleGroundMat.diffuseColor = new BABYLON.Color3(0.9, 0.9, 0.9);  // Light gray, no texture
+            simpleGround.material = simpleGroundMat;
+            simpleGround.receiveShadows = true;
+            log('[TEST] Simple gray ground at center (no texture)');
+
+            // TEST: Add red sphere that casts shadow
+            const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', { diameter: 2 }, scene);
+            testSphere.position = new BABYLON.Vector3(0, 4, 0);
+            const sphereMat = new BABYLON.StandardMaterial('sphereMat', scene);
+            sphereMat.diffuseColor = new BABYLON.Color3(1, 0, 0);  // Red
+            testSphere.material = sphereMat;
+            if (shadowGenerator) {
+                shadowGenerator.addShadowCaster(testSphere);
+                log('[TEST] Red sphere added as shadow caster');
             }
 
             // Fog - adjusted for distant mountains

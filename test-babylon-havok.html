@@ -155,7 +155,7 @@
     </style>
 </head>
 <body>
-    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.2-shadows</span></h1>
+    <h1>BattleTech Arena <span id="version" style="font-size: 0.6em; color: #888;">v10.3-debug</span></h1>
     <div id="controls">
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
@@ -676,48 +676,47 @@
             // Reduced from 7 lights to 3 for better performance
             // ============================================
 
-            log('>>> v10.2-shadows LOADED <<<');
+            log('>>> v10.3-debug LOADED <<<');
 
-            // Main ambient light
-            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.6;
-            hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            // DEBUG: Create a test sphere to verify lighting works at all
+            const testSphere = BABYLON.MeshBuilder.CreateSphere('testSphere', { diameter: 3 }, scene);
+            testSphere.position = new BABYLON.Vector3(0, 3, 0);  // Center of arena, floating
+            const testMat = new BABYLON.StandardMaterial('testMat', scene);
+            testMat.diffuseColor = new BABYLON.Color3(1, 1, 1);  // Pure white - will show any lighting
+            testSphere.material = testMat;
+            log('[DEBUG] White test sphere created at center');
 
-            // DEBUG: Bright colored point light to confirm code is updating
-            const debugLight = new BABYLON.PointLight('debugLight', new BABYLON.Vector3(0, 8, 0), scene);
-            debugLight.intensity = 0.8;
-            debugLight.diffuse = new BABYLON.Color3(1, 0.5, 0);  // ORANGE tint - very visible
-            debugLight.range = 50;
+            // Single bright point light - should clearly light the white sphere
+            const mainLight = new BABYLON.PointLight('mainLight', new BABYLON.Vector3(0, 15, 0), scene);
+            mainLight.intensity = 2.0;
+            mainLight.diffuse = new BABYLON.Color3(1, 0.8, 0.6);  // Warm white
+            mainLight.range = 100;
+            log(`[DEBUG] PointLight created, intensity=${mainLight.intensity}`);
 
-            // Primary shadow-casting SpotLight - positioned high, pointing down
+            // Log all lights in scene
+            log(`[DEBUG] Scene has ${scene.lights.length} lights`);
+
+            // SpotLight for shadows
             const sunLight = new BABYLON.SpotLight(
                 'sunLight',
-                new BABYLON.Vector3(0, 35, 0),        // Directly above center
-                new BABYLON.Vector3(0, -1, 0),        // Pointing straight down
-                Math.PI * 0.8,                        // Very wide angle (144 degrees)
-                1,                                    // Exponent
+                new BABYLON.Vector3(0, 30, 0),
+                new BABYLON.Vector3(0, -1, 0),
+                Math.PI * 0.9,
+                1,
                 scene
             );
-            sunLight.intensity = 2.0;
-            sunLight.diffuse = new BABYLON.Color3(1, 1, 0.9);
-            sunLight.specular = new BABYLON.Color3(0.3, 0.3, 0.3);
+            sunLight.intensity = 1.5;
+            sunLight.diffuse = new BABYLON.Color3(1, 1, 1);
 
             // ============================================
             // SHADOW GENERATOR
             // ============================================
             if (SHADOW_CONFIG.enabled) {
                 shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
-
-                // Very dark shadows for visibility
-                shadowGenerator.setDarkness(0.1);  // Almost black shadows
+                shadowGenerator.setDarkness(0.2);
                 shadowGenerator.bias = 0.001;
-                shadowGenerator.normalBias = 0.01;
-
-                // Try different filtering
-                shadowGenerator.useBlurExponentialShadowMap = true;
-                shadowGenerator.blurKernel = 32;
-
-                log(`[SHADOWS] v10.2 SpotLight ${SHADOW_CONFIG.mapSize}px`);
+                shadowGenerator.addShadowCaster(testSphere);  // Test sphere casts shadow too
+                log(`[SHADOWS] v10.3 created`);
             }
 
             // Fog - adjusted for distant mountains

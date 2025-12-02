@@ -1510,6 +1510,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale: 1.0,
+                standingHeight: 3.25,  // Pelvis Y for feet to touch ground
+                optimalRange: 10,      // Ideal combat distance for this mech
                 stats: { maxHP: 150, mass: 75 },
                 currentHP: 150, maxHP: 150,
                 isWalking: false, walkCycle: 0, walkSpeed: 2.8,
@@ -1917,6 +1919,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
+                standingHeight: 4.25,   // Pelvis Y for feet to touch ground (taller mech)
+                optimalRange: 12,       // Heavier mech prefers longer range
                 stats: { maxHP: 200, mass: 100 },
                 currentHP: 200, maxHP: 200,
                 isWalking: false, walkCycle: 0, walkSpeed: 2.2,
@@ -2105,6 +2109,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
+                standingHeight: 2.6,    // Pelvis Y for feet to touch ground (smaller mech)
+                optimalRange: 8,        // Light mech prefers closer range, fast hit and run
                 stats: { maxHP: 80, mass: 40 },
                 currentHP: 80, maxHP: 80,
                 isWalking: false, walkCycle: 0, walkSpeed: 3.5,
@@ -2294,6 +2300,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
+                standingHeight: 2.8,    // Pelvis Y for feet to touch ground
+                optimalRange: 14,       // Missile boat prefers long range
                 stats: { maxHP: 120, mass: 60 },
                 currentHP: 120, maxHP: 120,
                 isWalking: false, walkCycle: 0, walkSpeed: 2.5,
@@ -2541,6 +2549,8 @@
                 leftArm, rightArm, leftLeg, rightLeg,
                 leftPod, rightPod,
                 isPlayer, scale,
+                standingHeight: 2.65,   // Pelvis Y for feet to touch ground
+                optimalRange: 3,        // Melee mech wants to be in your face
                 stats: { maxHP: 90, mass: 50 },
                 currentHP: 90, maxHP: 90,
                 isWalking: false, walkCycle: 0, walkSpeed: 3.2,  // Faster than average
@@ -2691,7 +2701,11 @@
 
             if (!mech.isWalking) {
                 // When not walking, stay in place but still rotate toward target
-                body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
+                // Still need ground-seeking even when stationary
+                const targetY = mech.standingHeight || 3.0;
+                const heightError = targetY - myPos.y;
+                const groundSeekSpeed = 8.0;
+                body.setLinearVelocity(new BABYLON.Vector3(0, heightError * groundSeekSpeed, 0));
                 body.setAngularVelocity(new BABYLON.Vector3(0, yawVelocity, 0));
                 dampLegs(mech, dt);
                 mech.lastKinematicVelocity.setAll(0);
@@ -2738,7 +2752,14 @@
             // Calculate velocity from walk direction and strafe (using smoothed strafe)
             let velocity = forwardDir.scale(mech.walkDirection * walkSpeed);
             velocity.addInPlace(rightDir.scale(mech.currentStrafeAmount * strafeSpeed));
-            velocity.y = -bob * 2;  // Subtle bob effect
+
+            // === GROUND-SEEKING FOR KINEMATIC MODE ===
+            // In ANIMATED mode, gravity doesn't apply, so we need to manually seek ground level
+            const targetY = mech.standingHeight || 3.0;  // Fallback if not defined
+            const heightError = targetY - myPos.y;
+            const groundSeekSpeed = 8.0;  // How fast we correct height
+            // Apply ground-seeking with bob effect on top
+            velocity.y = heightError * groundSeekSpeed - bob * 2;
 
             // === HARD BOUNDARY CLAMPING ===
             // If we're at or past the boundary, zero velocity in that direction
@@ -3196,12 +3217,15 @@
         }
 
         // ============================================
-        // MECH AI SYSTEM
+        // GOAL-BASED MECH AI SYSTEM
+        // Each mech has goals that combine into movement:
+        // 1. Range Goal: Move to optimal weapon range
+        // 2. Avoidance Goal: Stay away from other mechs (unless melee)
+        // 3. Boundary Goal: Stay inside arena
+        // 4. Strafe Goal: Lateral movement when other goals satisfied
         // ============================================
         function updateAI(mech, dt) {
             const name = mech.isPlayer ? 'P' : 'E';
-
-            // Periodic verbose logging
             const shouldLog = gameTime - lastDebugTime > DEBUG_INTERVAL;
 
             if (!mech.ai.enabled) {
@@ -3225,6 +3249,7 @@
             }
             if (!target) {
                 if (shouldLog) dbg(`${name}: no valid target`, 'warn');
+                mech.isWalking = false;
                 return;
             }
 
@@ -3232,120 +3257,211 @@
             const myPos = mech.pelvis.getAbsolutePosition();
             const targetPos = target.pelvis.getAbsolutePosition();
             const distance = BABYLON.Vector3.Distance(myPos, targetPos);
-            const toTarget = targetPos.subtract(myPos).normalize();
-            const vel = body.getLinearVelocity();
 
             // Log physics state periodically
             if (shouldLog) {
-                dbg(`${name}: pos=(${myPos.x.toFixed(1)},${myPos.y.toFixed(1)},${myPos.z.toFixed(1)}) vel=(${vel.x.toFixed(2)},${vel.y.toFixed(2)},${vel.z.toFixed(2)}) dist=${distance.toFixed(1)}`, 'phys');
-                dbg(`${name}: state=${mech.ai.state} walk=${mech.isWalking} dir=${mech.walkDirection}`, 'ai');
+                const vel = body.getLinearVelocity();
+                dbg(`${name}: pos=(${myPos.x.toFixed(1)},${myPos.y.toFixed(1)},${myPos.z.toFixed(1)}) dist=${distance.toFixed(1)}`, 'phys');
             }
 
-            // Edge avoidance - HIGHEST priority, checked every frame
-            // Note: applyForce() is integrated by physics engine, don't multiply by dt
-            // Small mechs need to be more careful about edges (mass-scaled avoidance)
-            const mechMass = mech.stats.mass || 75;
-            const massScale = 100 / mechMass;  // Lighter mechs get stronger avoidance (2.5x for Commando)
-            const effectiveBoundary = AI_CONFIG.edgeBoundary - (massScale - 1) * 2;  // Lighter mechs detect earlier
-            const effectiveEdgeForce = AI_CONFIG.edgeForce * massScale;  // Lighter mechs pushed harder
+            // ============================================
+            // GOAL 1: RANGE - Move toward optimal weapon range
+            // ============================================
+            const optimalRange = mech.optimalRange || 10;
+            const rangeTolerance = 2.0;  // Acceptable range variance
+            let rangeGoal = new BABYLON.Vector3(0, 0, 0);
+            let rangeUrgency = 0;
 
-            let edgeForce = new BABYLON.Vector3(0, 0, 0);
-            let nearEdge = false;
-            let veryNearEdge = false;  // Emergency zone
+            const rangeError = distance - optimalRange;
+            if (Math.abs(rangeError) > rangeTolerance) {
+                // Direction toward/away from target based on range error
+                const toTarget = targetPos.subtract(myPos);
+                toTarget.y = 0;
+                toTarget.normalize();
 
-            // X edges (main arena walls)
-            if (myPos.x < -effectiveBoundary) {
-                const urgency = Math.min(2.0, 1 + (-effectiveBoundary - myPos.x) / 3);
-                edgeForce.x = effectiveEdgeForce * urgency;
-                nearEdge = true;
-                if (myPos.x < -17) veryNearEdge = true;
-            } else if (myPos.x > effectiveBoundary) {
-                const urgency = Math.min(2.0, 1 + (myPos.x - effectiveBoundary) / 3);
-                edgeForce.x = -effectiveEdgeForce * urgency;
-                nearEdge = true;
-                if (myPos.x > 17) veryNearEdge = true;
+                // Positive rangeError = too far, need to move closer
+                // Negative rangeError = too close, need to back up
+                rangeUrgency = Math.min(1.0, Math.abs(rangeError) / 8.0);
+                rangeGoal = toTarget.scale(Math.sign(rangeError) * rangeUrgency);
             }
 
-            // Z edges (side walls) - ground is 20 wide, so ±10
-            const zBoundary = 6 - (massScale - 1) * 0.5;  // Lighter mechs detect Z edges earlier too
-            if (Math.abs(myPos.z) > zBoundary) {
-                const urgency = Math.min(2.0, 1 + (Math.abs(myPos.z) - zBoundary) / 2);
-                edgeForce.z = -Math.sign(myPos.z) * effectiveEdgeForce * 0.9 * urgency;
-                nearEdge = true;
-                if (Math.abs(myPos.z) > 8) veryNearEdge = true;
+            // ============================================
+            // GOAL 2: AVOIDANCE - Stay away from other mechs
+            // Importance scales with inverse square of distance
+            // ============================================
+            let avoidGoal = new BABYLON.Vector3(0, 0, 0);
+            let avoidUrgency = 0;
+            const avoidRadius = 6.0;  // Start avoiding at this distance
+            const minSeparation = 3.0;  // Minimum desired distance
+
+            // Check all mechs for avoidance
+            allMechs.forEach(other => {
+                if (other === mech || other.isDestroyed || other.currentHP <= 0) return;
+
+                const otherPos = other.pelvis.getAbsolutePosition();
+                const toOther = otherPos.subtract(myPos);
+                toOther.y = 0;
+                const mechDist = toOther.length();
+
+                if (mechDist < avoidRadius && mechDist > 0.1) {
+                    // Skip avoidance for melee mechs toward their target
+                    if (mech.isMelee && other === target && mechDist > minSeparation * 0.5) {
+                        return;  // Melee mech wants to be close to target
+                    }
+
+                    // Inverse square falloff - very strong when close, zero at avoidRadius
+                    const normalizedDist = (mechDist - minSeparation) / (avoidRadius - minSeparation);
+                    const clampedDist = Math.max(0.1, Math.min(1.0, normalizedDist));
+                    const avoidStrength = 1.0 / (clampedDist * clampedDist) - 1.0;
+
+                    // Push away from this mech
+                    const awayDir = toOther.normalize().scale(-1);
+                    avoidGoal.addInPlace(awayDir.scale(Math.min(avoidStrength, 3.0)));
+                    avoidUrgency = Math.max(avoidUrgency, 1.0 - clampedDist);
+                }
+            });
+
+            // Normalize avoidance if it got too strong
+            if (avoidGoal.length() > 1.5) {
+                avoidGoal.normalize().scaleInPlace(1.5);
             }
 
-            // HYBRID ARCHITECTURE: Edge avoidance triggers state change, not force
-            // Movement is handled by kinematic walking function
-            if (nearEdge) {
-                mech.ai.state = 'edge-avoid';
-                if (shouldLog) dbg(`${name}: EDGE AVOID state triggered veryNear=${veryNearEdge}`, 'ai');
+            // ============================================
+            // GOAL 3: BOUNDARY - Stay inside arena
+            // ============================================
+            let boundaryGoal = new BABYLON.Vector3(0, 0, 0);
+            let boundaryUrgency = 0;
+            const softBoundaryX = 14;  // Start pushing back
+            const softBoundaryZ = 6;
+
+            // X boundaries
+            if (myPos.x < -softBoundaryX) {
+                const depth = (-softBoundaryX - myPos.x) / 4;
+                boundaryGoal.x = Math.min(2.0, 0.5 + depth);
+                boundaryUrgency = Math.max(boundaryUrgency, Math.min(1.0, depth));
+            } else if (myPos.x > softBoundaryX) {
+                const depth = (myPos.x - softBoundaryX) / 4;
+                boundaryGoal.x = -Math.min(2.0, 0.5 + depth);
+                boundaryUrgency = Math.max(boundaryUrgency, Math.min(1.0, depth));
             }
 
-            // AI decision making (periodic, not every frame) - SKIP if near edge
+            // Z boundaries
+            if (myPos.z < -softBoundaryZ) {
+                const depth = (-softBoundaryZ - myPos.z) / 2;
+                boundaryGoal.z = Math.min(2.0, 0.5 + depth);
+                boundaryUrgency = Math.max(boundaryUrgency, Math.min(1.0, depth));
+            } else if (myPos.z > softBoundaryZ) {
+                const depth = (myPos.z - softBoundaryZ) / 2;
+                boundaryGoal.z = -Math.min(2.0, 0.5 + depth);
+                boundaryUrgency = Math.max(boundaryUrgency, Math.min(1.0, depth));
+            }
+
+            // ============================================
+            // GOAL 4: STRAFE - Lateral movement when stable
+            // Only active when other goals are satisfied
+            // ============================================
+            let strafeGoal = new BABYLON.Vector3(0, 0, 0);
+
+            // Initialize strafe timer if needed
+            if (!mech.ai.strafeTimer) mech.ai.strafeTimer = 0;
+            if (!mech.ai.currentStrafeDir) mech.ai.currentStrafeDir = 0;
+
+            // Only strafe when range is good and not urgently avoiding
+            const canStrafe = rangeUrgency < 0.3 && avoidUrgency < 0.5 && boundaryUrgency < 0.3;
+
+            if (canStrafe) {
+                mech.ai.strafeTimer -= dt;
+                if (mech.ai.strafeTimer <= 0) {
+                    // Pick new strafe direction with random intensity and duration
+                    if (Math.random() < 0.7) {  // 70% chance to strafe
+                        const intensity = 0.3 + Math.random() * 0.5;
+                        mech.ai.currentStrafeDir = (Math.random() < 0.5 ? -1 : 1) * intensity;
+                    } else {
+                        mech.ai.currentStrafeDir = 0;  // Brief pause
+                    }
+                    mech.ai.strafeTimer = 1.0 + Math.random() * 2.0;  // 1-3 seconds
+                }
+
+                // Calculate strafe direction (perpendicular to target)
+                if (Math.abs(mech.ai.currentStrafeDir) > 0.1) {
+                    const toTarget = targetPos.subtract(myPos);
+                    toTarget.y = 0;
+                    toTarget.normalize();
+                    // Cross product with up to get perpendicular
+                    const strafeDir = new BABYLON.Vector3(-toTarget.z, 0, toTarget.x);
+                    strafeGoal = strafeDir.scale(mech.ai.currentStrafeDir * 0.6);
+                }
+            }
+
+            // ============================================
+            // COMBINE GOALS with priority weighting
+            // ============================================
+            // Weights: boundary > avoidance > range > strafe
+            const boundaryWeight = 2.0;
+            const avoidWeight = 1.5;
+            const rangeWeight = 1.0;
+            const strafeWeight = 0.5;
+
+            let desiredVelocity = new BABYLON.Vector3(0, 0, 0);
+            desiredVelocity.addInPlace(boundaryGoal.scale(boundaryWeight));
+            desiredVelocity.addInPlace(avoidGoal.scale(avoidWeight));
+            desiredVelocity.addInPlace(rangeGoal.scale(rangeWeight));
+            desiredVelocity.addInPlace(strafeGoal.scale(strafeWeight));
+
+            // ============================================
+            // CONVERT TO MECH-RELATIVE MOVEMENT
+            // ============================================
+            const pelvisQuat = body.transformNode.rotationQuaternion;
+            let mechForward = new BABYLON.Vector3(1, 0, 0);
+            let mechRight = new BABYLON.Vector3(0, 0, 1);
+            if (pelvisQuat) {
+                const rotMatrix = new BABYLON.Matrix();
+                pelvisQuat.toRotationMatrix(rotMatrix);
+                mechForward = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
+                mechForward.y = 0;
+                mechForward.normalize();
+                mechRight = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
+                mechRight.y = 0;
+                mechRight.normalize();
+            }
+
+            // Project desired velocity onto mech's forward and right axes
+            const forwardComponent = desiredVelocity.x * mechForward.x + desiredVelocity.z * mechForward.z;
+            const rightComponent = desiredVelocity.x * mechRight.x + desiredVelocity.z * mechRight.z;
+
+            // Set movement parameters
+            const velocityMagnitude = desiredVelocity.length();
+            mech.isWalking = velocityMagnitude > 0.15;
+            mech.walkDirection = Math.max(-1, Math.min(1, forwardComponent));
+            mech.ai.strafeAmount = Math.max(-1, Math.min(1, rightComponent));
+
+            if (shouldLog) {
+                dbg(`${name}: goals range=${rangeUrgency.toFixed(2)} avoid=${avoidUrgency.toFixed(2)} bound=${boundaryUrgency.toFixed(2)}`, 'ai');
+                dbg(`${name}: walk=${mech.walkDirection.toFixed(2)} strafe=${mech.ai.strafeAmount.toFixed(2)}`, 'ai');
+            }
+
+            // ============================================
+            // WEAPON FIRING (separate from movement)
+            // ============================================
             if (gameTime - mech.ai.lastDecision > AI_CONFIG.decisionInterval) {
                 mech.ai.lastDecision = gameTime;
 
-                // Don't override edge-avoid state with other decisions
-                if (!nearEdge) {
-                    // MELEE MECHS: Always try to close distance
-                    if (mech.isMelee) {
-                        const meleeRange = WEAPONS.hatchet.range;
-                        if (distance > meleeRange + 1) {
-                            // Charge toward target
-                            mech.ai.state = 'charging';
-                            mech.walkDirection = toTarget.x > 0 ? 1 : -1;
-                        } else {
-                            // In melee range - stay close
-                            mech.ai.state = 'melee';
-                        }
-                    } else {
-                        // RANGED MECHS: Normal behavior
-                        // Determine movement state based on range
-                        if (distance > AI_CONFIG.maxRange) {
-                            mech.ai.state = 'advancing';
-                            mech.walkDirection = toTarget.x > 0 ? 1 : -1;
-                        } else if (distance < AI_CONFIG.minRange) {
-                            mech.ai.state = 'retreating';
-                            mech.walkDirection = toTarget.x > 0 ? -1 : 1;
-                        } else {
-                            // At optimal range - maybe strafe with natural randomness
-                            const strafeRoll = Math.random();
-                            if (strafeRoll < AI_CONFIG.strafeChance * 0.5) {
-                                mech.ai.state = 'strafing';
-                                // Vary strafe intensity (0.4 to 1.0 instead of always 1)
-                                const strafeIntensity = 0.4 + Math.random() * 0.6;
-                                mech.ai.strafeDir = (Math.random() < 0.5 ? -1 : 1) * strafeIntensity;
-                                // Vary duration (0.8 to 2.5 seconds)
-                                const strafeDur = 0.8 + Math.random() * 1.7;
-                                mech.ai.strafeEndTime = gameTime + strafeDur;
-                            } else {
-                                mech.ai.state = 'optimal';
-                            }
-                        }
-                    }
-                }
-
-                // Fire weapons when in range (even while edge avoiding)
                 const now = Date.now();
                 const mechKey = mech.name + '_' + (mech.isPlayer ? 'p' : 'e');
                 if (!mechCooldowns[mechKey]) mechCooldowns[mechKey] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
                 const cooldowns = mechCooldowns[mechKey];
 
                 if (mech.isMelee) {
-                    // Melee mechs: hatchet first when in range, then backup laser
                     const meleeRange = WEAPONS.hatchet.range;
                     if (distance <= meleeRange && now >= cooldowns.hatchet) {
                         fireWeapon(mech, 'hatchet');
                         cooldowns.hatchet = now + COOLDOWN_TIMES.hatchet;
                     } else if (distance <= 15 && now >= cooldowns.erlaser) {
-                        // Backup laser while closing distance
                         fireWeapon(mech, 'erlaser');
                         cooldowns.erlaser = now + COOLDOWN_TIMES.erlaser;
                     }
                 } else {
-                    // Ranged mechs: normal weapon priority
-                    if (distance <= 18 && distance >= AI_CONFIG.minRange * 0.5) {
+                    if (distance <= 18 && distance >= 3) {
                         const weaponPriority = ['erlaser', 'ac', 'lrm'];
                         for (const wtype of weaponPriority) {
                             if (now >= cooldowns[wtype]) {
@@ -3356,136 +3472,6 @@
                         }
                     }
                 }
-            }
-
-            // Check if strafing should end
-            if (mech.ai.state === 'strafing' && gameTime > mech.ai.strafeEndTime) {
-                mech.ai.state = 'optimal';
-                mech.ai.strafeDir = 0;
-            }
-
-            // Get pelvis forward direction for movement
-            const pelvisQuat = body.transformNode.rotationQuaternion;
-            let pelvisForward = new BABYLON.Vector3(1, 0, 0);
-            let pelvisRight = new BABYLON.Vector3(0, 0, 1);
-            if (pelvisQuat) {
-                const rotMatrix = new BABYLON.Matrix();
-                pelvisQuat.toRotationMatrix(rotMatrix);
-                pelvisForward = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
-                pelvisForward.y = 0;
-                pelvisForward.normalize();
-                pelvisRight = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
-                pelvisRight.y = 0;
-                pelvisRight.normalize();
-            }
-
-            // HYBRID ARCHITECTURE: Movement is handled by kinematic walking function
-            // AI just sets isWalking, walkDirection, and strafeDir - no forces applied!
-            // Edge avoidance also uses kinematic movement, not forces
-            mech.ai.strafeAmount = 0;  // Reset strafe each frame
-
-            switch (mech.ai.state) {
-                case 'advancing':
-                    mech.isWalking = true;
-                    mech.walkDirection = 1;  // Forward
-                    break;
-
-                case 'retreating':
-                    mech.isWalking = true;
-                    mech.walkDirection = -1;  // Backward
-                    break;
-
-                case 'strafing':
-                    mech.isWalking = true;
-                    // strafeDir now includes intensity variance (-1 to 1 with random magnitude)
-                    mech.ai.strafeAmount = mech.ai.strafeDir;
-                    // Small forward/back adjustment toward ideal range with small randomness
-                    if (distance > AI_CONFIG.idealRange + 1.5) {
-                        mech.walkDirection = 0.7 + Math.random() * 0.3;  // Variable forward speed
-                    } else if (distance < AI_CONFIG.idealRange - 1.5) {
-                        mech.walkDirection = -(0.5 + Math.random() * 0.3);  // Variable backward
-                    } else {
-                        mech.walkDirection = (Math.random() - 0.5) * 0.3;  // Subtle drift while strafing
-                    }
-                    break;
-
-                case 'optimal':
-                    // Small adjustments to stay at ideal range
-                    if (distance > AI_CONFIG.idealRange + 2) {
-                        mech.isWalking = true;
-                        mech.walkDirection = 1;
-                    } else if (distance < AI_CONFIG.idealRange - 2) {
-                        mech.isWalking = true;
-                        mech.walkDirection = -1;
-                    } else {
-                        mech.isWalking = false;
-                    }
-                    break;
-
-                case 'charging':
-                    // MELEE: Aggressive charge toward target
-                    mech.isWalking = true;
-                    mech.walkDirection = 1;  // Forward
-                    break;
-
-                case 'melee':
-                    // MELEE: In close range - stay mobile but close
-                    mech.isWalking = true;
-                    if (distance > WEAPONS.hatchet.range) {
-                        mech.walkDirection = 1;
-                    } else if (distance < 2) {
-                        mech.walkDirection = -1;
-                    } else {
-                        // Circle strafe while in melee
-                        mech.walkDirection = 0;
-                        mech.ai.strafeAmount = 0.6;
-                    }
-                    break;
-
-                case 'edge-avoid':
-                    // Edge avoid needs to move toward CENTER in WORLD space
-                    // not relative to where the mech is facing!
-                    mech.isWalking = true;
-
-                    // Calculate world-space direction toward arena center
-                    let toCenterX = -myPos.x;  // Toward X=0
-                    let toCenterZ = -myPos.z;  // Toward Z=0
-
-                    // Normalize the direction
-                    const toCenterLen = Math.sqrt(toCenterX * toCenterX + toCenterZ * toCenterZ);
-                    if (toCenterLen > 0.1) {
-                        toCenterX /= toCenterLen;
-                        toCenterZ /= toCenterLen;
-                    }
-
-                    // Get mech's forward and right directions in world space
-                    const edgeQuat = body.transformNode.rotationQuaternion;
-                    let mechForward = new BABYLON.Vector3(1, 0, 0);
-                    let mechRight = new BABYLON.Vector3(0, 0, 1);
-                    if (edgeQuat) {
-                        const rotMatrix = new BABYLON.Matrix();
-                        edgeQuat.toRotationMatrix(rotMatrix);
-                        mechForward = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
-                        mechForward.y = 0;
-                        mechForward.normalize();
-                        mechRight = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
-                        mechRight.y = 0;
-                        mechRight.normalize();
-                    }
-
-                    // Project toCenter onto mech's forward and right to get mech-relative movement
-                    const forwardComponent = toCenterX * mechForward.x + toCenterZ * mechForward.z;
-                    const rightComponent = toCenterX * mechRight.x + toCenterZ * mechRight.z;
-
-                    // Set walk direction based on forward component
-                    mech.walkDirection = forwardComponent > 0.1 ? 1 : (forwardComponent < -0.1 ? -1 : 0);
-
-                    // Set strafe based on right component
-                    mech.ai.strafeAmount = rightComponent * 0.8;  // Scale down slightly
-                    break;
-
-                default:
-                    mech.isWalking = false;
             }
 
             // === FULL BODY ROTATION TOWARD TARGET (KINEMATIC MODE) ===
@@ -3519,9 +3505,6 @@
                 }
             }
 
-            if (shouldLog) {
-                dbg(`${name}: AI state=${mech.ai.state} walking=${mech.isWalking} dir=${mech.walkDirection}`, 'ai');
-            }
             // Note: lastDebugTime is updated in the main render loop after all subsystems log
         }
 

@@ -400,14 +400,8 @@
         const SHADOW_CONFIG = {
             enabled: true,                    // Master shadow toggle
             mapSize: 1024,                    // Shadow map resolution (512/1024/2048)
-            useBlur: true,                    // Use contact hardening (soft shadows)
             blurKernel: 32,                   // Blur kernel size for soft shadows
-            darkness: 0.4,                    // Shadow darkness (0=black, 1=invisible)
-            bias: 0.00005,                    // Depth bias to prevent shadow acne
-            normalBias: 0.02,                 // Normal bias for curved surfaces
-            frustumEdgeFalloff: 0.5,          // Soften shadow edges at frustum boundary
-            filteringQuality: 1,              // 0=low, 1=medium, 2=high (PCF quality)
-            autoCalcDepthBounds: true,        // Auto-calculate optimal depth range
+            darkness: 0.35,                   // Shadow darkness (0=black, 1=invisible)
         };
 
         // Detect mobile and adjust quality
@@ -421,14 +415,11 @@
                 // Mobile/low-end settings
                 SHADOW_CONFIG.mapSize = 512;
                 SHADOW_CONFIG.blurKernel = 16;
-                SHADOW_CONFIG.filteringQuality = 0;
-                SHADOW_CONFIG.useBlur = true;  // Keep blur for soft look
                 console.log('[SHADOWS] Using mobile-optimized settings (512px)');
             } else {
                 // Desktop settings
                 SHADOW_CONFIG.mapSize = 1024;
                 SHADOW_CONFIG.blurKernel = 32;
-                SHADOW_CONFIG.filteringQuality = 1;
                 console.log('[SHADOWS] Using desktop settings (1024px)');
             }
         }
@@ -693,17 +684,17 @@
 
             // Primary directional (sun) light - THIS CASTS SHADOWS
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2.5, 1), scene);
-            sunLight.intensity = 1.1;  // Slightly increased
-            sunLight.diffuse = new BABYLON.Color3(1, 0.95, 0.85);  // Warm sunlight
+            sunLight.intensity = 1.1;
+            sunLight.diffuse = new BABYLON.Color3(1, 0.95, 0.85);
             sunLight.specular = new BABYLON.Color3(0.8, 0.75, 0.7);
-            // Position the light for better shadow projection over the arena
-            sunLight.position = new BABYLON.Vector3(20, 40, -20);
+            // Position light far enough to cast shadows over the entire arena
+            sunLight.position = new BABYLON.Vector3(30, 50, -30);
 
-            // Configure shadow frustum to cover the arena bounds (40x20 units)
-            // Using orthographic projection for consistent shadow quality across the arena
-            sunLight.shadowMinZ = 1;
-            sunLight.shadowMaxZ = 100;
-            sunLight.shadowOrthoScale = 0.5;  // Tighten the frustum for better shadow quality
+            // CRITICAL: Enable auto-extend for shadow frustum to cover all shadow casters
+            sunLight.autoUpdateExtends = true;
+            sunLight.autoCalcShadowZBounds = true;
+            sunLight.shadowMinZ = 0.1;
+            sunLight.shadowMaxZ = 150;
 
             // Secondary fill light from opposite side (cooler, no shadows)
             const fillLight = new BABYLON.DirectionalLight('fill', new BABYLON.Vector3(1, -1, -0.5), scene);
@@ -712,41 +703,29 @@
             fillLight.specular = new BABYLON.Color3(0.2, 0.2, 0.3);
 
             // ============================================
-            // SHADOW GENERATOR - Mobile Optimized
+            // SHADOW GENERATOR - Simplified for reliability
             // ============================================
             if (SHADOW_CONFIG.enabled) {
                 shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
 
-                // Use PCF (Percentage Closer Filtering) for soft shadows
-                // This is the best balance of quality and performance on mobile
-                shadowGenerator.usePercentageCloserFiltering = true;
-                shadowGenerator.filteringQuality = SHADOW_CONFIG.filteringQuality;
+                // Use simple blurred exponential shadow map - most compatible
+                shadowGenerator.useExponentialShadowMap = true;
+                shadowGenerator.useBlurExponentialShadowMap = true;
+                shadowGenerator.blurKernel = SHADOW_CONFIG.blurKernel;
+                shadowGenerator.blurScale = 2;
+                shadowGenerator.depthScale = 50;
 
-                // Soft shadow blur (contact hardening simulation)
-                if (SHADOW_CONFIG.useBlur) {
-                    shadowGenerator.useContactHardeningShadow = true;
-                    shadowGenerator.contactHardeningLightSizeUVRatio = 0.05;
-                    shadowGenerator.setDarkness(SHADOW_CONFIG.darkness);
-                }
+                // Shadow darkness (0 = black, 1 = invisible)
+                shadowGenerator.setDarkness(SHADOW_CONFIG.darkness);
 
-                // Bias settings to prevent shadow acne and peter-panning
-                shadowGenerator.bias = SHADOW_CONFIG.bias;
-                shadowGenerator.normalBias = SHADOW_CONFIG.normalBias;
+                // Bias to prevent shadow acne
+                shadowGenerator.bias = 0.001;
+                shadowGenerator.normalBias = 0.02;
 
-                // Frustum settings for the shadow camera
-                shadowGenerator.frustumEdgeFalloff = SHADOW_CONFIG.frustumEdgeFalloff;
+                // Force shadow map to update
+                shadowGenerator.forceBackFacesOnly = false;
 
-                // Auto-calculate optimal depth bounds for tighter shadow map utilization
-                if (SHADOW_CONFIG.autoCalcDepthBounds) {
-                    shadowGenerator.autoCalcDepthBounds = true;
-                    shadowGenerator.autoCalcDepthBoundsRefreshRate = 2;  // Every 2 frames
-                }
-
-                // Optimize shadow map rendering
-                shadowGenerator.enableSoftTransparentShadow = false;  // Better perf
-                shadowGenerator.useOpacityTextureForTransparentShadow = false;
-
-                console.log(`[SHADOWS] Generator created: ${SHADOW_CONFIG.mapSize}px, PCF quality ${SHADOW_CONFIG.filteringQuality}`);
+                console.log(`[SHADOWS] Generator created: ${SHADOW_CONFIG.mapSize}px, Blurred ESM`);
             }
 
             // Fog - adjusted for distant mountains

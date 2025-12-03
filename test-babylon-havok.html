@@ -447,13 +447,20 @@
                 outlineEnabled: false,
                 outlineWidth: 0.2,
                 outlineColor: new BABYLON.Color3(0, 0, 0),
-                // Post-process edge detection (GPU-friendly, screen-space)
+                // Post-process edge detection - DISABLED (can't do team colors)
                 edgeDetection: {
+                    enabled: false,
+                    edgeStrength: 1.0,
+                    edgeWidth: 2.5,
+                    depthThreshold: 0.0003,
+                    normalThreshold: 0.5,
+                },
+                // Per-mesh edge rendering (supports team colors)
+                meshEdges: {
                     enabled: true,
-                    edgeStrength: 1.0,       // How dark the edges are (0-1)
-                    edgeWidth: 2.5,          // Thicker lines for visibility at distance
-                    depthThreshold: 0.0003,  // Lower threshold = more edges detected
-                    normalThreshold: 0.5,    // Sensitivity to normal edges
+                    edgeWidth: 1.5,          // Thinner lines
+                    playerColor: new BABYLON.Color4(0, 0.8, 0.2, 1),  // Green
+                    enemyColor: new BABYLON.Color4(0.9, 0.1, 0.1, 1), // Red
                 }
             }
         };
@@ -617,12 +624,19 @@
                 }
 
                 // Enable inverted hull outlines (GPU-friendly vertex-based method)
-                // Much faster than edge rendering - works on vertex shader not pixel shader
                 if (VISUAL_CONFIG.animeStyle.outlineEnabled && node instanceof BABYLON.Mesh) {
                     node.renderOutline = true;
                     node.outlineWidth = VISUAL_CONFIG.animeStyle.outlineWidth;
                     node.outlineColor = VISUAL_CONFIG.animeStyle.outlineColor;
-                    log(`[OUTLINE] Applied to ${node.name}: width=${node.outlineWidth}`);
+                }
+
+                // Enable per-mesh edge rendering with team colors
+                if (VISUAL_CONFIG.animeStyle.meshEdges && VISUAL_CONFIG.animeStyle.meshEdges.enabled && node instanceof BABYLON.Mesh) {
+                    const edgeConfig = VISUAL_CONFIG.animeStyle.meshEdges;
+                    const edgeColor = mech.isPlayer ? edgeConfig.playerColor : edgeConfig.enemyColor;
+                    node.enableEdgesRendering();
+                    node.edgesWidth = edgeConfig.edgeWidth;
+                    node.edgesColor = edgeColor;
                 }
             });
         }
@@ -1985,23 +1999,31 @@
             headBase.parent = torsoUpper;
             headBase.material = primaryMat;
 
-            // Cockpit canopy (angled)
-            const canopy = BABYLON.MeshBuilder.CreateBox(name + '_canopy', {
-                width: 0.45, height: 0.25, depth: 0.35
+            // Large conical cockpit (Mad Cat signature look)
+            const canopy = BABYLON.MeshBuilder.CreateCylinder(name + '_canopy', {
+                height: 1.4, diameterTop: 0.2, diameterBottom: 1.1, tessellation: 12
             }, scene);
-            canopy.position = new BABYLON.Vector3(0, 0.15, 0.15);
-            canopy.rotation.x = -0.4;
+            canopy.rotation.x = Math.PI / 2;  // Point forward
+            canopy.position = new BABYLON.Vector3(0, -0.3, 0.7);
             canopy.parent = headBase;
             canopy.material = cockpitMat;
 
-            // Cockpit frame
-            const frame1 = BABYLON.MeshBuilder.CreateBox(name + '_frame1', {
-                width: 0.5, height: 0.04, depth: 0.3
+            // Cockpit frame rings
+            const frame1 = BABYLON.MeshBuilder.CreateTorus(name + '_frame1', {
+                diameter: 0.85, thickness: 0.06, tessellation: 16
             }, scene);
-            frame1.position = new BABYLON.Vector3(0, 0.28, 0.1);
-            frame1.rotation.x = -0.4;
+            frame1.rotation.x = Math.PI / 2;
+            frame1.position = new BABYLON.Vector3(0, -0.3, 0.35);
             frame1.parent = headBase;
             frame1.material = darkMat;
+
+            const frame2 = BABYLON.MeshBuilder.CreateTorus(name + '_frame2', {
+                diameter: 0.55, thickness: 0.05, tessellation: 16
+            }, scene);
+            frame2.rotation.x = Math.PI / 2;
+            frame2.position = new BABYLON.Vector3(0, -0.3, 0.85);
+            frame2.parent = headBase;
+            frame2.material = darkMat;
 
             // Sensor pod on top
             const sensor = BABYLON.MeshBuilder.CreateCylinder(name + '_sensor', {
@@ -2530,20 +2552,38 @@
             headBase.parent = torsoUpper;
             headBase.material = primaryMat;
 
-            const canopy = BABYLON.MeshBuilder.CreateBox(name + '_canopy', {
-                width: 0.4 * scale, height: 0.18 * scale, depth: 0.25 * scale
+            // Large conical cockpit (Dire Wolf style)
+            const canopy = BABYLON.MeshBuilder.CreateCylinder(name + '_canopy', {
+                height: 1.6 * scale, diameterTop: 0.25 * scale, diameterBottom: 1.3 * scale, tessellation: 12
             }, scene);
-            canopy.position = new BABYLON.Vector3(0, 0.1 * scale, 0.15 * scale);
-            canopy.rotation.x = -0.35;
+            canopy.rotation.x = Math.PI / 2;  // Point forward
+            canopy.position = new BABYLON.Vector3(0, -0.25 * scale, 0.8 * scale);
             canopy.parent = headBase;
             canopy.material = cockpitMat;
+
+            // Cockpit frame rings
+            const frame1 = BABYLON.MeshBuilder.CreateTorus(name + '_frame1', {
+                diameter: 1.0 * scale, thickness: 0.07 * scale, tessellation: 16
+            }, scene);
+            frame1.rotation.x = Math.PI / 2;
+            frame1.position = new BABYLON.Vector3(0, -0.25 * scale, 0.4 * scale);
+            frame1.parent = headBase;
+            frame1.material = darkMat;
+
+            const frame2 = BABYLON.MeshBuilder.CreateTorus(name + '_frame2', {
+                diameter: 0.65 * scale, thickness: 0.06 * scale, tessellation: 16
+            }, scene);
+            frame2.rotation.x = Math.PI / 2;
+            frame2.position = new BABYLON.Vector3(0, -0.25 * scale, 0.95 * scale);
+            frame2.parent = headBase;
+            frame2.material = darkMat;
 
             // Sensor array
             for (let i = 0; i < 2; i++) {
                 const sens = BABYLON.MeshBuilder.CreateCylinder(name + '_sens' + i, {
                     height: 0.12 * scale, diameter: 0.08 * scale
                 }, scene);
-                sens.position = new BABYLON.Vector3((i - 0.5) * 0.2 * scale, 0.22 * scale, 0);
+                sens.position = new BABYLON.Vector3((i - 0.5) * 0.3 * scale, 0.22 * scale, -0.2 * scale);
                 sens.parent = headBase;
                 sens.material = chromeMat;
             }

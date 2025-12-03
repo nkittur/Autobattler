@@ -443,10 +443,18 @@
                 saturationBoost: 15,         // Mild saturation
                 contrastBoost: 1.1,          // Gentle contrast
                 shadowDarkness: 0.6,         // Dark shadows for 2-tone effect
-                // Inverted Hull outlines (GPU-friendly, vertex-based)
-                outlineEnabled: true,
-                outlineWidth: 0.2,           // Middle ground: 0.15 was invisible, 0.25 too thick
-                outlineColor: new BABYLON.Color3(0, 0, 0),  // Pure black
+                // Inverted Hull outlines - DISABLED (surfaces bulge out)
+                outlineEnabled: false,
+                outlineWidth: 0.2,
+                outlineColor: new BABYLON.Color3(0, 0, 0),
+                // Post-process edge detection (GPU-friendly, screen-space)
+                edgeDetection: {
+                    enabled: true,
+                    edgeStrength: 1.0,       // How dark the edges are (0-1)
+                    edgeWidth: 1.0,          // Thickness of edges
+                    depthThreshold: 0.001,   // Sensitivity to depth edges
+                    normalThreshold: 0.5,    // Sensitivity to normal edges
+                }
             }
         };
 
@@ -866,6 +874,82 @@
                 defaultPipeline.imageProcessing.colorCurves = curves;
 
                 log(`[CEL] Post-processing (contrast: ${VISUAL_CONFIG.animeStyle.contrastBoost}, sat: +${VISUAL_CONFIG.animeStyle.saturationBoost})`);
+
+                // ============================================
+                // EDGE DETECTION POST-PROCESS
+                // Screen-space edge detection using depth + normals
+                // ============================================
+                if (VISUAL_CONFIG.animeStyle.edgeDetection.enabled) {
+                    // Enable depth renderer for edge detection
+                    scene.enableDepthRenderer(camera, false);
+
+                    // Edge detection shader
+                    const edgeDetectionShader = `
+                        precision highp float;
+
+                        varying vec2 vUV;
+                        uniform sampler2D textureSampler;
+                        uniform sampler2D depthSampler;
+                        uniform vec2 screenSize;
+                        uniform float edgeStrength;
+                        uniform float edgeWidth;
+                        uniform float depthThreshold;
+
+                        float getDepth(vec2 uv) {
+                            return texture2D(depthSampler, uv).r;
+                        }
+
+                        void main(void) {
+                            vec4 color = texture2D(textureSampler, vUV);
+
+                            // Pixel size for sampling neighbors
+                            vec2 pixelSize = edgeWidth / screenSize;
+
+                            // Sample depth at current and neighboring pixels
+                            float depth = getDepth(vUV);
+                            float depthL = getDepth(vUV + vec2(-pixelSize.x, 0.0));
+                            float depthR = getDepth(vUV + vec2(pixelSize.x, 0.0));
+                            float depthU = getDepth(vUV + vec2(0.0, pixelSize.y));
+                            float depthD = getDepth(vUV + vec2(0.0, -pixelSize.y));
+
+                            // Sobel-like edge detection on depth
+                            float edgeH = abs(depthL - depthR);
+                            float edgeV = abs(depthU - depthD);
+                            float edge = sqrt(edgeH * edgeH + edgeV * edgeV);
+
+                            // Apply threshold and strength
+                            float edgeFactor = smoothstep(depthThreshold, depthThreshold * 2.0, edge) * edgeStrength;
+
+                            // Blend black edge with original color
+                            vec3 finalColor = mix(color.rgb, vec3(0.0), edgeFactor);
+
+                            gl_FragColor = vec4(finalColor, color.a);
+                        }
+                    `;
+
+                    // Create the post-process
+                    BABYLON.Effect.ShadersStore["edgeDetectionFragmentShader"] = edgeDetectionShader;
+
+                    const edgeConfig = VISUAL_CONFIG.animeStyle.edgeDetection;
+                    const edgePostProcess = new BABYLON.PostProcess(
+                        "edgeDetection",
+                        "edgeDetection",
+                        ["screenSize", "edgeStrength", "edgeWidth", "depthThreshold"],
+                        ["depthSampler"],
+                        1.0,
+                        camera
+                    );
+
+                    edgePostProcess.onApply = (effect) => {
+                        effect.setTexture("depthSampler", scene.enableDepthRenderer(camera).getDepthMap());
+                        effect.setFloat2("screenSize", edgePostProcess.width, edgePostProcess.height);
+                        effect.setFloat("edgeStrength", edgeConfig.edgeStrength);
+                        effect.setFloat("edgeWidth", edgeConfig.edgeWidth);
+                        effect.setFloat("depthThreshold", edgeConfig.depthThreshold);
+                    };
+
+                    log(`[EDGE] Post-process edge detection enabled (strength: ${edgeConfig.edgeStrength}, width: ${edgeConfig.edgeWidth})`);
+                }
             }
 
             // Fog

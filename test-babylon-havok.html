@@ -480,7 +480,7 @@
         // Texture URLs from Babylon.js assets
         const TEXTURE_URLS = {
             // Ground textures
-            grass: 'https://playground.babylonjs.com/textures/grass.png',
+            grass: 'https://i.imgur.com/c3l8U9o.png',  // Better tiling grass texture
             grassNormal: 'https://playground.babylonjs.com/textures/grassn.png',
             rock: 'https://playground.babylonjs.com/textures/rock.png',
             rockNormal: 'https://playground.babylonjs.com/textures/rockn.png',
@@ -714,10 +714,9 @@
             skybox.receiveShadows = false;
 
             // ================================================================
-            // === ARENA GROUND - Procedural (No Tiled Texture) ===
+            // === ARENA GROUND - Tiled Texture + Macro Variation ===
             // ================================================================
-            // The grass texture has inherent checkerboard pattern - don't use it
-            // Instead: procedural colored texture that spans entire arena (no tiling)
+            // Using better grass texture with macro noise overlay to break tiling
             // Combined with vertex colors for battle zone variation
             // ================================================================
 
@@ -725,18 +724,21 @@
                 width: 40, height: 20, subdivisions: 32
             }, scene);
 
-            // === PROCEDURAL GROUND - NO TILED TEXTURES ===
+            // === TILED GRASS + MACRO VARIATION ===
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
 
-            // Single procedural texture spanning entire arena - NO TILING
-            const groundTex = createOrganicGroundTexture(scene, 1024);
+            // Tiled grass texture
+            const groundTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
+            groundTex.uScale = 10;
+            groundTex.vScale = 5;
             mat.diffuseTexture = groundTex;
+            mat.diffuseColor = new BABYLON.Color3(0.85, 0.9, 0.75);
             mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.04);
             mat.specularPower = 16;
 
             ground.material = mat;
 
-            // Vertex colors for battle zone darkening
+            // Vertex colors for battle zone darkening + macro variation
             applyGroundVertexColors(ground);
 
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
@@ -754,16 +756,17 @@
             // ================================================================
             // === EXTENDED HORIZON GROUND ===
             // ================================================================
-            // Large procedural texture, no tiling
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
                 width: 800, height: 800, subdivisions: 8
             }, scene);
             horizonGround.position.y = -0.1;
 
             const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
-            // Large procedural texture for horizon
-            const horizonTex = createOrganicGroundTexture(scene, 2048);
+            const horizonTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
+            horizonTex.uScale = 100;
+            horizonTex.vScale = 100;
             horizonMat.diffuseTexture = horizonTex;
+            horizonMat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.6);
             horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
             horizonMat.fogEnabled = true;
 
@@ -796,7 +799,7 @@
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
             }
 
-            log('[GROUND] Procedural organic texture (no tiling)');
+            log('[GROUND] New grass texture + vertex colors');
         }
 
         // ================================================================

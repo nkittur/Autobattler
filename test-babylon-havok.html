@@ -440,13 +440,13 @@
                 enabled: true,
                 flatShading: true,           // No textures, flat colors only
                 hardShadows: true,           // Sharp shadow edges
-                saturationBoost: 15,         // Mild saturation (was 50)
-                contrastBoost: 1.1,          // Gentle contrast (was 1.25)
+                saturationBoost: 15,         // Mild saturation
+                contrastBoost: 1.1,          // Gentle contrast
                 shadowDarkness: 0.6,         // Dark shadows for 2-tone effect
-                // Black outline edges
-                edgesEnabled: true,
-                edgeWidth: 5.0,              // Very thick black lines
-                edgeColor: new BABYLON.Color4(0, 0, 0, 1),  // Pure black
+                // Inverted Hull outlines (GPU-friendly, vertex-based)
+                outlineEnabled: true,
+                outlineWidth: 0.04,          // Thickness (0.02-0.1 range)
+                outlineColor: new BABYLON.Color3(0, 0, 0),  // Pure black
             }
         };
 
@@ -571,7 +571,7 @@
 
         // ============================================
         // CEL-SHADING MATERIAL HELPER
-        // Removes textures, adds black outlines
+        // Removes textures, adds inverted hull outlines
         // ============================================
         function applyCelShadingToMech(mech) {
             if (!mech || !mech.pelvis) return;
@@ -608,11 +608,12 @@
                     }
                 }
 
-                // Enable black edge outlines on meshes
-                if (VISUAL_CONFIG.animeStyle.edgesEnabled && node.enableEdgesRendering) {
-                    node.enableEdgesRendering();
-                    node.edgesWidth = VISUAL_CONFIG.animeStyle.edgeWidth;
-                    node.edgesColor = VISUAL_CONFIG.animeStyle.edgeColor;
+                // Enable inverted hull outlines (GPU-friendly vertex-based method)
+                // Much faster than edge rendering - works on vertex shader not pixel shader
+                if (VISUAL_CONFIG.animeStyle.outlineEnabled && node.renderOutline !== undefined) {
+                    node.renderOutline = true;
+                    node.outlineWidth = VISUAL_CONFIG.animeStyle.outlineWidth;
+                    node.outlineColor = VISUAL_CONFIG.animeStyle.outlineColor;
                 }
             });
         }
@@ -898,12 +899,12 @@
                 configureMechShadows(allMechs, shadowGenerator);
             }
 
-            // Apply cel-shading to mechs (flat colors + black outlines)
+            // Apply cel-shading to mechs (flat colors + inverted hull outlines)
             if (VISUAL_CONFIG.animeStyle.enabled) {
                 allMechs.forEach(mech => applyCelShadingToMech(mech));
                 const features = [];
                 if (VISUAL_CONFIG.animeStyle.flatShading) features.push('flat colors');
-                if (VISUAL_CONFIG.animeStyle.edgesEnabled) features.push('black outlines');
+                if (VISUAL_CONFIG.animeStyle.outlineEnabled) features.push('inverted hull outlines');
                 log(`[CEL] Applied to ${allMechs.length} mechs: ${features.join(', ')}`);
             }
 

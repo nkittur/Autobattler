@@ -420,14 +420,9 @@
             colorGrading: {
                 enabled: false,              // Disabled per user request
             },
-            // Anime-style outlines using HighlightLayer
+            // HighlightLayer - DISABLED for cleaner cel-shaded look
             rimLight: {
-                enabled: true,
-                playerColor: new BABYLON.Color3(0.0, 0.9, 1.0),    // Vibrant cyan for allies
-                enemyColor: new BABYLON.Color3(1.0, 0.1, 0.2),     // Vibrant red for enemies
-                outerGlow: true,             // Glow outside the mesh
-                innerGlow: false,            // No inner glow
-                blurWidth: 1.0,              // Thicker anime-style outline
+                enabled: false,
             },
             // GPU Particles - efficient chaos
             gpuParticles: {
@@ -440,12 +435,14 @@
             glow: {
                 enabled: false,
             },
-            // Anime/Cel-shading style
+            // Anime/Cel-shading style - ACCENTUATED
             animeStyle: {
                 enabled: true,
-                hardShadows: true,           // Sharp shadow edges (no blur)
-                saturationBoost: 1.2,        // More vibrant colors
-                contrastBoost: 1.15,         // Punchier lighting
+                flatShading: true,           // No textures, flat colors only
+                hardShadows: true,           // Sharp shadow edges
+                saturationBoost: 1.4,        // Very vibrant colors
+                contrastBoost: 1.25,         // High contrast cel look
+                shadowDarkness: 0.6,         // Darker shadows for 2-tone effect
             }
         };
 
@@ -461,21 +458,19 @@
             const isSmallScreen = canvas && (canvas.width < 800 || canvas.height < 600);
 
             if (isMobile || isLowPower || isSmallScreen) {
-                // Mobile/low-end settings
+                // Mobile/low-end settings - cel shaded
                 SHADOW_CONFIG.mapSize = 512;
-                SHADOW_CONFIG.blurKernel = 8;    // Sharper shadows for anime style
-                // Adjust visual effects for mobile
+                SHADOW_CONFIG.blurKernel = 4;    // Very sharp shadows
                 VISUAL_CONFIG.gpuParticles.impactParticleCount = 40;
                 VISUAL_CONFIG.gpuParticles.sparkCount = 8;
                 VISUAL_CONFIG.gpuParticles.smokeCount = 20;
-                VISUAL_CONFIG.ibl.intensity = 0.6;
-                VISUAL_CONFIG.rimLight.blurWidth = 0.6;  // Thinner outlines on mobile
-                log('[QUALITY] Mobile mode - optimized visuals');
+                VISUAL_CONFIG.ibl.intensity = 0.4;  // Lower IBL for flatter look
+                log('[QUALITY] Mobile mode - cel shaded');
             } else {
-                // Desktop settings - anime style with sharp shadows
+                // Desktop settings - full cel shaded look
                 SHADOW_CONFIG.mapSize = 1024;
-                SHADOW_CONFIG.blurKernel = 8;    // Sharp shadows for cel-shaded look
-                log('[QUALITY] Desktop mode - anime style visuals');
+                SHADOW_CONFIG.blurKernel = 4;    // Very sharp shadows for cel look
+                log('[QUALITY] Desktop mode - cel shaded');
             }
         }
 
@@ -566,6 +561,46 @@
                 if (node.getBoundingInfo && node.material) {
                     highlightLayer.addMesh(node, color);
                     addedCount++;
+                }
+            });
+        }
+
+        // ============================================
+        // CEL-SHADING MATERIAL HELPER
+        // Removes textures and specular for flat look
+        // ============================================
+        function applyCelShadingToMech(mech) {
+            if (!VISUAL_CONFIG.animeStyle.flatShading || !mech || !mech.pelvis) return;
+
+            const allNodes = mech.pelvis.getDescendants(false);
+            allNodes.unshift(mech.pelvis);
+
+            // Track processed materials to avoid duplicates
+            const processedMaterials = new Set();
+
+            allNodes.forEach(node => {
+                if (node.material && !processedMaterials.has(node.material.name)) {
+                    const mat = node.material;
+                    processedMaterials.add(mat.name);
+
+                    // Remove diffuse texture for flat color
+                    if (mat.diffuseTexture) {
+                        mat.diffuseTexture = null;
+                    }
+
+                    // Remove bump/normal map
+                    if (mat.bumpTexture) {
+                        mat.bumpTexture = null;
+                    }
+
+                    // Remove specular for flat cel look
+                    mat.specularColor = new BABYLON.Color3(0, 0, 0);
+                    mat.specularPower = 1;
+
+                    // Boost diffuse color slightly for vibrancy
+                    if (mat.diffuseColor) {
+                        mat.diffuseColor = mat.diffuseColor.scale(1.3);
+                    }
                 }
             });
         }
@@ -747,33 +782,38 @@
             // High contrast, sharp edges, stylized look
             // ============================================
 
-            // Ambient light - reduced for more contrast (anime style)
-            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.35;  // Lower ambient for punchier shadows
-            hemi.groundColor = new BABYLON.Color3(0.15, 0.15, 0.2);  // Cool shadow fill
-            hemi.specular = new BABYLON.Color3(0.1, 0.1, 0.1);  // Reduce specular for flatter look
+            // ============================================
+            // CEL-SHADED LIGHTING
+            // Flat colors with hard shadow edges
+            // ============================================
 
-            // DirectionalLight for shadows - positioned to cover entire arena
+            // Ambient light - very low for strong 2-tone cel shading
+            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
+            hemi.intensity = 0.25;  // Very low ambient = stronger shadow contrast
+            hemi.groundColor = new BABYLON.Color3(0.1, 0.1, 0.15);  // Dark cool shadow fill
+            hemi.specular = new BABYLON.Color3(0, 0, 0);  // NO specular for flat cel look
+
+            // DirectionalLight for shadows
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
             sunLight.position = new BABYLON.Vector3(0, 30, 0);
-            sunLight.intensity = 1.8;  // Brighter sun for higher contrast
-            sunLight.specular = new BABYLON.Color3(0.3, 0.3, 0.3);  // Reduced specular
+            sunLight.intensity = 2.0;  // Strong sun for high contrast
+            sunLight.specular = new BABYLON.Color3(0, 0, 0);  // NO specular highlights
 
-            // Expand shadow frustum to cover all mechs
+            // Shadow frustum
             sunLight.shadowMinZ = 1;
             sunLight.shadowMaxZ = 60;
             sunLight.shadowFrustumSize = 50;
 
-            // Shadow generator - SHARP shadows for anime/cel-shaded look
+            // Shadow generator - HARD shadows for cel-shaded look
             if (SHADOW_CONFIG.enabled) {
                 shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
                 shadowGenerator.bias = 0.001;
                 shadowGenerator.normalBias = 0.01;
-                // Use blur exponential for controllable sharp shadows
+                // Use blur exponential with very low blur for sharp edges
                 shadowGenerator.useBlurExponentialShadowMap = true;
-                shadowGenerator.blurKernel = SHADOW_CONFIG.blurKernel;  // Low = sharp
-                shadowGenerator.darkness = 0.5;  // Darker shadows for anime contrast
-                log(`[ANIME] Sharp shadows enabled (blur: ${SHADOW_CONFIG.blurKernel})`);
+                shadowGenerator.blurKernel = SHADOW_CONFIG.blurKernel;  // 4 = very sharp
+                shadowGenerator.darkness = VISUAL_CONFIG.animeStyle.shadowDarkness;  // Dark shadows
+                log(`[CEL] Hard shadows (blur: ${SHADOW_CONFIG.blurKernel}, darkness: ${VISUAL_CONFIG.animeStyle.shadowDarkness})`);
             }
 
             // ============================================
@@ -789,30 +829,29 @@
             }
 
             // ============================================
-            // ANIME STYLE POST-PROCESSING
-            // High contrast, saturated colors, stylized look
+            // CEL-SHADED POST-PROCESSING
+            // High contrast, very saturated flat colors
             // ============================================
             if (VISUAL_CONFIG.animeStyle.enabled) {
                 defaultPipeline = new BABYLON.DefaultRenderingPipeline(
-                    "animePipeline", true, scene, [camera]
+                    "celPipeline", true, scene, [camera]
                 );
 
-                // Image processing for anime-style colors
+                // Image processing for cel-shaded colors
                 defaultPipeline.imageProcessingEnabled = true;
                 defaultPipeline.imageProcessing.contrast = VISUAL_CONFIG.animeStyle.contrastBoost;
-                defaultPipeline.imageProcessing.exposure = 1.05;  // Slightly brighter
+                defaultPipeline.imageProcessing.exposure = 1.1;  // Brighter for vibrant look
 
-                // Tone mapping - use standard for punchier colors
-                defaultPipeline.imageProcessing.toneMappingEnabled = true;
-                defaultPipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_STANDARD;
+                // Tone mapping disabled for more raw/flat colors
+                defaultPipeline.imageProcessing.toneMappingEnabled = false;
 
-                // Boost color saturation for vibrant anime look
+                // Strong saturation boost for cel-shaded vibrancy
                 defaultPipeline.imageProcessing.colorCurvesEnabled = true;
                 const curves = new BABYLON.ColorCurves();
-                curves.globalSaturation = 30;  // Boost saturation
+                curves.globalSaturation = 50;  // Strong saturation for cel look
                 defaultPipeline.imageProcessing.colorCurves = curves;
 
-                log(`[ANIME] Style enabled (contrast: ${VISUAL_CONFIG.animeStyle.contrastBoost}, sat boost: +30)`);
+                log(`[CEL] Post-processing (contrast: ${VISUAL_CONFIG.animeStyle.contrastBoost}, sat: +50)`);
             }
 
             // Fog
@@ -847,7 +886,13 @@
                 configureMechShadows(allMechs, shadowGenerator);
             }
 
-            // Setup highlight layers for rim lighting
+            // Apply cel-shading to mechs (remove textures for flat look)
+            if (VISUAL_CONFIG.animeStyle.flatShading) {
+                allMechs.forEach(mech => applyCelShadingToMech(mech));
+                log(`[CEL] Flat shading applied - textures removed from ${allMechs.length} mechs`);
+            }
+
+            // Setup highlight layers for rim lighting (if enabled)
             setupHighlightLayers(scene);
 
             // Apply rim lighting (highlight outlines) to mechs

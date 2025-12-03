@@ -714,27 +714,42 @@
             skybox.receiveShadows = false;
 
             // ================================================================
-            // === ARENA GROUND with Anti-Tiling Techniques ===
+            // === ARENA GROUND - Macro Variation + Vertex Colors ===
             // ================================================================
-            // KEY INSIGHT: The external grass texture has a regular pattern
-            // that causes obvious tiling. Solution: Generate texture procedurally
-            // with organic noise - NO repeating pattern possible.
+            // Technique 1: Tiled detail texture + large-scale macro noise (lightmap)
+            // Technique 2: Vertex colors to darken battle zone center
+            // This breaks the "repetition frequency" that the eye catches from high up
             // ================================================================
 
             const ground = BABYLON.MeshBuilder.CreateGround('ground', {
                 width: 40, height: 20, subdivisions: 32
             }, scene);
 
-            // Create procedural grass texture - no tiling artifacts
-            const groundTex = createProceduralGrassTexture(scene, 512);
+            // === PBR MATERIAL with Macro Variation ===
+            const mat = new BABYLON.PBRMaterial('groundMat', scene);
 
-            const mat = new BABYLON.StandardMaterial('groundMat', scene);
-            mat.diffuseTexture = groundTex;
-            mat.diffuseColor = new BABYLON.Color3(1, 1, 1);  // Full color from texture
-            mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.04);
-            mat.specularPower = 16;
+            // 1. HIGH-RES TILED TEXTURE (the detail) - repeats many times
+            const albedo = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
+            albedo.uScale = 15;  // Tiled 15x across width
+            albedo.vScale = 7.5; // Tiled to maintain aspect
+            mat.albedoTexture = albedo;
+            mat.albedoColor = new BABYLON.Color3(0.7, 0.75, 0.6);  // Earthy green tint
+
+            // 2. LOW-RES MACRO TEXTURE (the disguise) - spans WHOLE arena
+            // This breaks the grid pattern by adding large-scale variation
+            const macroNoise = createMacroNoiseTexture(scene, 512);
+            mat.lightmapTexture = macroNoise;
+            mat.useLightmapAsShadowmap = true;
+
+            // PBR settings for natural ground
+            mat.metallic = 0;
+            mat.roughness = 0.95;
 
             ground.material = mat;
+
+            // 3. VERTEX COLORS - darken center battle zone
+            applyGroundVertexColors(ground);
+
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
 
@@ -750,23 +765,34 @@
             // ================================================================
             // === EXTENDED HORIZON GROUND ===
             // ================================================================
-            // Use same procedural approach as arena - generates organic blotchy texture
-            // Large texture (1024) stretched across horizon - no tiling needed
+            // Same macro variation approach, stretched across horizon
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
-                width: 800, height: 800, subdivisions: 4
+                width: 800, height: 800, subdivisions: 8
             }, scene);
             horizonGround.position.y = -0.1;
 
-            // Generate large procedural texture - NO TILING, just stretch
-            const horizonTex = createProceduralGrassTexture(scene, 1024);
-            // No uScale/vScale = texture stretches across entire ground
-            const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
-            horizonMat.diffuseTexture = horizonTex;
-            horizonMat.diffuseColor = new BABYLON.Color3(0.9, 0.95, 0.85);  // Slightly brighter to match arena
-            horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
-            horizonMat.fogEnabled = true;
+            const horizonMat = new BABYLON.PBRMaterial('horizonMat', scene);
+
+            // Tiled grass texture (very high tiling for distance)
+            const horizonAlbedo = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
+            horizonAlbedo.uScale = 100;
+            horizonAlbedo.vScale = 100;
+            horizonMat.albedoTexture = horizonAlbedo;
+            horizonMat.albedoColor = new BABYLON.Color3(0.55, 0.6, 0.45);
+
+            // Large macro noise stretched across entire horizon
+            const horizonMacro = createMacroNoiseTexture(scene, 256);
+            horizonMat.lightmapTexture = horizonMacro;
+            horizonMat.useLightmapAsShadowmap = true;
+
+            horizonMat.metallic = 0;
+            horizonMat.roughness = 1.0;
+
             horizonGround.material = horizonMat;
             horizonGround.receiveShadows = false;
+
+            // Vertex colors for horizon too
+            applyGroundVertexColors(horizonGround, true);
 
             // === DISTANT MOUNTAINS ===
             createMountains(scene);
@@ -791,42 +817,43 @@
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
             }
 
-            log('[GROUND] Procedural grass texture (no tiling)');
+            log('[GROUND] Macro variation + vertex colors');
         }
 
         // ================================================================
-        // === PROCEDURAL GRASS TEXTURE ===
+        // === MACRO NOISE TEXTURE (The Disguise) ===
         // ================================================================
-        // Generates a grass-like texture with Canvas API
-        // NO REGULAR PATTERN = NO TILING ARTIFACTS
-        // Uses organic noise, random color variation, and natural-looking detail
+        // Creates a low-res "cloudy" noise texture that spans the whole arena
+        // When multiplied with the tiled detail texture, it breaks the grid pattern
+        // because the eye tracks the large pattern instead of the small tiles
 
-        function createProceduralGrassTexture(scene, size) {
+        function createMacroNoiseTexture(scene, size) {
             const canvas = document.createElement('canvas');
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext('2d');
 
-            // Base grass color - earthy green
-            ctx.fillStyle = '#4d6b3a';
+            // Start with neutral gray (multiplying by 0.5 gray = 50% brightness)
+            ctx.fillStyle = 'rgb(140, 140, 140)';
             ctx.fillRect(0, 0, size, size);
 
-            // Layer 1: Large organic color blobs (macro variation)
-            // This creates the large-scale variation visible from high camera
-            for (let i = 0; i < 30; i++) {
+            // Large cloudy blobs - these create the "macro variation"
+            // Some darker (shadows/wet), some lighter (dry/sunny)
+            for (let i = 0; i < 25; i++) {
                 const x = Math.random() * size;
                 const y = Math.random() * size;
-                const radius = 30 + Math.random() * 80;
+                const radius = size * 0.1 + Math.random() * size * 0.25;
 
-                // Vary hue (green-yellow), saturation, and lightness
-                const hue = 70 + Math.random() * 50;  // 70-120 (yellow-green to green)
-                const sat = 25 + Math.random() * 35;  // 25-60%
-                const light = 22 + Math.random() * 20; // 22-42%
+                // Alternate between darker and lighter patches
+                const isDark = Math.random() > 0.45;
+                const brightness = isDark
+                    ? 80 + Math.random() * 50    // 80-130 (darker patches)
+                    : 150 + Math.random() * 60;  // 150-210 (lighter patches)
 
                 const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, `hsla(${hue}, ${sat}%, ${light}%, 0.8)`);
-                gradient.addColorStop(0.5, `hsla(${hue}, ${sat}%, ${light}%, 0.4)`);
-                gradient.addColorStop(1, `hsla(${hue}, ${sat}%, ${light}%, 0)`);
+                gradient.addColorStop(0, `rgb(${brightness}, ${brightness}, ${brightness})`);
+                gradient.addColorStop(0.5, `rgba(${brightness}, ${brightness}, ${brightness}, 0.5)`);
+                gradient.addColorStop(1, 'rgba(140, 140, 140, 0)');
 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
@@ -834,19 +861,17 @@
                 ctx.fill();
             }
 
-            // Layer 2: Medium patches for mid-range variation
-            for (let i = 0; i < 60; i++) {
+            // Medium variation patches
+            for (let i = 0; i < 40; i++) {
                 const x = Math.random() * size;
                 const y = Math.random() * size;
-                const radius = 10 + Math.random() * 30;
+                const radius = size * 0.03 + Math.random() * size * 0.1;
 
-                const hue = 65 + Math.random() * 55;
-                const sat = 30 + Math.random() * 40;
-                const light = 20 + Math.random() * 25;
+                const brightness = 100 + Math.random() * 100;
 
                 const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, `hsla(${hue}, ${sat}%, ${light}%, 0.6)`);
-                gradient.addColorStop(1, `hsla(${hue}, ${sat}%, ${light}%, 0)`);
+                gradient.addColorStop(0, `rgba(${brightness}, ${brightness}, ${brightness}, 0.6)`);
+                gradient.addColorStop(1, 'rgba(140, 140, 140, 0)');
 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
@@ -854,61 +879,96 @@
                 ctx.fill();
             }
 
-            // Layer 3: Fine noise (thousands of tiny dots for grass texture)
-            const imageData = ctx.getImageData(0, 0, size, size);
-            const data = imageData.data;
-
-            for (let i = 0; i < data.length; i += 4) {
-                // Add random noise to each pixel
-                const noise = (Math.random() - 0.5) * 30;
-                data[i] = Math.max(0, Math.min(255, data[i] + noise));       // R
-                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
-                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise * 0.5)); // B (less noise)
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-
-            // Layer 4: Dirt/brown patches (sparse)
-            ctx.globalAlpha = 0.5;
-            for (let i = 0; i < 15; i++) {
-                const x = Math.random() * size;
-                const y = Math.random() * size;
-                const radius = 15 + Math.random() * 40;
-
-                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, `hsla(35, 40%, 30%, 0.6)`);  // Brown
-                gradient.addColorStop(1, `hsla(35, 40%, 30%, 0)`);
-
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.globalAlpha = 1.0;
-
-            // Layer 5: Subtle highlights (dry grass / sun spots)
+            // Soft streaks (simulate weathering/traffic patterns)
             ctx.globalAlpha = 0.3;
-            for (let i = 0; i < 20; i++) {
-                const x = Math.random() * size;
-                const y = Math.random() * size;
-                const radius = 8 + Math.random() * 25;
+            for (let i = 0; i < 8; i++) {
+                const startX = Math.random() * size;
+                const startY = Math.random() * size;
+                const length = size * 0.3 + Math.random() * size * 0.4;
+                const angle = Math.random() * Math.PI * 2;
 
-                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, `hsla(55, 50%, 50%, 0.5)`);  // Yellow-ish
-                gradient.addColorStop(1, `hsla(55, 50%, 50%, 0)`);
+                const brightness = 90 + Math.random() * 80;
+                ctx.strokeStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+                ctx.lineWidth = 20 + Math.random() * 40;
+                ctx.lineCap = 'round';
 
-                ctx.fillStyle = gradient;
                 ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(startX, startY);
+                ctx.quadraticCurveTo(
+                    startX + Math.cos(angle) * length * 0.5 + (Math.random() - 0.5) * 50,
+                    startY + Math.sin(angle) * length * 0.5 + (Math.random() - 0.5) * 50,
+                    startX + Math.cos(angle) * length,
+                    startY + Math.sin(angle) * length
+                );
+                ctx.stroke();
             }
             ctx.globalAlpha = 1.0;
 
-            // Create Babylon DynamicTexture from canvas
-            const texture = new BABYLON.DynamicTexture('proceduralGrass', canvas, scene, false);
+            // Create Babylon texture
+            const texture = new BABYLON.DynamicTexture('macroNoise', canvas, scene, false);
             texture.update();
 
             return texture;
+        }
+
+        // ================================================================
+        // === VERTEX COLORS (Darken Battle Zone) ===
+        // ================================================================
+        // Paints ground mesh vertices based on distance from center
+        // Center = darker (scorched battle zone), edges = lighter
+        // This is FREE on GPU and breaks repetition pattern
+
+        function applyGroundVertexColors(ground, isHorizon = false) {
+            const positions = ground.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+            if (!positions) return;
+
+            const vertexCount = positions.length / 3;
+            const colors = new Float32Array(vertexCount * 4);  // RGBA
+
+            // Ground dimensions (from mesh)
+            const boundingInfo = ground.getBoundingInfo();
+            const halfWidth = (boundingInfo.maximum.x - boundingInfo.minimum.x) / 2;
+            const halfDepth = (boundingInfo.maximum.z - boundingInfo.minimum.z) / 2;
+
+            for (let i = 0; i < vertexCount; i++) {
+                const x = positions[i * 3];
+                const z = positions[i * 3 + 2];
+
+                // Normalized distance from center (0 = center, 1 = edge)
+                const distX = Math.abs(x) / halfWidth;
+                const distZ = Math.abs(z) / halfDepth;
+                const dist = Math.sqrt(distX * distX + distZ * distZ) / Math.sqrt(2);
+
+                // Add random variation to break uniformity
+                const noise = (Math.random() - 0.5) * 0.15;
+
+                if (isHorizon) {
+                    // Horizon: slight variation, generally uniform
+                    const brightness = 0.85 + noise * 0.5;
+                    colors[i * 4] = brightness;
+                    colors[i * 4 + 1] = brightness + 0.02;
+                    colors[i * 4 + 2] = brightness - 0.02;
+                    colors[i * 4 + 3] = 1.0;
+                } else {
+                    // Arena: darken center (battle zone), lighter edges
+                    // Center brightness ~0.7, edge brightness ~1.0
+                    const centerDarkness = 0.7;
+                    const brightness = centerDarkness + (1.0 - centerDarkness) * dist + noise;
+
+                    // Slight color variation (more brown in center, more green at edges)
+                    colors[i * 4] = Math.max(0.5, Math.min(1.0, brightness + 0.03));      // R
+                    colors[i * 4 + 1] = Math.max(0.5, Math.min(1.0, brightness + 0.01));  // G
+                    colors[i * 4 + 2] = Math.max(0.4, Math.min(0.95, brightness - 0.05)); // B
+                    colors[i * 4 + 3] = 1.0;  // A
+                }
+            }
+
+            ground.setVerticesData(BABYLON.VertexBuffer.ColorKind, colors);
+
+            // Enable vertex colors in material
+            if (ground.material) {
+                ground.material.useVertexColors = true;
+            }
         }
 
         // ================================================================

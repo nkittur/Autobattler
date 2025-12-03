@@ -445,7 +445,7 @@
                 shadowDarkness: 0.6,         // Dark shadows for 2-tone effect
                 // Inverted Hull outlines (GPU-friendly, vertex-based)
                 outlineEnabled: true,
-                outlineWidth: 0.04,          // Thickness (0.02-0.1 range)
+                outlineWidth: 0.15,          // Thickness (increased for visibility)
                 outlineColor: new BABYLON.Color3(0, 0, 0),  // Pure black
             }
         };
@@ -3949,6 +3949,7 @@
                     age += 30;
                     if (age > 500) {
                         clearInterval(sparkUpdate);
+                        sparkMat.dispose();  // Dispose material first
                         spark.dispose();
                         return;
                     }
@@ -4503,7 +4504,7 @@
                     { mass: 0.8, friction: 0, restitution: 0.1 }, scene);
                 agg.body.setLinearVelocity(dir.scale(weapon.projectileSpeed));
 
-                projectiles.push({ mesh: proj, aggregate: agg, weapon, target: to, firedAt: Date.now() });
+                projectiles.push({ mesh: proj, material: mat, aggregate: agg, weapon, target: to, firedAt: Date.now() });
                 createMuzzleFlash(start, weapon.color);
                 log(`[PROJ] Projectile created successfully`);
             } catch (e) {
@@ -4633,7 +4634,7 @@
                     agg.body.setLinearVelocity(dir.scale(weapon.projectileSpeed));
 
                     projectiles.push({
-                        mesh: missile, aggregate: agg,
+                        mesh: missile, material: mat, aggregate: agg,
                         weapon: { ...weapon, damage: weapon.damage / weapon.clusterCount },
                         target: to, firedAt: Date.now(), isMissile: true
                     });
@@ -4780,12 +4781,19 @@
             const now = Date.now();
             projectiles = projectiles.filter(p => {
                 try {
-                    if (now - p.firedAt > 3500) { p.mesh.dispose(); return false; }
+                    // Helper to dispose projectile properly
+                    const disposeProjectile = () => {
+                        if (p.material) p.material.dispose();
+                        if (p.trail) p.trail.dispose();  // Dispose missile trail
+                        p.mesh.dispose();
+                    };
+
+                    if (now - p.firedAt > 3500) { disposeProjectile(); return false; }
 
                     // Safety check for target and torso
                     if (!p.target || !p.target.torso) {
                         log(`[WARN] Projectile has invalid target, removing`, 'warn');
-                        p.mesh.dispose();
+                        disposeProjectile();
                         return false;
                     }
 
@@ -4794,12 +4802,12 @@
                         applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1);
                         log(`HIT! ${p.target.name} -${p.weapon.damage} (${p.target.currentHP}/${p.target.maxHP})`, 'warn');
                         createImpact(p.mesh.position.clone(), p.weapon.color);
-                        p.mesh.dispose();
+                        disposeProjectile();
                         return false;
                     }
 
                     if (p.mesh.position.y < -2 || Math.abs(p.mesh.position.x) > 22) {
-                        p.mesh.dispose();
+                        disposeProjectile();
                         return false;
                     }
 
@@ -4807,6 +4815,8 @@
                     return true;
                 } catch (e) {
                     console.error('[PROJECTILE ERROR]', e);
+                    try { if (p.material) p.material.dispose(); } catch (e2) {}
+                    try { if (p.trail) p.trail.dispose(); } catch (e2) {}
                     try { p.mesh.dispose(); } catch (e2) {}
                     return false;
                 }
@@ -4817,7 +4827,11 @@
             const now = Date.now();
             beams = beams.filter(b => {
                 const age = now - b.createdAt;
-                if (age > b.duration) { b.mesh.dispose(); return false; }
+                if (age > b.duration) {
+                    b.material.dispose();  // Dispose material first
+                    b.mesh.dispose();
+                    return false;
+                }
                 b.material.alpha = 0.85 * (1 - age / b.duration);
                 return true;
             });
@@ -4857,7 +4871,11 @@
             let a = 1;
             const int = setInterval(() => {
                 a -= 0.18;
-                if (a <= 0) { clearInterval(int); flash.dispose(); }
+                if (a <= 0) {
+                    clearInterval(int);
+                    mat.dispose();  // Dispose material first
+                    flash.dispose();
+                }
                 else flash.scaling.setAll(a);
             }, 16);
         }

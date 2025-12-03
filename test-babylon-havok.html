@@ -711,62 +711,67 @@
             skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
             skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
             skybox.material = skyboxMaterial;
-            // Skybox should NOT receive or cast shadows
             skybox.receiveShadows = false;
 
-            // === ARENA GROUND (with physics) - RECEIVES SHADOWS ===
-            // Use higher subdivisions for more organic look
+            // ================================================================
+            // === ARENA GROUND with Anti-Tiling Techniques ===
+            // ================================================================
+            // KEY INSIGHT: The external grass texture has a regular pattern
+            // that causes obvious tiling. Solution: Generate texture procedurally
+            // with organic noise - NO repeating pattern possible.
+            // ================================================================
+
             const ground = BABYLON.MeshBuilder.CreateGround('ground', {
                 width: 40, height: 20, subdivisions: 32
             }, scene);
+
+            // Create procedural grass texture - no tiling artifacts
+            const groundTex = createProceduralGrassTexture(scene, 512);
+
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
-
-            // Higher tiling for less obvious pattern repetition
-            const groundTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
-            groundTex.uScale = 20;  // More tiling = smaller pattern = less obvious
-            groundTex.vScale = 10;
             mat.diffuseTexture = groundTex;
-            mat.diffuseColor = new BABYLON.Color3(0.6, 0.65, 0.5);  // Earthy tone
-
-            const groundNormal = new BABYLON.Texture(TEXTURE_URLS.grassNormal, scene);
-            groundNormal.uScale = 20;
-            groundNormal.vScale = 10;
-            mat.bumpTexture = groundNormal;
-            mat.bumpTexture.level = 1.2;  // More bump for organic feel
+            mat.diffuseColor = new BABYLON.Color3(1, 1, 1);  // Full color from texture
             mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.04);
-            mat.specularPower = 8;
+            mat.specularPower = 16;
+
             ground.material = mat;
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
 
-            // Ground receives shadows from mechs and rocks
             if (shadowGen) {
                 ground.receiveShadows = true;
-                log('[SHADOWS] Ground receiving');
             }
 
-            // === EXTENDED GROUND (horizon, no physics) ===
+            // ================================================================
+            // === THIN INSTANCE DEBRIS SCATTER ===
+            // ================================================================
+            createDebrisScatter(scene, shadowGen);
+
+            // ================================================================
+            // === EXTENDED HORIZON GROUND ===
+            // ================================================================
+            // Use same procedural approach as arena - generates organic blotchy texture
+            // Large texture (1024) stretched across horizon - no tiling needed
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
                 width: 800, height: 800, subdivisions: 4
             }, scene);
-            horizonGround.position.y = -0.1;  // Slightly below arena
+            horizonGround.position.y = -0.1;
+
+            // Generate large procedural texture - NO TILING, just stretch
+            const horizonTex = createProceduralGrassTexture(scene, 1024);
+            // No uScale/vScale = texture stretches across entire ground
             const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
-            // Much higher tiling for horizon - pattern invisible at distance
-            const horizonGrass = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
-            horizonGrass.uScale = 200;
-            horizonGrass.vScale = 200;
-            horizonMat.diffuseTexture = horizonGrass;
-            horizonMat.diffuseColor = new BABYLON.Color3(0.45, 0.5, 0.4);  // Muted earth tone
+            horizonMat.diffuseTexture = horizonTex;
+            horizonMat.diffuseColor = new BABYLON.Color3(0.9, 0.95, 0.85);  // Slightly brighter to match arena
             horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
-            horizonMat.fogEnabled = true;  // Let fog blend it to horizon
+            horizonMat.fogEnabled = true;
             horizonGround.material = horizonMat;
-            // Horizon ground does NOT need shadows (too far, performance waste)
             horizonGround.receiveShadows = false;
 
             // === DISTANT MOUNTAINS ===
             createMountains(scene);
 
-            // === ARENA ROCKS - Cast AND receive shadows ===
+            // === ARENA ROCKS (larger, decorative) ===
             const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
             rockMat.diffuseTexture = TEXTURES.rock;
             rockMat.bumpTexture = TEXTURES.rockNormal;
@@ -784,15 +789,280 @@
                 rock.rotation.y = Math.random() * Math.PI;
                 rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
-
-                // Rocks cast and receive shadows - DISABLED in v10.8
-                // if (shadowGen) {
-                //     shadowGen.addShadowCaster(rock);
-                //     rock.receiveShadows = true;
-                // }
             }
 
-            // Rocks don't cast shadows (only mechs do)
+            log('[GROUND] Procedural grass texture (no tiling)');
+        }
+
+        // ================================================================
+        // === PROCEDURAL GRASS TEXTURE ===
+        // ================================================================
+        // Generates a grass-like texture with Canvas API
+        // NO REGULAR PATTERN = NO TILING ARTIFACTS
+        // Uses organic noise, random color variation, and natural-looking detail
+
+        function createProceduralGrassTexture(scene, size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Base grass color - earthy green
+            ctx.fillStyle = '#4d6b3a';
+            ctx.fillRect(0, 0, size, size);
+
+            // Layer 1: Large organic color blobs (macro variation)
+            // This creates the large-scale variation visible from high camera
+            for (let i = 0; i < 30; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = 30 + Math.random() * 80;
+
+                // Vary hue (green-yellow), saturation, and lightness
+                const hue = 70 + Math.random() * 50;  // 70-120 (yellow-green to green)
+                const sat = 25 + Math.random() * 35;  // 25-60%
+                const light = 22 + Math.random() * 20; // 22-42%
+
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, `hsla(${hue}, ${sat}%, ${light}%, 0.8)`);
+                gradient.addColorStop(0.5, `hsla(${hue}, ${sat}%, ${light}%, 0.4)`);
+                gradient.addColorStop(1, `hsla(${hue}, ${sat}%, ${light}%, 0)`);
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Layer 2: Medium patches for mid-range variation
+            for (let i = 0; i < 60; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = 10 + Math.random() * 30;
+
+                const hue = 65 + Math.random() * 55;
+                const sat = 30 + Math.random() * 40;
+                const light = 20 + Math.random() * 25;
+
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, `hsla(${hue}, ${sat}%, ${light}%, 0.6)`);
+                gradient.addColorStop(1, `hsla(${hue}, ${sat}%, ${light}%, 0)`);
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Layer 3: Fine noise (thousands of tiny dots for grass texture)
+            const imageData = ctx.getImageData(0, 0, size, size);
+            const data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                // Add random noise to each pixel
+                const noise = (Math.random() - 0.5) * 30;
+                data[i] = Math.max(0, Math.min(255, data[i] + noise));       // R
+                data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise)); // G
+                data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise * 0.5)); // B (less noise)
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            // Layer 4: Dirt/brown patches (sparse)
+            ctx.globalAlpha = 0.5;
+            for (let i = 0; i < 15; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = 15 + Math.random() * 40;
+
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, `hsla(35, 40%, 30%, 0.6)`);  // Brown
+                gradient.addColorStop(1, `hsla(35, 40%, 30%, 0)`);
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+
+            // Layer 5: Subtle highlights (dry grass / sun spots)
+            ctx.globalAlpha = 0.3;
+            for (let i = 0; i < 20; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = 8 + Math.random() * 25;
+
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, `hsla(55, 50%, 50%, 0.5)`);  // Yellow-ish
+                gradient.addColorStop(1, `hsla(55, 50%, 50%, 0)`);
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+
+            // Create Babylon DynamicTexture from canvas
+            const texture = new BABYLON.DynamicTexture('proceduralGrass', canvas, scene, false);
+            texture.update();
+
+            return texture;
+        }
+
+        // ================================================================
+        // === THIN INSTANCE DEBRIS SCATTER ===
+        // ================================================================
+        // Creates hundreds of small debris items with the cost of ~1 draw call
+        // This is the "Cover-Up" technique that hides ground tiling
+
+        function createDebrisScatter(scene, shadowGen) {
+            // === SMALL ROCKS/PEBBLES ===
+            // Larger base size so they're visible
+            const pebble = BABYLON.MeshBuilder.CreateBox('pebble', {
+                width: 0.25, height: 0.12, depth: 0.2
+            }, scene);
+            pebble.isVisible = false;  // Template is invisible
+
+            // Use textured material for visible rocks
+            const debrisMat = new BABYLON.StandardMaterial('debrisMat', scene);
+            debrisMat.diffuseTexture = new BABYLON.Texture(TEXTURE_URLS.rock, scene);
+            debrisMat.diffuseColor = new BABYLON.Color3(0.55, 0.5, 0.45);
+            debrisMat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
+            pebble.material = debrisMat;
+
+            // Create transformation matrices for each debris piece
+            const debrisCount = 150;  // Moderate count
+            const matrices = [];
+
+            for (let i = 0; i < debrisCount; i++) {
+                // Random position across arena (40x20)
+                const x = (Math.random() - 0.5) * 36;
+                const z = (Math.random() - 0.5) * 16;
+                const y = 0.04;  // Sit on ground
+
+                // Larger scale variation (0.8x to 2.5x) so some are very visible
+                const scale = 0.8 + Math.random() * 1.7;
+
+                // Random Y rotation
+                const rotY = Math.random() * Math.PI * 2;
+                // Slight tilt for natural look
+                const rotX = (Math.random() - 0.5) * 0.3;
+                const rotZ = (Math.random() - 0.5) * 0.3;
+
+                // Build transformation matrix
+                const matrix = BABYLON.Matrix.Compose(
+                    new BABYLON.Vector3(scale, scale * (0.4 + Math.random() * 0.4), scale),
+                    BABYLON.Quaternion.RotationYawPitchRoll(rotY, rotX, rotZ),
+                    new BABYLON.Vector3(x, y, z)
+                );
+                matrices.push(matrix);
+            }
+
+            // Add all instances at once (single draw call)
+            pebble.thinInstanceAdd(matrices);
+            pebble.thinInstanceEnablePicking = false;
+
+            log(`[DEBRIS] ${debrisCount} rock instances`);
+
+            // === GRASS TUFTS / DEAD VEGETATION ===
+            // Small vertical boxes to simulate grass clumps
+            const grassTuft = BABYLON.MeshBuilder.CreateBox('grassTuft', {
+                width: 0.08, height: 0.2, depth: 0.08
+            }, scene);
+            grassTuft.isVisible = false;
+
+            const grassMat = new BABYLON.StandardMaterial('grassMat', scene);
+            grassMat.diffuseColor = new BABYLON.Color3(0.45, 0.55, 0.3);  // Yellow-green dead grass
+            grassMat.specularColor = new BABYLON.Color3(0, 0, 0);
+            grassTuft.material = grassMat;
+
+            const grassMatrices = [];
+            for (let i = 0; i < 120; i++) {
+                const x = (Math.random() - 0.5) * 38;
+                const z = (Math.random() - 0.5) * 18;
+                const scale = 0.6 + Math.random() * 1.0;
+                const rotY = Math.random() * Math.PI * 2;
+
+                const matrix = BABYLON.Matrix.Compose(
+                    new BABYLON.Vector3(scale, scale * (0.8 + Math.random() * 0.8), scale),
+                    BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
+                    new BABYLON.Vector3(x, 0.08, z)
+                );
+                grassMatrices.push(matrix);
+            }
+
+            grassTuft.thinInstanceAdd(grassMatrices);
+            grassTuft.thinInstanceEnablePicking = false;
+
+            // === Dirt/mud patches using decal-style flat planes ===
+            createDirtPatches(scene);
+        }
+
+        // ================================================================
+        // === DIRT PATCHES - Texture Splatting Lite ===
+        // ================================================================
+        // Overlays dirt texture patches on the ground to simulate paths/wear
+        // This is a lightweight alternative to full terrain splatting
+
+        function createDirtPatches(scene) {
+            // Create a flat plane for dirt patches - LARGE for high camera visibility
+            const dirtPatch = BABYLON.MeshBuilder.CreateGround('dirtPatch', {
+                width: 1, height: 1
+            }, scene);
+            dirtPatch.isVisible = false;
+
+            // Dirt material - more visible brown/tan color
+            const dirtMat = new BABYLON.StandardMaterial('dirtMat', scene);
+            const dirtTex = new BABYLON.Texture(TEXTURE_URLS.rock, scene);
+            dirtTex.uScale = 0.5;  // Low tiling so texture is visible
+            dirtTex.vScale = 0.5;
+            dirtMat.diffuseTexture = dirtTex;
+            dirtMat.diffuseColor = new BABYLON.Color3(0.6, 0.5, 0.38);  // Tan/brown dirt
+            dirtMat.specularColor = new BABYLON.Color3(0, 0, 0);
+            dirtMat.alpha = 0.55;  // Semi-transparent for blending
+            dirtPatch.material = dirtMat;
+
+            const patchMatrices = [];
+
+            // LARGE battle lane patches - visible from high camera
+            // Center horizontal strip where mechs fight
+            for (let i = 0; i < 8; i++) {
+                const x = -15 + i * 4 + (Math.random() - 0.5) * 3;
+                const z = (Math.random() - 0.5) * 5;
+                // MUCH larger scale: 5-10 units instead of 2-3
+                const scale = 5 + Math.random() * 5;
+                const rotY = Math.random() * Math.PI;
+
+                const matrix = BABYLON.Matrix.Compose(
+                    new BABYLON.Vector3(scale, 1, scale * (0.5 + Math.random() * 0.5)),
+                    BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
+                    new BABYLON.Vector3(x, 0.03, z)  // Above noise overlay
+                );
+                patchMatrices.push(matrix);
+            }
+
+            // Large scattered patches covering more ground
+            for (let i = 0; i < 12; i++) {
+                const x = (Math.random() - 0.5) * 35;
+                const z = (Math.random() - 0.5) * 16;
+                // Large patches: 4-9 units
+                const scale = 4 + Math.random() * 5;
+                const rotY = Math.random() * Math.PI;
+
+                const matrix = BABYLON.Matrix.Compose(
+                    new BABYLON.Vector3(scale, 1, scale * (0.7 + Math.random() * 0.3)),
+                    BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
+                    new BABYLON.Vector3(x, 0.03, z)
+                );
+                patchMatrices.push(matrix);
+            }
+
+            dirtPatch.thinInstanceAdd(patchMatrices);
+            dirtPatch.thinInstanceEnablePicking = false;
+
+            log('[DIRT] 20 large patches for ground variation');
         }
 
         function createMountains(scene) {

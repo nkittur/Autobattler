@@ -416,23 +416,18 @@
                 // Using Babylon's built-in environment for faster loading
                 envUrl: 'https://assets.babylonjs.com/environments/environmentSpecular.env'
             },
-            // Color Grading (LUT) - cinematic sci-fi feel
+            // Color Grading - DISABLED
             colorGrading: {
-                enabled: true,
-                contrast: 1.15,              // Slightly higher contrast
-                exposure: 1.0,               // Neutral exposure
-                saturation: 1.1,             // Slightly boosted colors
-                vignetteEnabled: true,
-                vignetteWeight: 0.3,         // Subtle darkened edges
+                enabled: false,              // Disabled per user request
             },
-            // Fresnel Rim Lighting - silhouette pop
+            // Fresnel Rim Lighting - silhouette pop (BOOSTED for visibility)
             fresnel: {
                 enabled: true,
-                playerColor: new BABYLON.Color3(0.2, 0.6, 1.0),    // Blue rim for allies
-                enemyColor: new BABYLON.Color3(1.0, 0.3, 0.2),     // Red rim for enemies
-                bias: 0.4,                   // Start of rim effect
-                power: 2.5,                  // Sharpness of edge
-                intensity: 0.35,             // Rim brightness
+                playerColor: new BABYLON.Color3(0.3, 0.8, 1.0),    // Bright cyan for allies
+                enemyColor: new BABYLON.Color3(1.0, 0.2, 0.1),     // Bright red for enemies
+                bias: 0.1,                   // Lower = more of the surface glows
+                power: 1.5,                  // Lower = softer, wider rim
+                intensity: 0.8,              // Much brighter rim (was 0.35)
             },
             // GPU Particles - efficient chaos
             gpuParticles: {
@@ -441,12 +436,12 @@
                 sparkCount: 15,              // Metal spark particles
                 smokeCount: 40,              // Smoke particles for damage
             },
-            // Glow Layer (Bloom) - sci-fi glow
+            // Glow Layer (Bloom) - sci-fi glow (DRAMATIC)
             glow: {
                 enabled: true,
-                intensity: 0.5,              // Glow brightness
-                blurKernelSize: 32,          // Blur spread (desktop)
-                mobileBlurKernel: 16,        // Smaller for mobile
+                intensity: 1.2,              // Much brighter glow (was 0.5)
+                blurKernelSize: 64,          // Larger blur spread (was 32)
+                mobileBlurKernel: 32,        // Larger for mobile too (was 16)
             }
         };
 
@@ -519,7 +514,7 @@
 
         // ============================================
         // FRESNEL RIM LIGHTING HELPER
-        // Adds silhouette pop to mech materials
+        // Adds obvious silhouette pop to mech materials
         // ============================================
         function applyFresnelRimLight(material, isPlayer) {
             if (!VISUAL_CONFIG.fresnel.enabled) return;
@@ -531,11 +526,12 @@
             // Set emissive color for the rim glow (scaled by intensity)
             material.emissiveColor = rimColor.scale(VISUAL_CONFIG.fresnel.intensity);
 
-            // Fresnel parameters for edge detection
+            // Fresnel parameters for edge detection - BOOSTED for visibility
             material.emissiveFresnelParameters = new BABYLON.FresnelParameters();
             material.emissiveFresnelParameters.bias = VISUAL_CONFIG.fresnel.bias;
             material.emissiveFresnelParameters.power = VISUAL_CONFIG.fresnel.power;
-            material.emissiveFresnelParameters.leftColor = rimColor;
+            // Left color is the edge (rim), right color is the center
+            material.emissiveFresnelParameters.leftColor = rimColor.scale(1.2); // Boost edge
             material.emissiveFresnelParameters.rightColor = BABYLON.Color3.Black();
         }
 
@@ -546,12 +542,16 @@
             const allNodes = mech.pelvis.getDescendants(false);
             allNodes.unshift(mech.pelvis);
 
+            let appliedCount = 0;
             allNodes.forEach(node => {
                 if (node.material && node.material instanceof BABYLON.StandardMaterial) {
                     const name = node.material.name.toLowerCase();
-                    // Only apply to primary/secondary armor materials (not cockpit, chrome, etc.)
-                    if (name.includes('primary') || name.includes('secondary')) {
+                    // Apply to most armor materials (not cockpit, chrome, or dark)
+                    // Expanded list for more visible rim lighting
+                    if (name.includes('primary') || name.includes('secondary') ||
+                        name.includes('metal') || name.includes('accent')) {
                         applyFresnelRimLight(node.material, mech.isPlayer);
+                        appliedCount++;
                     }
                 }
             });
@@ -803,16 +803,16 @@
             }
 
             // ============================================
-            // GLOW LAYER - Sci-Fi Bloom Effect
+            // GLOW LAYER - Sci-Fi Bloom Effect (DRAMATIC)
             // ============================================
             if (VISUAL_CONFIG.glow.enabled) {
                 glowLayer = new BABYLON.GlowLayer("glowLayer", scene, {
-                    mainTextureFixedSize: 256,  // Fixed size for performance
+                    mainTextureFixedSize: 512,  // Higher res for dramatic glow
                     blurKernelSize: VISUAL_CONFIG.glow.blurKernelSize
                 });
                 glowLayer.intensity = VISUAL_CONFIG.glow.intensity;
 
-                // Optimization: Only glow emissive elements (lasers, thrusters, cockpits)
+                // Dramatic glow for emissive elements (lasers, thrusters, cockpits)
                 glowLayer.customEmissiveColorSelector = function(mesh, subMesh, material, result) {
                     const name = mesh.name.toLowerCase();
                     // Check if this is a glowing element
@@ -821,12 +821,12 @@
                         name.includes('vent') || name.includes('eye') ||
                         name.includes('barrel') || name.includes('flash') ||
                         name.includes('beam')) {
-                        // Use the material's emissive color for glow
+                        // Boost emissive color for dramatic glow
                         if (material.emissiveColor) {
                             result.set(
-                                material.emissiveColor.r,
-                                material.emissiveColor.g,
-                                material.emissiveColor.b,
+                                Math.min(1, material.emissiveColor.r * 1.5),
+                                Math.min(1, material.emissiveColor.g * 1.5),
+                                Math.min(1, material.emissiveColor.b * 1.5),
                                 1
                             );
                         } else {
@@ -838,7 +838,7 @@
                     }
                 };
 
-                log(`[GLOW] Layer enabled (intensity: ${VISUAL_CONFIG.glow.intensity})`);
+                log(`[GLOW] Dramatic glow enabled (intensity: ${VISUAL_CONFIG.glow.intensity})`);
             }
 
             // Fog

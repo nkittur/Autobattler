@@ -1991,37 +1991,53 @@
                 vent.material = ventMat;
             }
 
-            // === COCKPIT / HEAD - Detailed ===
-            const headBase = BABYLON.MeshBuilder.CreateBox(name + '_headBase', {
-                width: 0.6, height: 0.35, depth: 0.5
-            }, scene);
-            headBase.position = new BABYLON.Vector3(0, 0.55, 0.25);
-            headBase.parent = torsoUpper;
-            headBase.material = primaryMat;
+            // === COCKPIT / HEAD - Mounted on front of torso ===
+            // Large rounded cockpit pod (Mad Cat signature look)
+            const headBase = new BABYLON.TransformNode(name + '_headBase', scene);
+            headBase.position = new BABYLON.Vector3(0, 0.1, 0.6);
+            headBase.parent = torsoCore;
 
-            // Large conical cockpit (Mad Cat signature look)
-            const canopy = BABYLON.MeshBuilder.CreateCylinder(name + '_canopy', {
-                height: 1.4, diameterTop: 0.2, diameterBottom: 1.1, tessellation: 12
+            // Main cockpit body - tapered cylinder with rounded front
+            const cockpitBody = BABYLON.MeshBuilder.CreateCylinder(name + '_cockpitBody', {
+                height: 1.2, diameterTop: 0.5, diameterBottom: 1.0, tessellation: 16
             }, scene);
-            canopy.rotation.x = Math.PI / 2;  // Point forward
-            canopy.position = new BABYLON.Vector3(0, -0.3, 0.7);
+            cockpitBody.rotation.x = Math.PI / 2;  // Point forward
+            cockpitBody.position = new BABYLON.Vector3(0, 0, 0.4);
+            cockpitBody.parent = headBase;
+            cockpitBody.material = primaryMat;
+
+            // Rounded nose cap (hemisphere)
+            const noseCap = BABYLON.MeshBuilder.CreateSphere(name + '_noseCap', {
+                diameter: 0.5, slice: 0.5, tessellation: 12
+            }, scene);
+            noseCap.rotation.x = -Math.PI / 2;  // Point forward
+            noseCap.position = new BABYLON.Vector3(0, 0, 1.0);
+            noseCap.parent = headBase;
+            noseCap.material = primaryMat;
+
+            // Cockpit window (smaller, inset)
+            const canopy = BABYLON.MeshBuilder.CreateCylinder(name + '_canopy', {
+                height: 0.6, diameterTop: 0.2, diameterBottom: 0.45, tessellation: 12
+            }, scene);
+            canopy.rotation.x = Math.PI / 2;
+            canopy.position = new BABYLON.Vector3(0, 0.15, 0.5);
             canopy.parent = headBase;
             canopy.material = cockpitMat;
 
-            // Cockpit frame rings
+            // Frame rings around cockpit body
             const frame1 = BABYLON.MeshBuilder.CreateTorus(name + '_frame1', {
-                diameter: 0.85, thickness: 0.06, tessellation: 16
+                diameter: 0.95, thickness: 0.06, tessellation: 16
             }, scene);
             frame1.rotation.x = Math.PI / 2;
-            frame1.position = new BABYLON.Vector3(0, -0.3, 0.35);
+            frame1.position = new BABYLON.Vector3(0, 0, 0.1);
             frame1.parent = headBase;
             frame1.material = darkMat;
 
             const frame2 = BABYLON.MeshBuilder.CreateTorus(name + '_frame2', {
-                diameter: 0.55, thickness: 0.05, tessellation: 16
+                diameter: 0.7, thickness: 0.05, tessellation: 16
             }, scene);
             frame2.rotation.x = Math.PI / 2;
-            frame2.position = new BABYLON.Vector3(0, -0.3, 0.85);
+            frame2.position = new BABYLON.Vector3(0, 0, 0.65);
             frame2.parent = headBase;
             frame2.material = darkMat;
 
@@ -2544,46 +2560,62 @@
                 exhaust.material = exMat;
             }
 
-            // === HEAD (Smaller, bunker-style) ===
-            const headBase = BABYLON.MeshBuilder.CreateBox(name + '_headBase', {
-                width: 0.55 * scale, height: 0.35 * scale, depth: 0.45 * scale
-            }, scene);
-            headBase.position = new BABYLON.Vector3(0, 0.55 * scale, 0.2 * scale);
-            headBase.parent = torsoUpper;
-            headBase.material = primaryMat;
+            // === COCKPIT / HEAD - Mounted on front of torso ===
+            // Large rounded cockpit pod (Dire Wolf style - bigger than Mad Cat)
+            const headBase = new BABYLON.TransformNode(name + '_headBase', scene);
+            headBase.position = new BABYLON.Vector3(0, 0.15 * scale, 0.65 * scale);
+            headBase.parent = torsoCore;
 
-            // Large conical cockpit (Dire Wolf style)
-            const canopy = BABYLON.MeshBuilder.CreateCylinder(name + '_canopy', {
-                height: 1.6 * scale, diameterTop: 0.25 * scale, diameterBottom: 1.3 * scale, tessellation: 12
+            // Main cockpit body - tapered cylinder with rounded front
+            const cockpitBody = BABYLON.MeshBuilder.CreateCylinder(name + '_cockpitBody', {
+                height: 1.4 * scale, diameterTop: 0.6 * scale, diameterBottom: 1.15 * scale, tessellation: 16
             }, scene);
-            canopy.rotation.x = Math.PI / 2;  // Point forward
-            canopy.position = new BABYLON.Vector3(0, -0.25 * scale, 0.8 * scale);
+            cockpitBody.rotation.x = Math.PI / 2;  // Point forward
+            cockpitBody.position = new BABYLON.Vector3(0, 0, 0.5 * scale);
+            cockpitBody.parent = headBase;
+            cockpitBody.material = primaryMat;
+
+            // Rounded nose cap (hemisphere)
+            const noseCap = BABYLON.MeshBuilder.CreateSphere(name + '_noseCap', {
+                diameter: 0.6 * scale, slice: 0.5, tessellation: 12
+            }, scene);
+            noseCap.rotation.x = -Math.PI / 2;  // Point forward
+            noseCap.position = new BABYLON.Vector3(0, 0, 1.2 * scale);
+            noseCap.parent = headBase;
+            noseCap.material = primaryMat;
+
+            // Cockpit window (smaller, inset)
+            const canopy = BABYLON.MeshBuilder.CreateCylinder(name + '_canopy', {
+                height: 0.7 * scale, diameterTop: 0.25 * scale, diameterBottom: 0.5 * scale, tessellation: 12
+            }, scene);
+            canopy.rotation.x = Math.PI / 2;
+            canopy.position = new BABYLON.Vector3(0, 0.18 * scale, 0.55 * scale);
             canopy.parent = headBase;
             canopy.material = cockpitMat;
 
-            // Cockpit frame rings
+            // Frame rings around cockpit body
             const frame1 = BABYLON.MeshBuilder.CreateTorus(name + '_frame1', {
-                diameter: 1.0 * scale, thickness: 0.07 * scale, tessellation: 16
+                diameter: 1.1 * scale, thickness: 0.07 * scale, tessellation: 16
             }, scene);
             frame1.rotation.x = Math.PI / 2;
-            frame1.position = new BABYLON.Vector3(0, -0.25 * scale, 0.4 * scale);
+            frame1.position = new BABYLON.Vector3(0, 0, 0.1 * scale);
             frame1.parent = headBase;
             frame1.material = darkMat;
 
             const frame2 = BABYLON.MeshBuilder.CreateTorus(name + '_frame2', {
-                diameter: 0.65 * scale, thickness: 0.06 * scale, tessellation: 16
+                diameter: 0.8 * scale, thickness: 0.06 * scale, tessellation: 16
             }, scene);
             frame2.rotation.x = Math.PI / 2;
-            frame2.position = new BABYLON.Vector3(0, -0.25 * scale, 0.95 * scale);
+            frame2.position = new BABYLON.Vector3(0, 0, 0.75 * scale);
             frame2.parent = headBase;
             frame2.material = darkMat;
 
-            // Sensor array
+            // Sensor array on top of cockpit
             for (let i = 0; i < 2; i++) {
                 const sens = BABYLON.MeshBuilder.CreateCylinder(name + '_sens' + i, {
                     height: 0.12 * scale, diameter: 0.08 * scale
                 }, scene);
-                sens.position = new BABYLON.Vector3((i - 0.5) * 0.3 * scale, 0.22 * scale, -0.2 * scale);
+                sens.position = new BABYLON.Vector3((i - 0.5) * 0.25 * scale, 0.35 * scale, 0.3 * scale);
                 sens.parent = headBase;
                 sens.material = chromeMat;
             }

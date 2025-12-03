@@ -420,14 +420,14 @@
             colorGrading: {
                 enabled: false,              // Disabled per user request
             },
-            // Fresnel Rim Lighting - silhouette pop (BOOSTED for visibility)
-            fresnel: {
+            // Rim/Outline Lighting - silhouette pop using HighlightLayer
+            rimLight: {
                 enabled: true,
-                playerColor: new BABYLON.Color3(0.3, 0.8, 1.0),    // Bright cyan for allies
-                enemyColor: new BABYLON.Color3(1.0, 0.2, 0.1),     // Bright red for enemies
-                bias: 0.1,                   // Lower = more of the surface glows
-                power: 1.5,                  // Lower = softer, wider rim
-                intensity: 0.8,              // Much brighter rim (was 0.35)
+                playerColor: new BABYLON.Color3(0.2, 0.7, 1.0),    // Bright cyan for allies
+                enemyColor: new BABYLON.Color3(1.0, 0.15, 0.1),    // Bright red for enemies
+                outerGlow: true,             // Glow outside the mesh
+                innerGlow: false,            // No inner glow
+                blurWidth: 0.8,              // Width of the outline blur
             },
             // GPU Particles - efficient chaos
             gpuParticles: {
@@ -513,46 +513,55 @@
         }
 
         // ============================================
-        // FRESNEL RIM LIGHTING HELPER
-        // Adds obvious silhouette pop to mech materials
+        // RIM LIGHTING USING HIGHLIGHT LAYER
+        // Creates visible colored outlines around mechs
         // ============================================
-        function applyFresnelRimLight(material, isPlayer) {
-            if (!VISUAL_CONFIG.fresnel.enabled) return;
+        let playerHighlightLayer = null;
+        let enemyHighlightLayer = null;
 
-            const rimColor = isPlayer ?
-                VISUAL_CONFIG.fresnel.playerColor :
-                VISUAL_CONFIG.fresnel.enemyColor;
+        function setupHighlightLayers(scene) {
+            if (!VISUAL_CONFIG.rimLight.enabled) return;
 
-            // Set emissive color for the rim glow (scaled by intensity)
-            material.emissiveColor = rimColor.scale(VISUAL_CONFIG.fresnel.intensity);
+            // Create separate highlight layers for each team
+            playerHighlightLayer = new BABYLON.HighlightLayer("playerHL", scene, {
+                blurTextureSizeRatio: 0.5,
+                blurHorizontalSize: VISUAL_CONFIG.rimLight.blurWidth,
+                blurVerticalSize: VISUAL_CONFIG.rimLight.blurWidth,
+            });
+            playerHighlightLayer.outerGlow = VISUAL_CONFIG.rimLight.outerGlow;
+            playerHighlightLayer.innerGlow = VISUAL_CONFIG.rimLight.innerGlow;
 
-            // Fresnel parameters for edge detection - BOOSTED for visibility
-            material.emissiveFresnelParameters = new BABYLON.FresnelParameters();
-            material.emissiveFresnelParameters.bias = VISUAL_CONFIG.fresnel.bias;
-            material.emissiveFresnelParameters.power = VISUAL_CONFIG.fresnel.power;
-            // Left color is the edge (rim), right color is the center
-            material.emissiveFresnelParameters.leftColor = rimColor.scale(1.2); // Boost edge
-            material.emissiveFresnelParameters.rightColor = BABYLON.Color3.Black();
+            enemyHighlightLayer = new BABYLON.HighlightLayer("enemyHL", scene, {
+                blurTextureSizeRatio: 0.5,
+                blurHorizontalSize: VISUAL_CONFIG.rimLight.blurWidth,
+                blurVerticalSize: VISUAL_CONFIG.rimLight.blurWidth,
+            });
+            enemyHighlightLayer.outerGlow = VISUAL_CONFIG.rimLight.outerGlow;
+            enemyHighlightLayer.innerGlow = VISUAL_CONFIG.rimLight.innerGlow;
+
+            log('[RIM LIGHT] Highlight layers created');
         }
 
-        // Apply fresnel to all mech armor materials after creation
-        function applyMechFresnel(mech) {
-            if (!VISUAL_CONFIG.fresnel.enabled || !mech || !mech.pelvis) return;
+        // Apply highlight to all mech meshes
+        function applyMechHighlight(mech) {
+            if (!VISUAL_CONFIG.rimLight.enabled || !mech || !mech.pelvis) return;
+
+            const highlightLayer = mech.isPlayer ? playerHighlightLayer : enemyHighlightLayer;
+            const color = mech.isPlayer ?
+                VISUAL_CONFIG.rimLight.playerColor :
+                VISUAL_CONFIG.rimLight.enemyColor;
+
+            if (!highlightLayer) return;
 
             const allNodes = mech.pelvis.getDescendants(false);
             allNodes.unshift(mech.pelvis);
 
-            let appliedCount = 0;
+            let addedCount = 0;
             allNodes.forEach(node => {
-                if (node.material && node.material instanceof BABYLON.StandardMaterial) {
-                    const name = node.material.name.toLowerCase();
-                    // Apply to most armor materials (not cockpit, chrome, or dark)
-                    // Expanded list for more visible rim lighting
-                    if (name.includes('primary') || name.includes('secondary') ||
-                        name.includes('metal') || name.includes('accent')) {
-                        applyFresnelRimLight(node.material, mech.isPlayer);
-                        appliedCount++;
-                    }
+                // Add meshes to highlight layer (not TransformNodes)
+                if (node.getBoundingInfo && node.material) {
+                    highlightLayer.addMesh(node, color);
+                    addedCount++;
                 }
             });
         }
@@ -873,10 +882,13 @@
                 configureMechShadows(allMechs, shadowGenerator);
             }
 
-            // Apply fresnel rim lighting to mechs
-            if (VISUAL_CONFIG.fresnel.enabled) {
-                allMechs.forEach(mech => applyMechFresnel(mech));
-                log(`[FRESNEL] Rim lighting applied to ${allMechs.length} mechs`);
+            // Setup highlight layers for rim lighting
+            setupHighlightLayers(scene);
+
+            // Apply rim lighting (highlight outlines) to mechs
+            if (VISUAL_CONFIG.rimLight.enabled) {
+                allMechs.forEach(mech => applyMechHighlight(mech));
+                log(`[RIM LIGHT] Highlights applied to ${allMechs.length} mechs`);
             }
 
             return scene;

@@ -750,19 +750,19 @@
             // ================================================================
             // === EXTENDED HORIZON GROUND ===
             // ================================================================
+            // Use same procedural approach as arena - generates organic blotchy texture
+            // Large texture (1024) stretched across horizon - no tiling needed
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
                 width: 800, height: 800, subdivisions: 4
             }, scene);
             horizonGround.position.y = -0.1;
 
-            // Horizon uses the original grass texture - tiling is OK at distance
-            // The fog blends it naturally so tiling isn't visible
-            const horizonTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
-            horizonTex.uScale = 150;
-            horizonTex.vScale = 150;
+            // Generate large procedural texture - NO TILING, just stretch
+            const horizonTex = createProceduralGrassTexture(scene, 1024);
+            // No uScale/vScale = texture stretches across entire ground
             const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
             horizonMat.diffuseTexture = horizonTex;
-            horizonMat.diffuseColor = new BABYLON.Color3(0.5, 0.55, 0.42);  // Earthy green
+            horizonMat.diffuseColor = new BABYLON.Color3(0.9, 0.95, 0.85);  // Slightly brighter to match arena
             horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
             horizonMat.fogEnabled = true;
             horizonGround.material = horizonMat;
@@ -4694,40 +4694,38 @@
             const inheritedVel = mech.lastKinematicVelocity || new BABYLON.Vector3(0, 0, 0);
             body.setLinearVelocity(inheritedVel);
 
-            // COLLAPSE IN PLACE - no dramatic launch, just crumple
-            // Small knockback away from impact, mostly horizontal
-            const knockbackForce = impactDir.scale(-80);
-            knockbackForce.y = 20;  // Minimal upward - just enough to disengage from ground
-            body.applyImpulse(knockbackForce, pos);
+            // DRAMATIC EXPLOSION KNOCKBACK - 5x impulse for massive launch
+            const explosionForce = impactDir.scale(-400);  // 5x: Away from impact direction
+            explosionForce.y = 300 + Math.random() * 200;    // 5x: Strong upward lift
+            explosionForce.x += (Math.random() - 0.5) * 150;
+            explosionForce.z += (Math.random() - 0.5) * 100;
 
-            // Zero out angular velocity - no flipping
-            body.setAngularVelocity(BABYLON.Vector3.Zero());
+            body.applyImpulse(explosionForce, pos);
 
-            // Mild limb reaction - not flailing
-            const mildHitForce = impactDir.scale(30);
-            mildHitForce.y = 10;
-            flingLimbs(mech, mildHitForce);
+            // No spinning - just let physics handle natural tumbling
+            const fallDirection = (Math.random() > 0.5) ? 1 : -1;
 
-            // NO destroyedLimbChaos - it causes unnatural spinning
+            // DRAMATIC LIMB FLINGING - 5x force for limbs
+            const destructionHitForce = impactDir.scale(300);
+            destructionHitForce.y = 150;
+            flingLimbs(mech, destructionHitForce);
 
-            // Apply steady downward force for clean collapse
+            // Additional limb chaos for destruction - more extreme than normal ragdoll
+            destroyedLimbChaos(mech);
+
+            // Continue applying downward force to ensure it falls
             let collapseTime = 0;
             const collapseInterval = setInterval(() => {
                 collapseTime += 50;
-                if (collapseTime > 800 || !mech.pelvisAggregate.body) {
+                if (collapseTime > 1200 || !mech.pelvisAggregate.body) {
                     clearInterval(collapseInterval);
                     return;
                 }
-                // Downward force + keep angular velocity zeroed
+                // Just downward force, no spinning
                 body.applyImpulse(
-                    new BABYLON.Vector3(0, -25, 0),
+                    new BABYLON.Vector3(0, -15, 0),
                     mech.pelvis.getAbsolutePosition()
                 );
-                // Prevent spinning during collapse
-                const angVel = body.getAngularVelocity();
-                if (angVel.length() > 1) {
-                    body.setAngularVelocity(angVel.scale(0.7));  // Dampen spin
-                }
             }, 50);
 
             log(`💀💀💀 ${mech.name} HAS BEEN DESTROYED! 💀💀💀`, 'error');

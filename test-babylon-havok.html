@@ -420,14 +420,14 @@
             colorGrading: {
                 enabled: false,              // Disabled per user request
             },
-            // Rim/Outline Lighting - silhouette pop using HighlightLayer
+            // Anime-style outlines using HighlightLayer
             rimLight: {
                 enabled: true,
-                playerColor: new BABYLON.Color3(0.2, 0.7, 1.0),    // Bright cyan for allies
-                enemyColor: new BABYLON.Color3(1.0, 0.15, 0.1),    // Bright red for enemies
+                playerColor: new BABYLON.Color3(0.0, 0.9, 1.0),    // Vibrant cyan for allies
+                enemyColor: new BABYLON.Color3(1.0, 0.1, 0.2),     // Vibrant red for enemies
                 outerGlow: true,             // Glow outside the mesh
                 innerGlow: false,            // No inner glow
-                blurWidth: 0.8,              // Width of the outline blur
+                blurWidth: 1.0,              // Thicker anime-style outline
             },
             // GPU Particles - efficient chaos
             gpuParticles: {
@@ -436,12 +436,16 @@
                 sparkCount: 15,              // Metal spark particles
                 smokeCount: 40,              // Smoke particles for damage
             },
-            // Glow Layer (Bloom) - sci-fi glow (DRAMATIC)
+            // Glow Layer - DISABLED for performance
             glow: {
+                enabled: false,
+            },
+            // Anime/Cel-shading style
+            animeStyle: {
                 enabled: true,
-                intensity: 1.2,              // Much brighter glow (was 0.5)
-                blurKernelSize: 64,          // Larger blur spread (was 32)
-                mobileBlurKernel: 32,        // Larger for mobile too (was 16)
+                hardShadows: true,           // Sharp shadow edges (no blur)
+                saturationBoost: 1.2,        // More vibrant colors
+                contrastBoost: 1.15,         // Punchier lighting
             }
         };
 
@@ -459,19 +463,19 @@
             if (isMobile || isLowPower || isSmallScreen) {
                 // Mobile/low-end settings
                 SHADOW_CONFIG.mapSize = 512;
-                SHADOW_CONFIG.blurKernel = 16;
+                SHADOW_CONFIG.blurKernel = 8;    // Sharper shadows for anime style
                 // Adjust visual effects for mobile
-                VISUAL_CONFIG.glow.blurKernelSize = VISUAL_CONFIG.glow.mobileBlurKernel;
                 VISUAL_CONFIG.gpuParticles.impactParticleCount = 40;
                 VISUAL_CONFIG.gpuParticles.sparkCount = 8;
                 VISUAL_CONFIG.gpuParticles.smokeCount = 20;
-                VISUAL_CONFIG.ibl.intensity = 0.6;  // Slightly lower on mobile
+                VISUAL_CONFIG.ibl.intensity = 0.6;
+                VISUAL_CONFIG.rimLight.blurWidth = 0.6;  // Thinner outlines on mobile
                 log('[QUALITY] Mobile mode - optimized visuals');
             } else {
-                // Desktop settings
+                // Desktop settings - anime style with sharp shadows
                 SHADOW_CONFIG.mapSize = 1024;
-                SHADOW_CONFIG.blurKernel = 32;
-                log('[QUALITY] Desktop mode - full visuals');
+                SHADOW_CONFIG.blurKernel = 8;    // Sharp shadows for cel-shaded look
+                log('[QUALITY] Desktop mode - anime style visuals');
             }
         }
 
@@ -739,36 +743,37 @@
             camera.wheelPrecision = 30;
 
             // ============================================
-            // LIGHTING + SHADOWS (v10.7 - Texture test)
+            // ANIME-STYLE LIGHTING + SHADOWS
+            // High contrast, sharp edges, stylized look
             // ============================================
 
-            // ============================================
-            // v10.14: FULL SCENE WITH MECH SHADOWS
-            // ============================================
-
-            // Ambient light
+            // Ambient light - reduced for more contrast (anime style)
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.5;
-            hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            hemi.intensity = 0.35;  // Lower ambient for punchier shadows
+            hemi.groundColor = new BABYLON.Color3(0.15, 0.15, 0.2);  // Cool shadow fill
+            hemi.specular = new BABYLON.Color3(0.1, 0.1, 0.1);  // Reduce specular for flatter look
 
             // DirectionalLight for shadows - positioned to cover entire arena
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
-            sunLight.position = new BABYLON.Vector3(0, 30, 0);  // Centered above arena
-            sunLight.intensity = 1.5;
+            sunLight.position = new BABYLON.Vector3(0, 30, 0);
+            sunLight.intensity = 1.8;  // Brighter sun for higher contrast
+            sunLight.specular = new BABYLON.Color3(0.3, 0.3, 0.3);  // Reduced specular
 
             // Expand shadow frustum to cover all mechs
             sunLight.shadowMinZ = 1;
             sunLight.shadowMaxZ = 60;
-            sunLight.shadowFrustumSize = 50;  // Fixed frustum size to cover arena
+            sunLight.shadowFrustumSize = 50;
 
-            // Shadow generator with PCF filtering
+            // Shadow generator - SHARP shadows for anime/cel-shaded look
             if (SHADOW_CONFIG.enabled) {
                 shadowGenerator = new BABYLON.ShadowGenerator(SHADOW_CONFIG.mapSize, sunLight);
-                shadowGenerator.bias = 0.0005;
-                shadowGenerator.normalBias = 0.005;
-                shadowGenerator.usePercentageCloserFiltering = true;
-                shadowGenerator.filteringQuality = BABYLON.ShadowGenerator.QUALITY_MEDIUM;
-                log(`[v10.16] Shadows: PCF, frustum=50, ${SHADOW_CONFIG.mapSize}px`);
+                shadowGenerator.bias = 0.001;
+                shadowGenerator.normalBias = 0.01;
+                // Use blur exponential for controllable sharp shadows
+                shadowGenerator.useBlurExponentialShadowMap = true;
+                shadowGenerator.blurKernel = SHADOW_CONFIG.blurKernel;  // Low = sharp
+                shadowGenerator.darkness = 0.5;  // Darker shadows for anime contrast
+                log(`[ANIME] Sharp shadows enabled (blur: ${SHADOW_CONFIG.blurKernel})`);
             }
 
             // ============================================
@@ -784,70 +789,30 @@
             }
 
             // ============================================
-            // RENDERING PIPELINE - Color Grading & Effects
+            // ANIME STYLE POST-PROCESSING
+            // High contrast, saturated colors, stylized look
             // ============================================
-            if (VISUAL_CONFIG.colorGrading.enabled) {
+            if (VISUAL_CONFIG.animeStyle.enabled) {
                 defaultPipeline = new BABYLON.DefaultRenderingPipeline(
-                    "defaultPipeline", true, scene, [camera]
+                    "animePipeline", true, scene, [camera]
                 );
 
-                // Image processing for color grading
+                // Image processing for anime-style colors
                 defaultPipeline.imageProcessingEnabled = true;
-                defaultPipeline.imageProcessing.contrast = VISUAL_CONFIG.colorGrading.contrast;
-                defaultPipeline.imageProcessing.exposure = VISUAL_CONFIG.colorGrading.exposure;
+                defaultPipeline.imageProcessing.contrast = VISUAL_CONFIG.animeStyle.contrastBoost;
+                defaultPipeline.imageProcessing.exposure = 1.05;  // Slightly brighter
 
-                // Tone mapping for better color reproduction
+                // Tone mapping - use standard for punchier colors
                 defaultPipeline.imageProcessing.toneMappingEnabled = true;
-                defaultPipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+                defaultPipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_STANDARD;
 
-                // Vignette for cinematic edges
-                if (VISUAL_CONFIG.colorGrading.vignetteEnabled) {
-                    defaultPipeline.imageProcessing.vignetteEnabled = true;
-                    defaultPipeline.imageProcessing.vignetteWeight = VISUAL_CONFIG.colorGrading.vignetteWeight;
-                    defaultPipeline.imageProcessing.vignetteCameraFov = 0.5;
-                    defaultPipeline.imageProcessing.vignetteColor = new BABYLON.Color4(0, 0, 0, 1);
-                }
+                // Boost color saturation for vibrant anime look
+                defaultPipeline.imageProcessing.colorCurvesEnabled = true;
+                const curves = new BABYLON.ColorCurves();
+                curves.globalSaturation = 30;  // Boost saturation
+                defaultPipeline.imageProcessing.colorCurves = curves;
 
-                log(`[COLOR GRADING] Enabled (contrast: ${VISUAL_CONFIG.colorGrading.contrast})`);
-            }
-
-            // ============================================
-            // GLOW LAYER - Sci-Fi Bloom Effect (DRAMATIC)
-            // ============================================
-            if (VISUAL_CONFIG.glow.enabled) {
-                glowLayer = new BABYLON.GlowLayer("glowLayer", scene, {
-                    mainTextureFixedSize: 512,  // Higher res for dramatic glow
-                    blurKernelSize: VISUAL_CONFIG.glow.blurKernelSize
-                });
-                glowLayer.intensity = VISUAL_CONFIG.glow.intensity;
-
-                // Dramatic glow for emissive elements (lasers, thrusters, cockpits)
-                glowLayer.customEmissiveColorSelector = function(mesh, subMesh, material, result) {
-                    const name = mesh.name.toLowerCase();
-                    // Check if this is a glowing element
-                    if (name.includes('cockpit') || name.includes('laser') ||
-                        name.includes('thruster') || name.includes('exhaust') ||
-                        name.includes('vent') || name.includes('eye') ||
-                        name.includes('barrel') || name.includes('flash') ||
-                        name.includes('beam')) {
-                        // Boost emissive color for dramatic glow
-                        if (material.emissiveColor) {
-                            result.set(
-                                Math.min(1, material.emissiveColor.r * 1.5),
-                                Math.min(1, material.emissiveColor.g * 1.5),
-                                Math.min(1, material.emissiveColor.b * 1.5),
-                                1
-                            );
-                        } else {
-                            result.set(1, 1, 1, 1);
-                        }
-                    } else {
-                        // No glow for non-emissive elements
-                        result.set(0, 0, 0, 0);
-                    }
-                };
-
-                log(`[GLOW] Dramatic glow enabled (intensity: ${VISUAL_CONFIG.glow.intensity})`);
+                log(`[ANIME] Style enabled (contrast: ${VISUAL_CONFIG.animeStyle.contrastBoost}, sat boost: +30)`);
             }
 
             // Fog

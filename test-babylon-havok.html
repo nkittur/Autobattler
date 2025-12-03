@@ -716,8 +716,10 @@
             // ================================================================
             // === ARENA GROUND with Anti-Tiling Techniques ===
             // ================================================================
-            // Technique 1: PBR Material with Detail Map (macro noise overlay)
-            // Technique 2: ThinInstance debris scatter
+            // 1. Procedural noise overlay for large-scale color variation
+            // 2. Non-integer tiling to break grid alignment
+            // 3. Large visible dirt patches
+            // 4. ThinInstance debris scatter
             // ================================================================
 
             const ground = BABYLON.MeshBuilder.CreateGround('ground', {
@@ -727,22 +729,22 @@
             // Use StandardMaterial for reliable visuals
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
 
-            // Base grass texture with moderate tiling
+            // Non-integer tiling ratios prevent obvious grid alignment
+            // Using prime-ish numbers that don't divide evenly
             const groundTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
-            groundTex.uScale = 12;
-            groundTex.vScale = 6;
+            groundTex.uScale = 11;  // Not 12 - breaks grid alignment
+            groundTex.vScale = 7;   // Not 6 - asymmetric
             mat.diffuseTexture = groundTex;
-            mat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.55);  // Vibrant grass green
+            mat.diffuseColor = new BABYLON.Color3(0.65, 0.7, 0.5);
 
-            // Normal map for surface detail
+            // Normal map with slightly different tiling for additional variation
             const groundNormal = new BABYLON.Texture(TEXTURE_URLS.grassNormal, scene);
-            groundNormal.uScale = 12;
-            groundNormal.vScale = 6;
+            groundNormal.uScale = 13;  // Different from diffuse!
+            groundNormal.vScale = 8;
             mat.bumpTexture = groundNormal;
-            mat.bumpTexture.level = 0.8;
+            mat.bumpTexture.level = 1.0;
 
-            // Matte grass - low specular
-            mat.specularColor = new BABYLON.Color3(0.08, 0.08, 0.06);
+            mat.specularColor = new BABYLON.Color3(0.06, 0.06, 0.05);
             mat.specularPower = 16;
 
             ground.material = mat;
@@ -751,15 +753,19 @@
 
             if (shadowGen) {
                 ground.receiveShadows = true;
-                log('[GROUND] Textured with debris scatter');
             }
 
             // ================================================================
-            // === THIN INSTANCE DEBRIS SCATTER - Visual Variety ===
+            // === PROCEDURAL NOISE OVERLAY - Key Anti-Tiling Technique ===
             // ================================================================
-            // Scatter small rocks/pebbles using ThinInstances (mobile-friendly)
-            // This hides tiling by drawing the eye to 3D objects
+            // Creates large-scale color variation visible from high camera angles
+            // This breaks up the checkerboard pattern the eye naturally detects
 
+            createNoiseOverlay(scene);
+
+            // ================================================================
+            // === THIN INSTANCE DEBRIS SCATTER ===
+            // ================================================================
             createDebrisScatter(scene, shadowGen);
 
             // ================================================================
@@ -770,15 +776,14 @@
             }, scene);
             horizonGround.position.y = -0.1;
 
-            // Horizon uses high tiling so pattern is invisible at distance
             const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
             const horizonGrass = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
             horizonGrass.uScale = 200;
             horizonGrass.vScale = 200;
             horizonMat.diffuseTexture = horizonGrass;
-            horizonMat.diffuseColor = new BABYLON.Color3(0.5, 0.55, 0.4);  // Slightly muted
+            horizonMat.diffuseColor = new BABYLON.Color3(0.5, 0.55, 0.4);
             horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
-            horizonMat.fogEnabled = true;  // Blends with distance fog
+            horizonMat.fogEnabled = true;
 
             horizonGround.material = horizonMat;
             horizonGround.receiveShadows = false;
@@ -805,6 +810,98 @@
                 rock.material = rockMat;
                 new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
             }
+
+            log('[GROUND] Anti-tiling: noise overlay + debris');
+        }
+
+        // ================================================================
+        // === PROCEDURAL NOISE OVERLAY ===
+        // ================================================================
+        // Creates a canvas-based noise texture and overlays it on the ground
+        // This provides large-scale color variation that breaks up tiling
+        // Visible from high camera angles where small debris isn't effective
+
+        function createNoiseOverlay(scene) {
+            // Create procedural noise texture using Canvas API
+            const size = 256;  // Texture resolution
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Base: medium gray (will multiply with ground)
+            ctx.fillStyle = 'rgb(140, 145, 130)';
+            ctx.fillRect(0, 0, size, size);
+
+            // Add organic blobs of variation (darker and lighter patches)
+            // These simulate shadows, wet spots, nutrient variation in soil
+            for (let i = 0; i < 40; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = 15 + Math.random() * 50;
+
+                // Alternate between darker (shadows/wet) and lighter (dry/sandy) patches
+                const isDark = Math.random() > 0.5;
+                const brightness = isDark
+                    ? 90 + Math.random() * 40    // 90-130 (darker)
+                    : 150 + Math.random() * 40;  // 150-190 (lighter)
+
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, `rgba(${brightness}, ${brightness + 5}, ${brightness - 10}, 0.7)`);
+                gradient.addColorStop(0.6, `rgba(${brightness}, ${brightness + 3}, ${brightness - 5}, 0.3)`);
+                gradient.addColorStop(1, 'rgba(140, 145, 130, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Add some subtle streaks (wind/water patterns)
+            ctx.globalAlpha = 0.15;
+            for (let i = 0; i < 12; i++) {
+                const startX = Math.random() * size;
+                const startY = Math.random() * size;
+                const endX = startX + (Math.random() - 0.5) * 150;
+                const endY = startY + (Math.random() - 0.3) * 100;
+
+                ctx.strokeStyle = Math.random() > 0.5 ? '#8a7a60' : '#a0a890';
+                ctx.lineWidth = 8 + Math.random() * 20;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.quadraticCurveTo(
+                    (startX + endX) / 2 + (Math.random() - 0.5) * 40,
+                    (startY + endY) / 2 + (Math.random() - 0.5) * 40,
+                    endX, endY
+                );
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1.0;
+
+            // Create Babylon texture from canvas
+            const noiseTexture = new BABYLON.DynamicTexture('noiseTexture', canvas, scene);
+            noiseTexture.update();  // Apply canvas content
+
+            // Create overlay plane just above ground
+            const overlay = BABYLON.MeshBuilder.CreateGround('noiseOverlay', {
+                width: 40, height: 20
+            }, scene);
+            overlay.position.y = 0.02;  // Just above ground
+
+            // Material: multiply blend to darken/lighten ground
+            const overlayMat = new BABYLON.StandardMaterial('overlayMat', scene);
+            overlayMat.diffuseTexture = noiseTexture;
+            overlayMat.diffuseTexture.hasAlpha = false;
+            overlayMat.specularColor = new BABYLON.Color3(0, 0, 0);
+            overlayMat.emissiveColor = new BABYLON.Color3(0.02, 0.02, 0.02);
+
+            // Semi-transparent for blending effect
+            overlayMat.alpha = 0.35;
+            overlayMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+
+            overlay.material = overlayMat;
+            overlay.receiveShadows = true;
         }
 
         // ================================================================
@@ -903,50 +1000,54 @@
         // This is a lightweight alternative to full terrain splatting
 
         function createDirtPatches(scene) {
-            // Create a flat plane for dirt patches
+            // Create a flat plane for dirt patches - LARGE for high camera visibility
             const dirtPatch = BABYLON.MeshBuilder.CreateGround('dirtPatch', {
                 width: 1, height: 1
             }, scene);
             dirtPatch.isVisible = false;
 
-            // Dirt material with transparency for blending
+            // Dirt material - more visible brown/tan color
             const dirtMat = new BABYLON.StandardMaterial('dirtMat', scene);
             const dirtTex = new BABYLON.Texture(TEXTURE_URLS.rock, scene);
+            dirtTex.uScale = 0.5;  // Low tiling so texture is visible
+            dirtTex.vScale = 0.5;
             dirtMat.diffuseTexture = dirtTex;
-            dirtMat.diffuseColor = new BABYLON.Color3(0.55, 0.45, 0.35);  // Brown dirt
+            dirtMat.diffuseColor = new BABYLON.Color3(0.6, 0.5, 0.38);  // Tan/brown dirt
             dirtMat.specularColor = new BABYLON.Color3(0, 0, 0);
-            dirtMat.alpha = 0.5;  // Semi-transparent for blending
+            dirtMat.alpha = 0.55;  // Semi-transparent for blending
             dirtPatch.material = dirtMat;
 
-            // Create dirt patches along typical "battle lanes"
             const patchMatrices = [];
 
-            // Center battle lane (horizontal strip)
-            for (let i = 0; i < 15; i++) {
-                const x = -14 + i * 2 + (Math.random() - 0.5) * 2;
-                const z = (Math.random() - 0.5) * 4;  // Near center
-                const scale = 2 + Math.random() * 3;
+            // LARGE battle lane patches - visible from high camera
+            // Center horizontal strip where mechs fight
+            for (let i = 0; i < 8; i++) {
+                const x = -15 + i * 4 + (Math.random() - 0.5) * 3;
+                const z = (Math.random() - 0.5) * 5;
+                // MUCH larger scale: 5-10 units instead of 2-3
+                const scale = 5 + Math.random() * 5;
                 const rotY = Math.random() * Math.PI;
 
                 const matrix = BABYLON.Matrix.Compose(
-                    new BABYLON.Vector3(scale, 1, scale * (0.6 + Math.random() * 0.4)),
+                    new BABYLON.Vector3(scale, 1, scale * (0.5 + Math.random() * 0.5)),
                     BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
-                    new BABYLON.Vector3(x, 0.005, z)  // Just above ground
+                    new BABYLON.Vector3(x, 0.03, z)  // Above noise overlay
                 );
                 patchMatrices.push(matrix);
             }
 
-            // Scattered patches elsewhere
-            for (let i = 0; i < 10; i++) {
-                const x = (Math.random() - 0.5) * 30;
-                const z = (Math.random() - 0.5) * 15;
-                const scale = 1.5 + Math.random() * 2;
+            // Large scattered patches covering more ground
+            for (let i = 0; i < 12; i++) {
+                const x = (Math.random() - 0.5) * 35;
+                const z = (Math.random() - 0.5) * 16;
+                // Large patches: 4-9 units
+                const scale = 4 + Math.random() * 5;
                 const rotY = Math.random() * Math.PI;
 
                 const matrix = BABYLON.Matrix.Compose(
-                    new BABYLON.Vector3(scale, 1, scale),
+                    new BABYLON.Vector3(scale, 1, scale * (0.7 + Math.random() * 0.3)),
                     BABYLON.Quaternion.RotationYawPitchRoll(rotY, 0, 0),
-                    new BABYLON.Vector3(x, 0.005, z)
+                    new BABYLON.Vector3(x, 0.03, z)
                 );
                 patchMatrices.push(matrix);
             }
@@ -954,7 +1055,7 @@
             dirtPatch.thinInstanceAdd(patchMatrices);
             dirtPatch.thinInstanceEnablePicking = false;
 
-            log('[DIRT] 25 patches for battle lane wear');
+            log('[DIRT] 20 large patches for ground variation');
         }
 
         function createMountains(scene) {

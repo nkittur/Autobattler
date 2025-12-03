@@ -404,6 +404,56 @@
             darkness: 0.35,                   // Shadow darkness (0=black, 1=invisible)
         };
 
+        // ============================================
+        // VISUAL EFFECTS CONFIGURATION
+        // GPU-friendly embellishments for mech visuals
+        // ============================================
+        const VISUAL_CONFIG = {
+            // Image Based Lighting (IBL) - makes metal look like metal
+            ibl: {
+                enabled: true,
+                intensity: 0.8,              // Environment reflection intensity
+                // Using Babylon's built-in environment for faster loading
+                envUrl: 'https://assets.babylonjs.com/environments/environmentSpecular.env'
+            },
+            // Color Grading (LUT) - cinematic sci-fi feel
+            colorGrading: {
+                enabled: true,
+                contrast: 1.15,              // Slightly higher contrast
+                exposure: 1.0,               // Neutral exposure
+                saturation: 1.1,             // Slightly boosted colors
+                vignetteEnabled: true,
+                vignetteWeight: 0.3,         // Subtle darkened edges
+            },
+            // Fresnel Rim Lighting - silhouette pop
+            fresnel: {
+                enabled: true,
+                playerColor: new BABYLON.Color3(0.2, 0.6, 1.0),    // Blue rim for allies
+                enemyColor: new BABYLON.Color3(1.0, 0.3, 0.2),     // Red rim for enemies
+                bias: 0.4,                   // Start of rim effect
+                power: 2.5,                  // Sharpness of edge
+                intensity: 0.35,             // Rim brightness
+            },
+            // GPU Particles - efficient chaos
+            gpuParticles: {
+                enabled: true,
+                impactParticleCount: 80,     // Particles per impact
+                sparkCount: 15,              // Metal spark particles
+                smokeCount: 40,              // Smoke particles for damage
+            },
+            // Glow Layer (Bloom) - sci-fi glow
+            glow: {
+                enabled: true,
+                intensity: 0.5,              // Glow brightness
+                blurKernelSize: 32,          // Blur spread (desktop)
+                mobileBlurKernel: 16,        // Smaller for mobile
+            }
+        };
+
+        // Global visual effects references
+        let glowLayer = null;
+        let defaultPipeline = null;
+
         // Detect mobile and adjust quality
         function detectMobileAndSetQuality() {
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -415,12 +465,18 @@
                 // Mobile/low-end settings
                 SHADOW_CONFIG.mapSize = 512;
                 SHADOW_CONFIG.blurKernel = 16;
-                log('[SHADOWS] Mobile mode (512px)');
+                // Adjust visual effects for mobile
+                VISUAL_CONFIG.glow.blurKernelSize = VISUAL_CONFIG.glow.mobileBlurKernel;
+                VISUAL_CONFIG.gpuParticles.impactParticleCount = 40;
+                VISUAL_CONFIG.gpuParticles.sparkCount = 8;
+                VISUAL_CONFIG.gpuParticles.smokeCount = 20;
+                VISUAL_CONFIG.ibl.intensity = 0.6;  // Slightly lower on mobile
+                log('[QUALITY] Mobile mode - optimized visuals');
             } else {
                 // Desktop settings
                 SHADOW_CONFIG.mapSize = 1024;
                 SHADOW_CONFIG.blurKernel = 32;
-                log('[SHADOWS] Desktop mode (1024px)');
+                log('[QUALITY] Desktop mode - full visuals');
             }
         }
 
@@ -459,6 +515,46 @@
             });
 
             log(`[SHADOWS] ${casterCount} casters from ${mechs.length} mechs`);
+        }
+
+        // ============================================
+        // FRESNEL RIM LIGHTING HELPER
+        // Adds silhouette pop to mech materials
+        // ============================================
+        function applyFresnelRimLight(material, isPlayer) {
+            if (!VISUAL_CONFIG.fresnel.enabled) return;
+
+            const rimColor = isPlayer ?
+                VISUAL_CONFIG.fresnel.playerColor :
+                VISUAL_CONFIG.fresnel.enemyColor;
+
+            // Set emissive color for the rim glow (scaled by intensity)
+            material.emissiveColor = rimColor.scale(VISUAL_CONFIG.fresnel.intensity);
+
+            // Fresnel parameters for edge detection
+            material.emissiveFresnelParameters = new BABYLON.FresnelParameters();
+            material.emissiveFresnelParameters.bias = VISUAL_CONFIG.fresnel.bias;
+            material.emissiveFresnelParameters.power = VISUAL_CONFIG.fresnel.power;
+            material.emissiveFresnelParameters.leftColor = rimColor;
+            material.emissiveFresnelParameters.rightColor = BABYLON.Color3.Black();
+        }
+
+        // Apply fresnel to all mech armor materials after creation
+        function applyMechFresnel(mech) {
+            if (!VISUAL_CONFIG.fresnel.enabled || !mech || !mech.pelvis) return;
+
+            const allNodes = mech.pelvis.getDescendants(false);
+            allNodes.unshift(mech.pelvis);
+
+            allNodes.forEach(node => {
+                if (node.material && node.material instanceof BABYLON.StandardMaterial) {
+                    const name = node.material.name.toLowerCase();
+                    // Only apply to primary/secondary armor materials (not cockpit, chrome, etc.)
+                    if (name.includes('primary') || name.includes('secondary')) {
+                        applyFresnelRimLight(node.material, mech.isPlayer);
+                    }
+                }
+            });
         }
 
         // Colors
@@ -666,6 +762,85 @@
                 log(`[v10.16] Shadows: PCF, frustum=50, ${SHADOW_CONFIG.mapSize}px`);
             }
 
+            // ============================================
+            // IMAGE BASED LIGHTING (IBL) - Metal Reflections
+            // ============================================
+            if (VISUAL_CONFIG.ibl.enabled) {
+                const envTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
+                    VISUAL_CONFIG.ibl.envUrl, scene
+                );
+                scene.environmentTexture = envTexture;
+                scene.environmentIntensity = VISUAL_CONFIG.ibl.intensity;
+                log(`[IBL] Environment lighting enabled (intensity: ${VISUAL_CONFIG.ibl.intensity})`);
+            }
+
+            // ============================================
+            // RENDERING PIPELINE - Color Grading & Effects
+            // ============================================
+            if (VISUAL_CONFIG.colorGrading.enabled) {
+                defaultPipeline = new BABYLON.DefaultRenderingPipeline(
+                    "defaultPipeline", true, scene, [camera]
+                );
+
+                // Image processing for color grading
+                defaultPipeline.imageProcessingEnabled = true;
+                defaultPipeline.imageProcessing.contrast = VISUAL_CONFIG.colorGrading.contrast;
+                defaultPipeline.imageProcessing.exposure = VISUAL_CONFIG.colorGrading.exposure;
+
+                // Tone mapping for better color reproduction
+                defaultPipeline.imageProcessing.toneMappingEnabled = true;
+                defaultPipeline.imageProcessing.toneMappingType = BABYLON.ImageProcessingConfiguration.TONEMAPPING_ACES;
+
+                // Vignette for cinematic edges
+                if (VISUAL_CONFIG.colorGrading.vignetteEnabled) {
+                    defaultPipeline.imageProcessing.vignetteEnabled = true;
+                    defaultPipeline.imageProcessing.vignetteWeight = VISUAL_CONFIG.colorGrading.vignetteWeight;
+                    defaultPipeline.imageProcessing.vignetteCameraFov = 0.5;
+                    defaultPipeline.imageProcessing.vignetteColor = new BABYLON.Color4(0, 0, 0, 1);
+                }
+
+                log(`[COLOR GRADING] Enabled (contrast: ${VISUAL_CONFIG.colorGrading.contrast})`);
+            }
+
+            // ============================================
+            // GLOW LAYER - Sci-Fi Bloom Effect
+            // ============================================
+            if (VISUAL_CONFIG.glow.enabled) {
+                glowLayer = new BABYLON.GlowLayer("glowLayer", scene, {
+                    mainTextureFixedSize: 256,  // Fixed size for performance
+                    blurKernelSize: VISUAL_CONFIG.glow.blurKernelSize
+                });
+                glowLayer.intensity = VISUAL_CONFIG.glow.intensity;
+
+                // Optimization: Only glow emissive elements (lasers, thrusters, cockpits)
+                glowLayer.customEmissiveColorSelector = function(mesh, subMesh, material, result) {
+                    const name = mesh.name.toLowerCase();
+                    // Check if this is a glowing element
+                    if (name.includes('cockpit') || name.includes('laser') ||
+                        name.includes('thruster') || name.includes('exhaust') ||
+                        name.includes('vent') || name.includes('eye') ||
+                        name.includes('barrel') || name.includes('flash') ||
+                        name.includes('beam')) {
+                        // Use the material's emissive color for glow
+                        if (material.emissiveColor) {
+                            result.set(
+                                material.emissiveColor.r,
+                                material.emissiveColor.g,
+                                material.emissiveColor.b,
+                                1
+                            );
+                        } else {
+                            result.set(1, 1, 1, 1);
+                        }
+                    } else {
+                        // No glow for non-emissive elements
+                        result.set(0, 0, 0, 0);
+                    }
+                };
+
+                log(`[GLOW] Layer enabled (intensity: ${VISUAL_CONFIG.glow.intensity})`);
+            }
+
             // Fog
             scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
             scene.fogDensity = 0.006;
@@ -696,6 +871,12 @@
             // Add mech shadows
             if (shadowGenerator) {
                 configureMechShadows(allMechs, shadowGenerator);
+            }
+
+            // Apply fresnel rim lighting to mechs
+            if (VISUAL_CONFIG.fresnel.enabled) {
+                allMechs.forEach(mech => applyMechFresnel(mech));
+                log(`[FRESNEL] Rim lighting applied to ${allMechs.length} mechs`);
             }
 
             return scene;
@@ -4605,8 +4786,28 @@
         }
 
         // ============================================
-        // EFFECTS
+        // EFFECTS - GPU Particle Systems
         // ============================================
+
+        // Cache for reusable particle textures
+        let particleTexture = null;
+        let smokeTexture = null;
+
+        function getParticleTexture() {
+            if (!particleTexture) {
+                particleTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/flare.png', scene);
+            }
+            return particleTexture;
+        }
+
+        function getSmokeTexture() {
+            if (!smokeTexture) {
+                // Use a softer smoke texture
+                smokeTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/smoke_15.png', scene);
+            }
+            return smokeTexture;
+        }
+
         function createMuzzleFlash(pos, color) {
             const flash = BABYLON.MeshBuilder.CreateSphere('flash', { diameter: 0.35 }, scene);
             flash.position = pos;
@@ -4624,38 +4825,229 @@
         }
 
         function createImpact(pos, color) {
-            const ps = new BABYLON.ParticleSystem('impact', 60, scene);
-            ps.particleTexture = new BABYLON.Texture('https://assets.babylonjs.com/textures/flare.png', scene);
+            // Use GPU particles when available and enabled
+            const useGPU = VISUAL_CONFIG.gpuParticles.enabled &&
+                           BABYLON.GPUParticleSystem.IsSupported;
+
+            const capacity = VISUAL_CONFIG.gpuParticles.impactParticleCount;
+
+            let ps;
+            if (useGPU) {
+                ps = new BABYLON.GPUParticleSystem('gpuImpact', { capacity: capacity }, scene);
+            } else {
+                ps = new BABYLON.ParticleSystem('impact', capacity, scene);
+            }
+
+            ps.particleTexture = getParticleTexture();
             ps.emitter = pos;
-            ps.color1 = new BABYLON.Color4(color.r, color.g, color.b, 1);
-            ps.color2 = new BABYLON.Color4(color.r * 0.5, color.g * 0.5, color.b * 0.5, 1);
-            ps.colorDead = new BABYLON.Color4(0.15, 0.1, 0, 0);
-            ps.minSize = 0.08; ps.maxSize = 0.35;
-            ps.minLifeTime = 0.12; ps.maxLifeTime = 0.35;
-            ps.emitRate = 250; ps.manualEmitCount = 40;
-            ps.minEmitPower = 3; ps.maxEmitPower = 7;
-            ps.direction1 = new BABYLON.Vector3(-1, 1, -1);
-            ps.direction2 = new BABYLON.Vector3(1, 1.5, 1);
-            ps.gravity = new BABYLON.Vector3(0, -10, 0);
+
+            // Color gradient from bright to faded
+            ps.addColorGradient(0, new BABYLON.Color4(color.r, color.g, color.b, 1));
+            ps.addColorGradient(0.5, new BABYLON.Color4(color.r * 0.7, color.g * 0.6, color.b * 0.4, 0.8));
+            ps.addColorGradient(1, new BABYLON.Color4(0.15, 0.1, 0.05, 0));
+
+            // Size gradient - start small, expand, then shrink
+            ps.addSizeGradient(0, 0.08);
+            ps.addSizeGradient(0.3, 0.25);
+            ps.addSizeGradient(1, 0.05);
+
+            ps.minLifeTime = 0.15;
+            ps.maxLifeTime = 0.4;
+            ps.emitRate = 300;
+            ps.manualEmitCount = capacity;
+            ps.minEmitPower = 4;
+            ps.maxEmitPower = 8;
+            ps.direction1 = new BABYLON.Vector3(-1, 0.5, -1);
+            ps.direction2 = new BABYLON.Vector3(1, 2, 1);
+            ps.gravity = new BABYLON.Vector3(0, -12, 0);
+
+            // Add some variation
+            ps.minAngularSpeed = -2;
+            ps.maxAngularSpeed = 2;
+
+            ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+
             ps.start();
-            ps.targetStopDuration = 0.18;
+            ps.targetStopDuration = 0.15;
+            ps.disposeOnStop = true;
+        }
+
+        // GPU-based spark system for metal-on-metal impacts
+        function createGPUSparks(pos, direction, count) {
+            if (!VISUAL_CONFIG.gpuParticles.enabled) {
+                createImpactSparks(pos, direction);
+                return;
+            }
+
+            const useGPU = BABYLON.GPUParticleSystem.IsSupported;
+            const capacity = count || VISUAL_CONFIG.gpuParticles.sparkCount;
+
+            let ps;
+            if (useGPU) {
+                ps = new BABYLON.GPUParticleSystem('gpuSparks', { capacity: capacity }, scene);
+            } else {
+                ps = new BABYLON.ParticleSystem('sparks', capacity, scene);
+            }
+
+            ps.particleTexture = getParticleTexture();
+            ps.emitter = pos;
+
+            // Bright yellow-orange sparks
+            ps.addColorGradient(0, new BABYLON.Color4(1, 0.9, 0.5, 1));
+            ps.addColorGradient(0.5, new BABYLON.Color4(1, 0.6, 0.2, 0.9));
+            ps.addColorGradient(1, new BABYLON.Color4(1, 0.3, 0.1, 0));
+
+            // Small, fast particles
+            ps.minSize = 0.02;
+            ps.maxSize = 0.08;
+            ps.minLifeTime = 0.2;
+            ps.maxLifeTime = 0.5;
+
+            // Fast emit, then stop
+            ps.emitRate = 500;
+            ps.manualEmitCount = capacity;
+
+            // Direction biased by impact
+            const bias = direction ? direction.scale(5) : new BABYLON.Vector3(0, 0, 0);
+            ps.minEmitPower = 8;
+            ps.maxEmitPower = 15;
+            ps.direction1 = new BABYLON.Vector3(-2 + bias.x, 1, -2 + bias.z);
+            ps.direction2 = new BABYLON.Vector3(2 + bias.x, 4, 2 + bias.z);
+
+            ps.gravity = new BABYLON.Vector3(0, -15, 0);
+            ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD;
+
+            ps.start();
+            ps.targetStopDuration = 0.1;
             ps.disposeOnStop = true;
         }
 
         function createSmoke(pos) {
-            const s = BABYLON.MeshBuilder.CreateSphere('smoke', { diameter: 0.08 }, scene);
-            s.position = pos;
-            const mat = new BABYLON.StandardMaterial('smokeMat', scene);
-            mat.diffuseColor = new BABYLON.Color3(0.35, 0.35, 0.35);
-            mat.alpha = 0.45;
-            s.material = mat;
+            // Use GPU particles for smoke trails
+            const useGPU = VISUAL_CONFIG.gpuParticles.enabled &&
+                           BABYLON.GPUParticleSystem.IsSupported;
 
-            let life = 0.4;
-            const int = setInterval(() => {
-                life -= 0.04;
-                if (life <= 0) { clearInterval(int); s.dispose(); }
-                else { s.scaling.scaleInPlace(1.06); mat.alpha = life; }
-            }, 45);
+            const capacity = 8;
+
+            let ps;
+            if (useGPU) {
+                ps = new BABYLON.GPUParticleSystem('gpuSmoke', { capacity: capacity }, scene);
+            } else {
+                ps = new BABYLON.ParticleSystem('smoke', capacity, scene);
+            }
+
+            ps.particleTexture = getSmokeTexture();
+            ps.emitter = pos;
+
+            // Grey smoke that fades
+            ps.addColorGradient(0, new BABYLON.Color4(0.4, 0.4, 0.4, 0.5));
+            ps.addColorGradient(0.5, new BABYLON.Color4(0.35, 0.35, 0.35, 0.35));
+            ps.addColorGradient(1, new BABYLON.Color4(0.3, 0.3, 0.3, 0));
+
+            // Smoke expands as it rises
+            ps.addSizeGradient(0, 0.1);
+            ps.addSizeGradient(0.5, 0.25);
+            ps.addSizeGradient(1, 0.4);
+
+            ps.minLifeTime = 0.3;
+            ps.maxLifeTime = 0.6;
+            ps.emitRate = 30;
+            ps.manualEmitCount = capacity;
+            ps.minEmitPower = 0.5;
+            ps.maxEmitPower = 1.5;
+            ps.direction1 = new BABYLON.Vector3(-0.3, 0.8, -0.3);
+            ps.direction2 = new BABYLON.Vector3(0.3, 1.2, 0.3);
+            ps.gravity = new BABYLON.Vector3(0, 0.5, 0);  // Smoke rises
+
+            ps.minAngularSpeed = -1;
+            ps.maxAngularSpeed = 1;
+
+            ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+
+            ps.start();
+            ps.targetStopDuration = 0.15;
+            ps.disposeOnStop = true;
+        }
+
+        // GPU-based damage smoke - continuous emission for damaged mechs
+        function createDamageSmoke(mech) {
+            if (!VISUAL_CONFIG.gpuParticles.enabled || !mech || !mech.torso) return null;
+
+            const useGPU = BABYLON.GPUParticleSystem.IsSupported;
+            const capacity = VISUAL_CONFIG.gpuParticles.smokeCount;
+
+            let ps;
+            if (useGPU) {
+                ps = new BABYLON.GPUParticleSystem('damageSmoke', { capacity: capacity }, scene);
+            } else {
+                ps = new BABYLON.ParticleSystem('damageSmoke', capacity, scene);
+            }
+
+            ps.particleTexture = getSmokeTexture();
+            ps.emitter = mech.torso;
+
+            // Dark smoke for damage
+            ps.addColorGradient(0, new BABYLON.Color4(0.2, 0.2, 0.2, 0.6));
+            ps.addColorGradient(0.5, new BABYLON.Color4(0.25, 0.22, 0.2, 0.4));
+            ps.addColorGradient(1, new BABYLON.Color4(0.3, 0.28, 0.25, 0));
+
+            ps.addSizeGradient(0, 0.15);
+            ps.addSizeGradient(0.5, 0.35);
+            ps.addSizeGradient(1, 0.5);
+
+            ps.minLifeTime = 0.5;
+            ps.maxLifeTime = 1.0;
+            ps.emitRate = 15;
+            ps.minEmitPower = 1;
+            ps.maxEmitPower = 2;
+            ps.direction1 = new BABYLON.Vector3(-0.2, 0.8, -0.2);
+            ps.direction2 = new BABYLON.Vector3(0.2, 1.5, 0.2);
+            ps.gravity = new BABYLON.Vector3(0, 1, 0);
+
+            ps.minAngularSpeed = -0.5;
+            ps.maxAngularSpeed = 0.5;
+
+            ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+
+            return ps;
+        }
+
+        // GPU-based missile trail particles
+        function createMissileTrail(missile) {
+            if (!VISUAL_CONFIG.gpuParticles.enabled) return null;
+
+            const useGPU = BABYLON.GPUParticleSystem.IsSupported;
+
+            let ps;
+            if (useGPU) {
+                ps = new BABYLON.GPUParticleSystem('missileTrail', { capacity: 50 }, scene);
+            } else {
+                ps = new BABYLON.ParticleSystem('missileTrail', 50, scene);
+            }
+
+            ps.particleTexture = getSmokeTexture();
+            ps.emitter = missile;
+
+            // Orange-grey smoke trail
+            ps.addColorGradient(0, new BABYLON.Color4(1, 0.5, 0.2, 0.7));
+            ps.addColorGradient(0.3, new BABYLON.Color4(0.5, 0.4, 0.3, 0.5));
+            ps.addColorGradient(1, new BABYLON.Color4(0.3, 0.3, 0.3, 0));
+
+            ps.addSizeGradient(0, 0.08);
+            ps.addSizeGradient(0.5, 0.2);
+            ps.addSizeGradient(1, 0.3);
+
+            ps.minLifeTime = 0.3;
+            ps.maxLifeTime = 0.5;
+            ps.emitRate = 60;
+            ps.minEmitPower = 0.2;
+            ps.maxEmitPower = 0.5;
+            ps.direction1 = new BABYLON.Vector3(-0.1, -0.1, -0.1);
+            ps.direction2 = new BABYLON.Vector3(0.1, 0.1, 0.1);
+
+            ps.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+
+            return ps;
         }
 
         function triggerDestruction(mech) {

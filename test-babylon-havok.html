@@ -445,7 +445,7 @@
                 shadowDarkness: 0.6,         // Dark shadows for 2-tone effect
                 // Inverted Hull outlines (GPU-friendly, vertex-based)
                 outlineEnabled: true,
-                outlineWidth: 0.15,          // Thickness (increased for visibility)
+                outlineWidth: 0.5,           // Very thick outlines
                 outlineColor: new BABYLON.Color3(0, 0, 0),  // Pure black
             }
         };
@@ -610,10 +610,11 @@
 
                 // Enable inverted hull outlines (GPU-friendly vertex-based method)
                 // Much faster than edge rendering - works on vertex shader not pixel shader
-                if (VISUAL_CONFIG.animeStyle.outlineEnabled && node.renderOutline !== undefined) {
+                if (VISUAL_CONFIG.animeStyle.outlineEnabled && node instanceof BABYLON.Mesh) {
                     node.renderOutline = true;
                     node.outlineWidth = VISUAL_CONFIG.animeStyle.outlineWidth;
                     node.outlineColor = VISUAL_CONFIG.animeStyle.outlineColor;
+                    log(`[OUTLINE] Applied to ${node.name}: width=${node.outlineWidth}`);
                 }
             });
         }

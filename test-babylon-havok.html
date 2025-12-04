@@ -174,16 +174,17 @@
             display: grid;
             gap: 2px;
             padding: 4px;
-            background: rgba(0, 255, 136, 0.05);
-            border: 1px solid rgba(0, 255, 136, 0.3);
+            background: rgba(0, 20, 10, 0.9);
+            border: 2px solid rgba(0, 255, 136, 0.6);
             border-radius: 4px;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
         }
 
         .grid-cell {
             width: 40px;
             height: 40px;
-            background: rgba(0, 255, 136, 0.1);
-            border: 1px solid rgba(0, 255, 136, 0.4);
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid rgba(0, 255, 136, 0.5);
             border-radius: 2px;
             transition: all 0.2s ease;
         }
@@ -291,11 +292,25 @@
         }
 
         .bench-item .item-shape {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            font-size: 8px;
-            color: #00aa66;
+            display: none;  /* Hidden, replaced by visual grid */
+        }
+
+        .bench-item .shape-preview {
+            display: grid;
+            gap: 1px;
+            margin-top: 4px;
+        }
+
+        .bench-item .shape-cell {
+            width: 10px;
+            height: 10px;
+            background: currentColor;
+            opacity: 0.6;
+            border-radius: 1px;
+        }
+
+        .bench-item .shape-cell.empty {
+            background: transparent;
         }
 
         .bench-item.weapon { border-color: #ff6644; }
@@ -776,11 +791,26 @@
         // ============================================
         function drawHand(count = 5) {
             currentHand = [];
-            const itemIds = Object.keys(ITEM_DATABASE);
+            const allItemIds = Object.keys(ITEM_DATABASE);
 
-            // Draw items (with duplicates allowed for now)
-            for (let i = 0; i < count; i++) {
-                const randomId = itemIds[Math.floor(Math.random() * itemIds.length)];
+            // Separate items by category to ensure variety
+            const weaponIds = allItemIds.filter(id => ITEM_DATABASE[id].category === 'weapon');
+            const otherIds = allItemIds.filter(id => ITEM_DATABASE[id].category !== 'weapon');
+
+            // Guarantee at least 2 weapons
+            const guaranteedWeapons = 2;
+            for (let i = 0; i < guaranteedWeapons && i < count; i++) {
+                const randomId = weaponIds[Math.floor(Math.random() * weaponIds.length)];
+                currentHand.push({
+                    instanceId: `item_${Date.now()}_${i}`,
+                    itemId: randomId,
+                    ...ITEM_DATABASE[randomId]
+                });
+            }
+
+            // Fill rest with random items
+            for (let i = guaranteedWeapons; i < count; i++) {
+                const randomId = allItemIds[Math.floor(Math.random() * allItemIds.length)];
                 currentHand.push({
                     instanceId: `item_${Date.now()}_${i}`,
                     itemId: randomId,
@@ -973,22 +1003,31 @@
             // Check each grid
             for (const [slotName, gridEl] of Object.entries(gridElements)) {
                 const rect = gridEl.getBoundingClientRect();
+                // Account for label offset (label is at top: -20px)
+                const labelOffset = 20;
+                const adjustedTop = rect.top + labelOffset;
+
                 if (clientX >= rect.left && clientX <= rect.right &&
-                    clientY >= rect.top && clientY <= rect.bottom) {
+                    clientY >= adjustedTop && clientY <= rect.bottom) {
 
                     // Calculate grid cell position
                     const cellSize = 42;  // 40px + 2px gap
                     const localX = clientX - rect.left - 4;  // Account for padding
-                    const localY = clientY - rect.top - 4;
+                    const localY = clientY - adjustedTop - 4;  // Account for label and padding
 
-                    let gridX = Math.floor(localX / cellSize);
-                    let gridY = Math.floor(localY / cellSize);
-
-                    // Adjust for item size (place from top-left of item shape)
                     const item = dragState.item;
                     const shape = item.gridShape;
                     const itemW = shape[0].length;
                     const itemH = shape.length;
+
+                    // Calculate raw grid position, then center the item on cursor
+                    let gridX = Math.floor(localX / cellSize) - Math.floor(itemW / 2);
+                    let gridY = Math.floor(localY / cellSize) - Math.floor(itemH / 2);
+
+                    // Clamp to valid bounds
+                    const slotDef = MECH_CHASSIS.slots[slotName];
+                    gridX = Math.max(0, Math.min(gridX, slotDef.cols - itemW));
+                    gridY = Math.max(0, Math.min(gridY, slotDef.rows - itemH));
 
                     // Check if item can be placed at this position
                     const grid = gridOccupation[slotName];
@@ -1032,6 +1071,12 @@
                     if (shape[dy][dx] === 1) {
                         const cellX = dropInfo.gridX + dx;
                         const cellY = dropInfo.gridY + dy;
+
+                        // Check bounds before calculating index
+                        if (cellX < 0 || cellX >= slotDef.cols || cellY < 0 || cellY >= slotDef.rows) {
+                            continue;  // Skip out-of-bounds cells
+                        }
+
                         const cellIdx = cellY * slotDef.cols + cellX;
 
                         if (cellIdx >= 0 && cellIdx < cells.length) {
@@ -1098,10 +1143,24 @@
                 const el = document.createElement('div');
                 el.className = `bench-item ${item.category}`;
                 el.dataset.instanceId = item.instanceId;
+
+                // Build shape preview HTML
+                const shape = item.gridShape;
+                const w = shape[0].length;
+                const h = shape.length;
+                let shapeHTML = `<div class="shape-preview" style="grid-template-columns: repeat(${w}, 10px);">`;
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const filled = shape[y][x] === 1;
+                        shapeHTML += `<div class="shape-cell${filled ? '' : ' empty'}"></div>`;
+                    }
+                }
+                shapeHTML += '</div>';
+
                 el.innerHTML = `
                     <span class="item-icon">${item.icon}</span>
                     <span class="item-name">${item.name}</span>
-                    <span class="item-shape">${item.gridDimensions.w}x${item.gridDimensions.h}</span>
+                    ${shapeHTML}
                 `;
                 bench.appendChild(el);
             });

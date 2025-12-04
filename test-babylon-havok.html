@@ -1139,9 +1139,11 @@
                     clientY >= adjustedTop && clientY <= rect.bottom) {
 
                     // Calculate grid cell position
+                    // Account for: 2px border + 4px padding = 6px offset
                     const cellSize = 42;  // 40px + 2px gap
-                    const localX = clientX - rect.left - 4;  // Account for padding
-                    const localY = clientY - adjustedTop - 4;  // Account for label and padding
+                    const borderAndPadding = 6;
+                    const localX = clientX - rect.left - borderAndPadding;
+                    const localY = clientY - adjustedTop - borderAndPadding;
 
                     const item = dragState.item;
                     const shape = item.gridShape;
@@ -1477,18 +1479,24 @@
 
         function updateStats() {
             let totalWeight = 0;
-            let totalEnergyDraw = 0;
+            let energyUsed = 0;      // Positive energyDraw = consumes energy
+            let energyProvided = 0;  // Negative energyDraw = provides energy (reactors)
 
             loadoutState.equipment.forEach(eq => {
                 const item = ITEM_DATABASE[eq.itemId];
                 if (item && item.stats) {
                     totalWeight += item.stats.weight || 0;
-                    totalEnergyDraw += item.stats.energyDraw || 0;
+                    const draw = item.stats.energyDraw || 0;
+                    if (draw > 0) {
+                        energyUsed += draw;
+                    } else {
+                        energyProvided += Math.abs(draw);
+                    }
                 }
             });
 
             const maxWeight = MECH_CHASSIS.maxWeight;
-            const maxEnergy = MECH_CHASSIS.baseEnergy;
+            const maxEnergy = MECH_CHASSIS.baseEnergy + energyProvided;  // Reactors increase max energy
 
             // Update weight bar
             const weightFill = document.getElementById('weightFill');
@@ -1498,18 +1506,17 @@
             weightText.textContent = `${totalWeight} / ${maxWeight}`;
             weightFill.classList.toggle('over-limit', totalWeight > maxWeight);
 
-            // Update energy bar (energy draw vs available energy)
+            // Update energy bar (energy used vs available energy)
             const energyFill = document.getElementById('energyFill');
             const energyText = document.getElementById('energyText');
-            const effectiveEnergy = Math.max(0, totalEnergyDraw);  // Negative draw = energy provided
-            const energyPercent = Math.min((effectiveEnergy / maxEnergy) * 100, 100);
+            const energyPercent = Math.min((energyUsed / maxEnergy) * 100, 100);
             energyFill.style.width = energyPercent + '%';
-            energyText.textContent = `${effectiveEnergy} / ${maxEnergy}`;
-            energyFill.classList.toggle('over-limit', effectiveEnergy > maxEnergy);
+            energyText.textContent = `${energyUsed} / ${maxEnergy}`;
+            energyFill.classList.toggle('over-limit', energyUsed > maxEnergy);
 
             // Update battle ready button
             const btn = document.getElementById('battleReadyBtn');
-            const isValid = totalWeight <= maxWeight && effectiveEnergy <= maxEnergy && loadoutState.equipment.length > 0;
+            const isValid = totalWeight <= maxWeight && energyUsed <= maxEnergy && loadoutState.equipment.length > 0;
             btn.disabled = !isValid;
             btn.classList.toggle('ready', isValid);
         }

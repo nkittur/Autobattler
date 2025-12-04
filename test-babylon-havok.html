@@ -2904,12 +2904,7 @@
 
         function startBattleFromMission() {
             if (selectedMission) {
-                switchTab('loadout');
-                // Trigger the battle ready button click if enabled
-                const btn = document.getElementById('battleReadyBtn');
-                if (!btn.disabled) {
-                    btn.click();
-                }
+                startBattle();
             }
         }
 
@@ -2966,7 +2961,6 @@
             // Update continue button state
             const continueBtn = document.getElementById('missionContinueBtn');
             if (continueBtn) {
-                const btn = document.getElementById('battleReadyBtn');
                 continueBtn.disabled = !selectedMission || loadoutState.equipment.length === 0;
             }
         }

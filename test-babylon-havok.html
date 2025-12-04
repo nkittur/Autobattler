@@ -166,16 +166,24 @@
             flex: 1;
             pointer-events: none;
             display: grid;
-            grid-template-columns: auto auto auto auto;
+            grid-template-columns: auto auto auto;
             grid-template-rows: auto auto;
             grid-template-areas:
-                "leftArm torso torso rightArm"
-                ". leftLeg rightLeg .";
+                "leftArm torso rightArm"
+                "legs legs legs";
             gap: 5px;
             padding: 60px 10px 20px 10px;
             justify-content: center;
             align-content: center;
             overflow-y: auto;
+        }
+
+        #legsContainer {
+            grid-area: legs;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            pointer-events: none;
         }
 
         .mech-grid-overlay {
@@ -194,8 +202,6 @@
         .mech-grid-overlay[data-slot="torso"] { grid-area: torso; }
         .mech-grid-overlay[data-slot="leftArm"] { grid-area: leftArm; }
         .mech-grid-overlay[data-slot="rightArm"] { grid-area: rightArm; }
-        .mech-grid-overlay[data-slot="leftLeg"] { grid-area: leftLeg; }
-        .mech-grid-overlay[data-slot="rightLeg"] { grid-area: rightLeg; }
 
         .mech-grid-overlay.slot-valid {
             border-color: #00ff88;
@@ -3089,6 +3095,11 @@
             container.innerHTML = '';
             gridElements = {};
 
+            // Create legs container for centered leg grids
+            const legsContainer = document.createElement('div');
+            legsContainer.id = 'legsContainer';
+            container.appendChild(legsContainer);
+
             // Get cell size based on screen width
             let cellSize = 40;
             if (window.innerWidth <= 480) {
@@ -3102,7 +3113,6 @@
                 gridEl.className = 'mech-grid-overlay';
                 gridEl.dataset.slot = slotName;
                 gridEl.style.gridTemplateColumns = `repeat(${slotDef.cols}, ${cellSize}px)`;
-                // CSS Grid handles positioning via grid-area
 
                 // Add label
                 const label = document.createElement('span');
@@ -3121,7 +3131,12 @@
                     }
                 }
 
-                container.appendChild(gridEl);
+                // Append legs to legsContainer, others to main container
+                if (slotName === 'leftLeg' || slotName === 'rightLeg') {
+                    legsContainer.appendChild(gridEl);
+                } else {
+                    container.appendChild(gridEl);
+                }
                 gridElements[slotName] = gridEl;
             }
         }

@@ -288,6 +288,7 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             margin-bottom: 10px;
+            text-align: center;
         }
 
         #bench {
@@ -296,6 +297,7 @@
             overflow-x: auto;
             padding: 10px 0;
             min-height: 100px;
+            justify-content: center;
         }
 
         .bench-item {
@@ -879,53 +881,6 @@
             transform: scale(1.05);
         }
 
-        /* ============================================
-           TAB NAVIGATION SYSTEM
-           ============================================ */
-        #tabBar {
-            display: block;
-            pointer-events: auto;
-            background: rgba(0, 20, 10, 0.95);
-            border-bottom: 2px solid #00ff88;
-            padding: 0;
-        }
-
-        .tab-buttons {
-            display: flex;
-            width: 100%;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 12px 20px;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: #00aa66;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .tab-btn:hover {
-            color: #00ff88;
-            background: rgba(0, 255, 136, 0.1);
-        }
-
-        .tab-btn.active {
-            color: #00ff88;
-            border-bottom-color: #00ff88;
-            background: rgba(0, 255, 136, 0.15);
-        }
-
-        .tab-btn .tab-icon {
-            margin-right: 8px;
-        }
-
         /* Tab Content Areas */
         .tab-content {
             display: none;
@@ -1234,16 +1189,6 @@
                 top: -16px;
             }
 
-            /* Tab buttons - more compact */
-            .tab-btn {
-                padding: 10px 15px;
-                font-size: 12px;
-            }
-
-            .tab-btn .tab-icon {
-                margin-right: 5px;
-            }
-
             /* Mission tab padding */
             #missionTab {
                 padding: 15px;
@@ -1305,10 +1250,6 @@
                 width: 100%;
             }
 
-            #tabBar {
-                width: 100%;
-            }
-
             #loadoutTab {
                 flex-direction: row;
             }
@@ -1339,21 +1280,9 @@
 
         <!-- MechBuilder UI Overlay -->
         <div id="mechBuilderUI">
-            <!-- Tab Bar (at very top, visible on mobile) -->
-            <div id="tabBar">
-                <div class="tab-buttons">
-                    <button class="tab-btn active" data-tab="loadout" onclick="switchTab('loadout')">
-                        <span class="tab-icon">⚙️</span>Loadout
-                    </button>
-                    <button class="tab-btn" data-tab="mission" onclick="switchTab('mission')">
-                        <span class="tab-icon">🎯</span>Missions
-                    </button>
-                </div>
-            </div>
-
             <!-- Header Panel -->
             <div id="statsPanel">
-                <div id="gameTitle">MECHBUILDER</div>
+                <div id="gameTitle">Loadout</div>
                 <div class="nav-spacer"></div>
                 <button id="goToMissionsBtn" class="header-nav-btn" disabled>Go to Missions →</button>
             </div>
@@ -2941,10 +2870,17 @@
         function switchTab(tabName) {
             currentTab = tabName;
 
-            // Update tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tab === tabName);
-            });
+            // Update header title
+            const gameTitle = document.getElementById('gameTitle');
+            const goToMissionsBtn = document.getElementById('goToMissionsBtn');
+
+            if (tabName === 'loadout') {
+                gameTitle.textContent = 'Loadout';
+                if (goToMissionsBtn) goToMissionsBtn.style.display = '';
+            } else if (tabName === 'mission') {
+                gameTitle.textContent = 'Missions';
+                if (goToMissionsBtn) goToMissionsBtn.style.display = 'none';
+            }
 
             // Update tab content
             const loadoutTab = document.getElementById('loadoutTab');

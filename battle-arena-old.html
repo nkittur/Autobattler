@@ -696,6 +696,11 @@
                 if (battleConfig.player && battleConfig.player.stats) {
                     playerMech.maxHP = battleConfig.player.stats.maxHealth || playerMech.maxHP;
                     playerMech.currentHP = playerMech.maxHP;
+                    // Store loadout damage for weapon calculations
+                    // Loadout damage is total damage from all equipped weapons
+                    playerMech.loadoutDamage = battleConfig.player.stats.damage || 0;
+                    playerMech.loadoutWeapons = battleConfig.player.stats.weapons || [];
+                    console.log('Player loadout damage:', playerMech.loadoutDamage, 'weapons:', playerMech.loadoutWeapons);
                 }
                 playerMechs = [playerMech];
 
@@ -710,9 +715,16 @@
                     enemyMech = createCommandoMech(scene, 7, 0, false);
                 }
                 // Apply enemy stats from config
-                if (battleConfig.enemy && battleConfig.enemy.maxHealth) {
-                    enemyMech.maxHP = battleConfig.enemy.maxHealth;
-                    enemyMech.currentHP = enemyMech.maxHP;
+                if (battleConfig.enemy) {
+                    if (battleConfig.enemy.maxHealth) {
+                        enemyMech.maxHP = battleConfig.enemy.maxHealth;
+                        enemyMech.currentHP = enemyMech.maxHP;
+                    }
+                    // Store enemy damage from mission config
+                    if (battleConfig.enemy.stats && battleConfig.enemy.stats.damage) {
+                        enemyMech.loadoutDamage = battleConfig.enemy.stats.damage;
+                        console.log('Enemy loadout damage:', enemyMech.loadoutDamage);
+                    }
                 }
                 enemyMechs = [enemyMech];
 
@@ -3847,22 +3859,35 @@
             // =============================================
             // TORSO ALWAYS FACES ENEMY
             // =============================================
-            // Calculate angle to enemy (in XZ plane)
-            // Mechs face along X axis, so we want to rotate Y to face target
+            // Calculate angle to enemy (in XZ plane) - this is the WORLD angle
             const angleToEnemy = Math.atan2(dz, dx);
+
+            // Get the pelvis's current world Y rotation
+            // Since torso is parented to pelvis, we need to calculate LOCAL rotation
+            const body = mech.pelvisAggregate.body;
+            const pelvisQuat = body.transformNode.rotationQuaternion;
+            let pelvisYaw = 0;
+            if (pelvisQuat) {
+                const euler = pelvisQuat.toEulerAngles();
+                pelvisYaw = euler.y;
+            }
 
             // Mech mesh faces +Z by default (chest at +Z, reactor at -Z)
             // Babylon.js uses LEFT-HANDED coordinates: +Y rotation is CLOCKWISE from above
             // rotation.y = 0 faces +Z, rotation.y = +π/2 faces +X, rotation.y = -π/2 faces -X
             // To convert world angle to mech rotation: baseAngle - angleToEnemy (not the reverse!)
             const baseAngle = Math.PI / 2;
-            let torsoAngle = baseAngle - angleToEnemy;  // FIXED: was angleToEnemy - baseAngle
+            let worldTorsoAngle = baseAngle - angleToEnemy;
+
+            // Convert to LOCAL torso rotation by subtracting pelvis world rotation
+            // The torso is parented to the pelvis, so its rotation.y is relative to pelvis
+            let torsoAngle = worldTorsoAngle - pelvisYaw;
 
             // Normalize to -PI to PI range
             while (torsoAngle > Math.PI) torsoAngle -= Math.PI * 2;
             while (torsoAngle < -Math.PI) torsoAngle += Math.PI * 2;
 
-            // Clamp torso rotation to reasonable range (about 60 degrees each way)
+            // Clamp torso rotation to reasonable range (about 60 degrees each way from pelvis)
             mech.targetTorsoTwist = Math.max(-1.0, Math.min(1.0, torsoAngle));
 
             // Smooth interpolation for torso rotation
@@ -3872,7 +3897,7 @@
             // Diagnostic: Log torso tracking calculations
             if (shouldLog) {
                 dbg(`${name}: torso dx=${dx.toFixed(2)} dz=${dz.toFixed(2)} angleToEnemy=${(angleToEnemy * 180/Math.PI).toFixed(1)}°`, 'torso');
-                dbg(`${name}: torso baseAngle=${(baseAngle * 180/Math.PI).toFixed(0)}° rawAngle=${(torsoAngle * 180/Math.PI).toFixed(1)}° target=${(mech.targetTorsoTwist * 180/Math.PI).toFixed(1)}° actual=${(mech.torsoTwist * 180/Math.PI).toFixed(1)}°`, 'torso');
+                dbg(`${name}: torso pelvisYaw=${(pelvisYaw * 180/Math.PI).toFixed(1)}° worldAngle=${(worldTorsoAngle * 180/Math.PI).toFixed(1)}° localAngle=${(torsoAngle * 180/Math.PI).toFixed(1)}° actual=${(mech.torsoTwist * 180/Math.PI).toFixed(1)}°`, 'torso');
             }
 
             // Head follows torso but can look even more toward enemy
@@ -4243,10 +4268,24 @@
 
                 log(`[FIRE] ${from.name} attempting ${type}...`);
 
-                const weapon = WEAPONS[type];
-                if (!weapon) {
+                const baseWeapon = WEAPONS[type];
+                if (!baseWeapon) {
                     log(`[ERROR] Unknown weapon type: ${type}`, 'error');
                     return;
+                }
+
+                // Apply loadout damage multiplier for mechs with loadout weapons
+                // Loadout damage from equipped weapons scales the base weapon damage
+                let weapon = baseWeapon;
+                if (from.loadoutDamage && from.loadoutDamage > 0) {
+                    // Scale damage: loadout damage of 100 gives 2x multiplier, 50 gives 1x
+                    const damageMultiplier = Math.max(0.5, from.loadoutDamage / 50);
+                    weapon = {
+                        ...baseWeapon,
+                        damage: Math.round(baseWeapon.damage * damageMultiplier),
+                        knockback: baseWeapon.knockback * Math.min(2, damageMultiplier)
+                    };
+                    log(`[LOADOUT] Damage multiplier: ${damageMultiplier.toFixed(2)}x -> ${weapon.damage} damage`);
                 }
 
                 from.recoilRecovery = weapon.recoil;

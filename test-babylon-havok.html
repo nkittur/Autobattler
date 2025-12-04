@@ -1655,10 +1655,14 @@
 
         // Update mech AI and movement
         function updateMechAI(mech, dt) {
-            if (mech.isDestroyed) return;
+            if (!mech || mech.isDestroyed) return;
+            if (!mech.pelvis) {
+                console.error('Mech pelvis is undefined:', mech.name);
+                return;
+            }
 
             const target = mech.ai.target;
-            if (!target || target.isDestroyed) return;
+            if (!target || target.isDestroyed || !target.pelvis) return;
 
             const myPos = mech.pelvis.getAbsolutePosition();
             const targetPos = target.pelvis.getAbsolutePosition();
@@ -3091,6 +3095,7 @@
 
             // Create battle scene
             await createBattleScene();
+            console.log('Battle scene created:', battleScene);
 
             // Create player mech with loadout weapons
             playerBattleMech = createBattleMech(
@@ -3098,6 +3103,7 @@
                 playerWeapons,
                 playerStats.maxHealth
             );
+            console.log('Player mech created:', playerBattleMech);
 
             // Create enemy mech
             enemyBattleMech = createBattleMech(
@@ -3105,12 +3111,24 @@
                 enemyWeapons,
                 enemyConfig.maxHealth || 100
             );
+            console.log('Enemy mech created:', enemyBattleMech);
+
+            // Validate mechs were created properly
+            if (!playerBattleMech || !playerBattleMech.pelvis) {
+                console.error('Failed to create player mech properly');
+                return;
+            }
+            if (!enemyBattleMech || !enemyBattleMech.pelvis) {
+                console.error('Failed to create enemy mech properly');
+                return;
+            }
 
             // Set up targets
             playerBattleMech.ai.target = enemyBattleMech;
             enemyBattleMech.ai.target = playerBattleMech;
 
             battleMechs = [playerBattleMech, enemyBattleMech];
+            console.log('Battle mechs array:', battleMechs);
 
             // Update UI
             document.getElementById('playerName').textContent = MECH_CHASSIS.name;

@@ -1323,33 +1323,44 @@
         }
 
         // Create a battle mech with physics and loadout weapons
+        // Matches the proportions of the builder mech for consistency
         function createBattleMech(scene, xPos, zPos, isPlayer, weapons, maxHP) {
             const name = isPlayer ? 'player' : 'enemy';
             const colors = isPlayer ?
                 { primary: BATTLE_COLORS.playerPrimary, secondary: BATTLE_COLORS.playerSecondary } :
                 { primary: BATTLE_COLORS.enemyPrimary, secondary: BATTLE_COLORS.enemySecondary };
 
-            // Materials
+            // Materials - match builder holographic style but solid
             const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
             primaryMat.diffuseColor = colors.primary;
+            primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
 
             const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
             secondaryMat.diffuseColor = colors.secondary;
 
             const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
             metalMat.diffuseColor = BATTLE_COLORS.metal;
+            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
 
-            // Pelvis (physics body)
-            const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', { width: 1.5, height: 0.4, depth: 0.8 }, scene);
-            pelvis.position = new BABYLON.Vector3(xPos, 2.5, zPos);
-            pelvis.material = new BABYLON.StandardMaterial(name + '_dark', scene);
-            pelvis.material.diffuseColor = BATTLE_COLORS.darkMetal;
+            const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
+            darkMat.diffuseColor = BATTLE_COLORS.darkMetal;
 
-            // Physics body
+            // Cockpit material (glowing)
+            const cockpitMat = new BABYLON.StandardMaterial(name + '_cockpit', scene);
+            cockpitMat.diffuseColor = isPlayer ? new BABYLON.Color3(0, 0.5, 0.5) : new BABYLON.Color3(0.5, 0.2, 0.2);
+            cockpitMat.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 0.9) : new BABYLON.Color3(0.9, 0.3, 0.2);
+            cockpitMat.alpha = 0.9;
+
+            // Pelvis (physics body) - matches builder: width: 0.9, height: 0.4, depth: 0.6
+            const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', { width: 0.9, height: 0.4, depth: 0.6 }, scene);
+            pelvis.position = new BABYLON.Vector3(xPos, 1.5, zPos);
+            pelvis.material = darkMat;
+
+            // Physics body - taller collision box to represent full mech
             const pelvisShape = new BABYLON.PhysicsShapeBox(
-                new BABYLON.Vector3(0, -1, 0),
+                new BABYLON.Vector3(0, 0.5, 0),
                 new BABYLON.Quaternion(0, 0, 0, 1),
-                new BABYLON.Vector3(1.5, 2.5, 0.8),
+                new BABYLON.Vector3(1.4, 2.5, 0.9),
                 scene
             );
             const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.ANIMATED, false, scene);
@@ -1358,52 +1369,118 @@
             pelvisBody.setAngularDamping(5);
             pelvisBody.setLinearDamping(0.5);
 
-            // Torso
-            const torso = BABYLON.MeshBuilder.CreateBox(name + '_torso', { width: 1.4, height: 1.0, depth: 0.9 }, scene);
-            torso.position.y = 0.6;
+            // Torso - matches builder: width: 1.2, height: 1.0, depth: 0.8
+            const torso = BABYLON.MeshBuilder.CreateBox(name + '_torso', { width: 1.2, height: 1.0, depth: 0.8 }, scene);
+            torso.position.y = 0.7;
             torso.parent = pelvis;
             torso.material = primaryMat;
 
-            // Head
+            // Torso upper - matches builder: width: 1.4, height: 0.5, depth: 0.9
+            const torsoUpper = BABYLON.MeshBuilder.CreateBox(name + '_torsoUpper', { width: 1.4, height: 0.5, depth: 0.9 }, scene);
+            torsoUpper.position.y = 0.6;
+            torsoUpper.parent = torso;
+            torsoUpper.material = secondaryMat;
+
+            // Head - matches builder: width: 0.5, height: 0.4, depth: 0.5
             const head = BABYLON.MeshBuilder.CreateBox(name + '_head', { width: 0.5, height: 0.4, depth: 0.5 }, scene);
-            head.position.y = 0.7;
-            head.parent = torso;
-            head.material = secondaryMat;
+            head.position.y = 0.65;
+            head.parent = torsoUpper;
+            head.material = primaryMat;
 
-            // Arms
-            const leftArm = BABYLON.MeshBuilder.CreateBox(name + '_leftArm', { width: 0.35, height: 1.2, depth: 0.35 }, scene);
-            leftArm.position = new BABYLON.Vector3(-0.9, 0.1, 0);
-            leftArm.parent = torso;
-            leftArm.material = metalMat;
+            // Cockpit glass - matches builder
+            const cockpit = BABYLON.MeshBuilder.CreateBox(name + '_cockpit', { width: 0.4, height: 0.15, depth: 0.1 }, scene);
+            cockpit.position = new BABYLON.Vector3(0, 0, 0.28);
+            cockpit.parent = head;
+            cockpit.material = cockpitMat;
 
-            const rightArm = BABYLON.MeshBuilder.CreateBox(name + '_rightArm', { width: 0.35, height: 1.2, depth: 0.35 }, scene);
-            rightArm.position = new BABYLON.Vector3(0.9, 0.1, 0);
-            rightArm.parent = torso;
-            rightArm.material = metalMat;
+            // Left Arm - shoulder + upper arm + lower arm
+            const leftShoulder = BABYLON.MeshBuilder.CreateBox(name + '_leftShoulder', { width: 0.35, height: 0.3, depth: 0.35 }, scene);
+            leftShoulder.position = new BABYLON.Vector3(-0.85, 0.35, 0);
+            leftShoulder.parent = torso;
+            leftShoulder.material = secondaryMat;
 
-            // Weapon barrels on arms (visual)
-            const leftWeapon = BABYLON.MeshBuilder.CreateCylinder(name + '_leftWpn', { diameter: 0.2, height: 0.7 }, scene);
+            const leftUpperArm = BABYLON.MeshBuilder.CreateBox(name + '_leftUpperArm', { width: 0.25, height: 0.5, depth: 0.25 }, scene);
+            leftUpperArm.position.y = -0.35;
+            leftUpperArm.parent = leftShoulder;
+            leftUpperArm.material = metalMat;
+
+            const leftLowerArm = BABYLON.MeshBuilder.CreateBox(name + '_leftLowerArm', { width: 0.3, height: 0.6, depth: 0.3 }, scene);
+            leftLowerArm.position.y = -0.5;
+            leftLowerArm.parent = leftUpperArm;
+            leftLowerArm.material = primaryMat;
+
+            // Left Weapon barrel
+            const leftWeapon = BABYLON.MeshBuilder.CreateCylinder(name + '_leftWpn', { diameter: 0.15, height: 0.5 }, scene);
             leftWeapon.rotation.x = Math.PI / 2;
-            leftWeapon.position = new BABYLON.Vector3(0, -0.4, 0.3);
-            leftWeapon.parent = leftArm;
-            leftWeapon.material = metalMat;
+            leftWeapon.position = new BABYLON.Vector3(0, -0.2, 0.25);
+            leftWeapon.parent = leftLowerArm;
+            leftWeapon.material = darkMat;
 
-            const rightWeapon = BABYLON.MeshBuilder.CreateCylinder(name + '_rightWpn', { diameter: 0.2, height: 0.7 }, scene);
+            // Right Arm - shoulder + upper arm + lower arm
+            const rightShoulder = BABYLON.MeshBuilder.CreateBox(name + '_rightShoulder', { width: 0.35, height: 0.3, depth: 0.35 }, scene);
+            rightShoulder.position = new BABYLON.Vector3(0.85, 0.35, 0);
+            rightShoulder.parent = torso;
+            rightShoulder.material = secondaryMat;
+
+            const rightUpperArm = BABYLON.MeshBuilder.CreateBox(name + '_rightUpperArm', { width: 0.25, height: 0.5, depth: 0.25 }, scene);
+            rightUpperArm.position.y = -0.35;
+            rightUpperArm.parent = rightShoulder;
+            rightUpperArm.material = metalMat;
+
+            const rightLowerArm = BABYLON.MeshBuilder.CreateBox(name + '_rightLowerArm', { width: 0.3, height: 0.6, depth: 0.3 }, scene);
+            rightLowerArm.position.y = -0.5;
+            rightLowerArm.parent = rightUpperArm;
+            rightLowerArm.material = primaryMat;
+
+            // Right Weapon barrel
+            const rightWeapon = BABYLON.MeshBuilder.CreateCylinder(name + '_rightWpn', { diameter: 0.15, height: 0.5 }, scene);
             rightWeapon.rotation.x = Math.PI / 2;
-            rightWeapon.position = new BABYLON.Vector3(0, -0.4, 0.3);
-            rightWeapon.parent = rightArm;
-            rightWeapon.material = metalMat;
+            rightWeapon.position = new BABYLON.Vector3(0, -0.2, 0.25);
+            rightWeapon.parent = rightLowerArm;
+            rightWeapon.material = darkMat;
 
-            // Legs
-            const leftLeg = BABYLON.MeshBuilder.CreateBox(name + '_leftLeg', { width: 0.3, height: 1.5, depth: 0.3 }, scene);
-            leftLeg.position = new BABYLON.Vector3(-0.5, -1.2, 0);
-            leftLeg.parent = pelvis;
-            leftLeg.material = metalMat;
+            // Legs - matching builder structure
+            // Left leg
+            const leftHip = BABYLON.MeshBuilder.CreateBox(name + '_leftHip', { width: 0.25, height: 0.25, depth: 0.25 }, scene);
+            leftHip.position = new BABYLON.Vector3(-0.3, -0.25, 0);
+            leftHip.parent = pelvis;
+            leftHip.material = darkMat;
 
-            const rightLeg = BABYLON.MeshBuilder.CreateBox(name + '_rightLeg', { width: 0.3, height: 1.5, depth: 0.3 }, scene);
-            rightLeg.position = new BABYLON.Vector3(0.5, -1.2, 0);
-            rightLeg.parent = pelvis;
-            rightLeg.material = metalMat;
+            const leftUpperLeg = BABYLON.MeshBuilder.CreateBox(name + '_leftUpperLeg', { width: 0.2, height: 0.5, depth: 0.2 }, scene);
+            leftUpperLeg.position.y = -0.35;
+            leftUpperLeg.parent = leftHip;
+            leftUpperLeg.material = metalMat;
+
+            const leftLowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_leftLowerLeg', { width: 0.22, height: 0.55, depth: 0.22 }, scene);
+            leftLowerLeg.position.y = -0.5;
+            leftLowerLeg.parent = leftUpperLeg;
+            leftLowerLeg.material = primaryMat;
+
+            const leftFoot = BABYLON.MeshBuilder.CreateBox(name + '_leftFoot', { width: 0.25, height: 0.12, depth: 0.4 }, scene);
+            leftFoot.position = new BABYLON.Vector3(0, -0.3, 0.08);
+            leftFoot.parent = leftLowerLeg;
+            leftFoot.material = darkMat;
+
+            // Right leg
+            const rightHip = BABYLON.MeshBuilder.CreateBox(name + '_rightHip', { width: 0.25, height: 0.25, depth: 0.25 }, scene);
+            rightHip.position = new BABYLON.Vector3(0.3, -0.25, 0);
+            rightHip.parent = pelvis;
+            rightHip.material = darkMat;
+
+            const rightUpperLeg = BABYLON.MeshBuilder.CreateBox(name + '_rightUpperLeg', { width: 0.2, height: 0.5, depth: 0.2 }, scene);
+            rightUpperLeg.position.y = -0.35;
+            rightUpperLeg.parent = rightHip;
+            rightUpperLeg.material = metalMat;
+
+            const rightLowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_rightLowerLeg', { width: 0.22, height: 0.55, depth: 0.22 }, scene);
+            rightLowerLeg.position.y = -0.5;
+            rightLowerLeg.parent = rightUpperLeg;
+            rightLowerLeg.material = primaryMat;
+
+            const rightFoot = BABYLON.MeshBuilder.CreateBox(name + '_rightFoot', { width: 0.25, height: 0.12, depth: 0.4 }, scene);
+            rightFoot.position = new BABYLON.Vector3(0, -0.3, 0.08);
+            rightFoot.parent = rightLowerLeg;
+            rightFoot.material = darkMat;
 
             return {
                 name: name,
@@ -1411,12 +1488,12 @@
                 pelvisBody: pelvisBody,
                 torso: torso,
                 head: head,
-                leftArm: leftArm,
-                rightArm: rightArm,
+                leftArm: leftLowerArm,
+                rightArm: rightLowerArm,
                 leftWeapon: leftWeapon,
                 rightWeapon: rightWeapon,
-                leftLeg: leftLeg,
-                rightLeg: rightLeg,
+                leftLeg: leftLowerLeg,
+                rightLeg: rightLowerLeg,
                 isPlayer: isPlayer,
                 maxHP: maxHP,
                 currentHP: maxHP,

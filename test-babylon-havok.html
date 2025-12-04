@@ -345,6 +345,53 @@
         .bench-item.system { border-color: #aa44ff; }
         .bench-item.system .item-icon { color: #aa44ff; }
 
+        /* Bench item tooltip */
+        .bench-item .bench-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 10, 0.95);
+            border: 1px solid currentColor;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s, visibility 0.15s;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .bench-item:hover .bench-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .bench-item .bench-tooltip .tooltip-name {
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 4px;
+        }
+
+        .bench-item .bench-tooltip .tooltip-stats {
+            color: #aaa;
+        }
+
+        .bench-item .bench-tooltip .tooltip-stats span {
+            display: block;
+            margin: 2px 0;
+        }
+
+        .bench-item .bench-tooltip .tooltip-slots {
+            color: #666;
+            font-size: 9px;
+            margin-top: 4px;
+            border-top: 1px solid #333;
+            padding-top: 4px;
+        }
+
         /* Drag ghost element */
         #dragGhost {
             position: fixed;
@@ -1335,10 +1382,29 @@
                 }
                 shapeHTML += '</div>';
 
+                // Build stats HTML for tooltip
+                let statsHTML = '';
+                if (item.stats.weight) statsHTML += `<span>Weight: ${item.stats.weight}</span>`;
+                if (item.stats.energyDraw > 0) statsHTML += `<span>Energy: ${item.stats.energyDraw}</span>`;
+                if (item.stats.energyDraw < 0) statsHTML += `<span>Energy: +${-item.stats.energyDraw}</span>`;
+                if (item.stats.damage) statsHTML += `<span>Damage: ${item.stats.damage}</span>`;
+                if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
+                if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
+                if (item.stats.heatCapacity) statsHTML += `<span>Heat Cap: +${item.stats.heatCapacity}</span>`;
+
+                // Build valid slots string
+                const validSlots = item.constraints.validSlots || ['all'];
+                const slotsStr = validSlots.map(s => s.replace(/([A-Z])/g, ' $1').trim()).join(', ');
+
                 el.innerHTML = `
                     <span class="item-icon">${item.icon}</span>
                     <span class="item-name">${item.name}</span>
                     ${shapeHTML}
+                    <div class="bench-tooltip">
+                        <div class="tooltip-name">${item.icon} ${item.name}</div>
+                        <div class="tooltip-stats">${statsHTML}</div>
+                        <div class="tooltip-slots">Fits: ${slotsStr}</div>
+                    </div>
                 `;
                 bench.appendChild(el);
             });

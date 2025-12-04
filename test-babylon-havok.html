@@ -2912,7 +2912,14 @@
                     totalDamage += item.stats.damage || 0;
                     totalArmor += item.stats.armorBonus || 0;
                     if (item.type === 'WEAPON') {
-                        weapons.push({ itemId: eq.itemId, slot: eq.slot });
+                        // Pass full weapon info for battle simulation
+                        weapons.push({
+                            itemId: eq.itemId,
+                            slot: eq.slot,
+                            name: item.name,
+                            damage: item.stats.damage || 0,
+                            battle: item.battle || {}
+                        });
                     }
                 }
             });

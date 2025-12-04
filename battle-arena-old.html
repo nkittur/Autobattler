@@ -3451,7 +3451,7 @@
             const intensity = Math.min(1.5, hitForce.length() / 30);
 
             // Arms fling outward and back
-            if (mech.leftArm) {
+            if (mech.leftArm && mech.leftArm.rotation) {
                 const leftArmFling = () => {
                     let t = 0;
                     const startRot = mech.leftArm.rotation.clone();
@@ -3471,7 +3471,7 @@
                 leftArmFling();
             }
 
-            if (mech.rightArm) {
+            if (mech.rightArm && mech.rightArm.rotation) {
                 const rightArmFling = () => {
                     let t = 0;
                     const startRot = mech.rightArm.rotation.clone();
@@ -4209,7 +4209,22 @@
                         fireWeapon(mech, 'erlaser');
                         cooldowns.erlaser = now + COOLDOWN_TIMES.erlaser;
                     }
+                } else if (mech.loadoutWeapons && mech.loadoutWeapons.length > 0) {
+                    // Fire weapons from loadout only
+                    if (distance <= 18 && distance >= 3) {
+                        for (const loadoutWpn of mech.loadoutWeapons) {
+                            const wpnKey = loadoutWpn.itemId;
+                            if (!cooldowns[wpnKey]) cooldowns[wpnKey] = 0;
+                            if (now >= cooldowns[wpnKey]) {
+                                fireLoadoutWeapon(mech, loadoutWpn);
+                                const weaponCooldown = (loadoutWpn.battle && loadoutWpn.battle.cooldown) || 2000;
+                                cooldowns[wpnKey] = now + weaponCooldown;
+                                break;
+                            }
+                        }
+                    }
                 } else {
+                    // Fallback to default weapons for AI enemies without loadout
                     if (distance <= 18 && distance >= 3) {
                         const weaponPriority = ['erlaser', 'ac', 'lrm'];
                         for (const wtype of weaponPriority) {
@@ -4325,6 +4340,72 @@
             } catch (e) {
                 log(`[FIRE ERROR] ${e.message}`, 'error');
                 console.error('fireWeapon error:', e);
+            }
+        }
+
+        // Fire a weapon from loadout data (uses actual weapon stats)
+        function fireLoadoutWeapon(mech, loadoutWeapon) {
+            try {
+                const from = mech;
+                const to = mech.ai.target;
+                if (!from || !to || to.isDestroyed) return;
+
+                const wpnName = loadoutWeapon.name || loadoutWeapon.itemId;
+                const battleProps = loadoutWeapon.battle || {};
+                const damage = loadoutWeapon.damage || 10;
+
+                log(`[LOADOUT FIRE] ${from.name} fires ${wpnName} (${damage} damage)`);
+
+                // Build weapon object from loadout data - NO damage multipliers
+                const weapon = {
+                    name: wpnName,
+                    damage: damage,
+                    knockback: battleProps.knockback || 15,
+                    recoil: battleProps.recoil || 0.15,
+                    projectileSpeed: battleProps.projectileSpeed || 40,
+                    projectileSize: battleProps.projectileSize || 0.12,
+                    isBeam: battleProps.isBeam || false,
+                    isCluster: battleProps.isCluster || false,
+                    isProjectile: battleProps.isProjectile || (!battleProps.isBeam && !battleProps.isCluster),
+                    beamDuration: battleProps.beamDuration || 180,
+                    clusterCount: battleProps.clusterCount || 6,
+                    color: battleProps.color ? new BABYLON.Color3(battleProps.color[0], battleProps.color[1], battleProps.color[2]) : new BABYLON.Color3(1, 0.8, 0.2)
+                };
+
+                from.recoilRecovery = weapon.recoil;
+                from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';
+
+                // Validate required properties
+                if (!from.pelvis || !to.pelvis) {
+                    log(`[ERROR] Missing pelvis: from=${!!from.pelvis} to=${!!to.pelvis}`, 'error');
+                    return;
+                }
+
+                // Apply recoil in opposite direction of target
+                const toTarget = to.pelvis.getAbsolutePosition().subtract(from.pelvis.getAbsolutePosition()).normalize();
+                from.pelvisAggregate.body.applyImpulse(
+                    toTarget.scale(-weapon.knockback * 0.25),
+                    from.pelvis.getAbsolutePosition()
+                );
+
+                // Fire based on weapon type
+                if (weapon.isBeam) {
+                    fireBeam(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
+                } else if (weapon.isCluster) {
+                    fireCluster(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
+                } else {
+                    // Default to projectile
+                    fireProjectile(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
+                }
+            } catch (e) {
+                log(`[LOADOUT FIRE ERROR] ${e.message}`, 'error');
+                console.error('fireLoadoutWeapon error:', e);
             }
         }
 

@@ -161,15 +161,25 @@
             50% { box-shadow: 0 0 25px rgba(0,255,136,0.7); }
         }
 
-        /* Middle area - Grid Overlays */
+        /* Middle area - Grid Overlays (compact layout) */
         #gridOverlayContainer {
             flex: 1;
-            position: relative;
             pointer-events: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto;
+            grid-template-areas:
+                "leftArm torso rightArm"
+                "leftLeg . rightLeg";
+            gap: 8px;
+            padding: 10px;
+            justify-items: center;
+            align-items: start;
+            overflow-y: auto;
         }
 
         .mech-grid-overlay {
-            position: absolute;
+            position: relative;
             pointer-events: auto;
             display: grid;
             gap: 2px;
@@ -180,6 +190,12 @@
             box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
             transition: border-color 0.15s, box-shadow 0.15s;
         }
+
+        .mech-grid-overlay[data-slot="torso"] { grid-area: torso; }
+        .mech-grid-overlay[data-slot="leftArm"] { grid-area: leftArm; }
+        .mech-grid-overlay[data-slot="rightArm"] { grid-area: rightArm; }
+        .mech-grid-overlay[data-slot="leftLeg"] { grid-area: leftLeg; }
+        .mech-grid-overlay[data-slot="rightLeg"] { grid-area: rightLeg; }
 
         .mech-grid-overlay.slot-valid {
             border-color: #00ff88;
@@ -392,18 +408,9 @@
             padding-top: 4px;
         }
 
-        /* Mission Selection */
+        /* Mission Selection - Hidden (use tab instead) */
         #missionContainer {
-            position: absolute;
-            top: 80px;
-            right: 20px;
-            width: 280px;
-            background: rgba(0, 20, 10, 0.9);
-            border: 2px solid #00ff88;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 0 20px rgba(0,255,136,0.3);
-            pointer-events: auto;
+            display: none;
         }
 
         #missionLabel {
@@ -865,7 +872,7 @@
            TAB NAVIGATION SYSTEM
            ============================================ */
         #tabBar {
-            display: none;
+            display: block;
             pointer-events: auto;
             background: rgba(0, 20, 10, 0.95);
             border-bottom: 2px solid #00ff88;
@@ -1085,16 +1092,6 @@
            MOBILE RESPONSIVE STYLES
            ============================================ */
         @media (max-width: 768px) {
-            /* Show tab bar on mobile */
-            #tabBar {
-                display: block;
-            }
-
-            /* Hide desktop mission panel */
-            #missionContainer {
-                display: none !important;
-            }
-
             /* Stats Panel - Compact for mobile */
             #statsPanel {
                 flex-wrap: wrap;
@@ -1205,61 +1202,6 @@
             }
         }
 
-        /* Portrait mode - stack grids vertically */
-        @media (max-width: 768px) and (orientation: portrait) {
-            /* Force grids into a compact layout */
-            #gridOverlayContainer {
-                display: flex !important;
-                flex-direction: column;
-                align-items: center;
-                justify-content: flex-start;
-                padding: 10px;
-                gap: 8px;
-                overflow-y: auto;
-            }
-
-            #gridOverlayContainer.mobile-layout .mech-grid-overlay {
-                position: relative !important;
-                left: auto !important;
-                top: auto !important;
-                margin: 0;
-            }
-
-            /* Arrange grids in rows */
-            #gridOverlayContainer.mobile-layout {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr 1fr;
-                grid-template-rows: auto auto;
-                grid-template-areas:
-                    "leftArm torso rightArm"
-                    "leftLeg . rightLeg";
-                gap: 8px;
-                padding: 10px;
-                justify-items: center;
-                align-items: start;
-            }
-
-            #gridOverlayContainer.mobile-layout .mech-grid-overlay[data-slot="torso"] {
-                grid-area: torso;
-            }
-
-            #gridOverlayContainer.mobile-layout .mech-grid-overlay[data-slot="leftArm"] {
-                grid-area: leftArm;
-            }
-
-            #gridOverlayContainer.mobile-layout .mech-grid-overlay[data-slot="rightArm"] {
-                grid-area: rightArm;
-            }
-
-            #gridOverlayContainer.mobile-layout .mech-grid-overlay[data-slot="leftLeg"] {
-                grid-area: leftLeg;
-            }
-
-            #gridOverlayContainer.mobile-layout .mech-grid-overlay[data-slot="rightLeg"] {
-                grid-area: rightLeg;
-            }
-        }
-
         /* Very small screens */
         @media (max-width: 480px) {
             .grid-cell {
@@ -1294,7 +1236,7 @@
             }
 
             /* Smaller grid layout */
-            #gridOverlayContainer.mobile-layout {
+            #gridOverlayContainer {
                 gap: 5px;
                 padding: 5px;
             }
@@ -2958,21 +2900,9 @@
         }
 
         function checkMobileLayout() {
-            const wasMobile = isMobileLayout;
+            // Layout is now consistent across all screen sizes
+            // This function is kept for resize handling
             isMobileLayout = window.innerWidth <= 768;
-
-            const container = document.getElementById('gridOverlayContainer');
-            if (isMobileLayout && window.innerHeight > window.innerWidth) {
-                // Portrait mode - use CSS grid layout
-                container.classList.add('mobile-layout');
-            } else {
-                container.classList.remove('mobile-layout');
-            }
-
-            // Re-render grids if layout changed
-            if (wasMobile !== isMobileLayout) {
-                renderGridOverlays();
-            }
         }
 
         function startBattleFromMission() {
@@ -3115,9 +3045,6 @@
             container.innerHTML = '';
             gridElements = {};
 
-            const containerRect = container.getBoundingClientRect();
-            const isMobile = container.classList.contains('mobile-layout');
-
             // Get cell size based on screen width
             let cellSize = 40;
             if (window.innerWidth <= 480) {
@@ -3131,15 +3058,7 @@
                 gridEl.className = 'mech-grid-overlay';
                 gridEl.dataset.slot = slotName;
                 gridEl.style.gridTemplateColumns = `repeat(${slotDef.cols}, ${cellSize}px)`;
-
-                if (!isMobile) {
-                    // Desktop: Position based on relative coords
-                    const left = slotDef.position.x * containerRect.width - (slotDef.cols * (cellSize / 2 + 1));
-                    const top = slotDef.position.y * containerRect.height - (slotDef.rows * (cellSize / 2 + 1));
-                    gridEl.style.left = left + 'px';
-                    gridEl.style.top = top + 'px';
-                }
-                // Mobile: CSS Grid handles positioning via grid-area
+                // CSS Grid handles positioning via grid-area
 
                 // Add label
                 const label = document.createElement('span');

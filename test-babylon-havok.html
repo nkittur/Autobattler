@@ -2956,6 +2956,26 @@
             return ground;
         }
 
+        // Build weapons list from equipment array using ITEM_DATABASE
+        function buildWeaponsFromEquipment(equipment) {
+            const weapons = [];
+            if (!equipment) return weapons;
+
+            equipment.forEach(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                if (item && item.type === 'WEAPON') {
+                    weapons.push({
+                        itemId: eq.itemId,
+                        slot: eq.slot,
+                        name: item.name,
+                        damage: item.stats.damage || 0,
+                        battle: item.battle || {}
+                    });
+                }
+            });
+            return weapons;
+        }
+
         function startBattle() {
             if (loadoutState.equipment.length === 0 || !selectedMission) {
                 return;
@@ -2963,6 +2983,10 @@
 
             const mission = MISSIONS[selectedMission];
             const playerStats = calculatePlayerStats();
+            const enemy = mission.enemyMechs[0];
+
+            // Build enemy weapons from their equipment using ITEM_DATABASE
+            const enemyWeapons = buildWeaponsFromEquipment(enemy.equipment);
 
             // Build battle config for the original physics simulation
             const battleConfig = {
@@ -2972,7 +2996,13 @@
                     stats: playerStats
                 },
                 mission: mission,
-                enemy: mission.enemyMechs[0]
+                enemy: {
+                    ...enemy,
+                    // Override stats with calculated values from ITEM_DATABASE
+                    weapons: enemyWeapons
+                },
+                // Pass ITEM_DATABASE for future use (special properties, etc.)
+                itemDatabase: ITEM_DATABASE
             };
 
             // Save to localStorage (battle-arena-old.html reads this)

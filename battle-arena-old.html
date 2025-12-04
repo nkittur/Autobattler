@@ -679,10 +679,13 @@
             // Check for battle config from MechBuilder
             const battleConfigStr = localStorage.getItem('battleConfig');
             let battleConfig = null;
+            let itemDatabase = null; // ITEM_DATABASE from loadout screen for special properties
             if (battleConfigStr) {
                 try {
                     battleConfig = JSON.parse(battleConfigStr);
+                    itemDatabase = battleConfig.itemDatabase || null;
                     console.log('Loaded battle config:', battleConfig);
+                    console.log('Item database available:', !!itemDatabase);
                 } catch(e) {
                     console.error('Failed to parse battle config:', e);
                 }
@@ -720,11 +723,9 @@
                         enemyMech.maxHP = battleConfig.enemy.maxHealth;
                         enemyMech.currentHP = enemyMech.maxHP;
                     }
-                    // Store enemy damage from mission config
-                    if (battleConfig.enemy.stats && battleConfig.enemy.stats.damage) {
-                        enemyMech.loadoutDamage = battleConfig.enemy.stats.damage;
-                        console.log('Enemy loadout damage:', enemyMech.loadoutDamage);
-                    }
+                    // Use weapons from ITEM_DATABASE (passed via battleConfig)
+                    enemyMech.loadoutWeapons = battleConfig.enemy.weapons || [];
+                    console.log('Enemy weapons from ITEM_DATABASE:', enemyMech.loadoutWeapons);
                 }
                 enemyMechs = [enemyMech];
 
@@ -4275,6 +4276,8 @@
         // ============================================
         // COMBAT
         // ============================================
+        // Legacy weapon firing - only used for melee and default demo battles
+        // For loadout-based mechs, use fireLoadoutWeapon instead
         function fireWeapon(mech, type) {
             try {
                 const from = mech;
@@ -4283,24 +4286,10 @@
 
                 log(`[FIRE] ${from.name} attempting ${type}...`);
 
-                const baseWeapon = WEAPONS[type];
-                if (!baseWeapon) {
+                const weapon = WEAPONS[type];
+                if (!weapon) {
                     log(`[ERROR] Unknown weapon type: ${type}`, 'error');
                     return;
-                }
-
-                // Apply loadout damage multiplier for mechs with loadout weapons
-                // Loadout damage from equipped weapons scales the base weapon damage
-                let weapon = baseWeapon;
-                if (from.loadoutDamage && from.loadoutDamage > 0) {
-                    // Scale damage: loadout damage of 100 gives 2x multiplier, 50 gives 1x
-                    const damageMultiplier = Math.max(0.5, from.loadoutDamage / 50);
-                    weapon = {
-                        ...baseWeapon,
-                        damage: Math.round(baseWeapon.damage * damageMultiplier),
-                        knockback: baseWeapon.knockback * Math.min(2, damageMultiplier)
-                    };
-                    log(`[LOADOUT] Damage multiplier: ${damageMultiplier.toFixed(2)}x -> ${weapon.damage} damage`);
                 }
 
                 from.recoilRecovery = weapon.recoil;

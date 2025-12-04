@@ -161,15 +161,25 @@
             50% { box-shadow: 0 0 25px rgba(0,255,136,0.7); }
         }
 
-        /* Middle area - Grid Overlays */
+        /* Middle area - Grid Overlays (compact layout) */
         #gridOverlayContainer {
             flex: 1;
-            position: relative;
             pointer-events: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto;
+            grid-template-areas:
+                "leftArm torso rightArm"
+                "leftLeg . rightLeg";
+            gap: 8px;
+            padding: 10px;
+            justify-items: center;
+            align-items: start;
+            overflow-y: auto;
         }
 
         .mech-grid-overlay {
-            position: absolute;
+            position: relative;
             pointer-events: auto;
             display: grid;
             gap: 2px;
@@ -180,6 +190,12 @@
             box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
             transition: border-color 0.15s, box-shadow 0.15s;
         }
+
+        .mech-grid-overlay[data-slot="torso"] { grid-area: torso; }
+        .mech-grid-overlay[data-slot="leftArm"] { grid-area: leftArm; }
+        .mech-grid-overlay[data-slot="rightArm"] { grid-area: rightArm; }
+        .mech-grid-overlay[data-slot="leftLeg"] { grid-area: leftLeg; }
+        .mech-grid-overlay[data-slot="rightLeg"] { grid-area: rightLeg; }
 
         .mech-grid-overlay.slot-valid {
             border-color: #00ff88;
@@ -392,18 +408,9 @@
             padding-top: 4px;
         }
 
-        /* Mission Selection */
+        /* Mission Selection - Hidden (use tab instead) */
         #missionContainer {
-            position: absolute;
-            top: 80px;
-            right: 20px;
-            width: 280px;
-            background: rgba(0, 20, 10, 0.9);
-            border: 2px solid #00ff88;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 0 20px rgba(0,255,136,0.3);
-            pointer-events: auto;
+            display: none;
         }
 
         #missionLabel {
@@ -860,6 +867,418 @@
             background: rgba(0, 255, 136, 0.4);
             transform: scale(1.05);
         }
+
+        /* ============================================
+           TAB NAVIGATION SYSTEM
+           ============================================ */
+        #tabBar {
+            display: block;
+            pointer-events: auto;
+            background: rgba(0, 20, 10, 0.95);
+            border-bottom: 2px solid #00ff88;
+            padding: 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            width: 100%;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #00aa66;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tab-btn:hover {
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .tab-btn.active {
+            color: #00ff88;
+            border-bottom-color: #00ff88;
+            background: rgba(0, 255, 136, 0.15);
+        }
+
+        .tab-btn .tab-icon {
+            margin-right: 8px;
+        }
+
+        /* Tab Content Areas */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        #loadoutTab {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            position: relative;
+        }
+
+        #loadoutTab.active {
+            display: flex;
+        }
+
+        /* Mission Tab - Full screen panel */
+        #missionTab {
+            display: none;
+            flex: 1;
+            background: rgba(0, 10, 5, 0.98);
+            padding: 20px;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+
+        #missionTab.active {
+            display: block;
+        }
+
+        #missionTab .mission-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #missionTab .mission-title {
+            font-size: 24px;
+            color: #00ff88;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+
+        #missionTab .mission-subtitle {
+            font-size: 12px;
+            color: #00aa66;
+        }
+
+        #missionTab .mission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        #missionTab .mission-card {
+            background: rgba(0, 255, 136, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #missionTab .mission-card:hover {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: #00ff88;
+            transform: translateY(-2px);
+        }
+
+        #missionTab .mission-card.selected {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0,255,136,0.4);
+        }
+
+        #missionTab .mission-card.easy { border-left: 4px solid #44ff44; }
+        #missionTab .mission-card.medium { border-left: 4px solid #ffaa00; }
+        #missionTab .mission-card.hard { border-left: 4px solid #ff4444; }
+
+        #missionTab .mission-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #missionTab .mission-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        #missionTab .mission-difficulty {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        #missionTab .mission-difficulty.easy { background: rgba(68, 255, 68, 0.3); color: #44ff44; }
+        #missionTab .mission-difficulty.medium { background: rgba(255, 170, 0, 0.3); color: #ffaa00; }
+        #missionTab .mission-difficulty.hard { background: rgba(255, 68, 68, 0.3); color: #ff4444; }
+
+        #missionTab .mission-desc {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        #missionTab .mission-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        #missionTab .mission-reward {
+            font-size: 12px;
+            color: #ffcc00;
+        }
+
+        #missionTab .mission-reward span {
+            display: block;
+            margin: 3px 0;
+        }
+
+        #missionTab .mission-enemy {
+            font-size: 11px;
+            color: #ff6666;
+            text-align: right;
+        }
+
+        #missionTab .mission-enemy-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        #missionTab .continue-btn {
+            display: block;
+            margin: 15px auto 0;
+            padding: 15px 40px;
+            background: rgba(0, 255, 136, 0.3);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #missionTab .continue-btn:hover:not(:disabled) {
+            background: rgba(0, 255, 136, 0.5);
+            box-shadow: 0 0 20px rgba(0,255,136,0.5);
+        }
+
+        #missionTab .continue-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ============================================
+           MOBILE RESPONSIVE STYLES
+           ============================================ */
+        @media (max-width: 768px) {
+            /* Stats Panel - Compact for mobile */
+            #statsPanel {
+                flex-wrap: wrap;
+                padding: 8px 12px;
+                gap: 8px;
+            }
+
+            .stat-group {
+                gap: 15px;
+                order: 2;
+                flex: 1;
+            }
+
+            .stat-bar {
+                width: 100px;
+                height: 14px;
+            }
+
+            .stat-label {
+                font-size: 9px;
+            }
+
+            .stat-text {
+                font-size: 9px;
+            }
+
+            #gameTitle {
+                font-size: 14px;
+                order: 1;
+                width: 100%;
+                text-align: center;
+                margin-bottom: 5px;
+            }
+
+            #battleReadyBtn {
+                order: 3;
+                padding: 8px 15px;
+                font-size: 11px;
+            }
+
+            /* Grid cells smaller on mobile */
+            .grid-cell {
+                width: 32px;
+                height: 32px;
+            }
+
+            .placed-item .placed-cell {
+                width: 28px;
+                height: 28px;
+            }
+
+            /* Bench smaller on mobile */
+            #benchContainer {
+                padding: 10px 12px;
+            }
+
+            #benchLabel {
+                font-size: 10px;
+                margin-bottom: 8px;
+            }
+
+            #bench {
+                gap: 10px;
+                min-height: 80px;
+            }
+
+            .bench-item {
+                width: 65px;
+                height: 65px;
+            }
+
+            .bench-item .item-icon {
+                font-size: 22px;
+            }
+
+            .bench-item .item-name {
+                font-size: 8px;
+            }
+
+            /* Instructions hidden on mobile */
+            #instructions {
+                display: none;
+            }
+
+            /* Adjust grid label size */
+            .grid-label {
+                font-size: 8px;
+                top: -16px;
+            }
+
+            /* Tab buttons - more compact */
+            .tab-btn {
+                padding: 10px 15px;
+                font-size: 12px;
+            }
+
+            .tab-btn .tab-icon {
+                margin-right: 5px;
+            }
+
+            /* Mission tab padding */
+            #missionTab {
+                padding: 15px;
+            }
+
+            #missionTab .mission-title {
+                font-size: 20px;
+            }
+        }
+
+        /* Very small screens */
+        @media (max-width: 480px) {
+            .grid-cell {
+                width: 28px;
+                height: 28px;
+            }
+
+            .placed-item .placed-cell {
+                width: 24px;
+                height: 24px;
+            }
+
+            .placed-item .item-icon-overlay {
+                font-size: 16px;
+            }
+
+            .stat-bar {
+                width: 80px;
+            }
+
+            .bench-item {
+                width: 55px;
+                height: 55px;
+            }
+
+            .bench-item .item-icon {
+                font-size: 18px;
+            }
+
+            #missionTab .mission-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Smaller grid layout */
+            #gridOverlayContainer {
+                gap: 5px;
+                padding: 5px;
+            }
+        }
+
+        /* Landscape mobile - side by side layout */
+        @media (max-width: 900px) and (orientation: landscape) {
+            #mechBuilderUI {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            #statsPanel {
+                width: 100%;
+            }
+
+            #tabBar {
+                width: 100%;
+            }
+
+            #loadoutTab {
+                flex-direction: row;
+            }
+
+            #gridOverlayContainer {
+                flex: 1;
+            }
+
+            #benchContainer {
+                width: 200px;
+                height: calc(100vh - 120px);
+                border-top: none;
+                border-left: 2px solid #00ff88;
+            }
+
+            #bench {
+                flex-direction: column;
+                overflow-y: auto;
+                overflow-x: hidden;
+                max-height: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -868,7 +1287,19 @@
 
         <!-- MechBuilder UI Overlay -->
         <div id="mechBuilderUI">
-            <!-- Top Stats Panel -->
+            <!-- Tab Bar (at very top, visible on mobile) -->
+            <div id="tabBar">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="loadout" onclick="switchTab('loadout')">
+                        <span class="tab-icon">⚙️</span>Loadout
+                    </button>
+                    <button class="tab-btn" data-tab="mission" onclick="switchTab('mission')">
+                        <span class="tab-icon">🎯</span>Missions
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
             <div id="statsPanel">
                 <div class="stat-group">
                     <div class="stat-item">
@@ -892,29 +1323,46 @@
                 <button id="battleReadyBtn" disabled>Battle Ready</button>
             </div>
 
-            <!-- Mission Selection Panel -->
-            <div id="missionContainer">
-                <div id="missionLabel">Select Mission</div>
-                <div id="missionList">
+            <!-- Loadout Tab Content -->
+            <div id="loadoutTab" class="tab-content active">
+                <!-- Mission Selection Panel (desktop only) -->
+                <div id="missionContainer">
+                    <div id="missionLabel">Select Mission</div>
+                    <div id="missionList">
+                        <!-- Missions populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Grid Overlay Container (positioned over 3D mech) -->
+                <div id="gridOverlayContainer">
+                    <!-- Grids will be dynamically positioned here -->
+                </div>
+
+                <!-- Bottom Bench (Hand) -->
+                <div id="benchContainer">
+                    <div id="benchLabel">Equipment Bench - Drag items to mech slots</div>
+                    <div id="bench">
+                        <!-- Items populated by JS -->
+                    </div>
+                </div>
+
+                <div id="instructions">
+                    Drag equipment from the bench onto the mech's grid slots • Click placed items to return them
+                </div>
+            </div>
+
+            <!-- Mission Tab Content (mobile full-screen) -->
+            <div id="missionTab" class="tab-content">
+                <div class="mission-header">
+                    <div class="mission-title">Select Mission</div>
+                    <div class="mission-subtitle">Choose your next deployment</div>
+                </div>
+                <div class="mission-grid" id="missionTabList">
                     <!-- Missions populated by JS -->
                 </div>
-            </div>
-
-            <!-- Grid Overlay Container (positioned over 3D mech) -->
-            <div id="gridOverlayContainer">
-                <!-- Grids will be dynamically positioned here -->
-            </div>
-
-            <!-- Bottom Bench (Hand) -->
-            <div id="benchContainer">
-                <div id="benchLabel">Equipment Bench - Drag items to mech slots</div>
-                <div id="bench">
-                    <!-- Items populated by JS -->
-                </div>
-            </div>
-
-            <div id="instructions">
-                Drag equipment from the bench onto the mech's grid slots • Click placed items to return them
+                <button class="continue-btn" id="missionContinueBtn" onclick="startBattleFromMission()" disabled>
+                    Continue to Battle
+                </button>
             </div>
         </div>
 
@@ -1041,7 +1489,7 @@
                 stats: {
                     weight: 25,
                     energyDraw: 15,
-                    damage: 100
+                    damage: 50
                 },
                 constraints: {
                     validSlots: ['leftArm', 'rightArm']
@@ -1068,7 +1516,7 @@
                 stats: {
                     weight: 18,
                     energyDraw: 20,
-                    damage: 80
+                    damage: 40
                 },
                 constraints: {
                     validSlots: ['torso', 'leftArm', 'rightArm']
@@ -2423,6 +2871,109 @@
             });
         }
 
+        // ============================================
+        // TAB SWITCHING & MOBILE LAYOUT
+        // ============================================
+        let currentTab = 'loadout';
+        let isMobileLayout = false;
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+
+            // Update tab content
+            const loadoutTab = document.getElementById('loadoutTab');
+            const missionTab = document.getElementById('missionTab');
+
+            if (tabName === 'loadout') {
+                loadoutTab.classList.add('active');
+                missionTab.classList.remove('active');
+            } else if (tabName === 'mission') {
+                loadoutTab.classList.remove('active');
+                missionTab.classList.add('active');
+                renderMissionTab();
+            }
+        }
+
+        function checkMobileLayout() {
+            // Layout is now consistent across all screen sizes
+            // This function is kept for resize handling
+            isMobileLayout = window.innerWidth <= 768;
+        }
+
+        function startBattleFromMission() {
+            if (selectedMission) {
+                switchTab('loadout');
+                // Trigger the battle ready button click if enabled
+                const btn = document.getElementById('battleReadyBtn');
+                if (!btn.disabled) {
+                    btn.click();
+                }
+            }
+        }
+
+        // Render missions for mobile tab
+        function renderMissionTab() {
+            const missionTabList = document.getElementById('missionTabList');
+            if (!missionTabList) return;
+
+            missionTabList.innerHTML = '';
+
+            for (const mission of Object.values(MISSIONS)) {
+                const card = document.createElement('div');
+                card.className = `mission-card ${mission.difficulty.toLowerCase()}`;
+                card.dataset.missionId = mission.id;
+
+                if (selectedMission === mission.id) {
+                    card.classList.add('selected');
+                }
+
+                const enemy = mission.enemyMechs[0];
+                let equipmentHTML = '';
+                enemy.equipment.forEach(eq => {
+                    const item = ITEM_DATABASE[eq.itemId];
+                    if (item) {
+                        equipmentHTML += `<div>${item.icon} ${item.name}</div>`;
+                    }
+                });
+
+                card.innerHTML = `
+                    <div class="mission-card-header">
+                        <span class="mission-name">${mission.name}</span>
+                        <span class="mission-difficulty ${mission.difficulty.toLowerCase()}">${mission.difficulty}</span>
+                    </div>
+                    <div class="mission-desc">${mission.description}</div>
+                    <div class="mission-details">
+                        <div class="mission-reward">
+                            <span>💰 ${mission.reward.credits} Credits</span>
+                            <span>⭐ ${mission.reward.xp} XP</span>
+                        </div>
+                        <div class="mission-enemy">
+                            <div class="mission-enemy-name">⚠️ ${enemy.name}</div>
+                            <div>HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    selectMission(mission.id);
+                    renderMissionTab();
+                });
+                missionTabList.appendChild(card);
+            }
+
+            // Update continue button state
+            const continueBtn = document.getElementById('missionContinueBtn');
+            if (continueBtn) {
+                const btn = document.getElementById('battleReadyBtn');
+                continueBtn.disabled = !selectedMission || loadoutState.equipment.length === 0;
+            }
+        }
+
         function renderMissions() {
             const missionList = document.getElementById('missionList');
             missionList.innerHTML = '';
@@ -2476,6 +3027,11 @@
                 card.addEventListener('click', () => selectMission(mission.id));
                 missionList.appendChild(card);
             }
+
+            // Also update mobile tab if visible
+            if (currentTab === 'mission') {
+                renderMissionTab();
+            }
         }
 
         function selectMission(missionId) {
@@ -2489,19 +3045,20 @@
             container.innerHTML = '';
             gridElements = {};
 
-            const containerRect = container.getBoundingClientRect();
+            // Get cell size based on screen width
+            let cellSize = 40;
+            if (window.innerWidth <= 480) {
+                cellSize = 28;
+            } else if (window.innerWidth <= 768) {
+                cellSize = 32;
+            }
 
             for (const [slotName, slotDef] of Object.entries(MECH_CHASSIS.slots)) {
                 const gridEl = document.createElement('div');
                 gridEl.className = 'mech-grid-overlay';
                 gridEl.dataset.slot = slotName;
-                gridEl.style.gridTemplateColumns = `repeat(${slotDef.cols}, 40px)`;
-
-                // Position based on relative coords
-                const left = slotDef.position.x * containerRect.width - (slotDef.cols * 21);
-                const top = slotDef.position.y * containerRect.height - (slotDef.rows * 21);
-                gridEl.style.left = left + 'px';
-                gridEl.style.top = top + 'px';
+                gridEl.style.gridTemplateColumns = `repeat(${slotDef.cols}, ${cellSize}px)`;
+                // CSS Grid handles positioning via grid-area
 
                 // Add label
                 const label = document.createElement('span');
@@ -2528,6 +3085,17 @@
         function renderGridItems() {
             // Remove old placed items
             document.querySelectorAll('.placed-item').forEach(el => el.remove());
+
+            // Get responsive cell size
+            let placedCellSize = 36;
+            let cellSpacing = 42;
+            if (window.innerWidth <= 480) {
+                placedCellSize = 24;
+                cellSpacing = 30;
+            } else if (window.innerWidth <= 768) {
+                placedCellSize = 28;
+                cellSpacing = 34;
+            }
 
             // Update cell states
             for (const [slotName, gridEl] of Object.entries(gridElements)) {
@@ -2556,9 +3124,9 @@
                 const w = shape[0].length;
                 const h = shape.length;
 
-                placedEl.style.gridTemplateColumns = `repeat(${w}, 36px)`;
-                placedEl.style.left = (4 + eq.position.x * 42) + 'px';
-                placedEl.style.top = (4 + eq.position.y * 42) + 'px';
+                placedEl.style.gridTemplateColumns = `repeat(${w}, ${placedCellSize}px)`;
+                placedEl.style.left = (4 + eq.position.x * cellSpacing) + 'px';
+                placedEl.style.top = (4 + eq.position.y * cellSpacing) + 'px';
 
                 // Add grid cells
                 for (let dy = 0; dy < h; dy++) {
@@ -2664,14 +3232,20 @@
             btn.classList.toggle('ready', isValid);
 
             // Update button text to show what's missing
-            if (!selectedMission) {
-                btn.textContent = 'Select a Mission';
-            } else if (loadoutState.equipment.length === 0) {
+            if (loadoutState.equipment.length === 0) {
                 btn.textContent = 'Equip Items';
+            } else if (!selectedMission) {
+                btn.textContent = 'No Mission';
             } else if (!isValid) {
                 btn.textContent = 'Over Limit!';
             } else {
                 btn.textContent = 'Battle Ready';
+            }
+
+            // Update mission tab continue button
+            const continueBtn = document.getElementById('missionContinueBtn');
+            if (continueBtn) {
+                continueBtn.disabled = !isValid;
             }
         }
 
@@ -3083,14 +3657,29 @@
             // Handle window resize
             window.addEventListener('resize', () => {
                 engine.resize();
-                // Re-render grid overlays on resize
+                // Check mobile layout and re-render grid overlays on resize
                 if (currentPhase === GamePhase.MECHBUILDER) {
                     setTimeout(() => {
+                        checkMobileLayout();
                         renderGridOverlays();
                         renderGridItems();
                     }, 100);
                 }
             });
+
+            // Handle orientation change for mobile
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => {
+                    checkMobileLayout();
+                    if (currentPhase === GamePhase.MECHBUILDER) {
+                        renderGridOverlays();
+                        renderGridItems();
+                    }
+                }, 200);
+            });
+
+            // Initial mobile layout check
+            checkMobileLayout();
 
             console.log('MechBuilder initialized!');
         }

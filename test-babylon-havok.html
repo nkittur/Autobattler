@@ -1054,25 +1054,6 @@
             margin-bottom: 3px;
         }
 
-        #missionTab .back-to-loadout {
-            display: block;
-            margin: 20px auto 0;
-            padding: 12px 30px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 2px solid #00ff88;
-            color: #00ff88;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        }
-
-        #missionTab .back-to-loadout:hover {
-            background: rgba(0, 255, 136, 0.4);
-        }
-
         #missionTab .continue-btn {
             display: block;
             margin: 15px auto 0;
@@ -1364,7 +1345,19 @@
 
         <!-- MechBuilder UI Overlay -->
         <div id="mechBuilderUI">
-            <!-- Top Stats Panel -->
+            <!-- Tab Bar (at very top, visible on mobile) -->
+            <div id="tabBar">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="loadout" onclick="switchTab('loadout')">
+                        <span class="tab-icon">⚙️</span>Loadout
+                    </button>
+                    <button class="tab-btn" data-tab="mission" onclick="switchTab('mission')">
+                        <span class="tab-icon">🎯</span>Missions
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
             <div id="statsPanel">
                 <div class="stat-group">
                     <div class="stat-item">
@@ -1386,18 +1379,6 @@
                 <div id="gameTitle">MECHBUILDER</div>
 
                 <button id="battleReadyBtn" disabled>Battle Ready</button>
-            </div>
-
-            <!-- Tab Bar (visible on mobile) -->
-            <div id="tabBar">
-                <div class="tab-buttons">
-                    <button class="tab-btn active" data-tab="loadout" onclick="switchTab('loadout')">
-                        <span class="tab-icon">⚙️</span>Loadout
-                    </button>
-                    <button class="tab-btn" data-tab="mission" onclick="switchTab('mission')">
-                        <span class="tab-icon">🎯</span>Missions
-                    </button>
-                </div>
             </div>
 
             <!-- Loadout Tab Content -->
@@ -1437,7 +1418,6 @@
                 <div class="mission-grid" id="missionTabList">
                     <!-- Missions populated by JS -->
                 </div>
-                <button class="back-to-loadout" onclick="switchTab('loadout')">← Back to Loadout</button>
                 <button class="continue-btn" id="missionContinueBtn" onclick="startBattleFromMission()" disabled>
                     Continue to Battle
                 </button>
@@ -3333,10 +3313,10 @@
             btn.classList.toggle('ready', isValid);
 
             // Update button text to show what's missing
-            if (!selectedMission) {
-                btn.textContent = 'Select a Mission';
-            } else if (loadoutState.equipment.length === 0) {
+            if (loadoutState.equipment.length === 0) {
                 btn.textContent = 'Equip Items';
+            } else if (!selectedMission) {
+                btn.textContent = 'No Mission';
             } else if (!isValid) {
                 btn.textContent = 'Over Limit!';
             } else {

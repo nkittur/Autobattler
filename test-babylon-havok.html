@@ -49,7 +49,7 @@
             flex-direction: column;
         }
 
-        /* Top bar - Stats Panel */
+        /* Top bar - Header Panel */
         #statsPanel {
             pointer-events: auto;
             display: flex;
@@ -61,9 +61,50 @@
             box-shadow: 0 0 20px rgba(0,255,136,0.3);
         }
 
-        .stat-group {
+        #statsPanel .nav-spacer {
+            flex: 1;
+        }
+
+        .header-nav-btn {
+            pointer-events: auto;
+            padding: 10px 20px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header-nav-btn:hover:not(:disabled) {
+            background: rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 20px rgba(0,255,136,0.5);
+        }
+
+        .header-nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #555;
+            color: #555;
+        }
+
+        .header-nav-btn.warning {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        /* Mech Stats (above grid) */
+        #mechStats {
             display: flex;
+            justify-content: center;
             gap: 30px;
+            padding: 10px;
+            pointer-events: auto;
         }
 
         .stat-item {
@@ -124,43 +165,6 @@
             letter-spacing: 2px;
         }
 
-        #battleReadyBtn {
-            pointer-events: auto;
-            padding: 12px 30px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 2px solid #00ff88;
-            color: #00ff88;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        #battleReadyBtn:hover:not(:disabled) {
-            background: rgba(0, 255, 136, 0.4);
-            box-shadow: 0 0 20px rgba(0,255,136,0.5);
-        }
-
-        #battleReadyBtn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            border-color: #666;
-            color: #666;
-        }
-
-        #battleReadyBtn.ready {
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 10px rgba(0,255,136,0.3); }
-            50% { box-shadow: 0 0 25px rgba(0,255,136,0.7); }
-        }
-
         /* Middle area - Grid Overlays (compact layout) */
         #gridOverlayContainer {
             flex: 1;
@@ -172,7 +176,7 @@
                 "leftArm torso rightArm"
                 "legs legs legs";
             gap: 5px;
-            padding: 60px 10px 20px 10px;
+            padding: 20px 10px 20px 10px;
             justify-content: center;
             align-content: center;
             overflow-y: auto;
@@ -987,6 +991,11 @@
             background: rgba(0, 255, 136, 0.5);
         }
 
+        .tab-nav-header .nav-btn.warning {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
         .tab-nav-header .nav-spacer {
             flex: 1;
         }
@@ -1341,9 +1350,17 @@
                 </div>
             </div>
 
-            <!-- Stats Panel -->
+            <!-- Header Panel -->
             <div id="statsPanel">
-                <div class="stat-group">
+                <div id="gameTitle">MECHBUILDER</div>
+                <div class="nav-spacer"></div>
+                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Go to Missions →</button>
+            </div>
+
+            <!-- Loadout Tab Content -->
+            <div id="loadoutTab" class="tab-content active">
+                <!-- Weight/Energy Stats (above mech) -->
+                <div id="mechStats">
                     <div class="stat-item">
                         <span class="stat-label">Weight</span>
                         <div class="stat-bar">
@@ -1360,13 +1377,6 @@
                     </div>
                 </div>
 
-                <div id="gameTitle">MECHBUILDER</div>
-
-                <button id="battleReadyBtn" disabled>Battle Ready</button>
-            </div>
-
-            <!-- Loadout Tab Content -->
-            <div id="loadoutTab" class="tab-content active">
                 <!-- Mission Selection Panel (hidden - use tab) -->
                 <div id="missionContainer">
                     <div id="missionLabel">Select Mission</div>
@@ -3281,39 +3291,37 @@
             energyText.textContent = `${energyUsed} / ${maxEnergy}`;
             energyFill.classList.toggle('over-limit', energyUsed > maxEnergy);
 
-            // Update battle ready button
-            const btn = document.getElementById('battleReadyBtn');
-            const isValid = totalWeight <= maxWeight &&
-                           energyUsed <= maxEnergy &&
-                           loadoutState.equipment.length > 0 &&
-                           selectedMission !== null;
+            // Check button states
             const hasEquipment = loadoutState.equipment.length > 0;
             const withinLimits = totalWeight <= maxWeight && energyUsed <= maxEnergy;
+            const isValid = withinLimits && hasEquipment && selectedMission !== null;
 
-            // Button is enabled if ready for battle OR if equipped and needs mission
-            btn.disabled = !hasEquipment || !withinLimits;
-            btn.classList.toggle('ready', isValid);
-
-            // Update button text and behavior
-            if (!hasEquipment) {
-                btn.textContent = 'Equip Items';
-                btn.dataset.action = 'none';
-            } else if (!withinLimits) {
-                btn.textContent = 'Over Limit!';
-                btn.dataset.action = 'none';
-            } else if (!selectedMission) {
-                btn.textContent = 'Select Mission →';
-                btn.dataset.action = 'mission';
-                btn.disabled = false;
-            } else {
-                btn.textContent = 'Battle Ready';
-                btn.dataset.action = 'battle';
+            // Update "Go to Missions" button on loadout screen
+            const goToMissionsBtn = document.getElementById('goToMissionsBtn');
+            if (goToMissionsBtn) {
+                if (!withinLimits) {
+                    goToMissionsBtn.textContent = 'Over Limit!';
+                    goToMissionsBtn.disabled = true;
+                    goToMissionsBtn.classList.add('warning');
+                } else {
+                    goToMissionsBtn.textContent = 'Go to Missions →';
+                    goToMissionsBtn.disabled = !hasEquipment;
+                    goToMissionsBtn.classList.remove('warning');
+                }
             }
 
-            // Update mission tab continue button
+            // Update "Continue to Battle" button on mission screen
             const continueBtn = document.getElementById('missionContinueBtn');
             if (continueBtn) {
-                continueBtn.disabled = !isValid;
+                if (!withinLimits) {
+                    continueBtn.textContent = 'Over Limit!';
+                    continueBtn.disabled = true;
+                    continueBtn.classList.add('warning');
+                } else {
+                    continueBtn.textContent = 'Continue to Battle →';
+                    continueBtn.disabled = !isValid;
+                    continueBtn.classList.remove('warning');
+                }
             }
         }
 
@@ -3700,14 +3708,9 @@
             // Initialize drag and drop
             initDragAndDrop();
 
-            // Battle ready button - handles both mission selection and battle start
-            document.getElementById('battleReadyBtn').addEventListener('click', function() {
-                const action = this.dataset.action;
-                if (action === 'mission') {
-                    switchTab('mission');
-                } else if (action === 'battle') {
-                    startBattle();
-                }
+            // Go to Missions button
+            document.getElementById('goToMissionsBtn').addEventListener('click', function() {
+                switchTab('mission');
             });
 
             // Main render loop with delta time for battle updates

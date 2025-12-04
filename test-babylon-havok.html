@@ -392,6 +392,148 @@
             padding-top: 4px;
         }
 
+        /* Mission Selection */
+        #missionContainer {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 280px;
+            background: rgba(0, 20, 10, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0,255,136,0.3);
+        }
+
+        #missionLabel {
+            font-size: 12px;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .mission-card {
+            background: rgba(0, 255, 136, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .mission-card:hover {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: #00ff88;
+            transform: translateX(-3px);
+        }
+
+        .mission-card.selected {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0,255,136,0.4);
+        }
+
+        .mission-card.easy { border-left: 4px solid #44ff44; }
+        .mission-card.medium { border-left: 4px solid #ffaa00; }
+        .mission-card.hard { border-left: 4px solid #ff4444; }
+
+        .mission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .mission-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .mission-difficulty {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
+        .mission-difficulty.easy { background: rgba(68, 255, 68, 0.3); color: #44ff44; }
+        .mission-difficulty.medium { background: rgba(255, 170, 0, 0.3); color: #ffaa00; }
+        .mission-difficulty.hard { background: rgba(255, 68, 68, 0.3); color: #ff4444; }
+
+        .mission-desc {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .mission-reward {
+            font-size: 10px;
+            color: #ffcc00;
+        }
+
+        .mission-reward span {
+            margin-right: 12px;
+        }
+
+        /* Mission enemy tooltip */
+        .mission-card .enemy-tooltip {
+            position: absolute;
+            left: calc(100% + 10px);
+            top: 0;
+            width: 200px;
+            background: rgba(10, 0, 0, 0.95);
+            border: 1px solid #ff4444;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 10px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s, visibility 0.15s;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .mission-card:hover .enemy-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .enemy-tooltip .enemy-name {
+            font-weight: bold;
+            color: #ff6666;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .enemy-tooltip .enemy-chassis {
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .enemy-tooltip .enemy-stats {
+            color: #aaa;
+        }
+
+        .enemy-tooltip .enemy-stats div {
+            margin: 3px 0;
+        }
+
+        .enemy-tooltip .enemy-equipment {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+            color: #888;
+        }
+
+        .enemy-tooltip .enemy-equipment div {
+            margin: 2px 0;
+        }
+
         /* Drag ghost element */
         #dragGhost {
             position: fixed;
@@ -545,7 +687,7 @@
         }
 
         /* ============================================
-           BATTLE UI (from original)
+           BATTLE UI
            ============================================ */
         #battleUI {
             position: absolute;
@@ -561,59 +703,70 @@
             display: block;
         }
 
-        #battleControls {
+        .battle-mode #mechBuilderUI {
+            display: none;
+        }
+
+        #battleHeader {
             position: absolute;
-            top: 10px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            pointer-events: auto;
+            text-align: center;
         }
 
-        #battleControls button {
-            padding: 8px 16px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 2px solid #00ff88;
+        #missionTitle {
+            font-size: 24px;
             color: #00ff88;
-            cursor: pointer;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
-        #battleControls button:hover {
-            background: rgba(0, 255, 136, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(0,255,136,0.5);
         }
 
         #battleStatus {
             position: absolute;
-            bottom: 10px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             border: 2px solid #00ff88;
             border-radius: 8px;
-            padding: 10px 20px;
+            padding: 15px 30px;
             display: flex;
-            gap: 20px;
+            align-items: center;
+            gap: 30px;
             pointer-events: auto;
+        }
+
+        #battleVS {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffcc00;
+            text-shadow: 0 0 10px rgba(255,204,0,0.5);
         }
 
         .team-status {
             text-align: center;
+            min-width: 180px;
         }
 
         .team-status.player { color: #00ff88; }
         .team-status.enemy { color: #ff4444; }
 
+        #playerMechName, #enemyMechName {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
         .hp-bar {
-            width: 150px;
-            height: 12px;
-            background: #333;
+            width: 180px;
+            height: 16px;
+            background: #222;
             border-radius: 3px;
             overflow: hidden;
-            margin: 4px 0;
+            margin: 6px 0;
+            border: 1px solid #444;
         }
 
         .hp-fill {
@@ -623,6 +776,89 @@
 
         .hp-fill.player { background: linear-gradient(90deg, #00aa55, #00ff88); }
         .hp-fill.enemy { background: linear-gradient(90deg, #aa2222, #ff4444); }
+
+        #battleLog {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            max-height: 200px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #00aa66;
+            border-radius: 6px;
+            padding: 10px 15px;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+
+        #battleLogContent {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .log-entry {
+            margin: 4px 0;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-entry.player-action { color: #00ff88; }
+        .log-entry.enemy-action { color: #ff6666; }
+        .log-entry.damage { color: #ffaa00; }
+        .log-entry.victory { color: #44ff44; font-weight: bold; }
+        .log-entry.defeat { color: #ff4444; font-weight: bold; }
+
+        #battleResult {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,20,10,0.95);
+            border: 3px solid #00ff88;
+            border-radius: 12px;
+            padding: 40px 60px;
+            text-align: center;
+            pointer-events: auto;
+            box-shadow: 0 0 50px rgba(0,255,136,0.4);
+        }
+
+        #resultTitle {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        #resultTitle.victory { color: #44ff44; }
+        #resultTitle.defeat { color: #ff4444; }
+
+        #resultRewards {
+            font-size: 16px;
+            color: #ffcc00;
+            margin-bottom: 25px;
+        }
+
+        #resultRewards div {
+            margin: 8px 0;
+        }
+
+        #returnToBuilderBtn {
+            padding: 12px 30px;
+            font-size: 16px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: monospace;
+            transition: all 0.2s;
+        }
+
+        #returnToBuilderBtn:hover {
+            background: rgba(0, 255, 136, 0.4);
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -655,6 +891,14 @@
                 <button id="battleReadyBtn" disabled>Battle Ready</button>
             </div>
 
+            <!-- Mission Selection Panel -->
+            <div id="missionContainer">
+                <div id="missionLabel">Select Mission</div>
+                <div id="missionList">
+                    <!-- Missions populated by JS -->
+                </div>
+            </div>
+
             <!-- Grid Overlay Container (positioned over 3D mech) -->
             <div id="gridOverlayContainer">
                 <!-- Grids will be dynamically positioned here -->
@@ -675,23 +919,39 @@
 
         <!-- Battle UI Overlay (hidden during builder) -->
         <div id="battleUI">
-            <div id="battleControls">
-                <button id="autoFireBtn" onclick="toggleAutoFire()">AI Battle: OFF</button>
-                <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
-                <button onclick="returnToBuilder()">Back to Builder</button>
+            <div id="battleHeader">
+                <div id="missionTitle">Mission: Border Patrol</div>
             </div>
 
             <div id="battleStatus">
                 <div class="team-status player">
-                    <strong>PLAYER TEAM</strong>
+                    <strong>YOUR MECH</strong>
+                    <div id="playerMechName">Timber Wolf</div>
                     <div class="hp-bar"><div class="hp-fill player" id="playerHP" style="width: 100%"></div></div>
                     <div id="playerHPText">HP: 150/150</div>
                 </div>
+                <div id="battleVS">VS</div>
                 <div class="team-status enemy">
-                    <strong>ENEMY TEAM</strong>
+                    <strong>ENEMY</strong>
+                    <div id="enemyMechName">Scout Mech</div>
                     <div class="hp-bar"><div class="hp-fill enemy" id="enemyHP" style="width: 100%"></div></div>
-                    <div id="enemyHPText">HP: 200/200</div>
+                    <div id="enemyHPText">HP: 80/80</div>
                 </div>
+            </div>
+
+            <div id="battleLog">
+                <div id="battleLogContent">
+                    <!-- Battle events will be logged here -->
+                </div>
+            </div>
+
+            <div id="battleResult" style="display: none;">
+                <div id="resultTitle">VICTORY!</div>
+                <div id="resultRewards">
+                    <div>💰 Credits: +500</div>
+                    <div>⭐ XP: +100</div>
+                </div>
+                <button id="returnToBuilderBtn" onclick="returnToBuilder()">Return to Loadout</button>
             </div>
         </div>
 
@@ -823,6 +1083,67 @@
                 }
             }
         };
+
+        // Mission definitions with enemy mech configurations
+        const MISSIONS = {
+            patrol: {
+                id: 'patrol',
+                name: 'Border Patrol',
+                difficulty: 'Easy',
+                risk: 1,
+                reward: { credits: 500, xp: 100 },
+                description: 'Light recon mission. Expect minimal resistance.',
+                enemyMechs: [{
+                    name: 'Scout Mech',
+                    chassis: 'Light Frame',
+                    maxHealth: 80,
+                    equipment: [
+                        { itemId: 'laser_array', slot: 'rightArm', position: { x: 0, y: 0 } }
+                    ],
+                    stats: { weight: 35, energy: 20, damage: 40, armor: 10 }
+                }]
+            },
+            convoy: {
+                id: 'convoy',
+                name: 'Convoy Assault',
+                difficulty: 'Medium',
+                risk: 2,
+                reward: { credits: 1200, xp: 250 },
+                description: 'Intercept enemy supply convoy. Medium resistance expected.',
+                enemyMechs: [{
+                    name: 'Assault Mech',
+                    chassis: 'Medium Frame',
+                    maxHealth: 150,
+                    equipment: [
+                        { itemId: 'railgun_mk1', slot: 'rightArm', position: { x: 0, y: 0 } },
+                        { itemId: 'armor_plate', slot: 'torso', position: { x: 0, y: 0 } }
+                    ],
+                    stats: { weight: 65, energy: 35, damage: 100, armor: 50 }
+                }]
+            },
+            fortress: {
+                id: 'fortress',
+                name: 'Fortress Breach',
+                difficulty: 'Hard',
+                risk: 3,
+                reward: { credits: 3000, xp: 600 },
+                description: 'Assault heavily defended position. Prepare for heavy combat.',
+                enemyMechs: [{
+                    name: 'Heavy Destroyer',
+                    chassis: 'Heavy Frame',
+                    maxHealth: 250,
+                    equipment: [
+                        { itemId: 'railgun_mk1', slot: 'leftArm', position: { x: 0, y: 0 } },
+                        { itemId: 'laser_array', slot: 'rightArm', position: { x: 0, y: 0 } },
+                        { itemId: 'armor_plate', slot: 'torso', position: { x: 0, y: 0 } },
+                        { itemId: 'reactor_core', slot: 'torso', position: { x: 2, y: 0 } }
+                    ],
+                    stats: { weight: 95, energy: 55, damage: 140, armor: 80 }
+                }]
+            }
+        };
+
+        let selectedMission = null;
 
         // Current hand (drawn items)
         let currentHand = [];
@@ -1410,6 +1731,67 @@
             });
         }
 
+        function renderMissions() {
+            const missionList = document.getElementById('missionList');
+            missionList.innerHTML = '';
+
+            for (const mission of Object.values(MISSIONS)) {
+                const card = document.createElement('div');
+                card.className = `mission-card ${mission.difficulty.toLowerCase()}`;
+                card.dataset.missionId = mission.id;
+
+                if (selectedMission === mission.id) {
+                    card.classList.add('selected');
+                }
+
+                // Build equipment list for tooltip
+                const enemy = mission.enemyMechs[0];
+                let equipmentHTML = '';
+                enemy.equipment.forEach(eq => {
+                    const item = ITEM_DATABASE[eq.itemId];
+                    if (item) {
+                        equipmentHTML += `<div>${item.icon} ${item.name}</div>`;
+                    }
+                });
+
+                card.innerHTML = `
+                    <div class="mission-header">
+                        <span class="mission-name">${mission.name}</span>
+                        <span class="mission-difficulty ${mission.difficulty.toLowerCase()}">${mission.difficulty}</span>
+                    </div>
+                    <div class="mission-desc">${mission.description}</div>
+                    <div class="mission-reward">
+                        <span>💰 ${mission.reward.credits}</span>
+                        <span>⭐ ${mission.reward.xp} XP</span>
+                    </div>
+                    <div class="enemy-tooltip">
+                        <div class="enemy-name">⚠️ ${enemy.name}</div>
+                        <div class="enemy-chassis">${enemy.chassis}</div>
+                        <div class="enemy-stats">
+                            <div>❤️ Health: ${enemy.maxHealth}</div>
+                            <div>⚖️ Weight: ${enemy.stats.weight}</div>
+                            <div>⚡ Energy: ${enemy.stats.energy}</div>
+                            <div>💥 Damage: ${enemy.stats.damage}</div>
+                            <div>🛡️ Armor: ${enemy.stats.armor}</div>
+                        </div>
+                        <div class="enemy-equipment">
+                            <strong>Equipment:</strong>
+                            ${equipmentHTML}
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => selectMission(mission.id));
+                missionList.appendChild(card);
+            }
+        }
+
+        function selectMission(missionId) {
+            selectedMission = missionId;
+            renderMissions();
+            updateStats();  // Re-check battle ready state
+        }
+
         function renderGridOverlays() {
             const container = document.getElementById('gridOverlayContainer');
             container.innerHTML = '';
@@ -1582,9 +1964,23 @@
 
             // Update battle ready button
             const btn = document.getElementById('battleReadyBtn');
-            const isValid = totalWeight <= maxWeight && energyUsed <= maxEnergy && loadoutState.equipment.length > 0;
+            const isValid = totalWeight <= maxWeight &&
+                           energyUsed <= maxEnergy &&
+                           loadoutState.equipment.length > 0 &&
+                           selectedMission !== null;
             btn.disabled = !isValid;
             btn.classList.toggle('ready', isValid);
+
+            // Update button text to show what's missing
+            if (!selectedMission) {
+                btn.textContent = 'Select a Mission';
+            } else if (loadoutState.equipment.length === 0) {
+                btn.textContent = 'Equip Items';
+            } else if (!isValid) {
+                btn.textContent = 'Over Limit!';
+            } else {
+                btn.textContent = 'Battle Ready';
+            }
         }
 
         // ============================================
@@ -1808,47 +2204,185 @@
         }
 
         // ============================================
-        // PHASE TRANSITIONS
+        // PHASE TRANSITIONS & BATTLE SIMULATION
         // ============================================
+        let battleState = null;
+        let battleInterval = null;
+
+        function calculatePlayerStats() {
+            let totalDamage = 0;
+            let totalArmor = 0;
+            let totalWeight = 0;
+            let baseHealth = 100;  // Base mech health
+
+            loadoutState.equipment.forEach(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                if (item && item.stats) {
+                    totalWeight += item.stats.weight || 0;
+                    totalDamage += item.stats.damage || 0;
+                    totalArmor += item.stats.armorBonus || 0;
+                }
+            });
+
+            // More equipment = more health
+            const healthBonus = Math.floor(totalWeight * 0.5);
+
+            return {
+                maxHealth: baseHealth + healthBonus + totalArmor,
+                currentHealth: baseHealth + healthBonus + totalArmor,
+                damage: Math.max(20, totalDamage),  // Minimum 20 damage
+                armor: totalArmor
+            };
+        }
+
         function startBattle() {
-            if (loadoutState.equipment.length === 0) {
-                alert('Equip at least one item before battle!');
+            if (loadoutState.equipment.length === 0 || !selectedMission) {
                 return;
             }
 
+            const mission = MISSIONS[selectedMission];
+            const enemy = mission.enemyMechs[0];
+            const playerStats = calculatePlayerStats();
+
+            // Initialize battle state
+            battleState = {
+                mission: mission,
+                player: {
+                    name: MECH_CHASSIS.name,
+                    ...playerStats
+                },
+                enemy: {
+                    name: enemy.name,
+                    maxHealth: enemy.maxHealth,
+                    currentHealth: enemy.maxHealth,
+                    damage: enemy.stats.damage,
+                    armor: enemy.stats.armor
+                },
+                turn: 0,
+                finished: false,
+                playerWon: false
+            };
+
+            // Switch to battle phase
             currentPhase = GamePhase.BATTLE;
             document.body.classList.add('battle-mode');
 
-            // Serialize loadout for battle
-            const loadoutJSON = JSON.stringify(loadoutState, null, 2);
-            console.log('Battle Loadout:', loadoutJSON);
+            // Update UI
+            document.getElementById('missionTitle').textContent = `Mission: ${mission.name}`;
+            document.getElementById('playerMechName').textContent = battleState.player.name;
+            document.getElementById('enemyMechName').textContent = battleState.enemy.name;
+            document.getElementById('battleResult').style.display = 'none';
+            document.getElementById('battleLogContent').innerHTML = '';
 
-            // TODO: Initialize battle scene with loadout
-            // For now, just switch UI
-            console.log('Starting battle with loadout:', loadoutState);
+            updateBattleUI();
+            addBattleLog(`⚔️ Battle begins! ${battleState.player.name} vs ${battleState.enemy.name}`, '');
+
+            // Start turn-based combat
+            battleInterval = setInterval(executeBattleTurn, 1200);
+        }
+
+        function executeBattleTurn() {
+            if (battleState.finished) {
+                clearInterval(battleInterval);
+                return;
+            }
+
+            battleState.turn++;
+
+            // Player attacks
+            const playerDamage = Math.max(5, battleState.player.damage - battleState.enemy.armor * 0.3);
+            const actualPlayerDamage = Math.floor(playerDamage * (0.8 + Math.random() * 0.4));
+            battleState.enemy.currentHealth -= actualPlayerDamage;
+
+            addBattleLog(`🎯 Your mech fires! Deals ${actualPlayerDamage} damage`, 'player-action');
+
+            if (battleState.enemy.currentHealth <= 0) {
+                battleState.enemy.currentHealth = 0;
+                battleState.finished = true;
+                battleState.playerWon = true;
+                updateBattleUI();
+                endBattle();
+                return;
+            }
+
+            // Enemy attacks (after short delay for visual effect)
+            setTimeout(() => {
+                const enemyDamage = Math.max(5, battleState.enemy.damage - battleState.player.armor * 0.3);
+                const actualEnemyDamage = Math.floor(enemyDamage * (0.8 + Math.random() * 0.4));
+                battleState.player.currentHealth -= actualEnemyDamage;
+
+                addBattleLog(`💥 Enemy attacks! Deals ${actualEnemyDamage} damage`, 'enemy-action');
+
+                if (battleState.player.currentHealth <= 0) {
+                    battleState.player.currentHealth = 0;
+                    battleState.finished = true;
+                    battleState.playerWon = false;
+                    updateBattleUI();
+                    endBattle();
+                    return;
+                }
+
+                updateBattleUI();
+            }, 600);
+
+            updateBattleUI();
+        }
+
+        function updateBattleUI() {
+            const playerPercent = (battleState.player.currentHealth / battleState.player.maxHealth) * 100;
+            const enemyPercent = (battleState.enemy.currentHealth / battleState.enemy.maxHealth) * 100;
+
+            document.getElementById('playerHP').style.width = playerPercent + '%';
+            document.getElementById('enemyHP').style.width = enemyPercent + '%';
+            document.getElementById('playerHPText').textContent =
+                `HP: ${battleState.player.currentHealth}/${battleState.player.maxHealth}`;
+            document.getElementById('enemyHPText').textContent =
+                `HP: ${battleState.enemy.currentHealth}/${battleState.enemy.maxHealth}`;
+        }
+
+        function addBattleLog(message, className) {
+            const log = document.getElementById('battleLogContent');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + className;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function endBattle() {
+            clearInterval(battleInterval);
+
+            const resultEl = document.getElementById('battleResult');
+            const titleEl = document.getElementById('resultTitle');
+            const rewardsEl = document.getElementById('resultRewards');
+
+            if (battleState.playerWon) {
+                const mission = battleState.mission;
+                titleEl.textContent = 'VICTORY!';
+                titleEl.className = 'victory';
+                rewardsEl.innerHTML = `
+                    <div>💰 Credits: +${mission.reward.credits}</div>
+                    <div>⭐ XP: +${mission.reward.xp}</div>
+                `;
+                addBattleLog(`🏆 VICTORY! Enemy ${battleState.enemy.name} destroyed!`, 'victory');
+            } else {
+                titleEl.textContent = 'DEFEATED';
+                titleEl.className = 'defeat';
+                rewardsEl.innerHTML = `<div>Your mech was destroyed...</div>`;
+                addBattleLog(`💀 DEFEATED! Your mech was destroyed...`, 'defeat');
+            }
+
+            resultEl.style.display = 'block';
         }
 
         function returnToBuilder() {
+            if (battleInterval) {
+                clearInterval(battleInterval);
+            }
+            battleState = null;
             currentPhase = GamePhase.MECHBUILDER;
             document.body.classList.remove('battle-mode');
             scene.activeCamera = builderCamera;
-        }
-
-        // Battle UI functions (stubs for now)
-        let autoFireEnabled = false;
-        let cinematicEnabled = false;
-
-        function toggleAutoFire() {
-            autoFireEnabled = !autoFireEnabled;
-            const btn = document.getElementById('autoFireBtn');
-            btn.textContent = autoFireEnabled ? 'AI Battle: ON' : 'AI Battle: OFF';
-            btn.style.background = autoFireEnabled ? 'rgba(255, 68, 68, 0.3)' : 'rgba(0, 255, 136, 0.2)';
-        }
-
-        function toggleCinematicCamera() {
-            cinematicEnabled = !cinematicEnabled;
-            const btn = document.getElementById('cinematicBtn');
-            btn.textContent = cinematicEnabled ? 'Cinematic: ON' : 'Cinematic: OFF';
         }
 
         // ============================================
@@ -1874,6 +2408,7 @@
 
             // Render UI
             renderBench();
+            renderMissions();
             renderGridOverlays();
             renderGridItems();
             updateStats();

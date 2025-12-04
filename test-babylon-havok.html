@@ -166,15 +166,15 @@
             flex: 1;
             pointer-events: none;
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: auto auto auto;
             grid-template-rows: auto auto;
             grid-template-areas:
                 "leftArm torso rightArm"
                 "leftLeg . rightLeg";
-            gap: 8px;
-            padding: 10px;
-            justify-items: center;
-            align-items: start;
+            gap: 5px;
+            padding: 60px 10px 20px 10px;
+            justify-content: center;
+            align-content: center;
             overflow-y: auto;
         }
 
@@ -935,18 +935,81 @@
             display: flex;
         }
 
+        /* Tab Navigation Headers */
+        .tab-nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(0, 20, 10, 0.8);
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            pointer-events: auto;
+        }
+
+        .tab-nav-header .nav-btn {
+            padding: 8px 16px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tab-nav-header .nav-btn:hover:not(:disabled) {
+            background: rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 15px rgba(0,255,136,0.4);
+        }
+
+        .tab-nav-header .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #555;
+            color: #555;
+        }
+
+        .tab-nav-header .nav-btn.primary {
+            background: rgba(0, 255, 136, 0.3);
+        }
+
+        .tab-nav-header .nav-btn.primary:hover:not(:disabled) {
+            background: rgba(0, 255, 136, 0.5);
+        }
+
+        .tab-nav-header .nav-spacer {
+            flex: 1;
+        }
+
+        .tab-nav-header .nav-title {
+            font-size: 14px;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
         /* Mission Tab - Full screen panel */
         #missionTab {
             display: none;
+            flex-direction: column;
             flex: 1;
             background: rgba(0, 10, 5, 0.98);
-            padding: 20px;
             overflow-y: auto;
             pointer-events: auto;
         }
 
         #missionTab.active {
-            display: block;
+            display: flex;
+        }
+
+        #missionTab .mission-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
         }
 
         #missionTab .mission-header {
@@ -1059,33 +1122,6 @@
         #missionTab .mission-enemy-name {
             font-weight: bold;
             margin-bottom: 3px;
-        }
-
-        #missionTab .continue-btn {
-            display: block;
-            margin: 15px auto 0;
-            padding: 15px 40px;
-            background: rgba(0, 255, 136, 0.3);
-            border: 2px solid #00ff88;
-            color: #00ff88;
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        #missionTab .continue-btn:hover:not(:disabled) {
-            background: rgba(0, 255, 136, 0.5);
-            box-shadow: 0 0 20px rgba(0,255,136,0.5);
-        }
-
-        #missionTab .continue-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
         }
 
         /* ============================================
@@ -1325,7 +1361,14 @@
 
             <!-- Loadout Tab Content -->
             <div id="loadoutTab" class="tab-content active">
-                <!-- Mission Selection Panel (desktop only) -->
+                <!-- Navigation Header -->
+                <div class="tab-nav-header">
+                    <span class="nav-title">Equip Your Mech</span>
+                    <div class="nav-spacer"></div>
+                    <button class="nav-btn primary" onclick="switchTab('mission')">Go to Mission Selection →</button>
+                </div>
+
+                <!-- Mission Selection Panel (hidden - use tab) -->
                 <div id="missionContainer">
                     <div id="missionLabel">Select Mission</div>
                     <div id="missionList">
@@ -1351,18 +1394,26 @@
                 </div>
             </div>
 
-            <!-- Mission Tab Content (mobile full-screen) -->
+            <!-- Mission Tab Content -->
             <div id="missionTab" class="tab-content">
-                <div class="mission-header">
-                    <div class="mission-title">Select Mission</div>
-                    <div class="mission-subtitle">Choose your next deployment</div>
+                <!-- Navigation Header -->
+                <div class="tab-nav-header">
+                    <button class="nav-btn" onclick="switchTab('loadout')">← Back to Loadout</button>
+                    <div class="nav-spacer"></div>
+                    <button class="nav-btn primary" id="missionContinueBtn" onclick="startBattleFromMission()" disabled>
+                        Continue to Battle →
+                    </button>
                 </div>
-                <div class="mission-grid" id="missionTabList">
-                    <!-- Missions populated by JS -->
+
+                <div class="mission-content">
+                    <div class="mission-header">
+                        <div class="mission-title">Select Mission</div>
+                        <div class="mission-subtitle">Choose your next deployment</div>
+                    </div>
+                    <div class="mission-grid" id="missionTabList">
+                        <!-- Missions populated by JS -->
+                    </div>
                 </div>
-                <button class="continue-btn" id="missionContinueBtn" onclick="startBattleFromMission()" disabled>
-                    Continue to Battle
-                </button>
             </div>
         </div>
 

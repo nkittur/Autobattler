@@ -160,6 +160,7 @@
         <button id="autoFireBtn" onclick="toggleAutoFire()" style="background: rgba(255, 200, 0, 0.3); border-color: #ffcc00; color: #ffcc00;">AI Battle: OFF</button>
         <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
         <button onclick="resetScene()">Reset</button>
+        <button id="returnToLoadoutBtn" onclick="returnToLoadout()" style="background: rgba(0, 255, 136, 0.3); border-color: #00ff88; color: #00ff88;">Return to Loadout</button>
     </div>
     <canvas id="renderCanvas"></canvas>
     <div id="polyCount">Triangles: <span id="triCount">0</span></div>
@@ -675,19 +676,80 @@
             createGround(scene, shadowGenerator);
             createWalls(scene);
 
-            // Create mechs
-            playerMechs = [
-                createMadCatMech(scene, -7, 0, true),
-                createHatchetmanMech(scene, -14, 2, true),
-                createCatapultMech(scene, -10, 4, true),
-                createCommandoMech(scene, -10, -3, true)
-            ];
-            enemyMechs = [
-                createDireWolfMech(scene, 7, 0, false),
-                createHatchetmanMech(scene, 14, -2, false),
-                createCatapultMech(scene, 10, 4, false),
-                createCommandoMech(scene, 10, -3, false)
-            ];
+            // Check for battle config from MechBuilder
+            const battleConfigStr = localStorage.getItem('battleConfig');
+            let battleConfig = null;
+            let itemDatabase = null; // ITEM_DATABASE from loadout screen for special properties
+            if (battleConfigStr) {
+                try {
+                    battleConfig = JSON.parse(battleConfigStr);
+                    itemDatabase = battleConfig.itemDatabase || null;
+                    console.log('Loaded battle config:', battleConfig);
+                    console.log('Item database available:', !!itemDatabase);
+                } catch(e) {
+                    console.error('Failed to parse battle config:', e);
+                }
+            }
+
+            // Create mechs based on config or default
+            if (battleConfig) {
+                // Create player mech based on loadout
+                const playerMech = createMadCatMech(scene, -7, 0, true);
+                // Apply player stats from loadout
+                if (battleConfig.player && battleConfig.player.stats) {
+                    playerMech.maxHP = battleConfig.player.stats.maxHealth || playerMech.maxHP;
+                    playerMech.currentHP = playerMech.maxHP;
+                    // Store loadout damage for weapon calculations
+                    // Loadout damage is total damage from all equipped weapons
+                    playerMech.loadoutDamage = battleConfig.player.stats.damage || 0;
+                    playerMech.loadoutWeapons = battleConfig.player.stats.weapons || [];
+                    console.log('Player loadout damage:', playerMech.loadoutDamage, 'weapons:', playerMech.loadoutWeapons);
+                }
+                playerMechs = [playerMech];
+
+                // Create enemy mech based on mission difficulty
+                const enemyRisk = battleConfig.mission?.risk || 1;
+                let enemyMech;
+                if (enemyRisk >= 3) {
+                    enemyMech = createDireWolfMech(scene, 7, 0, false);
+                } else if (enemyRisk >= 2) {
+                    enemyMech = createMadCatMech(scene, 7, 0, false);
+                } else {
+                    enemyMech = createCommandoMech(scene, 7, 0, false);
+                }
+                // Apply enemy stats from config
+                if (battleConfig.enemy) {
+                    if (battleConfig.enemy.maxHealth) {
+                        enemyMech.maxHP = battleConfig.enemy.maxHealth;
+                        enemyMech.currentHP = enemyMech.maxHP;
+                    }
+                    // Use weapons from ITEM_DATABASE (passed via battleConfig)
+                    enemyMech.loadoutWeapons = battleConfig.enemy.weapons || [];
+                    console.log('Enemy weapons from ITEM_DATABASE:', enemyMech.loadoutWeapons);
+                }
+                enemyMechs = [enemyMech];
+
+                // Update UI with mission info
+                setTimeout(() => {
+                    const missionName = battleConfig.mission?.name || 'Battle';
+                    document.querySelector('.mech-info.player strong').textContent = battleConfig.player?.name || 'PLAYER';
+                    document.querySelector('.mech-info.enemy strong').textContent = battleConfig.enemy?.name || 'ENEMY';
+                }, 100);
+            } else {
+                // Default: full battle with multiple mechs
+                playerMechs = [
+                    createMadCatMech(scene, -7, 0, true),
+                    createHatchetmanMech(scene, -14, 2, true),
+                    createCatapultMech(scene, -10, 4, true),
+                    createCommandoMech(scene, -10, -3, true)
+                ];
+                enemyMechs = [
+                    createDireWolfMech(scene, 7, 0, false),
+                    createHatchetmanMech(scene, 14, -2, false),
+                    createCatapultMech(scene, 10, 4, false),
+                    createCommandoMech(scene, 10, -3, false)
+                ];
+            }
             allMechs = [...playerMechs, ...enemyMechs];
             allMechs.forEach(mech => {
                 mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
@@ -3390,7 +3452,7 @@
             const intensity = Math.min(1.5, hitForce.length() / 30);
 
             // Arms fling outward and back
-            if (mech.leftArm) {
+            if (mech.leftArm && mech.leftArm.rotation) {
                 const leftArmFling = () => {
                     let t = 0;
                     const startRot = mech.leftArm.rotation.clone();
@@ -3410,7 +3472,7 @@
                 leftArmFling();
             }
 
-            if (mech.rightArm) {
+            if (mech.rightArm && mech.rightArm.rotation) {
                 const rightArmFling = () => {
                     let t = 0;
                     const startRot = mech.rightArm.rotation.clone();
@@ -3798,22 +3860,35 @@
             // =============================================
             // TORSO ALWAYS FACES ENEMY
             // =============================================
-            // Calculate angle to enemy (in XZ plane)
-            // Mechs face along X axis, so we want to rotate Y to face target
+            // Calculate angle to enemy (in XZ plane) - this is the WORLD angle
             const angleToEnemy = Math.atan2(dz, dx);
+
+            // Get the pelvis's current world Y rotation
+            // Since torso is parented to pelvis, we need to calculate LOCAL rotation
+            const body = mech.pelvisAggregate.body;
+            const pelvisQuat = body.transformNode.rotationQuaternion;
+            let pelvisYaw = 0;
+            if (pelvisQuat) {
+                const euler = pelvisQuat.toEulerAngles();
+                pelvisYaw = euler.y;
+            }
 
             // Mech mesh faces +Z by default (chest at +Z, reactor at -Z)
             // Babylon.js uses LEFT-HANDED coordinates: +Y rotation is CLOCKWISE from above
             // rotation.y = 0 faces +Z, rotation.y = +π/2 faces +X, rotation.y = -π/2 faces -X
             // To convert world angle to mech rotation: baseAngle - angleToEnemy (not the reverse!)
             const baseAngle = Math.PI / 2;
-            let torsoAngle = baseAngle - angleToEnemy;  // FIXED: was angleToEnemy - baseAngle
+            let worldTorsoAngle = baseAngle - angleToEnemy;
+
+            // Convert to LOCAL torso rotation by subtracting pelvis world rotation
+            // The torso is parented to the pelvis, so its rotation.y is relative to pelvis
+            let torsoAngle = worldTorsoAngle - pelvisYaw;
 
             // Normalize to -PI to PI range
             while (torsoAngle > Math.PI) torsoAngle -= Math.PI * 2;
             while (torsoAngle < -Math.PI) torsoAngle += Math.PI * 2;
 
-            // Clamp torso rotation to reasonable range (about 60 degrees each way)
+            // Clamp torso rotation to reasonable range (about 60 degrees each way from pelvis)
             mech.targetTorsoTwist = Math.max(-1.0, Math.min(1.0, torsoAngle));
 
             // Smooth interpolation for torso rotation
@@ -3823,7 +3898,7 @@
             // Diagnostic: Log torso tracking calculations
             if (shouldLog) {
                 dbg(`${name}: torso dx=${dx.toFixed(2)} dz=${dz.toFixed(2)} angleToEnemy=${(angleToEnemy * 180/Math.PI).toFixed(1)}°`, 'torso');
-                dbg(`${name}: torso baseAngle=${(baseAngle * 180/Math.PI).toFixed(0)}° rawAngle=${(torsoAngle * 180/Math.PI).toFixed(1)}° target=${(mech.targetTorsoTwist * 180/Math.PI).toFixed(1)}° actual=${(mech.torsoTwist * 180/Math.PI).toFixed(1)}°`, 'torso');
+                dbg(`${name}: torso pelvisYaw=${(pelvisYaw * 180/Math.PI).toFixed(1)}° worldAngle=${(worldTorsoAngle * 180/Math.PI).toFixed(1)}° localAngle=${(torsoAngle * 180/Math.PI).toFixed(1)}° actual=${(mech.torsoTwist * 180/Math.PI).toFixed(1)}°`, 'torso');
             }
 
             // Head follows torso but can look even more toward enemy
@@ -4135,7 +4210,22 @@
                         fireWeapon(mech, 'erlaser');
                         cooldowns.erlaser = now + COOLDOWN_TIMES.erlaser;
                     }
+                } else if (mech.loadoutWeapons && mech.loadoutWeapons.length > 0) {
+                    // Fire weapons from loadout only
+                    if (distance <= 18 && distance >= 3) {
+                        for (const loadoutWpn of mech.loadoutWeapons) {
+                            const wpnKey = loadoutWpn.itemId;
+                            if (!cooldowns[wpnKey]) cooldowns[wpnKey] = 0;
+                            if (now >= cooldowns[wpnKey]) {
+                                fireLoadoutWeapon(mech, loadoutWpn);
+                                const weaponCooldown = (loadoutWpn.battle && loadoutWpn.battle.cooldown) || 2000;
+                                cooldowns[wpnKey] = now + weaponCooldown;
+                                break;
+                            }
+                        }
+                    }
                 } else {
+                    // Fallback to default weapons for AI enemies without loadout
                     if (distance <= 18 && distance >= 3) {
                         const weaponPriority = ['erlaser', 'ac', 'lrm'];
                         for (const wtype of weaponPriority) {
@@ -4186,6 +4276,8 @@
         // ============================================
         // COMBAT
         // ============================================
+        // Legacy weapon firing - only used for melee and default demo battles
+        // For loadout-based mechs, use fireLoadoutWeapon instead
         function fireWeapon(mech, type) {
             try {
                 const from = mech;
@@ -4237,6 +4329,72 @@
             } catch (e) {
                 log(`[FIRE ERROR] ${e.message}`, 'error');
                 console.error('fireWeapon error:', e);
+            }
+        }
+
+        // Fire a weapon from loadout data (uses actual weapon stats)
+        function fireLoadoutWeapon(mech, loadoutWeapon) {
+            try {
+                const from = mech;
+                const to = mech.ai.target;
+                if (!from || !to || to.isDestroyed) return;
+
+                const wpnName = loadoutWeapon.name || loadoutWeapon.itemId;
+                const battleProps = loadoutWeapon.battle || {};
+                const damage = loadoutWeapon.damage || 10;
+
+                log(`[LOADOUT FIRE] ${from.name} fires ${wpnName} (${damage} damage)`);
+
+                // Build weapon object from loadout data - NO damage multipliers
+                const weapon = {
+                    name: wpnName,
+                    damage: damage,
+                    knockback: battleProps.knockback || 15,
+                    recoil: battleProps.recoil || 0.15,
+                    projectileSpeed: battleProps.projectileSpeed || 40,
+                    projectileSize: battleProps.projectileSize || 0.12,
+                    isBeam: battleProps.isBeam || false,
+                    isCluster: battleProps.isCluster || false,
+                    isProjectile: battleProps.isProjectile || (!battleProps.isBeam && !battleProps.isCluster),
+                    beamDuration: battleProps.beamDuration || 180,
+                    clusterCount: battleProps.clusterCount || 6,
+                    color: battleProps.color ? new BABYLON.Color3(battleProps.color[0], battleProps.color[1], battleProps.color[2]) : new BABYLON.Color3(1, 0.8, 0.2)
+                };
+
+                from.recoilRecovery = weapon.recoil;
+                from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';
+
+                // Validate required properties
+                if (!from.pelvis || !to.pelvis) {
+                    log(`[ERROR] Missing pelvis: from=${!!from.pelvis} to=${!!to.pelvis}`, 'error');
+                    return;
+                }
+
+                // Apply recoil in opposite direction of target
+                const toTarget = to.pelvis.getAbsolutePosition().subtract(from.pelvis.getAbsolutePosition()).normalize();
+                from.pelvisAggregate.body.applyImpulse(
+                    toTarget.scale(-weapon.knockback * 0.25),
+                    from.pelvis.getAbsolutePosition()
+                );
+
+                // Fire based on weapon type
+                if (weapon.isBeam) {
+                    fireBeam(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
+                } else if (weapon.isCluster) {
+                    fireCluster(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
+                } else {
+                    // Default to projectile
+                    fireProjectile(from, to, weapon);
+                    log(`${from.name} fires ${weapon.name}!`);
+                    triggerCinematicAction(from, 'fire');
+                }
+            } catch (e) {
+                log(`[LOADOUT FIRE ERROR] ${e.message}`, 'error');
+                console.error('fireLoadoutWeapon error:', e);
             }
         }
 
@@ -4933,6 +5091,22 @@
             });
 
             log('Scene reset');
+        }
+
+        // ============================================
+        // RETURN TO LOADOUT
+        // ============================================
+        function returnToLoadout() {
+            // Clear the battle config
+            localStorage.removeItem('battleConfig');
+
+            // If running in an iframe, notify parent window
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'battleEnd' }, '*');
+            } else {
+                // Navigate back to the loadout screen (standalone mode)
+                window.location.href = 'test-babylon-havok.html';
+            }
         }
 
         // ============================================

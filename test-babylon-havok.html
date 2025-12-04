@@ -392,6 +392,149 @@
             padding-top: 4px;
         }
 
+        /* Mission Selection */
+        #missionContainer {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 280px;
+            background: rgba(0, 20, 10, 0.9);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0,255,136,0.3);
+            pointer-events: auto;
+        }
+
+        #missionLabel {
+            font-size: 12px;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .mission-card {
+            background: rgba(0, 255, 136, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .mission-card:hover {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: #00ff88;
+            transform: translateX(-3px);
+        }
+
+        .mission-card.selected {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0,255,136,0.4);
+        }
+
+        .mission-card.easy { border-left: 4px solid #44ff44; }
+        .mission-card.medium { border-left: 4px solid #ffaa00; }
+        .mission-card.hard { border-left: 4px solid #ff4444; }
+
+        .mission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .mission-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .mission-difficulty {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
+        .mission-difficulty.easy { background: rgba(68, 255, 68, 0.3); color: #44ff44; }
+        .mission-difficulty.medium { background: rgba(255, 170, 0, 0.3); color: #ffaa00; }
+        .mission-difficulty.hard { background: rgba(255, 68, 68, 0.3); color: #ff4444; }
+
+        .mission-desc {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .mission-reward {
+            font-size: 10px;
+            color: #ffcc00;
+        }
+
+        .mission-reward span {
+            margin-right: 12px;
+        }
+
+        /* Mission enemy tooltip */
+        .mission-card .enemy-tooltip {
+            position: absolute;
+            left: calc(100% + 10px);
+            top: 0;
+            width: 200px;
+            background: rgba(10, 0, 0, 0.95);
+            border: 1px solid #ff4444;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 10px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s, visibility 0.15s;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .mission-card:hover .enemy-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .enemy-tooltip .enemy-name {
+            font-weight: bold;
+            color: #ff6666;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .enemy-tooltip .enemy-chassis {
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .enemy-tooltip .enemy-stats {
+            color: #aaa;
+        }
+
+        .enemy-tooltip .enemy-stats div {
+            margin: 3px 0;
+        }
+
+        .enemy-tooltip .enemy-equipment {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+            color: #888;
+        }
+
+        .enemy-tooltip .enemy-equipment div {
+            margin: 2px 0;
+        }
+
         /* Drag ghost element */
         #dragGhost {
             position: fixed;
@@ -545,7 +688,7 @@
         }
 
         /* ============================================
-           BATTLE UI (from original)
+           BATTLE UI
            ============================================ */
         #battleUI {
             position: absolute;
@@ -561,59 +704,70 @@
             display: block;
         }
 
-        #battleControls {
+        .battle-mode #mechBuilderUI {
+            display: none;
+        }
+
+        #battleHeader {
             position: absolute;
-            top: 10px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-            pointer-events: auto;
+            text-align: center;
         }
 
-        #battleControls button {
-            padding: 8px 16px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 2px solid #00ff88;
+        #missionTitle {
+            font-size: 24px;
             color: #00ff88;
-            cursor: pointer;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-        }
-
-        #battleControls button:hover {
-            background: rgba(0, 255, 136, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(0,255,136,0.5);
         }
 
         #battleStatus {
             position: absolute;
-            bottom: 10px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             border: 2px solid #00ff88;
             border-radius: 8px;
-            padding: 10px 20px;
+            padding: 15px 30px;
             display: flex;
-            gap: 20px;
+            align-items: center;
+            gap: 30px;
             pointer-events: auto;
+        }
+
+        #battleVS {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffcc00;
+            text-shadow: 0 0 10px rgba(255,204,0,0.5);
         }
 
         .team-status {
             text-align: center;
+            min-width: 180px;
         }
 
         .team-status.player { color: #00ff88; }
         .team-status.enemy { color: #ff4444; }
 
+        #playerMechName, #enemyMechName {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
         .hp-bar {
-            width: 150px;
-            height: 12px;
-            background: #333;
+            width: 180px;
+            height: 16px;
+            background: #222;
             border-radius: 3px;
             overflow: hidden;
-            margin: 4px 0;
+            margin: 6px 0;
+            border: 1px solid #444;
         }
 
         .hp-fill {
@@ -623,6 +777,89 @@
 
         .hp-fill.player { background: linear-gradient(90deg, #00aa55, #00ff88); }
         .hp-fill.enemy { background: linear-gradient(90deg, #aa2222, #ff4444); }
+
+        #battleLog {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            max-height: 200px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #00aa66;
+            border-radius: 6px;
+            padding: 10px 15px;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+
+        #battleLogContent {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .log-entry {
+            margin: 4px 0;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .log-entry.player-action { color: #00ff88; }
+        .log-entry.enemy-action { color: #ff6666; }
+        .log-entry.damage { color: #ffaa00; }
+        .log-entry.victory { color: #44ff44; font-weight: bold; }
+        .log-entry.defeat { color: #ff4444; font-weight: bold; }
+
+        #battleResult {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,20,10,0.95);
+            border: 3px solid #00ff88;
+            border-radius: 12px;
+            padding: 40px 60px;
+            text-align: center;
+            pointer-events: auto;
+            box-shadow: 0 0 50px rgba(0,255,136,0.4);
+        }
+
+        #resultTitle {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        #resultTitle.victory { color: #44ff44; }
+        #resultTitle.defeat { color: #ff4444; }
+
+        #resultRewards {
+            font-size: 16px;
+            color: #ffcc00;
+            margin-bottom: 25px;
+        }
+
+        #resultRewards div {
+            margin: 8px 0;
+        }
+
+        #returnToBuilderBtn {
+            padding: 12px 30px;
+            font-size: 16px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: monospace;
+            transition: all 0.2s;
+        }
+
+        #returnToBuilderBtn:hover {
+            background: rgba(0, 255, 136, 0.4);
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -655,6 +892,14 @@
                 <button id="battleReadyBtn" disabled>Battle Ready</button>
             </div>
 
+            <!-- Mission Selection Panel -->
+            <div id="missionContainer">
+                <div id="missionLabel">Select Mission</div>
+                <div id="missionList">
+                    <!-- Missions populated by JS -->
+                </div>
+            </div>
+
             <!-- Grid Overlay Container (positioned over 3D mech) -->
             <div id="gridOverlayContainer">
                 <!-- Grids will be dynamically positioned here -->
@@ -675,28 +920,76 @@
 
         <!-- Battle UI Overlay (hidden during builder) -->
         <div id="battleUI">
-            <div id="battleControls">
-                <button id="autoFireBtn" onclick="toggleAutoFire()">AI Battle: OFF</button>
-                <button id="cinematicBtn" onclick="toggleCinematicCamera()">Cinematic: OFF</button>
-                <button onclick="returnToBuilder()">Back to Builder</button>
+            <div id="battleHeader">
+                <div id="missionTitle">Mission: Border Patrol</div>
             </div>
 
             <div id="battleStatus">
                 <div class="team-status player">
-                    <strong>PLAYER TEAM</strong>
+                    <strong>YOUR MECH</strong>
+                    <div id="playerMechName">Timber Wolf</div>
                     <div class="hp-bar"><div class="hp-fill player" id="playerHP" style="width: 100%"></div></div>
                     <div id="playerHPText">HP: 150/150</div>
                 </div>
+                <div id="battleVS">VS</div>
                 <div class="team-status enemy">
-                    <strong>ENEMY TEAM</strong>
+                    <strong>ENEMY</strong>
+                    <div id="enemyMechName">Scout Mech</div>
                     <div class="hp-bar"><div class="hp-fill enemy" id="enemyHP" style="width: 100%"></div></div>
-                    <div id="enemyHPText">HP: 200/200</div>
+                    <div id="enemyHPText">HP: 80/80</div>
                 </div>
+            </div>
+
+            <div id="battleLog">
+                <div id="battleLogContent">
+                    <!-- Battle events will be logged here -->
+                </div>
+            </div>
+
+            <div id="battleResult" style="display: none;">
+                <div id="resultTitle">VICTORY!</div>
+                <div id="resultRewards">
+                    <div>💰 Credits: +500</div>
+                    <div>⭐ XP: +100</div>
+                </div>
+                <button id="returnToBuilderBtn" onclick="returnToBuilder()">Return to Loadout</button>
             </div>
         </div>
 
         <!-- Drag Ghost (hidden until dragging) -->
         <div id="dragGhost" style="display: none;"></div>
+
+        <!-- Battle UI Overlay (hidden initially) -->
+        <div id="battleUI" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; flex-direction: column;">
+            <!-- Battle Status Bar -->
+            <div style="pointer-events: auto; display: flex; justify-content: space-between; padding: 15px 30px; background: linear-gradient(180deg, rgba(0,20,10,0.95) 0%, rgba(0,20,10,0.7) 100%); border-bottom: 2px solid #00ff88;">
+                <!-- Player HP -->
+                <div style="flex: 1; max-width: 300px;">
+                    <div style="font-size: 14px; color: #00ff88; margin-bottom: 5px;" id="playerName">PLAYER</div>
+                    <div style="height: 20px; background: #333; border: 1px solid #00ff88; border-radius: 3px; overflow: hidden;">
+                        <div id="playerHP" style="height: 100%; width: 100%; background: linear-gradient(90deg, #00ff88, #44ff88); transition: width 0.3s;"></div>
+                    </div>
+                </div>
+                <!-- VS -->
+                <div style="font-size: 24px; color: #ffaa00; padding: 0 30px;">VS</div>
+                <!-- Enemy HP -->
+                <div style="flex: 1; max-width: 300px;">
+                    <div style="font-size: 14px; color: #ff4444; margin-bottom: 5px; text-align: right;" id="enemyName">ENEMY</div>
+                    <div style="height: 20px; background: #333; border: 1px solid #ff4444; border-radius: 3px; overflow: hidden;">
+                        <div id="enemyHP" style="height: 100%; width: 100%; background: linear-gradient(90deg, #ff4444, #ff6644); transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Battle Result Overlay -->
+            <div id="battleResultOverlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; flex-direction: column; pointer-events: auto;">
+                <div id="battleResult" style="font-size: 64px; font-weight: bold; text-shadow: 0 0 30px currentColor;">VICTORY!</div>
+                <button onclick="returnToLoadout()" style="margin-top: 30px; padding: 15px 40px; font-size: 18px; background: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; color: #00ff88; cursor: pointer; border-radius: 5px;">Return to Loadout</button>
+            </div>
+        </div>
+
+        <!-- Battle iframe (loads the original physics simulation) -->
+        <iframe id="battleFrame" src="" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1000;"></iframe>
     </div>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -752,6 +1045,16 @@
                 },
                 constraints: {
                     validSlots: ['leftArm', 'rightArm']
+                },
+                // Battle properties
+                battle: {
+                    projectileSpeed: 50,
+                    projectileSize: 0.15,
+                    knockback: 30,
+                    recoil: 0.15,
+                    cooldown: 1500,
+                    color: [1, 0.9, 0.3],  // Yellow-orange
+                    isProjectile: true
                 }
             },
             laser_array: {
@@ -769,6 +1072,15 @@
                 },
                 constraints: {
                     validSlots: ['torso', 'leftArm', 'rightArm']
+                },
+                // Battle properties
+                battle: {
+                    isBeam: true,
+                    beamDuration: 200,
+                    knockback: 8,
+                    recoil: 0.2,
+                    cooldown: 2000,
+                    color: [0.2, 1, 0.3]  // Green
                 }
             },
             armor_plate: {
@@ -823,6 +1135,707 @@
                 }
             }
         };
+
+        // Mission definitions with enemy mech configurations
+        const MISSIONS = {
+            patrol: {
+                id: 'patrol',
+                name: 'Border Patrol',
+                difficulty: 'Easy',
+                risk: 1,
+                reward: { credits: 500, xp: 100 },
+                description: 'Light recon mission. Expect minimal resistance.',
+                enemyMechs: [{
+                    name: 'Scout Mech',
+                    chassis: 'Light Frame',
+                    maxHealth: 80,
+                    equipment: [
+                        { itemId: 'laser_array', slot: 'rightArm', position: { x: 0, y: 0 } }
+                    ],
+                    stats: { weight: 35, energy: 20, damage: 40, armor: 10 }
+                }]
+            },
+            convoy: {
+                id: 'convoy',
+                name: 'Convoy Assault',
+                difficulty: 'Medium',
+                risk: 2,
+                reward: { credits: 1200, xp: 250 },
+                description: 'Intercept enemy supply convoy. Medium resistance expected.',
+                enemyMechs: [{
+                    name: 'Assault Mech',
+                    chassis: 'Medium Frame',
+                    maxHealth: 150,
+                    equipment: [
+                        { itemId: 'railgun_mk1', slot: 'rightArm', position: { x: 0, y: 0 } },
+                        { itemId: 'armor_plate', slot: 'torso', position: { x: 0, y: 0 } }
+                    ],
+                    stats: { weight: 65, energy: 35, damage: 100, armor: 50 }
+                }]
+            },
+            fortress: {
+                id: 'fortress',
+                name: 'Fortress Breach',
+                difficulty: 'Hard',
+                risk: 3,
+                reward: { credits: 3000, xp: 600 },
+                description: 'Assault heavily defended position. Prepare for heavy combat.',
+                enemyMechs: [{
+                    name: 'Heavy Destroyer',
+                    chassis: 'Heavy Frame',
+                    maxHealth: 250,
+                    equipment: [
+                        { itemId: 'railgun_mk1', slot: 'leftArm', position: { x: 0, y: 0 } },
+                        { itemId: 'laser_array', slot: 'rightArm', position: { x: 0, y: 0 } },
+                        { itemId: 'armor_plate', slot: 'torso', position: { x: 0, y: 0 } },
+                        { itemId: 'reactor_core', slot: 'torso', position: { x: 2, y: 0 } }
+                    ],
+                    stats: { weight: 95, energy: 55, damage: 140, armor: 80 }
+                }]
+            }
+        };
+
+        let selectedMission = null;
+
+        // ============================================
+        // PHYSICS BATTLE SYSTEM
+        // ============================================
+        let battleMechs = [];       // All mechs in battle
+        let playerBattleMech = null;
+        let enemyBattleMech = null;
+        let projectiles = [];       // Active projectiles
+        let beams = [];             // Active beam weapons
+        let battleActive = false;
+        let battleScene = null;     // Separate scene for battle
+        let battleGround = null;
+        let weaponCooldowns = {};   // Track weapon cooldowns per mech
+
+        // Battle colors
+        const BATTLE_COLORS = {
+            playerPrimary: new BABYLON.Color3(0.15, 0.35, 0.2),
+            playerSecondary: new BABYLON.Color3(0.25, 0.45, 0.3),
+            enemyPrimary: new BABYLON.Color3(0.4, 0.12, 0.12),
+            enemySecondary: new BABYLON.Color3(0.5, 0.18, 0.18),
+            metal: new BABYLON.Color3(0.35, 0.35, 0.4),
+            darkMetal: new BABYLON.Color3(0.12, 0.12, 0.15)
+        };
+
+        // Mech state machine
+        const MechState = {
+            WALKING: 'walking',
+            RAGDOLL: 'ragdoll',
+            RECOVERING: 'recovering'
+        };
+
+        // AI Configuration
+        const AI_CONFIG = {
+            idealRange: 10,
+            minRange: 6,
+            maxRange: 14,
+            moveSpeed: 4,
+            turnSpeed: 2,
+            strafeChance: 0.4,
+            decisionInterval: 0.3
+        };
+
+        // Arena bounds
+        const ARENA_BOUNDS = {
+            minX: -15,
+            maxX: 15,
+            minZ: -10,
+            maxZ: 10
+        };
+
+        // Texture URLs
+        const TEXTURE_URLS = {
+            grass: 'https://i.imgur.com/c3l8U9o.png',
+            rustMetal: 'https://assets.babylonjs.com/textures/rustediron2_basecolor.png'
+        };
+
+        let BATTLE_TEXTURES = {};
+
+        // ============================================
+        // BATTLE SYSTEM FUNCTIONS
+        // ============================================
+
+        // Get weapons from loadout
+        function getLoadoutWeapons() {
+            const weapons = [];
+            loadoutState.equipment.forEach(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                if (item && item.type === 'WEAPON' && item.battle) {
+                    weapons.push({
+                        itemId: eq.itemId,
+                        slot: eq.slot,
+                        name: item.name,
+                        damage: item.stats.damage,
+                        battle: item.battle,
+                        lastFired: 0
+                    });
+                }
+            });
+            return weapons;
+        }
+
+        // Create battle scene with physics
+        async function createBattleScene() {
+            // Initialize Havok if not done
+            if (!havokInstance) {
+                havokInstance = await HavokPhysics();
+            }
+
+            battleScene = new BABYLON.Scene(engine);
+            battleScene.clearColor = new BABYLON.Color3(0.5, 0.6, 0.75);
+
+            // Enable physics
+            havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
+            battleScene.enablePhysics(new BABYLON.Vector3(0, -18, 0), havokPlugin);
+
+            // Camera
+            battleCamera = new BABYLON.ArcRotateCamera('battleCam', -Math.PI/2, Math.PI/3.5, 25,
+                new BABYLON.Vector3(0, 2, 0), battleScene);
+            battleCamera.attachControl(document.getElementById('renderCanvas'), true);
+            battleCamera.lowerRadiusLimit = 10;
+            battleCamera.upperRadiusLimit = 50;
+
+            // Lighting
+            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), battleScene);
+            hemi.intensity = 0.5;
+
+            const sun = new BABYLON.DirectionalLight('sun', new BABYLON.Vector3(-1, -2, -1), battleScene);
+            sun.intensity = 1.2;
+
+            // Ground
+            battleGround = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 30 }, battleScene);
+            const groundMat = new BABYLON.StandardMaterial('groundMat', battleScene);
+            groundMat.diffuseColor = new BABYLON.Color3(0.3, 0.4, 0.3);
+            battleGround.material = groundMat;
+            battleGround.receiveShadows = true;
+
+            // Ground physics
+            const groundShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, -0.5, 0),
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(40, 1, 30),
+                battleScene
+            );
+            const groundBody = new BABYLON.PhysicsBody(battleGround, BABYLON.PhysicsMotionType.STATIC, false, battleScene);
+            groundBody.shape = groundShape;
+
+            return battleScene;
+        }
+
+        // Create a battle mech with physics and loadout weapons
+        // Matches the proportions of the builder mech for consistency
+        function createBattleMech(scene, xPos, zPos, isPlayer, weapons, maxHP) {
+            const name = isPlayer ? 'player' : 'enemy';
+            const colors = isPlayer ?
+                { primary: BATTLE_COLORS.playerPrimary, secondary: BATTLE_COLORS.playerSecondary } :
+                { primary: BATTLE_COLORS.enemyPrimary, secondary: BATTLE_COLORS.enemySecondary };
+
+            // Materials - match builder holographic style but solid
+            const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
+            primaryMat.diffuseColor = colors.primary;
+            primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+
+            const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
+            secondaryMat.diffuseColor = colors.secondary;
+
+            const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
+            metalMat.diffuseColor = BATTLE_COLORS.metal;
+            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+
+            const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
+            darkMat.diffuseColor = BATTLE_COLORS.darkMetal;
+
+            // Cockpit material (glowing)
+            const cockpitMat = new BABYLON.StandardMaterial(name + '_cockpit', scene);
+            cockpitMat.diffuseColor = isPlayer ? new BABYLON.Color3(0, 0.5, 0.5) : new BABYLON.Color3(0.5, 0.2, 0.2);
+            cockpitMat.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 0.9) : new BABYLON.Color3(0.9, 0.3, 0.2);
+            cockpitMat.alpha = 0.9;
+
+            // Pelvis (physics body) - matches builder: width: 0.9, height: 0.4, depth: 0.6
+            const pelvis = BABYLON.MeshBuilder.CreateBox(name + '_pelvis', { width: 0.9, height: 0.4, depth: 0.6 }, scene);
+            pelvis.position = new BABYLON.Vector3(xPos, 1.5, zPos);
+            pelvis.material = darkMat;
+
+            // Physics body - taller collision box to represent full mech
+            const pelvisShape = new BABYLON.PhysicsShapeBox(
+                new BABYLON.Vector3(0, 0.5, 0),
+                new BABYLON.Quaternion(0, 0, 0, 1),
+                new BABYLON.Vector3(1.4, 2.5, 0.9),
+                scene
+            );
+            const pelvisBody = new BABYLON.PhysicsBody(pelvis, BABYLON.PhysicsMotionType.ANIMATED, false, scene);
+            pelvisBody.shape = pelvisShape;
+            pelvisBody.setMassProperties({ mass: 50 });
+            pelvisBody.setAngularDamping(5);
+            pelvisBody.setLinearDamping(0.5);
+
+            // Torso - matches builder: width: 1.2, height: 1.0, depth: 0.8
+            const torso = BABYLON.MeshBuilder.CreateBox(name + '_torso', { width: 1.2, height: 1.0, depth: 0.8 }, scene);
+            torso.position.y = 0.7;
+            torso.parent = pelvis;
+            torso.material = primaryMat;
+
+            // Torso upper - matches builder: width: 1.4, height: 0.5, depth: 0.9
+            const torsoUpper = BABYLON.MeshBuilder.CreateBox(name + '_torsoUpper', { width: 1.4, height: 0.5, depth: 0.9 }, scene);
+            torsoUpper.position.y = 0.6;
+            torsoUpper.parent = torso;
+            torsoUpper.material = secondaryMat;
+
+            // Head - matches builder: width: 0.5, height: 0.4, depth: 0.5
+            const head = BABYLON.MeshBuilder.CreateBox(name + '_head', { width: 0.5, height: 0.4, depth: 0.5 }, scene);
+            head.position.y = 0.65;
+            head.parent = torsoUpper;
+            head.material = primaryMat;
+
+            // Cockpit glass - matches builder
+            const cockpit = BABYLON.MeshBuilder.CreateBox(name + '_cockpit', { width: 0.4, height: 0.15, depth: 0.1 }, scene);
+            cockpit.position = new BABYLON.Vector3(0, 0, 0.28);
+            cockpit.parent = head;
+            cockpit.material = cockpitMat;
+
+            // Left Arm - shoulder + upper arm + lower arm
+            const leftShoulder = BABYLON.MeshBuilder.CreateBox(name + '_leftShoulder', { width: 0.35, height: 0.3, depth: 0.35 }, scene);
+            leftShoulder.position = new BABYLON.Vector3(-0.85, 0.35, 0);
+            leftShoulder.parent = torso;
+            leftShoulder.material = secondaryMat;
+
+            const leftUpperArm = BABYLON.MeshBuilder.CreateBox(name + '_leftUpperArm', { width: 0.25, height: 0.5, depth: 0.25 }, scene);
+            leftUpperArm.position.y = -0.35;
+            leftUpperArm.parent = leftShoulder;
+            leftUpperArm.material = metalMat;
+
+            const leftLowerArm = BABYLON.MeshBuilder.CreateBox(name + '_leftLowerArm', { width: 0.3, height: 0.6, depth: 0.3 }, scene);
+            leftLowerArm.position.y = -0.5;
+            leftLowerArm.parent = leftUpperArm;
+            leftLowerArm.material = primaryMat;
+
+            // Left Weapon barrel
+            const leftWeapon = BABYLON.MeshBuilder.CreateCylinder(name + '_leftWpn', { diameter: 0.15, height: 0.5 }, scene);
+            leftWeapon.rotation.x = Math.PI / 2;
+            leftWeapon.position = new BABYLON.Vector3(0, -0.2, 0.25);
+            leftWeapon.parent = leftLowerArm;
+            leftWeapon.material = darkMat;
+
+            // Right Arm - shoulder + upper arm + lower arm
+            const rightShoulder = BABYLON.MeshBuilder.CreateBox(name + '_rightShoulder', { width: 0.35, height: 0.3, depth: 0.35 }, scene);
+            rightShoulder.position = new BABYLON.Vector3(0.85, 0.35, 0);
+            rightShoulder.parent = torso;
+            rightShoulder.material = secondaryMat;
+
+            const rightUpperArm = BABYLON.MeshBuilder.CreateBox(name + '_rightUpperArm', { width: 0.25, height: 0.5, depth: 0.25 }, scene);
+            rightUpperArm.position.y = -0.35;
+            rightUpperArm.parent = rightShoulder;
+            rightUpperArm.material = metalMat;
+
+            const rightLowerArm = BABYLON.MeshBuilder.CreateBox(name + '_rightLowerArm', { width: 0.3, height: 0.6, depth: 0.3 }, scene);
+            rightLowerArm.position.y = -0.5;
+            rightLowerArm.parent = rightUpperArm;
+            rightLowerArm.material = primaryMat;
+
+            // Right Weapon barrel
+            const rightWeapon = BABYLON.MeshBuilder.CreateCylinder(name + '_rightWpn', { diameter: 0.15, height: 0.5 }, scene);
+            rightWeapon.rotation.x = Math.PI / 2;
+            rightWeapon.position = new BABYLON.Vector3(0, -0.2, 0.25);
+            rightWeapon.parent = rightLowerArm;
+            rightWeapon.material = darkMat;
+
+            // Legs - matching builder structure
+            // Left leg
+            const leftHip = BABYLON.MeshBuilder.CreateBox(name + '_leftHip', { width: 0.25, height: 0.25, depth: 0.25 }, scene);
+            leftHip.position = new BABYLON.Vector3(-0.3, -0.25, 0);
+            leftHip.parent = pelvis;
+            leftHip.material = darkMat;
+
+            const leftUpperLeg = BABYLON.MeshBuilder.CreateBox(name + '_leftUpperLeg', { width: 0.2, height: 0.5, depth: 0.2 }, scene);
+            leftUpperLeg.position.y = -0.35;
+            leftUpperLeg.parent = leftHip;
+            leftUpperLeg.material = metalMat;
+
+            const leftLowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_leftLowerLeg', { width: 0.22, height: 0.55, depth: 0.22 }, scene);
+            leftLowerLeg.position.y = -0.5;
+            leftLowerLeg.parent = leftUpperLeg;
+            leftLowerLeg.material = primaryMat;
+
+            const leftFoot = BABYLON.MeshBuilder.CreateBox(name + '_leftFoot', { width: 0.25, height: 0.12, depth: 0.4 }, scene);
+            leftFoot.position = new BABYLON.Vector3(0, -0.3, 0.08);
+            leftFoot.parent = leftLowerLeg;
+            leftFoot.material = darkMat;
+
+            // Right leg
+            const rightHip = BABYLON.MeshBuilder.CreateBox(name + '_rightHip', { width: 0.25, height: 0.25, depth: 0.25 }, scene);
+            rightHip.position = new BABYLON.Vector3(0.3, -0.25, 0);
+            rightHip.parent = pelvis;
+            rightHip.material = darkMat;
+
+            const rightUpperLeg = BABYLON.MeshBuilder.CreateBox(name + '_rightUpperLeg', { width: 0.2, height: 0.5, depth: 0.2 }, scene);
+            rightUpperLeg.position.y = -0.35;
+            rightUpperLeg.parent = rightHip;
+            rightUpperLeg.material = metalMat;
+
+            const rightLowerLeg = BABYLON.MeshBuilder.CreateBox(name + '_rightLowerLeg', { width: 0.22, height: 0.55, depth: 0.22 }, scene);
+            rightLowerLeg.position.y = -0.5;
+            rightLowerLeg.parent = rightUpperLeg;
+            rightLowerLeg.material = primaryMat;
+
+            const rightFoot = BABYLON.MeshBuilder.CreateBox(name + '_rightFoot', { width: 0.25, height: 0.12, depth: 0.4 }, scene);
+            rightFoot.position = new BABYLON.Vector3(0, -0.3, 0.08);
+            rightFoot.parent = rightLowerLeg;
+            rightFoot.material = darkMat;
+
+            return {
+                name: name,
+                pelvis: pelvis,
+                pelvisBody: pelvisBody,
+                torso: torso,
+                head: head,
+                leftArm: leftLowerArm,
+                rightArm: rightLowerArm,
+                leftWeapon: leftWeapon,
+                rightWeapon: rightWeapon,
+                leftLeg: leftLowerLeg,
+                rightLeg: rightLowerLeg,
+                isPlayer: isPlayer,
+                maxHP: maxHP,
+                currentHP: maxHP,
+                weapons: weapons,
+                isDestroyed: false,
+                walkCycle: 0,
+                walkDirection: 0,
+                isWalking: false,
+                torsoTwist: 0,
+                lastFiredArm: 'left',
+                ai: {
+                    target: null,
+                    decisionTimer: 0,
+                    strafeAmount: 0
+                }
+            };
+        }
+
+        // Fire a weapon from loadout
+        function fireLoadoutWeapon(mech, weaponData, target) {
+            const now = performance.now();
+            if (now - weaponData.lastFired < weaponData.battle.cooldown) {
+                return; // Still on cooldown
+            }
+            weaponData.lastFired = now;
+
+            const battle = weaponData.battle;
+            const fromPos = mech.pelvis.getAbsolutePosition();
+            const toPos = target.pelvis.getAbsolutePosition();
+            const direction = toPos.subtract(fromPos).normalize();
+
+            // Fire from alternating arms
+            const arm = mech.lastFiredArm === 'left' ? mech.rightArm : mech.leftArm;
+            mech.lastFiredArm = mech.lastFiredArm === 'left' ? 'right' : 'left';
+            const armPos = arm.getAbsolutePosition();
+
+            if (battle.isBeam) {
+                // Create beam
+                const beamLength = BABYLON.Vector3.Distance(armPos, toPos);
+                const beam = BABYLON.MeshBuilder.CreateCylinder('beam_' + Date.now(), {
+                    diameter: 0.15,
+                    height: beamLength
+                }, battleScene);
+
+                const midpoint = armPos.add(toPos).scale(0.5);
+                beam.position = midpoint;
+                beam.lookAt(toPos);
+                beam.rotation.x += Math.PI / 2;
+
+                const beamMat = new BABYLON.StandardMaterial('beamMat', battleScene);
+                beamMat.emissiveColor = new BABYLON.Color3(battle.color[0], battle.color[1], battle.color[2]);
+                beamMat.alpha = 0.8;
+                beam.material = beamMat;
+
+                beams.push({
+                    mesh: beam,
+                    damage: weaponData.damage,
+                    knockback: battle.knockback,
+                    target: target,
+                    startTime: now,
+                    duration: battle.beamDuration,
+                    applied: false
+                });
+            } else {
+                // Create projectile
+                const projectile = BABYLON.MeshBuilder.CreateSphere('proj_' + Date.now(), {
+                    diameter: battle.projectileSize * 2
+                }, battleScene);
+                projectile.position = armPos.clone();
+
+                const projMat = new BABYLON.StandardMaterial('projMat', battleScene);
+                projMat.emissiveColor = new BABYLON.Color3(battle.color[0], battle.color[1], battle.color[2]);
+                projectile.material = projMat;
+
+                projectiles.push({
+                    mesh: projectile,
+                    velocity: direction.scale(battle.projectileSpeed),
+                    damage: weaponData.damage,
+                    knockback: battle.knockback,
+                    target: target,
+                    startTime: now
+                });
+            }
+
+            // Apply recoil
+            const recoilImpulse = direction.scale(-battle.knockback * 0.2);
+            mech.pelvisBody.applyImpulse(recoilImpulse, fromPos);
+        }
+
+        // Update projectiles
+        function updateProjectiles(dt) {
+            const toRemove = [];
+            projectiles.forEach((proj, idx) => {
+                proj.mesh.position.addInPlace(proj.velocity.scale(dt));
+
+                // Check if hit target
+                const dist = BABYLON.Vector3.Distance(proj.mesh.position, proj.target.pelvis.getAbsolutePosition());
+                if (dist < 1.5) {
+                    // Hit!
+                    applyDamage(proj.target, proj.damage, proj.knockback, proj.velocity.normalize());
+                    toRemove.push(idx);
+                }
+
+                // Remove if too old or out of bounds
+                if (performance.now() - proj.startTime > 3000 ||
+                    Math.abs(proj.mesh.position.x) > 30 ||
+                    Math.abs(proj.mesh.position.z) > 30) {
+                    toRemove.push(idx);
+                }
+            });
+
+            // Remove hit/expired projectiles
+            toRemove.reverse().forEach(idx => {
+                projectiles[idx].mesh.dispose();
+                projectiles.splice(idx, 1);
+            });
+        }
+
+        // Update beams
+        function updateBeams(dt) {
+            const now = performance.now();
+            const toRemove = [];
+
+            beams.forEach((beam, idx) => {
+                if (now - beam.startTime > beam.duration) {
+                    toRemove.push(idx);
+                } else if (!beam.applied) {
+                    // Apply damage once
+                    const direction = beam.target.pelvis.getAbsolutePosition().subtract(
+                        beam.mesh.position
+                    ).normalize();
+                    applyDamage(beam.target, beam.damage, beam.knockback, direction);
+                    beam.applied = true;
+                }
+            });
+
+            toRemove.reverse().forEach(idx => {
+                beams[idx].mesh.dispose();
+                beams.splice(idx, 1);
+            });
+        }
+
+        // Apply damage to mech
+        function applyDamage(mech, damage, knockback, direction) {
+            mech.currentHP -= damage;
+
+            // Apply knockback
+            const impulse = direction.scale(knockback);
+            mech.pelvisBody.applyImpulse(impulse, mech.pelvis.getAbsolutePosition());
+
+            // Check death
+            if (mech.currentHP <= 0) {
+                mech.isDestroyed = true;
+                mech.currentHP = 0;
+            }
+
+            updateBattleUI();
+        }
+
+        // Update mech AI and movement
+        function updateMechAI(mech, dt) {
+            if (!mech || mech.isDestroyed) return;
+            if (!mech.pelvis) {
+                console.error('Mech pelvis is undefined:', mech.name);
+                return;
+            }
+
+            const target = mech.ai.target;
+            if (!target || target.isDestroyed || !target.pelvis) return;
+
+            const myPos = mech.pelvis.getAbsolutePosition();
+            const targetPos = target.pelvis.getAbsolutePosition();
+            const dx = targetPos.x - myPos.x;
+            const dz = targetPos.z - myPos.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+
+            // Decision making
+            mech.ai.decisionTimer -= dt;
+            if (mech.ai.decisionTimer <= 0) {
+                mech.ai.decisionTimer = AI_CONFIG.decisionInterval;
+
+                // Decide to strafe
+                if (Math.random() < AI_CONFIG.strafeChance) {
+                    mech.ai.strafeAmount = (Math.random() - 0.5) * 2;
+                } else {
+                    mech.ai.strafeAmount = 0;
+                }
+            }
+
+            // Movement - try to stay at ideal range
+            if (distance > AI_CONFIG.maxRange) {
+                mech.walkDirection = 1;  // Move forward
+                mech.isWalking = true;
+            } else if (distance < AI_CONFIG.minRange) {
+                mech.walkDirection = -1;  // Back up
+                mech.isWalking = true;
+            } else {
+                mech.walkDirection = 0;
+                mech.isWalking = Math.abs(mech.ai.strafeAmount) > 0.3;
+            }
+
+            // Calculate facing angle
+            const angleToTarget = Math.atan2(dz, dx);
+            const baseAngle = Math.PI / 2;
+
+            // Get pelvis rotation
+            const body = mech.pelvisBody;
+            const quat = body.transformNode.rotationQuaternion;
+            let pelvisYaw = 0;
+            if (quat) {
+                const euler = quat.toEulerAngles();
+                pelvisYaw = euler.y;
+            }
+
+            // Calculate desired yaw change
+            let desiredYaw = baseAngle - angleToTarget;
+            while (desiredYaw > Math.PI) desiredYaw -= Math.PI * 2;
+            while (desiredYaw < -Math.PI) desiredYaw += Math.PI * 2;
+
+            const yawError = desiredYaw - pelvisYaw;
+
+            // Apply rotation
+            const rotSpeed = AI_CONFIG.turnSpeed * dt;
+            if (Math.abs(yawError) > 0.1) {
+                const rot = Math.sign(yawError) * Math.min(Math.abs(yawError), rotSpeed);
+                body.setAngularVelocity(new BABYLON.Vector3(0, rot * 3, 0));
+            }
+
+            // Walking animation
+            if (mech.isWalking) {
+                mech.walkCycle += dt * 4;
+                const legSwing = Math.sin(mech.walkCycle) * 0.3;
+                mech.leftLeg.rotation.x = legSwing;
+                mech.rightLeg.rotation.x = -legSwing;
+            }
+
+            // Move
+            if (mech.isWalking || mech.walkDirection !== 0) {
+                let forwardDir = new BABYLON.Vector3(1, 0, 0);
+                let rightDir = new BABYLON.Vector3(0, 0, 1);
+                if (quat) {
+                    const rotMatrix = new BABYLON.Matrix();
+                    quat.toRotationMatrix(rotMatrix);
+                    forwardDir = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(1, 0, 0), rotMatrix);
+                    forwardDir.y = 0;
+                    forwardDir.normalize();
+                    rightDir = BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 0, 1), rotMatrix);
+                    rightDir.y = 0;
+                    rightDir.normalize();
+                }
+
+                const moveSpeed = AI_CONFIG.moveSpeed;
+                let velocity = forwardDir.scale(mech.walkDirection * moveSpeed);
+                velocity.addInPlace(rightDir.scale(mech.ai.strafeAmount * moveSpeed * 0.6));
+                velocity.y = (2.5 - myPos.y) * 5; // Ground seeking
+                body.setLinearVelocity(velocity);
+            }
+
+            // Torso twist toward target (local rotation)
+            let localTorsoAngle = desiredYaw - pelvisYaw;
+            while (localTorsoAngle > Math.PI) localTorsoAngle -= Math.PI * 2;
+            while (localTorsoAngle < -Math.PI) localTorsoAngle += Math.PI * 2;
+            localTorsoAngle = Math.max(-1.0, Math.min(1.0, localTorsoAngle));
+            mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, localTorsoAngle, dt * 5);
+            mech.torso.rotation.y = mech.torsoTwist;
+
+            // Fire weapons at target
+            if (distance < 15 && mech.weapons.length > 0) {
+                // Fire first available weapon
+                mech.weapons.forEach(weapon => {
+                    fireLoadoutWeapon(mech, weapon, target);
+                });
+            }
+        }
+
+        // Battle update loop
+        function updateBattle(dt) {
+            if (!battleActive) return;
+
+            // Update all mechs
+            battleMechs.forEach(mech => {
+                updateMechAI(mech, dt);
+            });
+
+            // Update weapons
+            updateProjectiles(dt);
+            updateBeams(dt);
+
+            // Check battle end
+            if (playerBattleMech.isDestroyed || enemyBattleMech.isDestroyed) {
+                endBattle(playerBattleMech.isDestroyed ? 'defeat' : 'victory');
+            }
+        }
+
+        // Battle UI
+        function updateBattleUI() {
+            const playerHP = document.getElementById('playerHP');
+            const enemyHP = document.getElementById('enemyHP');
+            if (playerHP && playerBattleMech) {
+                const pct = (playerBattleMech.currentHP / playerBattleMech.maxHP) * 100;
+                playerHP.style.width = pct + '%';
+            }
+            if (enemyHP && enemyBattleMech) {
+                const pct = (enemyBattleMech.currentHP / enemyBattleMech.maxHP) * 100;
+                enemyHP.style.width = pct + '%';
+            }
+        }
+
+        // End battle
+        function endBattle(result) {
+            battleActive = false;
+
+            // Show result
+            const overlay = document.getElementById('battleResultOverlay');
+            const resultText = document.getElementById('battleResult');
+            if (overlay && resultText) {
+                resultText.textContent = result === 'victory' ? 'VICTORY!' : 'DEFEAT';
+                resultText.style.color = result === 'victory' ? '#00ff88' : '#ff4444';
+                overlay.style.display = 'flex';
+            }
+        }
+
+        // Return to loadout
+        function returnToLoadout() {
+            // Hide battle iframe
+            const battleFrame = document.getElementById('battleFrame');
+            battleFrame.style.display = 'none';
+            battleFrame.src = '';  // Unload the iframe
+
+            // Clear localStorage config
+            localStorage.removeItem('battleConfig');
+
+            // Show builder UI and canvas
+            document.getElementById('mechBuilderUI').style.display = 'flex';
+            document.getElementById('renderCanvas').style.display = 'block';
+
+            // Switch to builder phase
+            currentPhase = GamePhase.MECHBUILDER;
+        }
 
         // Current hand (drawn items)
         let currentHand = [];
@@ -1410,6 +2423,67 @@
             });
         }
 
+        function renderMissions() {
+            const missionList = document.getElementById('missionList');
+            missionList.innerHTML = '';
+
+            for (const mission of Object.values(MISSIONS)) {
+                const card = document.createElement('div');
+                card.className = `mission-card ${mission.difficulty.toLowerCase()}`;
+                card.dataset.missionId = mission.id;
+
+                if (selectedMission === mission.id) {
+                    card.classList.add('selected');
+                }
+
+                // Build equipment list for tooltip
+                const enemy = mission.enemyMechs[0];
+                let equipmentHTML = '';
+                enemy.equipment.forEach(eq => {
+                    const item = ITEM_DATABASE[eq.itemId];
+                    if (item) {
+                        equipmentHTML += `<div>${item.icon} ${item.name}</div>`;
+                    }
+                });
+
+                card.innerHTML = `
+                    <div class="mission-header">
+                        <span class="mission-name">${mission.name}</span>
+                        <span class="mission-difficulty ${mission.difficulty.toLowerCase()}">${mission.difficulty}</span>
+                    </div>
+                    <div class="mission-desc">${mission.description}</div>
+                    <div class="mission-reward">
+                        <span>💰 ${mission.reward.credits}</span>
+                        <span>⭐ ${mission.reward.xp} XP</span>
+                    </div>
+                    <div class="enemy-tooltip">
+                        <div class="enemy-name">⚠️ ${enemy.name}</div>
+                        <div class="enemy-chassis">${enemy.chassis}</div>
+                        <div class="enemy-stats">
+                            <div>❤️ Health: ${enemy.maxHealth}</div>
+                            <div>⚖️ Weight: ${enemy.stats.weight}</div>
+                            <div>⚡ Energy: ${enemy.stats.energy}</div>
+                            <div>💥 Damage: ${enemy.stats.damage}</div>
+                            <div>🛡️ Armor: ${enemy.stats.armor}</div>
+                        </div>
+                        <div class="enemy-equipment">
+                            <strong>Equipment:</strong>
+                            ${equipmentHTML}
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => selectMission(mission.id));
+                missionList.appendChild(card);
+            }
+        }
+
+        function selectMission(missionId) {
+            selectedMission = missionId;
+            renderMissions();
+            updateStats();  // Re-check battle ready state
+        }
+
         function renderGridOverlays() {
             const container = document.getElementById('gridOverlayContainer');
             container.innerHTML = '';
@@ -1582,9 +2656,23 @@
 
             // Update battle ready button
             const btn = document.getElementById('battleReadyBtn');
-            const isValid = totalWeight <= maxWeight && energyUsed <= maxEnergy && loadoutState.equipment.length > 0;
+            const isValid = totalWeight <= maxWeight &&
+                           energyUsed <= maxEnergy &&
+                           loadoutState.equipment.length > 0 &&
+                           selectedMission !== null;
             btn.disabled = !isValid;
             btn.classList.toggle('ready', isValid);
+
+            // Update button text to show what's missing
+            if (!selectedMission) {
+                btn.textContent = 'Select a Mission';
+            } else if (loadoutState.equipment.length === 0) {
+                btn.textContent = 'Equip Items';
+            } else if (!isValid) {
+                btn.textContent = 'Over Limit!';
+            } else {
+                btn.textContent = 'Battle Ready';
+            }
         }
 
         // ============================================
@@ -1808,48 +2896,136 @@
         }
 
         // ============================================
-        // PHASE TRANSITIONS
+        // PLAYER STATS CALCULATION
         // ============================================
+        function calculatePlayerStats() {
+            let totalDamage = 0;
+            let totalArmor = 0;
+            let totalWeight = 0;
+            let baseHealth = 100;
+            let weapons = [];
+
+            loadoutState.equipment.forEach(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                if (item && item.stats) {
+                    totalWeight += item.stats.weight || 0;
+                    totalDamage += item.stats.damage || 0;
+                    totalArmor += item.stats.armorBonus || 0;
+                    if (item.type === 'WEAPON') {
+                        // Pass full weapon info for battle simulation
+                        weapons.push({
+                            itemId: eq.itemId,
+                            slot: eq.slot,
+                            name: item.name,
+                            damage: item.stats.damage || 0,
+                            battle: item.battle || {}
+                        });
+                    }
+                }
+            });
+
+            const healthBonus = Math.floor(totalWeight * 0.5);
+            return {
+                maxHealth: baseHealth + healthBonus + totalArmor,
+                currentHealth: baseHealth + healthBonus + totalArmor,
+                damage: Math.max(20, totalDamage),
+                armor: totalArmor,
+                weapons: weapons
+            };
+        }
+
+        // Create battle arena
+        function createBattleArena(scene) {
+            // Ground
+            const ground = BABYLON.MeshBuilder.CreateGround('battleGround', { width: 40, height: 25 }, scene);
+            const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
+            groundMat.diffuseColor = new BABYLON.Color3(0.25, 0.3, 0.2);
+            groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+            ground.material = groundMat;
+            ground.receiveShadows = true;
+            battleGround = ground;
+
+            // Battle lighting
+            const battleLight = new BABYLON.DirectionalLight('battleLight', new BABYLON.Vector3(-1, -2, -1), scene);
+            battleLight.intensity = 1.2;
+            battleLight.position = new BABYLON.Vector3(10, 20, 10);
+
+            const ambientLight = new BABYLON.HemisphericLight('battleAmbient', new BABYLON.Vector3(0, 1, 0), scene);
+            ambientLight.intensity = 0.4;
+
+            return ground;
+        }
+
+        // Build weapons list from equipment array using ITEM_DATABASE
+        function buildWeaponsFromEquipment(equipment) {
+            const weapons = [];
+            if (!equipment) return weapons;
+
+            equipment.forEach(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                if (item && item.type === 'WEAPON') {
+                    weapons.push({
+                        itemId: eq.itemId,
+                        slot: eq.slot,
+                        name: item.name,
+                        damage: item.stats.damage || 0,
+                        battle: item.battle || {}
+                    });
+                }
+            });
+            return weapons;
+        }
+
         function startBattle() {
-            if (loadoutState.equipment.length === 0) {
-                alert('Equip at least one item before battle!');
+            if (loadoutState.equipment.length === 0 || !selectedMission) {
                 return;
             }
 
+            const mission = MISSIONS[selectedMission];
+            const playerStats = calculatePlayerStats();
+            const enemy = mission.enemyMechs[0];
+
+            // Build enemy weapons from their equipment using ITEM_DATABASE
+            const enemyWeapons = buildWeaponsFromEquipment(enemy.equipment);
+
+            // Build battle config for the original physics simulation
+            const battleConfig = {
+                player: {
+                    name: MECH_CHASSIS.name,
+                    loadout: loadoutState,
+                    stats: playerStats
+                },
+                mission: mission,
+                enemy: {
+                    ...enemy,
+                    // Override stats with calculated values from ITEM_DATABASE
+                    weapons: enemyWeapons
+                },
+                // Pass ITEM_DATABASE for future use (special properties, etc.)
+                itemDatabase: ITEM_DATABASE
+            };
+
+            // Save to localStorage (battle-arena-old.html reads this)
+            localStorage.setItem('battleConfig', JSON.stringify(battleConfig));
+
+            // Hide builder UI and canvas
+            document.getElementById('mechBuilderUI').style.display = 'none';
+            document.getElementById('renderCanvas').style.display = 'none';
+
+            // Show and load the battle iframe with the original physics simulation
+            const battleFrame = document.getElementById('battleFrame');
+            battleFrame.style.display = 'block';
+            battleFrame.src = 'battle-arena-old.html';
+
             currentPhase = GamePhase.BATTLE;
-            document.body.classList.add('battle-mode');
-
-            // Serialize loadout for battle
-            const loadoutJSON = JSON.stringify(loadoutState, null, 2);
-            console.log('Battle Loadout:', loadoutJSON);
-
-            // TODO: Initialize battle scene with loadout
-            // For now, just switch UI
-            console.log('Starting battle with loadout:', loadoutState);
         }
 
-        function returnToBuilder() {
-            currentPhase = GamePhase.MECHBUILDER;
-            document.body.classList.remove('battle-mode');
-            scene.activeCamera = builderCamera;
-        }
-
-        // Battle UI functions (stubs for now)
-        let autoFireEnabled = false;
-        let cinematicEnabled = false;
-
-        function toggleAutoFire() {
-            autoFireEnabled = !autoFireEnabled;
-            const btn = document.getElementById('autoFireBtn');
-            btn.textContent = autoFireEnabled ? 'AI Battle: ON' : 'AI Battle: OFF';
-            btn.style.background = autoFireEnabled ? 'rgba(255, 68, 68, 0.3)' : 'rgba(0, 255, 136, 0.2)';
-        }
-
-        function toggleCinematicCamera() {
-            cinematicEnabled = !cinematicEnabled;
-            const btn = document.getElementById('cinematicBtn');
-            btn.textContent = cinematicEnabled ? 'Cinematic: ON' : 'Cinematic: OFF';
-        }
+        // Listen for messages from battle iframe
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'battleEnd') {
+                returnToLoadout();
+            }
+        });
 
         // ============================================
         // ENGINE INITIALIZATION
@@ -1874,6 +3050,7 @@
 
             // Render UI
             renderBench();
+            renderMissions();
             renderGridOverlays();
             renderGridItems();
             updateStats();
@@ -1884,9 +3061,21 @@
             // Battle ready button
             document.getElementById('battleReadyBtn').addEventListener('click', startBattle);
 
-            // Main render loop
+            // Main render loop with delta time for battle updates
+            let lastFrameTime = performance.now();
             engine.runRenderLoop(() => {
-                if (scene) {
+                const now = performance.now();
+                const dt = (now - lastFrameTime) / 1000;
+                lastFrameTime = now;
+
+                // Render appropriate scene based on phase
+                if (currentPhase === GamePhase.BATTLE && battleScene) {
+                    // Update battle mechanics
+                    if (battleActive) {
+                        updateBattle(dt);
+                    }
+                    battleScene.render();
+                } else if (scene) {
                     scene.render();
                 }
             });

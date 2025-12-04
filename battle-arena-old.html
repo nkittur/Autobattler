@@ -5029,8 +5029,14 @@
         function returnToLoadout() {
             // Clear the battle config
             localStorage.removeItem('battleConfig');
-            // Navigate back to the loadout screen
-            window.location.href = 'test-babylon-havok.html';
+
+            // If running in an iframe, notify parent window
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'battleEnd' }, '*');
+            } else {
+                // Navigate back to the loadout screen (standalone mode)
+                window.location.href = 'test-babylon-havok.html';
+            }
         }
 
         // ============================================

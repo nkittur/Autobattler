@@ -987,6 +987,9 @@
                 <button onclick="returnToLoadout()" style="margin-top: 30px; padding: 15px 40px; font-size: 18px; background: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; color: #00ff88; cursor: pointer; border-radius: 5px;">Return to Loadout</button>
             </div>
         </div>
+
+        <!-- Battle iframe (loads the original physics simulation) -->
+        <iframe id="battleFrame" src="" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1000;"></iframe>
     </div>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -1818,26 +1821,19 @@
 
         // Return to loadout
         function returnToLoadout() {
-            battleActive = false;
+            // Hide battle iframe
+            const battleFrame = document.getElementById('battleFrame');
+            battleFrame.style.display = 'none';
+            battleFrame.src = '';  // Unload the iframe
 
-            // Clean up battle scene
-            if (battleScene) {
-                battleScene.dispose();
-                battleScene = null;
-            }
+            // Clear localStorage config
+            localStorage.removeItem('battleConfig');
 
-            // Reset state
-            battleMechs = [];
-            playerBattleMech = null;
-            enemyBattleMech = null;
-            projectiles = [];
-            beams = [];
-
-            // Show builder UI, hide battle UI
+            // Show builder UI and canvas
             document.getElementById('mechBuilderUI').style.display = 'flex';
-            document.getElementById('battleUI').style.display = 'none';
+            document.getElementById('renderCanvas').style.display = 'block';
 
-            // Switch to builder scene
+            // Switch to builder phase
             currentPhase = GamePhase.MECHBUILDER;
         }
 
@@ -2953,7 +2949,7 @@
             return ground;
         }
 
-        async function startBattle() {
+        function startBattle() {
             if (loadoutState.equipment.length === 0 || !selectedMission) {
                 return;
             }
@@ -2961,81 +2957,38 @@
             const mission = MISSIONS[selectedMission];
             const playerStats = calculatePlayerStats();
 
-            // Get weapons from loadout
-            const playerWeapons = getLoadoutWeapons();
-            if (playerWeapons.length === 0) {
-                console.warn('No weapons equipped!');
-            }
+            // Build battle config for the original physics simulation
+            const battleConfig = {
+                player: {
+                    name: MECH_CHASSIS.name,
+                    loadout: loadoutState,
+                    stats: playerStats
+                },
+                mission: mission,
+                enemy: mission.enemyMechs[0]
+            };
 
-            // Get enemy weapons from mission config
-            const enemyConfig = mission.enemyMechs[0];
-            const enemyWeapons = [];
-            if (enemyConfig.equipment) {
-                enemyConfig.equipment.forEach(eq => {
-                    const item = ITEM_DATABASE[eq.itemId];
-                    if (item && item.type === 'WEAPON' && item.battle) {
-                        enemyWeapons.push({
-                            itemId: eq.itemId,
-                            slot: eq.slot,
-                            name: item.name,
-                            damage: item.stats.damage,
-                            battle: item.battle,
-                            lastFired: 0
-                        });
-                    }
-                });
-            }
+            // Save to localStorage (battle-arena-old.html reads this)
+            localStorage.setItem('battleConfig', JSON.stringify(battleConfig));
 
-            // Hide builder UI, show battle UI
+            // Hide builder UI and canvas
             document.getElementById('mechBuilderUI').style.display = 'none';
-            document.getElementById('battleUI').style.display = 'flex';
+            document.getElementById('renderCanvas').style.display = 'none';
 
-            // Create battle scene
-            await createBattleScene();
-            console.log('Battle scene created:', battleScene);
+            // Show and load the battle iframe with the original physics simulation
+            const battleFrame = document.getElementById('battleFrame');
+            battleFrame.style.display = 'block';
+            battleFrame.src = 'battle-arena-old.html';
 
-            // Create player mech with loadout weapons
-            playerBattleMech = createBattleMech(
-                battleScene, -8, 0, true,
-                playerWeapons,
-                playerStats.maxHealth
-            );
-            console.log('Player mech created:', playerBattleMech);
-
-            // Create enemy mech
-            enemyBattleMech = createBattleMech(
-                battleScene, 8, 0, false,
-                enemyWeapons,
-                enemyConfig.maxHealth || 100
-            );
-            console.log('Enemy mech created:', enemyBattleMech);
-
-            // Validate mechs were created properly
-            if (!playerBattleMech || !playerBattleMech.pelvis) {
-                console.error('Failed to create player mech properly');
-                return;
-            }
-            if (!enemyBattleMech || !enemyBattleMech.pelvis) {
-                console.error('Failed to create enemy mech properly');
-                return;
-            }
-
-            // Set up targets
-            playerBattleMech.ai.target = enemyBattleMech;
-            enemyBattleMech.ai.target = playerBattleMech;
-
-            battleMechs = [playerBattleMech, enemyBattleMech];
-            console.log('Battle mechs array:', battleMechs);
-
-            // Update UI
-            document.getElementById('playerName').textContent = MECH_CHASSIS.name;
-            document.getElementById('enemyName').textContent = enemyConfig.name;
-            updateBattleUI();
-
-            // Start battle
             currentPhase = GamePhase.BATTLE;
-            battleActive = true;
         }
+
+        // Listen for messages from battle iframe
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'battleEnd') {
+                returnToLoadout();
+            }
+        });
 
         // ============================================
         // ENGINE INITIALIZATION

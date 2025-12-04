@@ -375,8 +375,9 @@
         }
 
         .placed-item:hover {
-            background: rgba(0, 170, 255, 0.3);
-            box-shadow: 0 0 10px rgba(0,170,255,0.5);
+            background: rgba(0, 170, 255, 0.4);
+            box-shadow: 0 0 15px rgba(0,170,255,0.6);
+            z-index: 10;
         }
 
         .placed-item .placed-cell {
@@ -395,6 +396,62 @@
         .placed-item.reactor .placed-cell { background: rgba(255,170,0,0.3); border-color: rgba(255,170,0,0.6); }
         .placed-item.system { border-color: #aa44ff; background: rgba(170,68,255,0.2); }
         .placed-item.system .placed-cell { background: rgba(170,68,255,0.3); border-color: rgba(170,68,255,0.6); }
+
+        .placed-item .item-icon-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            opacity: 0.9;
+            text-shadow: 0 0 8px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        .placed-item .item-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 10, 0.95);
+            border: 1px solid currentColor;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .placed-item:hover .item-tooltip,
+        .placed-item.show-tooltip .item-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .placed-item .item-tooltip .tooltip-name {
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 4px;
+        }
+
+        .placed-item .item-tooltip .tooltip-stats {
+            color: #aaa;
+        }
+
+        .placed-item .item-tooltip .tooltip-stats span {
+            display: block;
+            margin: 2px 0;
+        }
+
+        .placed-item .item-tooltip .tooltip-hint {
+            margin-top: 6px;
+            color: #666;
+            font-style: italic;
+        }
 
         /* Instructions overlay */
         #instructions {
@@ -1240,8 +1297,9 @@
 
                 placedEl.style.gridTemplateColumns = `repeat(${w}, 36px)`;
                 placedEl.style.left = (4 + eq.position.x * 42) + 'px';
-                placedEl.style.top = (24 + eq.position.y * 42) + 'px';  // Account for label
+                placedEl.style.top = (4 + eq.position.y * 42) + 'px';
 
+                // Add grid cells
                 for (let dy = 0; dy < h; dy++) {
                     for (let dx = 0; dx < w; dx++) {
                         if (shape[dy][dx] === 1) {
@@ -1252,11 +1310,46 @@
                     }
                 }
 
+                // Add icon overlay
+                const iconOverlay = document.createElement('span');
+                iconOverlay.className = 'item-icon-overlay';
+                iconOverlay.textContent = item.icon;
+                placedEl.appendChild(iconOverlay);
+
+                // Add tooltip with item details
+                const tooltip = document.createElement('div');
+                tooltip.className = 'item-tooltip';
+                let statsHTML = '';
+                if (item.stats.weight) statsHTML += `<span>Weight: ${item.stats.weight}</span>`;
+                if (item.stats.energyDraw > 0) statsHTML += `<span>Energy: ${item.stats.energyDraw}</span>`;
+                if (item.stats.energyDraw < 0) statsHTML += `<span>Energy: +${-item.stats.energyDraw}</span>`;
+                if (item.stats.damage) statsHTML += `<span>Damage: ${item.stats.damage}</span>`;
+                if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
+                if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
+                tooltip.innerHTML = `
+                    <div class="tooltip-name">${item.icon} ${item.name}</div>
+                    <div class="tooltip-stats">${statsHTML}</div>
+                    <div class="tooltip-hint">Click to remove</div>
+                `;
+                placedEl.appendChild(tooltip);
+
                 // Click to remove
                 placedEl.addEventListener('click', (e) => {
                     if (!dragState.isDragging) {
                         handlePlacedItemClick(eq.instanceId);
                     }
+                });
+
+                // Touch hold for mobile tooltip
+                let holdTimer = null;
+                placedEl.addEventListener('touchstart', (e) => {
+                    holdTimer = setTimeout(() => {
+                        placedEl.classList.add('show-tooltip');
+                    }, 500);
+                });
+                placedEl.addEventListener('touchend', () => {
+                    clearTimeout(holdTimer);
+                    setTimeout(() => placedEl.classList.remove('show-tooltip'), 1500);
                 });
 
                 gridEl.appendChild(placedEl);

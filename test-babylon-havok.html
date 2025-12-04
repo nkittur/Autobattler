@@ -1361,13 +1361,6 @@
 
             <!-- Loadout Tab Content -->
             <div id="loadoutTab" class="tab-content active">
-                <!-- Navigation Header -->
-                <div class="tab-nav-header">
-                    <span class="nav-title">Equip Your Mech</span>
-                    <div class="nav-spacer"></div>
-                    <button class="nav-btn primary" onclick="switchTab('mission')">Go to Mission Selection →</button>
-                </div>
-
                 <!-- Mission Selection Panel (hidden - use tab) -->
                 <div id="missionContainer">
                     <div id="missionLabel">Select Mission</div>
@@ -3279,18 +3272,27 @@
                            energyUsed <= maxEnergy &&
                            loadoutState.equipment.length > 0 &&
                            selectedMission !== null;
-            btn.disabled = !isValid;
+            const hasEquipment = loadoutState.equipment.length > 0;
+            const withinLimits = totalWeight <= maxWeight && energyUsed <= maxEnergy;
+
+            // Button is enabled if ready for battle OR if equipped and needs mission
+            btn.disabled = !hasEquipment || !withinLimits;
             btn.classList.toggle('ready', isValid);
 
-            // Update button text to show what's missing
-            if (loadoutState.equipment.length === 0) {
+            // Update button text and behavior
+            if (!hasEquipment) {
                 btn.textContent = 'Equip Items';
-            } else if (!selectedMission) {
-                btn.textContent = 'No Mission';
-            } else if (!isValid) {
+                btn.dataset.action = 'none';
+            } else if (!withinLimits) {
                 btn.textContent = 'Over Limit!';
+                btn.dataset.action = 'none';
+            } else if (!selectedMission) {
+                btn.textContent = 'Select Mission →';
+                btn.dataset.action = 'mission';
+                btn.disabled = false;
             } else {
                 btn.textContent = 'Battle Ready';
+                btn.dataset.action = 'battle';
             }
 
             // Update mission tab continue button
@@ -3683,8 +3685,15 @@
             // Initialize drag and drop
             initDragAndDrop();
 
-            // Battle ready button
-            document.getElementById('battleReadyBtn').addEventListener('click', startBattle);
+            // Battle ready button - handles both mission selection and battle start
+            document.getElementById('battleReadyBtn').addEventListener('click', function() {
+                const action = this.dataset.action;
+                if (action === 'mission') {
+                    switchTab('mission');
+                } else if (action === 'battle') {
+                    startBattle();
+                }
+            });
 
             // Main render loop with delta time for battle updates
             let lastFrameTime = performance.now();

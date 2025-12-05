@@ -3638,11 +3638,11 @@
         // Extra chaotic limb movement for destruction - more extreme than regular ragdoll
         function destroyedLimbChaos(mech) {
             // Arms flail wildly
-            if (mech.leftArm) {
+            if (mech.leftArm && mech.leftArm.rotation) {
                 let t = 0;
                 const chaosInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 2.0 || !mech.leftArm) {
+                    if (t >= 2.0 || !mech.leftArm || !mech.leftArm.rotation) {
                         clearInterval(chaosInterval);
                         return;
                     }
@@ -3653,11 +3653,11 @@
                 }, 16);
             }
 
-            if (mech.rightArm) {
+            if (mech.rightArm && mech.rightArm.rotation) {
                 let t = 0;
                 const chaosInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 2.0 || !mech.rightArm) {
+                    if (t >= 2.0 || !mech.rightArm || !mech.rightArm.rotation) {
                         clearInterval(chaosInterval);
                         return;
                     }
@@ -3668,44 +3668,44 @@
             }
 
             // Legs kick wildly
-            if (mech.leftLeg && mech.leftLeg.upperLeg) {
+            if (mech.leftLeg && mech.leftLeg.upperLeg && mech.leftLeg.upperLeg.rotation) {
                 let t = 0;
                 const chaosInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 2.0 || !mech.leftLeg) {
+                    if (t >= 2.0 || !mech.leftLeg || !mech.leftLeg.upperLeg || !mech.leftLeg.upperLeg.rotation) {
                         clearInterval(chaosInterval);
                         return;
                     }
                     const chaos = Math.sin(t * 6) * Math.exp(-t * 1.0);
                     mech.leftLeg.upperLeg.rotation.x = 0.5 - chaos * 0.8;
-                    if (mech.leftLeg.lowerLeg) {
+                    if (mech.leftLeg.lowerLeg && mech.leftLeg.lowerLeg.rotation) {
                         mech.leftLeg.lowerLeg.rotation.x = -0.4 - Math.abs(chaos) * 0.5;
                     }
                 }, 16);
             }
 
-            if (mech.rightLeg && mech.rightLeg.upperLeg) {
+            if (mech.rightLeg && mech.rightLeg.upperLeg && mech.rightLeg.upperLeg.rotation) {
                 let t = 0;
                 const chaosInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 2.0 || !mech.rightLeg) {
+                    if (t >= 2.0 || !mech.rightLeg || !mech.rightLeg.upperLeg || !mech.rightLeg.upperLeg.rotation) {
                         clearInterval(chaosInterval);
                         return;
                     }
                     const chaos = Math.sin(t * 6 + 2) * Math.exp(-t * 1.0);
                     mech.rightLeg.upperLeg.rotation.x = 0.5 - chaos * 0.8;
-                    if (mech.rightLeg.lowerLeg) {
+                    if (mech.rightLeg.lowerLeg && mech.rightLeg.lowerLeg.rotation) {
                         mech.rightLeg.lowerLeg.rotation.x = -0.4 - Math.abs(chaos) * 0.5;
                     }
                 }, 16);
             }
 
             // Torso twist
-            if (mech.torso) {
+            if (mech.torso && mech.torso.rotation) {
                 let t = 0;
                 const torsoInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 1.5 || !mech.torso) {
+                    if (t >= 1.5 || !mech.torso || !mech.torso.rotation) {
                         clearInterval(torsoInterval);
                         return;
                     }

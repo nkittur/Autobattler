@@ -189,6 +189,8 @@
             border: 1px solid #00aa66;
             border-radius: 6px;
             transition: all 0.2s;
+            pointer-events: auto;
+            z-index: 10;
         }
 
         .pile-display:hover {
@@ -199,12 +201,14 @@
         .pile-icon {
             font-size: 24px;
             margin-bottom: 4px;
+            pointer-events: none;
         }
 
         .pile-count {
             font-size: 14px;
             font-weight: bold;
             color: #00ff88;
+            pointer-events: none;
         }
 
         .pile-label {
@@ -212,6 +216,7 @@
             color: #00aa66;
             text-transform: uppercase;
             letter-spacing: 1px;
+            pointer-events: none;
         }
 
         /* Pile Viewer Modal */
@@ -232,6 +237,7 @@
 
         #pileViewer.active {
             display: flex;
+            pointer-events: auto;
         }
 
         #pileViewerTitle {
@@ -3762,7 +3768,12 @@
             builderCamera.orthoRight = orthoSize * aspectRatio;
             builderCamera.orthoTop = orthoSize;
             builderCamera.orthoBottom = -orthoSize;
-            builderCamera.attachControl(document.getElementById('renderCanvas'), true);
+
+            // Only attach camera controls on desktop - mobile needs that area for scrolling
+            const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+            if (!isMobile) {
+                builderCamera.attachControl(document.getElementById('renderCanvas'), true);
+            }
 
             // Ambient lighting for builder
             const hemi = new BABYLON.HemisphericLight('builderHemi', new BABYLON.Vector3(0, 1, 0), scene);

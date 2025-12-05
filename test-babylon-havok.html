@@ -49,7 +49,7 @@
             flex-direction: column;
         }
 
-        /* Top bar - Stats Panel */
+        /* Top bar - Header Panel */
         #statsPanel {
             pointer-events: auto;
             display: flex;
@@ -61,9 +61,50 @@
             box-shadow: 0 0 20px rgba(0,255,136,0.3);
         }
 
-        .stat-group {
+        #statsPanel .nav-spacer {
+            flex: 1;
+        }
+
+        .header-nav-btn {
+            pointer-events: auto;
+            padding: 10px 20px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header-nav-btn:hover:not(:disabled) {
+            background: rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 20px rgba(0,255,136,0.5);
+        }
+
+        .header-nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #555;
+            color: #555;
+        }
+
+        .header-nav-btn.warning {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        /* Mech Stats (above grid) */
+        #mechStats {
             display: flex;
+            justify-content: center;
             gap: 30px;
+            padding: 10px;
+            pointer-events: auto;
         }
 
         .stat-item {
@@ -116,6 +157,137 @@
             text-shadow: 0 0 4px #000;
         }
 
+        .stat-fill.hp {
+            background: linear-gradient(90deg, #ff4444, #ff8888);
+        }
+
+        .stat-fill.armor {
+            background: linear-gradient(90deg, #888888, #aaaaaa);
+        }
+
+        .stat-fill.accuracy {
+            background: linear-gradient(90deg, #ffaa00, #ffcc44);
+        }
+
+        /* Deck Piles */
+        .deck-piles-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 20px;
+            margin-bottom: 10px;
+            pointer-events: auto;
+        }
+
+        .pile-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px 15px;
+            background: rgba(0, 20, 10, 0.8);
+            border: 1px solid #00aa66;
+            border-radius: 6px;
+            transition: all 0.2s;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .pile-display:hover {
+            background: rgba(0, 40, 20, 0.9);
+            border-color: #00ff88;
+        }
+
+        .pile-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+            pointer-events: none;
+        }
+
+        .pile-count {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff88;
+            pointer-events: none;
+        }
+
+        .pile-label {
+            font-size: 9px;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+
+        /* Pile Viewer Modal */
+        #pileViewer {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #pileViewer.active {
+            display: flex;
+            pointer-events: auto;
+        }
+
+        #pileViewerTitle {
+            font-size: 24px;
+            color: #00ff88;
+            margin-bottom: 20px;
+        }
+
+        #pileViewerCards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            max-width: 800px;
+        }
+
+        .pile-card {
+            width: 80px;
+            height: 100px;
+            background: rgba(0, 40, 20, 0.9);
+            border: 2px solid #00aa66;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+        }
+
+        .pile-card .card-icon {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .pile-card .card-name {
+            font-size: 9px;
+            color: #00ff88;
+            text-align: center;
+        }
+
+        #pileViewerClose {
+            margin-top: 20px;
+            padding: 10px 30px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
         #gameTitle {
             font-size: 18px;
             font-weight: bold;
@@ -124,58 +296,30 @@
             letter-spacing: 2px;
         }
 
-        #battleReadyBtn {
-            pointer-events: auto;
-            padding: 12px 30px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 2px solid #00ff88;
-            color: #00ff88;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        #battleReadyBtn:hover:not(:disabled) {
-            background: rgba(0, 255, 136, 0.4);
-            box-shadow: 0 0 20px rgba(0,255,136,0.5);
-        }
-
-        #battleReadyBtn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            border-color: #666;
-            color: #666;
-        }
-
-        #battleReadyBtn.ready {
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 10px rgba(0,255,136,0.3); }
-            50% { box-shadow: 0 0 25px rgba(0,255,136,0.7); }
-        }
-
         /* Middle area - Grid Overlays (compact layout) */
         #gridOverlayContainer {
             flex: 1;
             pointer-events: none;
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: auto auto auto;
             grid-template-rows: auto auto;
             grid-template-areas:
                 "leftArm torso rightArm"
-                "leftLeg . rightLeg";
-            gap: 8px;
-            padding: 10px;
-            justify-items: center;
+                "legs legs legs";
+            gap: 5px;
+            padding: 20px 10px 20px 10px;
+            justify-content: center;
+            align-content: center;
             align-items: start;
             overflow-y: auto;
+        }
+
+        #legsContainer {
+            grid-area: legs;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            pointer-events: none;
         }
 
         .mech-grid-overlay {
@@ -194,8 +338,6 @@
         .mech-grid-overlay[data-slot="torso"] { grid-area: torso; }
         .mech-grid-overlay[data-slot="leftArm"] { grid-area: leftArm; }
         .mech-grid-overlay[data-slot="rightArm"] { grid-area: rightArm; }
-        .mech-grid-overlay[data-slot="leftLeg"] { grid-area: leftLeg; }
-        .mech-grid-overlay[data-slot="rightLeg"] { grid-area: rightLeg; }
 
         .mech-grid-overlay.slot-valid {
             border-color: #00ff88;
@@ -277,14 +419,19 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             margin-bottom: 10px;
+            text-align: center;
         }
 
         #bench {
             display: flex;
             gap: 15px;
             overflow-x: auto;
+            overflow-y: visible;
             padding: 10px 0;
+            padding-top: 120px;
+            margin-top: -110px;
             min-height: 100px;
+            justify-content: center;
         }
 
         .bench-item {
@@ -360,6 +507,8 @@
         .bench-item.reactor .item-icon { color: #ffaa00; }
         .bench-item.system { border-color: #aa44ff; }
         .bench-item.system .item-icon { color: #aa44ff; }
+        .bench-item.cooling { border-color: #44ddff; }
+        .bench-item.cooling .item-icon { color: #44ddff; }
 
         /* Bench item tooltip */
         .bench-item .bench-tooltip {
@@ -406,6 +555,19 @@
             margin-top: 4px;
             border-top: 1px solid #333;
             padding-top: 4px;
+        }
+
+        .bench-item .bench-tooltip .tooltip-special {
+            color: #44ddff;
+            font-size: 9px;
+            margin-top: 4px;
+            border-top: 1px solid #44ddff44;
+            padding-top: 4px;
+        }
+
+        .bench-item .bench-tooltip .tooltip-special span {
+            display: block;
+            margin: 2px 0;
         }
 
         /* Mission Selection - Hidden (use tab instead) */
@@ -616,6 +778,16 @@
         .placed-item.reactor .placed-cell { background: rgba(255,170,0,0.3); border-color: rgba(255,170,0,0.6); }
         .placed-item.system { border-color: #aa44ff; background: rgba(170,68,255,0.2); }
         .placed-item.system .placed-cell { background: rgba(170,68,255,0.3); border-color: rgba(170,68,255,0.6); }
+        .placed-item.cooling { border-color: #44ddff; background: rgba(68,221,255,0.2); }
+        .placed-item.cooling .placed-cell { background: rgba(68,221,255,0.3); border-color: rgba(68,221,255,0.6); }
+        .placed-item.locked { opacity: 0.7; }
+        .placed-item.locked::after {
+            content: '🔒';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
 
         .placed-item .item-icon-overlay {
             position: absolute;
@@ -673,21 +845,6 @@
             font-style: italic;
         }
 
-        /* Instructions overlay */
-        #instructions {
-            position: absolute;
-            bottom: 140px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,20,10,0.9);
-            border: 1px solid #00aa66;
-            border-radius: 6px;
-            padding: 10px 20px;
-            font-size: 11px;
-            color: #00aa66;
-            text-align: center;
-            pointer-events: none;
-        }
 
         /* Hidden during battle */
         .battle-mode #mechBuilderUI {
@@ -868,53 +1025,6 @@
             transform: scale(1.05);
         }
 
-        /* ============================================
-           TAB NAVIGATION SYSTEM
-           ============================================ */
-        #tabBar {
-            display: block;
-            pointer-events: auto;
-            background: rgba(0, 20, 10, 0.95);
-            border-bottom: 2px solid #00ff88;
-            padding: 0;
-        }
-
-        .tab-buttons {
-            display: flex;
-            width: 100%;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 12px 20px;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: #00aa66;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .tab-btn:hover {
-            color: #00ff88;
-            background: rgba(0, 255, 136, 0.1);
-        }
-
-        .tab-btn.active {
-            color: #00ff88;
-            border-bottom-color: #00ff88;
-            background: rgba(0, 255, 136, 0.15);
-        }
-
-        .tab-btn .tab-icon {
-            margin-right: 8px;
-        }
-
         /* Tab Content Areas */
         .tab-content {
             display: none;
@@ -935,18 +1045,86 @@
             display: flex;
         }
 
+        /* Tab Navigation Headers */
+        .tab-nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(0, 20, 10, 0.8);
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            pointer-events: auto;
+        }
+
+        .tab-nav-header .nav-btn {
+            padding: 8px 16px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tab-nav-header .nav-btn:hover:not(:disabled) {
+            background: rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 15px rgba(0,255,136,0.4);
+        }
+
+        .tab-nav-header .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #555;
+            color: #555;
+        }
+
+        .tab-nav-header .nav-btn.primary {
+            background: rgba(0, 255, 136, 0.3);
+        }
+
+        .tab-nav-header .nav-btn.primary:hover:not(:disabled) {
+            background: rgba(0, 255, 136, 0.5);
+        }
+
+        .tab-nav-header .nav-btn.warning {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .tab-nav-header .nav-spacer {
+            flex: 1;
+        }
+
+        .tab-nav-header .nav-title {
+            font-size: 14px;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
         /* Mission Tab - Full screen panel */
         #missionTab {
             display: none;
+            flex-direction: column;
             flex: 1;
             background: rgba(0, 10, 5, 0.98);
-            padding: 20px;
             overflow-y: auto;
             pointer-events: auto;
         }
 
         #missionTab.active {
-            display: block;
+            display: flex;
+        }
+
+        #missionTab .mission-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
         }
 
         #missionTab .mission-header {
@@ -1061,33 +1239,6 @@
             margin-bottom: 3px;
         }
 
-        #missionTab .continue-btn {
-            display: block;
-            margin: 15px auto 0;
-            padding: 15px 40px;
-            background: rgba(0, 255, 136, 0.3);
-            border: 2px solid #00ff88;
-            color: #00ff88;
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        #missionTab .continue-btn:hover:not(:disabled) {
-            background: rgba(0, 255, 136, 0.5);
-            box-shadow: 0 0 20px rgba(0,255,136,0.5);
-        }
-
-        #missionTab .continue-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
         /* ============================================
            MOBILE RESPONSIVE STYLES
            ============================================ */
@@ -1171,25 +1322,10 @@
                 font-size: 8px;
             }
 
-            /* Instructions hidden on mobile */
-            #instructions {
-                display: none;
-            }
-
             /* Adjust grid label size */
             .grid-label {
                 font-size: 8px;
                 top: -16px;
-            }
-
-            /* Tab buttons - more compact */
-            .tab-btn {
-                padding: 10px 15px;
-                font-size: 12px;
-            }
-
-            .tab-btn .tab-icon {
-                margin-right: 5px;
             }
 
             /* Mission tab padding */
@@ -1253,10 +1389,6 @@
                 width: 100%;
             }
 
-            #tabBar {
-                width: 100%;
-            }
-
             #loadoutTab {
                 flex-direction: row;
             }
@@ -1287,21 +1419,38 @@
 
         <!-- MechBuilder UI Overlay -->
         <div id="mechBuilderUI">
-            <!-- Tab Bar (at very top, visible on mobile) -->
-            <div id="tabBar">
-                <div class="tab-buttons">
-                    <button class="tab-btn active" data-tab="loadout" onclick="switchTab('loadout')">
-                        <span class="tab-icon">⚙️</span>Loadout
-                    </button>
-                    <button class="tab-btn" data-tab="mission" onclick="switchTab('mission')">
-                        <span class="tab-icon">🎯</span>Missions
-                    </button>
-                </div>
+            <!-- Header Panel -->
+            <div id="statsPanel">
+                <div id="gameTitle">Loadout</div>
+                <div class="nav-spacer"></div>
+                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Go to Missions →</button>
             </div>
 
-            <!-- Stats Panel -->
-            <div id="statsPanel">
-                <div class="stat-group">
+            <!-- Loadout Tab Content -->
+            <div id="loadoutTab" class="tab-content active">
+                <!-- Weight/Energy Stats (above mech) -->
+                <div id="mechStats">
+                    <div class="stat-item">
+                        <span class="stat-label">HP</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill hp" id="hpFill" style="width: 100%"></div>
+                            <span class="stat-text" id="hpText">100</span>
+                        </div>
+                    </div>
+                    <div class="stat-item" id="armorStatItem" style="display: none;">
+                        <span class="stat-label">Armor</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill armor" id="armorFill" style="width: 0%"></div>
+                            <span class="stat-text" id="armorText">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Accuracy</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill accuracy" id="accuracyFill" style="width: 60%"></div>
+                            <span class="stat-text" id="accuracyText">60%</span>
+                        </div>
+                    </div>
                     <div class="stat-item">
                         <span class="stat-label">Weight</span>
                         <div class="stat-bar">
@@ -1318,14 +1467,7 @@
                     </div>
                 </div>
 
-                <div id="gameTitle">MECHBUILDER</div>
-
-                <button id="battleReadyBtn" disabled>Battle Ready</button>
-            </div>
-
-            <!-- Loadout Tab Content -->
-            <div id="loadoutTab" class="tab-content active">
-                <!-- Mission Selection Panel (desktop only) -->
+                <!-- Mission Selection Panel (hidden - use tab) -->
                 <div id="missionContainer">
                     <div id="missionLabel">Select Mission</div>
                     <div id="missionList">
@@ -1338,31 +1480,50 @@
                     <!-- Grids will be dynamically positioned here -->
                 </div>
 
+                <!-- Deck Piles and Bench -->
+                <div class="deck-piles-container">
+                    <div class="pile-display" id="drawPileDisplay">
+                        <div class="pile-icon">📚</div>
+                        <div class="pile-count" id="drawPileCount">0</div>
+                        <div class="pile-label">Draw</div>
+                    </div>
+                    <div id="benchLabel">Equipment Bench</div>
+                    <div class="pile-display" id="discardPileDisplay">
+                        <div class="pile-icon">🗑️</div>
+                        <div class="pile-count" id="discardPileCount">0</div>
+                        <div class="pile-label">Discard</div>
+                    </div>
+                </div>
+
                 <!-- Bottom Bench (Hand) -->
                 <div id="benchContainer">
-                    <div id="benchLabel">Equipment Bench - Drag items to mech slots</div>
                     <div id="bench">
                         <!-- Items populated by JS -->
                     </div>
                 </div>
 
-                <div id="instructions">
-                    Drag equipment from the bench onto the mech's grid slots • Click placed items to return them
-                </div>
             </div>
 
-            <!-- Mission Tab Content (mobile full-screen) -->
+            <!-- Mission Tab Content -->
             <div id="missionTab" class="tab-content">
-                <div class="mission-header">
-                    <div class="mission-title">Select Mission</div>
-                    <div class="mission-subtitle">Choose your next deployment</div>
+                <!-- Navigation Header -->
+                <div class="tab-nav-header">
+                    <button class="nav-btn" onclick="switchTab('loadout')">← Back to Loadout</button>
+                    <div class="nav-spacer"></div>
+                    <button class="nav-btn primary" id="missionContinueBtn" onclick="startBattleFromMission()" disabled>
+                        Continue to Battle →
+                    </button>
                 </div>
-                <div class="mission-grid" id="missionTabList">
-                    <!-- Missions populated by JS -->
+
+                <div class="mission-content">
+                    <div class="mission-header">
+                        <div class="mission-title">Select Mission</div>
+                        <div class="mission-subtitle">Choose your next deployment</div>
+                    </div>
+                    <div class="mission-grid" id="missionTabList">
+                        <!-- Missions populated by JS -->
+                    </div>
                 </div>
-                <button class="continue-btn" id="missionContinueBtn" onclick="startBattleFromMission()" disabled>
-                    Continue to Battle
-                </button>
             </div>
         </div>
 
@@ -1402,6 +1563,16 @@
                 </div>
                 <button id="returnToBuilderBtn" onclick="returnToBuilder()">Return to Loadout</button>
             </div>
+
+        </div>
+
+        <!-- Pile Viewer Modal (outside mechBuilderUI to avoid pointer-events: none inheritance) -->
+        <div id="pileViewer">
+            <div id="pileViewerTitle">Draw Pile</div>
+            <div id="pileViewerCards">
+                <!-- Cards populated by JS -->
+            </div>
+            <button id="pileViewerClose">Close</button>
         </div>
 
         <!-- Drag Ghost (hidden until dragging) -->
@@ -1580,6 +1751,27 @@
                 },
                 constraints: {
                     validSlots: ['torso', 'leftArm', 'rightArm']
+                }
+            },
+            heat_sink: {
+                id: 'heat_sink',
+                name: 'Heat Sink',
+                type: 'COOLING',
+                category: 'cooling',
+                icon: '❄️',
+                gridShape: [[1]],  // 1x1 Single
+                gridDimensions: { w: 1, h: 1 },
+                stats: {
+                    weight: 8,
+                    energyDraw: 0,
+                    energyReduction: 5  // Reduces energy cost of adjacent items
+                },
+                constraints: {
+                    validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg']
+                },
+                special: {
+                    onPlace: 'drawCard',      // Draw a card when placed
+                    locksOnPlace: true        // Cannot be moved after placement this round
                 }
             }
         };
@@ -2267,7 +2459,7 @@
             }
         }
 
-        // Return to loadout
+        // Return to loadout (fallback if no rewards data)
         function returnToLoadout() {
             // Hide battle iframe
             const battleFrame = document.getElementById('battleFrame');
@@ -2281,6 +2473,9 @@
             document.getElementById('mechBuilderUI').style.display = 'flex';
             document.getElementById('renderCanvas').style.display = 'block';
 
+            // Switch to loadout tab (not mission)
+            switchTab('loadout');
+
             // Switch to builder phase
             currentPhase = GamePhase.MECHBUILDER;
         }
@@ -2288,11 +2483,24 @@
         // Current hand (drawn items)
         let currentHand = [];
 
+        // Deck system - draw pile and discard pile
+        let drawPile = [];
+        let discardPile = [];
+
+        // Player resources
+        let playerResources = {
+            xp: 0,
+            scrap: 0
+        };
+
         // Loadout state (items placed on mech)
         let loadoutState = {
             mechId: MECH_CHASSIS.id,
             equipment: []  // Array of { itemId, slot, position: {x, y}, rotation }
         };
+
+        // Track locked items (cannot be moved this round - e.g. heat sinks after placement)
+        let lockedItems = new Set();
 
         // Grid occupation tracking
         let gridOccupation = {};  // slot -> 2D array of item IDs or null
@@ -2377,36 +2585,97 @@
         // ============================================
         // DECK / HAND SYSTEM
         // ============================================
-        function drawHand(count = 5) {
-            currentHand = [];
+
+        // Initialize the draw pile with starting cards
+        function initializeDeck() {
+            drawPile = [];
+            discardPile = [];
+
             const allItemIds = Object.keys(ITEM_DATABASE);
 
-            // Separate items by category to ensure variety
+            // Create starting deck: 3 of each weapon, 2 of each other item
+            // This gives enough cards for 2 full draws (10 cards) before reshuffle
             const weaponIds = allItemIds.filter(id => ITEM_DATABASE[id].category === 'weapon');
             const otherIds = allItemIds.filter(id => ITEM_DATABASE[id].category !== 'weapon');
 
-            // Guarantee at least 2 weapons
-            const guaranteedWeapons = 2;
-            for (let i = 0; i < guaranteedWeapons && i < count; i++) {
-                const randomId = weaponIds[Math.floor(Math.random() * weaponIds.length)];
-                currentHand.push({
-                    instanceId: `item_${Date.now()}_${i}`,
-                    itemId: randomId,
-                    ...ITEM_DATABASE[randomId]
-                });
-            }
+            // Add 3 copies of each weapon
+            weaponIds.forEach(id => {
+                drawPile.push(id);
+                drawPile.push(id);
+                drawPile.push(id);
+            });
 
-            // Fill rest with random items
-            for (let i = guaranteedWeapons; i < count; i++) {
-                const randomId = allItemIds[Math.floor(Math.random() * allItemIds.length)];
-                currentHand.push({
-                    instanceId: `item_${Date.now()}_${i}`,
-                    itemId: randomId,
-                    ...ITEM_DATABASE[randomId]
-                });
+            // Add 2 copies of each non-weapon
+            otherIds.forEach(id => {
+                drawPile.push(id);
+                drawPile.push(id);
+            });
+
+            // Shuffle the draw pile
+            shuffleArray(drawPile);
+        }
+
+        // Shuffle an array in place
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Reshuffle discard pile into draw pile
+        function reshuffleDiscardIntoDraw() {
+            drawPile = [...discardPile];
+            discardPile = [];
+            shuffleArray(drawPile);
+        }
+
+        // Draw cards from the draw pile
+        function drawHand(count = 5) {
+            currentHand = [];
+
+            for (let i = 0; i < count; i++) {
+                const card = drawCardFromPile();
+                if (card) {
+                    currentHand.push(card);
+                }
             }
 
             return currentHand;
+        }
+
+        // Draw a single card from the draw pile
+        function drawCardFromPile() {
+            // If draw pile is empty, reshuffle discard pile
+            if (drawPile.length === 0) {
+                if (discardPile.length === 0) {
+                    return null;  // No cards left at all
+                }
+                reshuffleDiscardIntoDraw();
+            }
+
+            const itemId = drawPile.pop();
+            if (!itemId) return null;
+
+            return {
+                instanceId: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                itemId: itemId,
+                ...ITEM_DATABASE[itemId]
+            };
+        }
+
+        // Draw a single card and add to hand (called by heat sink placement)
+        function drawSingleCard() {
+            const card = drawCardFromPile();
+            if (card) {
+                currentHand.push(card);
+            }
+            return card;
+        }
+
+        // Discard a card (add to discard pile)
+        function discardCard(itemId) {
+            discardPile.push(itemId);
         }
 
         // ============================================
@@ -2461,6 +2730,12 @@
             if (placedItem) {
                 e.preventDefault();
                 const instanceId = placedItem.dataset.instanceId;
+
+                // Check if item is locked (e.g., heat sink after placement)
+                if (lockedItems.has(instanceId)) {
+                    return;  // Cannot drag locked items
+                }
+
                 const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
                 if (equipment) {
                     const item = { ...ITEM_DATABASE[equipment.itemId], instanceId };
@@ -2775,6 +3050,7 @@
 
         function placeItemOnGrid(item, slot, gridX, gridY) {
             const instanceId = item.instanceId;
+            const itemDef = ITEM_DATABASE[item.id || item.itemId];
 
             // Add to loadout state
             loadoutState.equipment.push({
@@ -2787,6 +3063,20 @@
 
             // Mark grid cells as occupied
             gridOccupation[slot].placeItem(item, gridX, gridY, instanceId);
+
+            // Handle special placement effects
+            if (itemDef && itemDef.special) {
+                // Draw a card when placed (heat sink effect)
+                if (itemDef.special.onPlace === 'drawCard') {
+                    drawSingleCard();
+                    renderBench();
+                }
+
+                // Lock the item so it cannot be moved this round
+                if (itemDef.special.locksOnPlace) {
+                    lockedItems.add(instanceId);
+                }
+            }
         }
 
         function removeItemFromGrid(instanceId, slot) {
@@ -2802,6 +3092,11 @@
 
         // Click to remove placed item
         function handlePlacedItemClick(instanceId) {
+            // Check if item is locked (e.g., heat sink after placement)
+            if (lockedItems.has(instanceId)) {
+                return;  // Cannot remove locked items
+            }
+
             const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
             if (!equipment) return;
 
@@ -2852,6 +3147,14 @@
                 if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
                 if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
                 if (item.stats.heatCapacity) statsHTML += `<span>Heat Cap: +${item.stats.heatCapacity}</span>`;
+                if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
+
+                // Build special effects HTML
+                let specialHTML = '';
+                if (item.special) {
+                    if (item.special.onPlace === 'drawCard') specialHTML += '<span>On Place: Draw a card</span>';
+                    if (item.special.locksOnPlace) specialHTML += '<span>Locks after placement</span>';
+                }
 
                 // Build valid slots string
                 const validSlots = item.constraints.validSlots || ['all'];
@@ -2864,6 +3167,7 @@
                     <div class="bench-tooltip">
                         <div class="tooltip-name">${item.icon} ${item.name}</div>
                         <div class="tooltip-stats">${statsHTML}</div>
+                        ${specialHTML ? `<div class="tooltip-special">${specialHTML}</div>` : ''}
                         <div class="tooltip-slots">Fits: ${slotsStr}</div>
                     </div>
                 `;
@@ -2880,10 +3184,17 @@
         function switchTab(tabName) {
             currentTab = tabName;
 
-            // Update tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tab === tabName);
-            });
+            // Update header title
+            const gameTitle = document.getElementById('gameTitle');
+            const goToMissionsBtn = document.getElementById('goToMissionsBtn');
+
+            if (tabName === 'loadout') {
+                gameTitle.textContent = 'Loadout';
+                if (goToMissionsBtn) goToMissionsBtn.style.display = '';
+            } else if (tabName === 'mission') {
+                gameTitle.textContent = 'Missions';
+                if (goToMissionsBtn) goToMissionsBtn.style.display = 'none';
+            }
 
             // Update tab content
             const loadoutTab = document.getElementById('loadoutTab');
@@ -2907,12 +3218,7 @@
 
         function startBattleFromMission() {
             if (selectedMission) {
-                switchTab('loadout');
-                // Trigger the battle ready button click if enabled
-                const btn = document.getElementById('battleReadyBtn');
-                if (!btn.disabled) {
-                    btn.click();
-                }
+                startBattle();
             }
         }
 
@@ -2969,7 +3275,6 @@
             // Update continue button state
             const continueBtn = document.getElementById('missionContinueBtn');
             if (continueBtn) {
-                const btn = document.getElementById('battleReadyBtn');
                 continueBtn.disabled = !selectedMission || loadoutState.equipment.length === 0;
             }
         }
@@ -3045,6 +3350,11 @@
             container.innerHTML = '';
             gridElements = {};
 
+            // Create legs container for centered leg grids
+            const legsContainer = document.createElement('div');
+            legsContainer.id = 'legsContainer';
+            container.appendChild(legsContainer);
+
             // Get cell size based on screen width
             let cellSize = 40;
             if (window.innerWidth <= 480) {
@@ -3058,7 +3368,6 @@
                 gridEl.className = 'mech-grid-overlay';
                 gridEl.dataset.slot = slotName;
                 gridEl.style.gridTemplateColumns = `repeat(${slotDef.cols}, ${cellSize}px)`;
-                // CSS Grid handles positioning via grid-area
 
                 // Add label
                 const label = document.createElement('span');
@@ -3077,7 +3386,12 @@
                     }
                 }
 
-                container.appendChild(gridEl);
+                // Append legs to legsContainer, others to main container
+                if (slotName === 'leftLeg' || slotName === 'rightLeg') {
+                    legsContainer.appendChild(gridEl);
+                } else {
+                    container.appendChild(gridEl);
+                }
                 gridElements[slotName] = gridEl;
             }
         }
@@ -3117,7 +3431,8 @@
                 if (!gridEl || !item) return;
 
                 const placedEl = document.createElement('div');
-                placedEl.className = `placed-item ${item.category}`;
+                const isLocked = lockedItems.has(eq.instanceId);
+                placedEl.className = `placed-item ${item.category}${isLocked ? ' locked' : ''}`;
                 placedEl.dataset.instanceId = eq.instanceId;
 
                 const shape = item.gridShape;
@@ -3155,10 +3470,12 @@
                 if (item.stats.damage) statsHTML += `<span>Damage: ${item.stats.damage}</span>`;
                 if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
                 if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
+                if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
+                const hintText = isLocked ? 'Locked this round' : 'Click to remove';
                 tooltip.innerHTML = `
                     <div class="tooltip-name">${item.icon} ${item.name}</div>
                     <div class="tooltip-stats">${statsHTML}</div>
-                    <div class="tooltip-hint">Click to remove</div>
+                    <div class="tooltip-hint">${hintText}</div>
                 `;
                 placedEl.appendChild(tooltip);
 
@@ -3185,15 +3502,102 @@
             });
         }
 
+        // Check if two items are adjacent (share an edge) in the same slot
+        function areItemsAdjacent(eq1, eq2) {
+            if (eq1.slot !== eq2.slot) return false;
+
+            const item1 = ITEM_DATABASE[eq1.itemId];
+            const item2 = ITEM_DATABASE[eq2.itemId];
+            if (!item1 || !item2) return false;
+
+            // Get all cells occupied by each item
+            const cells1 = [];
+            const cells2 = [];
+
+            const shape1 = item1.gridShape;
+            for (let dy = 0; dy < shape1.length; dy++) {
+                for (let dx = 0; dx < shape1[0].length; dx++) {
+                    if (shape1[dy][dx] === 1) {
+                        cells1.push({ x: eq1.position.x + dx, y: eq1.position.y + dy });
+                    }
+                }
+            }
+
+            const shape2 = item2.gridShape;
+            for (let dy = 0; dy < shape2.length; dy++) {
+                for (let dx = 0; dx < shape2[0].length; dx++) {
+                    if (shape2[dy][dx] === 1) {
+                        cells2.push({ x: eq2.position.x + dx, y: eq2.position.y + dy });
+                    }
+                }
+            }
+
+            // Check if any cell from item1 is adjacent to any cell from item2
+            for (const c1 of cells1) {
+                for (const c2 of cells2) {
+                    const dx = Math.abs(c1.x - c2.x);
+                    const dy = Math.abs(c1.y - c2.y);
+                    // Adjacent means sharing an edge (not diagonal)
+                    if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Calculate energy reduction from heat sinks for adjacent items
+        function calculateHeatSinkReduction() {
+            let totalReduction = 0;
+            const heatSinks = loadoutState.equipment.filter(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                return item && item.stats && item.stats.energyReduction;
+            });
+
+            // Track remaining energy that can be reduced for each item (to cap at 0)
+            const remainingEnergy = new Map();  // instanceId -> remaining energy to reduce
+
+            // For each heat sink, find adjacent items and apply reduction
+            for (const heatSink of heatSinks) {
+                const heatSinkItem = ITEM_DATABASE[heatSink.itemId];
+                const reduction = heatSinkItem.stats.energyReduction || 0;
+
+                for (const eq of loadoutState.equipment) {
+                    if (eq.instanceId === heatSink.instanceId) continue;
+
+                    const item = ITEM_DATABASE[eq.itemId];
+                    if (!item || !item.stats || !item.stats.energyDraw || item.stats.energyDraw <= 0) continue;
+
+                    if (areItemsAdjacent(heatSink, eq)) {
+                        // Initialize remaining energy if not tracked yet
+                        if (!remainingEnergy.has(eq.instanceId)) {
+                            remainingEnergy.set(eq.instanceId, item.stats.energyDraw);
+                        }
+
+                        // Apply reduction up to remaining energy (can't go below 0)
+                        const remaining = remainingEnergy.get(eq.instanceId);
+                        const actualReduction = Math.min(reduction, remaining);
+                        totalReduction += actualReduction;
+                        remainingEnergy.set(eq.instanceId, remaining - actualReduction);
+                    }
+                }
+            }
+            return totalReduction;
+        }
+
         function updateStats() {
             let totalWeight = 0;
             let energyUsed = 0;      // Positive energyDraw = consumes energy
             let energyProvided = 0;  // Negative energyDraw = provides energy (reactors)
+            let totalArmor = 0;
+            let accuracyBonus = 0;
 
             loadoutState.equipment.forEach(eq => {
                 const item = ITEM_DATABASE[eq.itemId];
                 if (item && item.stats) {
                     totalWeight += item.stats.weight || 0;
+                    totalArmor += item.stats.armorBonus || 0;
+                    accuracyBonus += item.stats.accuracyBonus || 0;
                     const draw = item.stats.energyDraw || 0;
                     if (draw > 0) {
                         energyUsed += draw;
@@ -3203,8 +3607,43 @@
                 }
             });
 
+            // Apply heat sink energy reduction
+            const heatSinkReduction = calculateHeatSinkReduction();
+            energyUsed = Math.max(0, energyUsed - heatSinkReduction);
+
             const maxWeight = MECH_CHASSIS.maxWeight;
             const maxEnergy = MECH_CHASSIS.baseEnergy + energyProvided;  // Reactors increase max energy
+
+            // Calculate HP (base + weight bonus + armor)
+            const baseHealth = 100;
+            const healthBonus = Math.floor(totalWeight * 0.5);
+            const totalHP = baseHealth + healthBonus + totalArmor;
+
+            // Update HP bar
+            const hpFill = document.getElementById('hpFill');
+            const hpText = document.getElementById('hpText');
+            hpFill.style.width = '100%';  // Always full (shows max HP)
+            hpText.textContent = totalHP;
+
+            // Update armor display (only show if armor > 0)
+            const armorStatItem = document.getElementById('armorStatItem');
+            const armorFill = document.getElementById('armorFill');
+            const armorText = document.getElementById('armorText');
+            if (totalArmor > 0) {
+                armorStatItem.style.display = '';
+                armorFill.style.width = '100%';
+                armorText.textContent = `+${totalArmor}`;
+            } else {
+                armorStatItem.style.display = 'none';
+            }
+
+            // Update accuracy bar (base 60% + bonuses)
+            const baseAccuracy = 60;
+            const totalAccuracy = Math.min(100, baseAccuracy + accuracyBonus);
+            const accuracyFill = document.getElementById('accuracyFill');
+            const accuracyText = document.getElementById('accuracyText');
+            accuracyFill.style.width = totalAccuracy + '%';
+            accuracyText.textContent = `${totalAccuracy}%`;
 
             // Update weight bar
             const weightFill = document.getElementById('weightFill');
@@ -3222,31 +3661,102 @@
             energyText.textContent = `${energyUsed} / ${maxEnergy}`;
             energyFill.classList.toggle('over-limit', energyUsed > maxEnergy);
 
-            // Update battle ready button
-            const btn = document.getElementById('battleReadyBtn');
-            const isValid = totalWeight <= maxWeight &&
-                           energyUsed <= maxEnergy &&
-                           loadoutState.equipment.length > 0 &&
-                           selectedMission !== null;
-            btn.disabled = !isValid;
-            btn.classList.toggle('ready', isValid);
+            // Update pile counts
+            updatePileCounts();
 
-            // Update button text to show what's missing
-            if (loadoutState.equipment.length === 0) {
-                btn.textContent = 'Equip Items';
-            } else if (!selectedMission) {
-                btn.textContent = 'No Mission';
-            } else if (!isValid) {
-                btn.textContent = 'Over Limit!';
-            } else {
-                btn.textContent = 'Battle Ready';
+            // Check button states
+            const hasEquipment = loadoutState.equipment.length > 0;
+            const withinLimits = totalWeight <= maxWeight && energyUsed <= maxEnergy;
+            const isValid = withinLimits && hasEquipment && selectedMission !== null;
+
+            // Update "Go to Missions" button on loadout screen
+            const goToMissionsBtn = document.getElementById('goToMissionsBtn');
+            if (goToMissionsBtn) {
+                if (!withinLimits) {
+                    goToMissionsBtn.textContent = 'Over Limit!';
+                    goToMissionsBtn.disabled = true;
+                    goToMissionsBtn.classList.add('warning');
+                } else {
+                    goToMissionsBtn.textContent = 'Go to Missions →';
+                    goToMissionsBtn.disabled = !hasEquipment;
+                    goToMissionsBtn.classList.remove('warning');
+                }
             }
 
-            // Update mission tab continue button
+            // Update "Continue to Battle" button on mission screen
             const continueBtn = document.getElementById('missionContinueBtn');
             if (continueBtn) {
-                continueBtn.disabled = !isValid;
+                if (!withinLimits) {
+                    continueBtn.textContent = 'Over Limit!';
+                    continueBtn.disabled = true;
+                    continueBtn.classList.add('warning');
+                } else {
+                    continueBtn.textContent = 'Continue to Battle →';
+                    continueBtn.disabled = !isValid;
+                    continueBtn.classList.remove('warning');
+                }
             }
+        }
+
+        // Update pile count displays
+        function updatePileCounts() {
+            const drawCount = document.getElementById('drawPileCount');
+            const discardCount = document.getElementById('discardPileCount');
+            if (drawCount) drawCount.textContent = drawPile.length;
+            if (discardCount) discardCount.textContent = discardPile.length;
+        }
+
+        // Show pile viewer modal
+        function showPileViewer(pileType) {
+            console.log('[PILE] showPileViewer called with:', pileType);
+            const viewer = document.getElementById('pileViewer');
+            console.log('[PILE] viewer element:', viewer);
+            if (!viewer) {
+                console.error('[PILE] pileViewer element not found!');
+                return;
+            }
+            const title = document.getElementById('pileViewerTitle');
+            const cardsContainer = document.getElementById('pileViewerCards');
+
+            const pile = pileType === 'draw' ? drawPile : discardPile;
+            console.log('[PILE] pile contents:', pile.length, 'cards');
+            title.textContent = pileType === 'draw' ? `Draw Pile (${pile.length} cards)` : `Discard Pile (${pile.length} cards)`;
+
+            // Count occurrences of each card
+            const cardCounts = {};
+            pile.forEach(itemId => {
+                cardCounts[itemId] = (cardCounts[itemId] || 0) + 1;
+            });
+
+            // Build cards HTML
+            cardsContainer.innerHTML = '';
+            for (const [itemId, count] of Object.entries(cardCounts)) {
+                const item = ITEM_DATABASE[itemId];
+                if (!item) continue;
+
+                const cardEl = document.createElement('div');
+                cardEl.className = 'pile-card';
+                cardEl.innerHTML = `
+                    <div class="card-icon">${item.icon}</div>
+                    <div class="card-name">${item.name}</div>
+                    ${count > 1 ? `<div class="card-count" style="font-size: 11px; color: #ffcc00;">×${count}</div>` : ''}
+                `;
+                cardsContainer.appendChild(cardEl);
+            }
+
+            if (pile.length === 0) {
+                cardsContainer.innerHTML = '<div style="color: #666; font-size: 14px;">Empty</div>';
+            }
+
+            viewer.classList.add('active');
+            console.log('[PILE] Added active class, viewer display:', window.getComputedStyle(viewer).display);
+        }
+
+        // Close pile viewer modal
+        function closePileViewer() {
+            console.log('[PILE] closePileViewer called');
+            const viewer = document.getElementById('pileViewer');
+            viewer.classList.remove('active');
         }
 
         // ============================================
@@ -3268,7 +3778,12 @@
             builderCamera.orthoRight = orthoSize * aspectRatio;
             builderCamera.orthoTop = orthoSize;
             builderCamera.orthoBottom = -orthoSize;
-            builderCamera.attachControl(document.getElementById('renderCanvas'), true);
+
+            // Only attach camera controls on desktop - mobile needs that area for scrolling
+            const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+            if (!isMobile) {
+                builderCamera.attachControl(document.getElementById('renderCanvas'), true);
+            }
 
             // Ambient lighting for builder
             const hemi = new BABYLON.HemisphericLight('builderHemi', new BABYLON.Vector3(0, 1, 0), scene);
@@ -3597,9 +4112,153 @@
         // Listen for messages from battle iframe
         window.addEventListener('message', function(event) {
             if (event.data && event.data.type === 'battleEnd') {
-                returnToLoadout();
+                const result = event.data.result || 'victory';
+                const rewards = event.data.rewards || { xp: 0, scrap: 0, components: [] };
+                showSalvageScreen(result, rewards);
             }
         });
+
+        // Show salvage screen with rewards
+        function showSalvageScreen(result, rewards) {
+            // Hide battle iframe
+            const battleFrame = document.getElementById('battleFrame');
+            battleFrame.style.display = 'none';
+            battleFrame.src = '';
+
+            // Create salvage overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'salvageOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0, 20, 10, 0.95);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                font-family: 'Courier New', monospace;
+            `;
+
+            const resultColor = result === 'victory' ? '#00ff88' : '#ff4444';
+            const resultText = result === 'victory' ? 'MISSION COMPLETE' : 'MISSION FAILED';
+
+            let componentsHTML = '';
+            if (rewards.components && rewards.components.length > 0) {
+                componentsHTML = `
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(0, 255, 136, 0.1); border: 1px solid #00ff88; border-radius: 8px;">
+                        <div style="font-size: 14px; color: #00aa66; margin-bottom: 10px;">NEW COMPONENT SALVAGED:</div>
+                        ${rewards.components.map(id => {
+                            const item = ITEM_DATABASE[id];
+                            return `<div style="font-size: 18px; color: #00ff88;">${item ? item.icon + ' ' + item.name : id}</div>`;
+                        }).join('')}
+                    </div>
+                `;
+            }
+
+            overlay.innerHTML = `
+                <div style="font-size: 16px; color: #666; letter-spacing: 4px; margin-bottom: 10px;">SALVAGE REPORT</div>
+                <div style="font-size: 42px; font-weight: bold; color: ${resultColor}; text-shadow: 0 0 20px ${resultColor}; margin-bottom: 30px;">
+                    ${resultText}
+                </div>
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 30px 50px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 24px; color: #aaa; margin-bottom: 20px;">Rewards Collected:</div>
+                    <div style="display: flex; gap: 40px; justify-content: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 36px; color: #ffcc00;">+${rewards.xp}</div>
+                            <div style="font-size: 14px; color: #888;">EXPERIENCE</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 36px; color: #88aaff;">+${rewards.scrap}</div>
+                            <div style="font-size: 14px; color: #888;">SCRAP</div>
+                        </div>
+                    </div>
+                    ${componentsHTML}
+                </div>
+                <button id="continueFromSalvageBtn" style="
+                    margin-top: 40px;
+                    padding: 15px 50px;
+                    font-size: 18px;
+                    background: rgba(0, 255, 136, 0.2);
+                    border: 2px solid #00ff88;
+                    color: #00ff88;
+                    cursor: pointer;
+                    border-radius: 8px;
+                    font-family: 'Courier New', monospace;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                ">Continue to Loadout</button>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Handle continue button
+            document.getElementById('continueFromSalvageBtn').addEventListener('click', () => {
+                // Apply rewards
+                playerResources.xp += rewards.xp;
+                playerResources.scrap += rewards.scrap;
+
+                // Add new components to draw pile
+                if (rewards.components) {
+                    rewards.components.forEach(id => {
+                        drawPile.push(id);
+                    });
+                    shuffleArray(drawPile);
+                }
+
+                // Remove salvage overlay
+                overlay.remove();
+
+                // Handle post-battle cleanup and return to loadout
+                handlePostBattle();
+            });
+        }
+
+        // Handle post-battle cleanup
+        function handlePostBattle() {
+            // Clear localStorage
+            localStorage.removeItem('battleConfig');
+
+            // Discard all cards in hand to discard pile
+            currentHand.forEach(item => {
+                discardCard(item.itemId);
+            });
+            currentHand = [];
+
+            // Discard all equipped items (especially locked ones) to discard pile
+            loadoutState.equipment.forEach(eq => {
+                discardCard(eq.itemId);
+            });
+
+            // Clear equipment and grids
+            loadoutState.equipment = [];
+            initializeGrids();
+
+            // Unlock all locked items (they're now discarded anyway)
+            lockedItems.clear();
+
+            // Draw new hand
+            drawHand(5);
+
+            // Clear mission selection
+            selectedMission = null;
+
+            // Show builder UI
+            document.getElementById('mechBuilderUI').style.display = 'flex';
+            document.getElementById('renderCanvas').style.display = 'block';
+
+            // Switch to loadout tab (not mission)
+            switchTab('loadout');
+
+            // Re-render everything
+            renderBench();
+            renderMissions();
+            renderGridOverlays();
+            renderGridItems();
+            updateStats();
+
+            currentPhase = GamePhase.MECHBUILDER;
+        }
 
         // ============================================
         // ENGINE INITIALIZATION
@@ -3619,7 +4278,8 @@
             createBuilderScene();
             initializeGrids();
 
-            // Draw initial hand
+            // Initialize deck and draw initial hand
+            initializeDeck();
             drawHand(5);
 
             // Render UI
@@ -3632,8 +4292,70 @@
             // Initialize drag and drop
             initDragAndDrop();
 
-            // Battle ready button
-            document.getElementById('battleReadyBtn').addEventListener('click', startBattle);
+            // Go to Missions button
+            document.getElementById('goToMissionsBtn').addEventListener('click', function() {
+                switchTab('mission');
+            });
+
+            // Pile viewer buttons - using mousedown/touchstart to ensure they fire before document handlers
+            const drawPileEl = document.getElementById('drawPileDisplay');
+            const discardPileEl = document.getElementById('discardPileDisplay');
+            const closeBtn = document.getElementById('pileViewerClose');
+            console.log('[PILE INIT] drawPileEl:', drawPileEl, 'discardPileEl:', discardPileEl, 'closeBtn:', closeBtn);
+
+            if (drawPileEl) {
+                drawPileEl.addEventListener('mousedown', function(e) {
+                    console.log('[PILE] Draw pile mousedown');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showPileViewer('draw');
+                });
+                drawPileEl.addEventListener('touchstart', function(e) {
+                    console.log('[PILE] Draw pile touchstart');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showPileViewer('draw');
+                }, { passive: false });
+            }
+            if (discardPileEl) {
+                discardPileEl.addEventListener('mousedown', function(e) {
+                    console.log('[PILE] Discard pile mousedown');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showPileViewer('discard');
+                });
+                discardPileEl.addEventListener('touchstart', function(e) {
+                    console.log('[PILE] Discard pile touchstart');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showPileViewer('discard');
+                }, { passive: false });
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('mousedown', function(e) {
+                    console.log('[PILE] Close button mousedown');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    closePileViewer();
+                });
+                closeBtn.addEventListener('touchstart', function(e) {
+                    console.log('[PILE] Close button touchstart');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    closePileViewer();
+                }, { passive: false });
+            }
+            // Also close pile viewer when clicking outside the cards
+            document.getElementById('pileViewer').addEventListener('mousedown', function(e) {
+                if (e.target === this) {
+                    closePileViewer();
+                }
+            });
+            document.getElementById('pileViewer').addEventListener('touchstart', function(e) {
+                if (e.target === this) {
+                    closePileViewer();
+                }
+            }, { passive: false });
 
             // Main render loop with delta time for battle updates
             let lastFrameTime = performance.now();

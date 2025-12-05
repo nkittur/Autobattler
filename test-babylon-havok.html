@@ -3317,22 +3317,31 @@
                 return item && item.stats && item.stats.energyReduction;
             });
 
+            // Track remaining energy that can be reduced for each item (to cap at 0)
+            const remainingEnergy = new Map();  // instanceId -> remaining energy to reduce
+
             // For each heat sink, find adjacent items and apply reduction
-            const reducedItems = new Set();  // Track which items have been reduced
             for (const heatSink of heatSinks) {
                 const heatSinkItem = ITEM_DATABASE[heatSink.itemId];
                 const reduction = heatSinkItem.stats.energyReduction || 0;
 
                 for (const eq of loadoutState.equipment) {
                     if (eq.instanceId === heatSink.instanceId) continue;
-                    if (reducedItems.has(eq.instanceId)) continue;
 
                     const item = ITEM_DATABASE[eq.itemId];
                     if (!item || !item.stats || !item.stats.energyDraw || item.stats.energyDraw <= 0) continue;
 
                     if (areItemsAdjacent(heatSink, eq)) {
-                        totalReduction += Math.min(reduction, item.stats.energyDraw);
-                        reducedItems.add(eq.instanceId);
+                        // Initialize remaining energy if not tracked yet
+                        if (!remainingEnergy.has(eq.instanceId)) {
+                            remainingEnergy.set(eq.instanceId, item.stats.energyDraw);
+                        }
+
+                        // Apply reduction up to remaining energy (can't go below 0)
+                        const remaining = remainingEnergy.get(eq.instanceId);
+                        const actualReduction = Math.min(reduction, remaining);
+                        totalReduction += actualReduction;
+                        remainingEnergy.set(eq.instanceId, remaining - actualReduction);
                     }
                 }
             }

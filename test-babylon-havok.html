@@ -373,6 +373,8 @@
         .bench-item.reactor .item-icon { color: #ffaa00; }
         .bench-item.system { border-color: #aa44ff; }
         .bench-item.system .item-icon { color: #aa44ff; }
+        .bench-item.cooling { border-color: #44ddff; }
+        .bench-item.cooling .item-icon { color: #44ddff; }
 
         /* Bench item tooltip */
         .bench-item .bench-tooltip {
@@ -419,6 +421,19 @@
             margin-top: 4px;
             border-top: 1px solid #333;
             padding-top: 4px;
+        }
+
+        .bench-item .bench-tooltip .tooltip-special {
+            color: #44ddff;
+            font-size: 9px;
+            margin-top: 4px;
+            border-top: 1px solid #44ddff44;
+            padding-top: 4px;
+        }
+
+        .bench-item .bench-tooltip .tooltip-special span {
+            display: block;
+            margin: 2px 0;
         }
 
         /* Mission Selection - Hidden (use tab instead) */
@@ -629,6 +644,16 @@
         .placed-item.reactor .placed-cell { background: rgba(255,170,0,0.3); border-color: rgba(255,170,0,0.6); }
         .placed-item.system { border-color: #aa44ff; background: rgba(170,68,255,0.2); }
         .placed-item.system .placed-cell { background: rgba(170,68,255,0.3); border-color: rgba(170,68,255,0.6); }
+        .placed-item.cooling { border-color: #44ddff; background: rgba(68,221,255,0.2); }
+        .placed-item.cooling .placed-cell { background: rgba(68,221,255,0.3); border-color: rgba(68,221,255,0.6); }
+        .placed-item.locked { opacity: 0.7; }
+        .placed-item.locked::after {
+            content: '🔒';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
 
         .placed-item .item-icon-overlay {
             position: absolute;
@@ -1571,6 +1596,27 @@
                 constraints: {
                     validSlots: ['torso', 'leftArm', 'rightArm']
                 }
+            },
+            heat_sink: {
+                id: 'heat_sink',
+                name: 'Heat Sink',
+                type: 'COOLING',
+                category: 'cooling',
+                icon: '❄️',
+                gridShape: [[1]],  // 1x1 Single
+                gridDimensions: { w: 1, h: 1 },
+                stats: {
+                    weight: 8,
+                    energyDraw: 0,
+                    energyReduction: 5  // Reduces energy cost of adjacent items
+                },
+                constraints: {
+                    validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg']
+                },
+                special: {
+                    onPlace: 'drawCard',      // Draw a card when placed
+                    locksOnPlace: true        // Cannot be moved after placement this round
+                }
             }
         };
 
@@ -2284,6 +2330,9 @@
             equipment: []  // Array of { itemId, slot, position: {x, y}, rotation }
         };
 
+        // Track locked items (cannot be moved this round - e.g. heat sinks after placement)
+        let lockedItems = new Set();
+
         // Grid occupation tracking
         let gridOccupation = {};  // slot -> 2D array of item IDs or null
 
@@ -2397,6 +2446,19 @@
             }
 
             return currentHand;
+        }
+
+        // Draw a single card and add to hand
+        function drawSingleCard() {
+            const allItemIds = Object.keys(ITEM_DATABASE);
+            const randomId = allItemIds[Math.floor(Math.random() * allItemIds.length)];
+            const newItem = {
+                instanceId: `item_${Date.now()}_${currentHand.length}`,
+                itemId: randomId,
+                ...ITEM_DATABASE[randomId]
+            };
+            currentHand.push(newItem);
+            return newItem;
         }
 
         // ============================================
@@ -2765,6 +2827,7 @@
 
         function placeItemOnGrid(item, slot, gridX, gridY) {
             const instanceId = item.instanceId;
+            const itemDef = ITEM_DATABASE[item.id || item.itemId];
 
             // Add to loadout state
             loadoutState.equipment.push({
@@ -2777,6 +2840,20 @@
 
             // Mark grid cells as occupied
             gridOccupation[slot].placeItem(item, gridX, gridY, instanceId);
+
+            // Handle special placement effects
+            if (itemDef && itemDef.special) {
+                // Draw a card when placed (heat sink effect)
+                if (itemDef.special.onPlace === 'drawCard') {
+                    drawSingleCard();
+                    renderBench();
+                }
+
+                // Lock the item so it cannot be moved this round
+                if (itemDef.special.locksOnPlace) {
+                    lockedItems.add(instanceId);
+                }
+            }
         }
 
         function removeItemFromGrid(instanceId, slot) {
@@ -2792,6 +2869,11 @@
 
         // Click to remove placed item
         function handlePlacedItemClick(instanceId) {
+            // Check if item is locked (e.g., heat sink after placement)
+            if (lockedItems.has(instanceId)) {
+                return;  // Cannot remove locked items
+            }
+
             const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
             if (!equipment) return;
 
@@ -2842,6 +2924,14 @@
                 if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
                 if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
                 if (item.stats.heatCapacity) statsHTML += `<span>Heat Cap: +${item.stats.heatCapacity}</span>`;
+                if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
+
+                // Build special effects HTML
+                let specialHTML = '';
+                if (item.special) {
+                    if (item.special.onPlace === 'drawCard') specialHTML += '<span>On Place: Draw a card</span>';
+                    if (item.special.locksOnPlace) specialHTML += '<span>Locks after placement</span>';
+                }
 
                 // Build valid slots string
                 const validSlots = item.constraints.validSlots || ['all'];
@@ -2854,6 +2944,7 @@
                     <div class="bench-tooltip">
                         <div class="tooltip-name">${item.icon} ${item.name}</div>
                         <div class="tooltip-stats">${statsHTML}</div>
+                        ${specialHTML ? `<div class="tooltip-special">${specialHTML}</div>` : ''}
                         <div class="tooltip-slots">Fits: ${slotsStr}</div>
                     </div>
                 `;
@@ -3117,7 +3208,8 @@
                 if (!gridEl || !item) return;
 
                 const placedEl = document.createElement('div');
-                placedEl.className = `placed-item ${item.category}`;
+                const isLocked = lockedItems.has(eq.instanceId);
+                placedEl.className = `placed-item ${item.category}${isLocked ? ' locked' : ''}`;
                 placedEl.dataset.instanceId = eq.instanceId;
 
                 const shape = item.gridShape;
@@ -3155,10 +3247,12 @@
                 if (item.stats.damage) statsHTML += `<span>Damage: ${item.stats.damage}</span>`;
                 if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
                 if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
+                if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
+                const hintText = isLocked ? 'Locked this round' : 'Click to remove';
                 tooltip.innerHTML = `
                     <div class="tooltip-name">${item.icon} ${item.name}</div>
                     <div class="tooltip-stats">${statsHTML}</div>
-                    <div class="tooltip-hint">Click to remove</div>
+                    <div class="tooltip-hint">${hintText}</div>
                 `;
                 placedEl.appendChild(tooltip);
 
@@ -3185,6 +3279,80 @@
             });
         }
 
+        // Check if two items are adjacent (share an edge) in the same slot
+        function areItemsAdjacent(eq1, eq2) {
+            if (eq1.slot !== eq2.slot) return false;
+
+            const item1 = ITEM_DATABASE[eq1.itemId];
+            const item2 = ITEM_DATABASE[eq2.itemId];
+            if (!item1 || !item2) return false;
+
+            // Get all cells occupied by each item
+            const cells1 = [];
+            const cells2 = [];
+
+            const shape1 = item1.gridShape;
+            for (let dy = 0; dy < shape1.length; dy++) {
+                for (let dx = 0; dx < shape1[0].length; dx++) {
+                    if (shape1[dy][dx] === 1) {
+                        cells1.push({ x: eq1.position.x + dx, y: eq1.position.y + dy });
+                    }
+                }
+            }
+
+            const shape2 = item2.gridShape;
+            for (let dy = 0; dy < shape2.length; dy++) {
+                for (let dx = 0; dx < shape2[0].length; dx++) {
+                    if (shape2[dy][dx] === 1) {
+                        cells2.push({ x: eq2.position.x + dx, y: eq2.position.y + dy });
+                    }
+                }
+            }
+
+            // Check if any cell from item1 is adjacent to any cell from item2
+            for (const c1 of cells1) {
+                for (const c2 of cells2) {
+                    const dx = Math.abs(c1.x - c2.x);
+                    const dy = Math.abs(c1.y - c2.y);
+                    // Adjacent means sharing an edge (not diagonal)
+                    if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Calculate energy reduction from heat sinks for adjacent items
+        function calculateHeatSinkReduction() {
+            let totalReduction = 0;
+            const heatSinks = loadoutState.equipment.filter(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                return item && item.stats && item.stats.energyReduction;
+            });
+
+            // For each heat sink, find adjacent items and apply reduction
+            const reducedItems = new Set();  // Track which items have been reduced
+            for (const heatSink of heatSinks) {
+                const heatSinkItem = ITEM_DATABASE[heatSink.itemId];
+                const reduction = heatSinkItem.stats.energyReduction || 0;
+
+                for (const eq of loadoutState.equipment) {
+                    if (eq.instanceId === heatSink.instanceId) continue;
+                    if (reducedItems.has(eq.instanceId)) continue;
+
+                    const item = ITEM_DATABASE[eq.itemId];
+                    if (!item || !item.stats || !item.stats.energyDraw || item.stats.energyDraw <= 0) continue;
+
+                    if (areItemsAdjacent(heatSink, eq)) {
+                        totalReduction += Math.min(reduction, item.stats.energyDraw);
+                        reducedItems.add(eq.instanceId);
+                    }
+                }
+            }
+            return totalReduction;
+        }
+
         function updateStats() {
             let totalWeight = 0;
             let energyUsed = 0;      // Positive energyDraw = consumes energy
@@ -3202,6 +3370,10 @@
                     }
                 }
             });
+
+            // Apply heat sink energy reduction
+            const heatSinkReduction = calculateHeatSinkReduction();
+            energyUsed = Math.max(0, energyUsed - heatSinkReduction);
 
             const maxWeight = MECH_CHASSIS.maxWeight;
             const maxEnergy = MECH_CHASSIS.baseEnergy + energyProvided;  // Reactors increase max energy

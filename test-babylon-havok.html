@@ -1482,13 +1482,13 @@
 
                 <!-- Deck Piles and Bench -->
                 <div class="deck-piles-container">
-                    <div class="pile-display" id="drawPileDisplay" onclick="showPileViewer('draw')">
+                    <div class="pile-display" id="drawPileDisplay">
                         <div class="pile-icon">📚</div>
                         <div class="pile-count" id="drawPileCount">0</div>
                         <div class="pile-label">Draw</div>
                     </div>
                     <div id="benchLabel">Equipment Bench</div>
-                    <div class="pile-display" id="discardPileDisplay" onclick="showPileViewer('discard')">
+                    <div class="pile-display" id="discardPileDisplay">
                         <div class="pile-icon">🗑️</div>
                         <div class="pile-count" id="discardPileCount">0</div>
                         <div class="pile-label">Discard</div>
@@ -1570,7 +1570,7 @@
                 <div id="pileViewerCards">
                     <!-- Cards populated by JS -->
                 </div>
-                <button id="pileViewerClose" onclick="closePileViewer()">Close</button>
+                <button id="pileViewerClose">Close</button>
             </div>
         </div>
 
@@ -4285,6 +4285,26 @@
             // Go to Missions button
             document.getElementById('goToMissionsBtn').addEventListener('click', function() {
                 switchTab('mission');
+            });
+
+            // Pile viewer buttons
+            document.getElementById('drawPileDisplay').addEventListener('click', function(e) {
+                e.stopPropagation();
+                showPileViewer('draw');
+            });
+            document.getElementById('discardPileDisplay').addEventListener('click', function(e) {
+                e.stopPropagation();
+                showPileViewer('discard');
+            });
+            document.getElementById('pileViewerClose').addEventListener('click', function(e) {
+                e.stopPropagation();
+                closePileViewer();
+            });
+            // Also close pile viewer when clicking outside the cards
+            document.getElementById('pileViewer').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closePileViewer();
+                }
             });
 
             // Main render loop with delta time for battle updates

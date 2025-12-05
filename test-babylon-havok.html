@@ -3663,6 +3663,11 @@
             const touch = e.touches ? e.touches[0] : e;
             const target = document.elementFromPoint(touch.clientX, touch.clientY);
 
+            // Skip if clicking on rotate button
+            if (target.closest('.rotate-btn')) {
+                return;  // Let the rotate button handle its own click
+            }
+
             // Check if we clicked on a bench item
             const benchItem = target.closest('.bench-item');
             if (benchItem) {

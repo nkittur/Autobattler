@@ -1639,9 +1639,9 @@
             maxWeight: 100,
             baseEnergy: 7,
             slots: {
-                torso: { cols: 3, rows: 3, position: { x: 0.5, y: 0.6 } },      // Center of screen
-                leftArm: { cols: 2, rows: 4, position: { x: 0.25, y: 0.55 } },  // Left side
-                rightArm: { cols: 2, rows: 4, position: { x: 0.75, y: 0.55 } }, // Right side
+                torso: { cols: 2, rows: 2, position: { x: 0.5, y: 0.6 } },      // Center of screen (2x2)
+                leftArm: { cols: 1, rows: 5, position: { x: 0.25, y: 0.55 } },  // Left side (5x1 for railgun)
+                rightArm: { cols: 2, rows: 3, position: { x: 0.75, y: 0.55 } }, // Right side (3x2)
                 leftLeg: { cols: 2, rows: 2, position: { x: 0.35, y: 0.85 } },  // Lower left
                 rightLeg: { cols: 2, rows: 2, position: { x: 0.65, y: 0.85 } }  // Lower right
             }
@@ -1651,43 +1651,43 @@
         const ITEM_DATABASE = {
             railgun_mk1: {
                 id: 'railgun_mk1',
-                name: 'Rusty Railgun',
+                name: 'Training Railgun',
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔫',
-                gridShape: [[1], [1], [1], [1]],  // 1x4 Vertical
-                gridDimensions: { w: 1, h: 4 },
+                gridShape: [[1], [1], [1], [1], [1]],  // 1x5 Vertical
+                gridDimensions: { w: 1, h: 5 },
                 stats: {
-                    weight: 25,
+                    weight: 18,
                     energyDraw: 2,
-                    damage: 50
+                    damage: 25
                 },
                 constraints: {
                     validSlots: ['leftArm', 'rightArm']
                 },
                 // Battle properties
                 battle: {
-                    projectileSpeed: 50,
-                    projectileSize: 0.15,
-                    knockback: 30,
-                    recoil: 0.15,
-                    cooldown: 1500,
+                    projectileSpeed: 40,
+                    projectileSize: 0.12,
+                    knockback: 20,
+                    recoil: 0.1,
+                    cooldown: 1800,
                     color: [1, 0.9, 0.3],  // Yellow-orange
                     isProjectile: true
                 }
             },
             laser_array: {
                 id: 'laser_array',
-                name: 'ER Laser Array',
+                name: 'Medium Laser',
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '⚡',
-                gridShape: [[1, 1], [1, 1]],  // 2x2 Square
-                gridDimensions: { w: 2, h: 2 },
+                gridShape: [[1, 1]],  // 2x1 Horizontal
+                gridDimensions: { w: 2, h: 1 },
                 stats: {
-                    weight: 18,
-                    energyDraw: 3,
-                    damage: 40
+                    weight: 10,
+                    energyDraw: 2,
+                    damage: 18
                 },
                 constraints: {
                     validSlots: ['torso', 'leftArm', 'rightArm']
@@ -1695,25 +1695,25 @@
                 // Battle properties
                 battle: {
                     isBeam: true,
-                    beamDuration: 200,
-                    knockback: 8,
-                    recoil: 0.2,
-                    cooldown: 2000,
+                    beamDuration: 150,
+                    knockback: 5,
+                    recoil: 0.15,
+                    cooldown: 2200,
                     color: [0.2, 1, 0.3]  // Green
                 }
             },
             armor_plate: {
                 id: 'armor_plate',
-                name: 'Heavy Armor',
+                name: 'Basic Plating',
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '🛡️',
                 gridShape: [[1, 1], [1, 1]],  // 2x2 Square
                 gridDimensions: { w: 2, h: 2 },
                 stats: {
-                    weight: 30,
+                    weight: 28,
                     energyDraw: 0,
-                    armorBonus: 50
+                    armorBonus: 30
                 },
                 constraints: {
                     validSlots: ['torso', 'leftLeg', 'rightLeg']
@@ -1721,7 +1721,7 @@
             },
             reactor_core: {
                 id: 'reactor_core',
-                name: 'Fusion Reactor',
+                name: 'Basic Reactor',
                 type: 'REACTOR',
                 category: 'reactor',
                 icon: '⚛️',
@@ -1729,8 +1729,8 @@
                 gridDimensions: { w: 1, h: 2 },
                 stats: {
                     weight: 8,
-                    energyDraw: -5,  // Negative = provides energy
-                    heatCapacity: 25
+                    energyDraw: -3,  // Negative = provides energy
+                    heatCapacity: 15
                 },
                 constraints: {
                     validSlots: ['torso']
@@ -1738,16 +1738,16 @@
             },
             targeting_computer: {
                 id: 'targeting_computer',
-                name: 'Targeting System',
+                name: 'Basic Targeting',
                 type: 'SYSTEM',
                 category: 'system',
                 icon: '🎯',
                 gridShape: [[1]],  // 1x1 Single
                 gridDimensions: { w: 1, h: 1 },
                 stats: {
-                    weight: 5,
+                    weight: 6,
                     energyDraw: 1,
-                    accuracyBonus: 15
+                    accuracyBonus: 8
                 },
                 constraints: {
                     validSlots: ['torso', 'leftArm', 'rightArm']
@@ -1755,7 +1755,7 @@
             },
             heat_sink: {
                 id: 'heat_sink',
-                name: 'Heat Sink',
+                name: 'Basic Heat Sink',
                 type: 'COOLING',
                 category: 'cooling',
                 icon: '❄️',
@@ -1856,19 +1856,19 @@
                 icon: '🔫',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Precision', 'Rapid'],
                 nameSuffix: ['Railgun', 'Cannon', 'Driver', 'Accelerator'],
-                baseShape: [[1], [1], [1], [1]],  // Typical 4x1 vertical
+                baseShape: [[1], [1], [1], [1], [1]],  // 5x1 vertical
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 20,
-                    energyDraw: 2,
-                    damage: 35
+                    weight: 22,
+                    energyDraw: 3,
+                    damage: 45
                 },
                 baseBattle: {
-                    projectileSpeed: 45,
+                    projectileSpeed: 55,
                     projectileSize: 0.15,
-                    knockback: 25,
+                    knockback: 30,
                     recoil: 0.12,
-                    cooldown: 1400,
+                    cooldown: 1300,
                     color: [1, 0.9, 0.3],
                     isProjectile: true
                 },
@@ -1883,16 +1883,16 @@
                 baseShape: [[1, 1], [1, 1]],  // Typical 2x2 square
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 15,
+                    weight: 14,
                     energyDraw: 3,
-                    damage: 30
+                    damage: 35
                 },
                 baseBattle: {
                     isBeam: true,
-                    beamDuration: 180,
-                    knockback: 6,
+                    beamDuration: 200,
+                    knockback: 8,
                     recoil: 0.15,
-                    cooldown: 1800,
+                    cooldown: 1600,
                     color: [0.2, 1, 0.3]
                 },
                 statWeights: { damage: 0.7, cooldownReduction: 0.3 }
@@ -1906,9 +1906,9 @@
                 baseShape: [[1, 1, 1]],  // Typical 3x1 horizontal
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 22,
+                    weight: 20,
                     energyDraw: 2,
-                    damage: 45
+                    damage: 55
                 },
                 baseBattle: {
                     projectileSpeed: 30,
@@ -1930,9 +1930,9 @@
                 baseShape: [[1], [1]],  // Typical 2x1 vertical
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 12,
+                    weight: 10,
                     energyDraw: 1,
-                    damage: 18
+                    damage: 22
                 },
                 baseBattle: {
                     projectileSpeed: 60,
@@ -1956,9 +1956,9 @@
                 baseShape: [[1, 1], [1, 1]],  // Typical 2x2
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 25,
+                    weight: 22,
                     energyDraw: 0,
-                    armorBonus: 40
+                    armorBonus: 55
                 },
                 statWeights: { armor: 0.8, weight: 0.2 }
             },
@@ -2015,14 +2015,14 @@
                 type: 'SYSTEM',
                 category: 'system',
                 icon: '🎯',
-                namePrefix: ['Basic', 'Advanced', 'Precision', 'Neural', 'Quantum'],
+                namePrefix: ['Advanced', 'Precision', 'Neural', 'Quantum', 'Elite'],
                 nameSuffix: ['Targeting', 'Computer', 'System', 'Interface'],
                 baseShape: [[1]],  // 1x1
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 4,
                     energyDraw: 1,
-                    accuracyBonus: 12
+                    accuracyBonus: 15
                 },
                 statWeights: { accuracy: 1.0 }
             },
@@ -2047,14 +2047,14 @@
                 type: 'COOLING',
                 category: 'cooling',
                 icon: '❄️',
-                namePrefix: ['Basic', 'Double', 'Enhanced', 'Cryo'],
+                namePrefix: ['Double', 'Enhanced', 'Cryo', 'Advanced'],
                 nameSuffix: ['Heat Sink', 'Cooler', 'Radiator', 'Vent'],
                 baseShape: [[1]],  // 1x1
                 validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 6,
+                    weight: 5,
                     energyDraw: 0,
-                    energyReduction: 1
+                    energyReduction: 2
                 },
                 special: {
                     onPlace: 'drawCard',
@@ -2066,14 +2066,14 @@
                 type: 'COOLING',
                 category: 'cooling',
                 icon: '🌡️',
-                namePrefix: ['Standard', 'Advanced', 'Integrated', 'Active'],
+                namePrefix: ['Advanced', 'Integrated', 'Active', 'Elite'],
                 nameSuffix: ['Cooling', 'System', 'Module', 'Array'],
                 baseShape: [[1, 1]],  // 2x1 horizontal
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 12,
+                    weight: 10,
                     energyDraw: 1,
-                    energyReduction: 2
+                    energyReduction: 3
                 },
                 statWeights: { energyReduction: 0.8, weight: 0.2 }
             }

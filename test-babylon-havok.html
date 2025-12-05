@@ -2493,6 +2493,12 @@
             if (placedItem) {
                 e.preventDefault();
                 const instanceId = placedItem.dataset.instanceId;
+
+                // Check if item is locked (e.g., heat sink after placement)
+                if (lockedItems.has(instanceId)) {
+                    return;  // Cannot drag locked items
+                }
+
                 const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
                 if (equipment) {
                     const item = { ...ITEM_DATABASE[equipment.itemId], instanceId };

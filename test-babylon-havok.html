@@ -510,6 +510,38 @@
         .bench-item.cooling { border-color: #44ddff; }
         .bench-item.cooling .item-icon { color: #44ddff; }
 
+        /* Rotate button on bench items */
+        .bench-item .rotate-btn {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            width: 22px;
+            height: 22px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.15s, visibility 0.15s, transform 0.15s;
+            z-index: 50;
+        }
+        .bench-item:hover .rotate-btn {
+            opacity: 1;
+            visibility: visible;
+        }
+        .bench-item .rotate-btn:hover {
+            transform: scale(1.2);
+            background: rgba(0, 255, 136, 0.3);
+        }
+        .bench-item .rotate-btn:active {
+            transform: scale(0.9);
+        }
+
         /* Bench item tooltip */
         .bench-item .bench-tooltip {
             position: absolute;
@@ -3574,6 +3606,29 @@
             discardPile.push(itemId);
         }
 
+        // Rotate an item's gridShape 90 degrees clockwise
+        function rotateItemShape(item) {
+            const shape = item.gridShape;
+            const rows = shape.length;
+            const cols = shape[0].length;
+
+            // Create new rotated shape (swap dimensions)
+            const newShape = [];
+            for (let x = 0; x < cols; x++) {
+                newShape[x] = [];
+                for (let y = rows - 1; y >= 0; y--) {
+                    newShape[x][rows - 1 - y] = shape[y][x];
+                }
+            }
+
+            // Update item
+            item.gridShape = newShape;
+            item.gridDimensions = { w: rows, h: cols };  // Swap dimensions
+
+            // Re-render bench to show updated shape
+            renderBench();
+        }
+
         // ============================================
         // DRAG & DROP SYSTEM
         // ============================================
@@ -4077,6 +4132,7 @@
 
                 el.innerHTML = `
                     ${rarityBadge}
+                    <div class="rotate-btn" title="Rotate">↻</div>
                     <span class="item-icon">${item.icon}</span>
                     <span class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</span>
                     ${shapeHTML}
@@ -4088,6 +4144,19 @@
                         <div class="tooltip-slots">Fits: ${slotsStr}</div>
                     </div>
                 `;
+
+                // Add click handler for rotate button
+                const rotateBtn = el.querySelector('.rotate-btn');
+                rotateBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();  // Prevent drag from starting
+                    rotateItemShape(item);
+                });
+                rotateBtn.addEventListener('touchstart', (e) => {
+                    e.stopPropagation();  // Prevent drag from starting on touch
+                    e.preventDefault();
+                    rotateItemShape(item);
+                });
+
                 bench.appendChild(el);
             });
         }

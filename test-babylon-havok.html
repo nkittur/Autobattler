@@ -1776,6 +1776,681 @@
             }
         };
 
+        // ============================================
+        // COMPONENT GENERATION SYSTEM
+        // ============================================
+
+        // Budget Exchange Rates: 1 square of "currency" converts to these values
+        const COMPONENT_GENERATION = {
+            // Base exchange rates (1 square = X)
+            exchangeRates: {
+                damage: 5,           // 1 square = 5 damage
+                weight: -10,         // 1 square = -10 weight (lighter is better, costs budget)
+                energyCost: -10,     // 1 square = -10 energy cost (cheaper is better)
+                energyProvided: 10,  // 1 square = 10 energy provided
+                armor: 8,            // 1 square = 8 armor
+                accuracy: 4,         // 1 square = 4% accuracy
+                cooldownReduction: -100,  // 1 square = -100ms cooldown
+                knockback: 5,        // 1 square = 5 knockback
+                projectileSpeed: 8,  // 1 square = 8 projectile speed
+                heatCapacity: 8,     // 1 square = 8 heat capacity
+                energyReduction: 2   // 1 square = 2 energy reduction (for heat sinks)
+            },
+
+            // Resource conversion rates (for trade-offs within same item)
+            conversionRates: {
+                energyToDamage: 2,      // 1 energy cost = 2 damage
+                weightToDamage: 0.5,    // 1 weight = 0.5 damage
+                cooldownToDamage: 0.05, // 1ms cooldown = 0.05 damage
+                accuracyToDamage: 1.5,  // 1% accuracy = 1.5 damage
+                armorToWeight: 0.6      // 1 armor = 0.6 weight
+            },
+
+            // Shape bonuses: longer shapes get bonus budget squares
+            // This rewards specialized narrow/long items
+            lengthBonuses: {
+                4: 1,   // 4 length = +1 square bonus
+                5: 3,   // 5 length = +3 squares bonus
+                6: 6    // 6 length = +6 squares bonus
+            },
+
+            // Aspect ratio bonuses (max dimension / min dimension)
+            aspectBonuses: {
+                3: 0.5,   // 3:1 ratio = +0.5 squares
+                4: 1,     // 4:1 ratio = +1 square
+                5: 2,     // 5:1 ratio = +2 squares
+                6: 3      // 6:1 ratio = +3 squares
+            },
+
+            // Rarity multipliers for budget
+            rarityMultipliers: {
+                common: 1.0,
+                uncommon: 1.15,
+                rare: 1.35,
+                epic: 1.6,
+                legendary: 2.0
+            },
+
+            // Rarity colors for display
+            rarityColors: {
+                common: '#aaaaaa',
+                uncommon: '#00ff88',
+                rare: '#4488ff',
+                epic: '#aa44ff',
+                legendary: '#ffaa00'
+            },
+
+            // Level bonus: each level adds this much budget
+            levelBudgetBonus: 0.5,
+
+            // Budget variance within same level/rarity (percentage)
+            budgetVariance: 0.15   // +/- 15% variance
+        };
+
+        // Base item templates - define the "class" of item with typical shape/stats
+        const ITEM_TEMPLATES = {
+            // WEAPONS
+            railgun: {
+                type: 'WEAPON',
+                category: 'weapon',
+                icon: '🔫',
+                namePrefix: ['Light', 'Standard', 'Heavy', 'Precision', 'Rapid'],
+                nameSuffix: ['Railgun', 'Cannon', 'Driver', 'Accelerator'],
+                baseShape: [[1], [1], [1], [1]],  // Typical 4x1 vertical
+                validSlots: ['leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 20,
+                    energyDraw: 12,
+                    damage: 35
+                },
+                baseBattle: {
+                    projectileSpeed: 45,
+                    projectileSize: 0.15,
+                    knockback: 25,
+                    recoil: 0.12,
+                    cooldown: 1400,
+                    color: [1, 0.9, 0.3],
+                    isProjectile: true
+                },
+                statWeights: { damage: 0.6, knockback: 0.2, projectileSpeed: 0.2 }
+            },
+            laser: {
+                type: 'WEAPON',
+                category: 'weapon',
+                icon: '⚡',
+                namePrefix: ['ER', 'Pulse', 'Focused', 'Burst', 'Heavy'],
+                nameSuffix: ['Laser', 'Beam', 'Array', 'Emitter'],
+                baseShape: [[1, 1], [1, 1]],  // Typical 2x2 square
+                validSlots: ['torso', 'leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 15,
+                    energyDraw: 18,
+                    damage: 30
+                },
+                baseBattle: {
+                    isBeam: true,
+                    beamDuration: 180,
+                    knockback: 6,
+                    recoil: 0.15,
+                    cooldown: 1800,
+                    color: [0.2, 1, 0.3]
+                },
+                statWeights: { damage: 0.7, cooldownReduction: 0.3 }
+            },
+            missile: {
+                type: 'WEAPON',
+                category: 'weapon',
+                icon: '🚀',
+                namePrefix: ['Light', 'Cluster', 'Heavy', 'Guided', 'Swarm'],
+                nameSuffix: ['Missile', 'Rocket', 'Launcher', 'Pod'],
+                baseShape: [[1, 1, 1]],  // Typical 3x1 horizontal
+                validSlots: ['torso', 'leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 22,
+                    energyDraw: 10,
+                    damage: 45
+                },
+                baseBattle: {
+                    projectileSpeed: 30,
+                    projectileSize: 0.2,
+                    knockback: 35,
+                    recoil: 0.2,
+                    cooldown: 2200,
+                    color: [1, 0.4, 0.2],
+                    isProjectile: true
+                },
+                statWeights: { damage: 0.5, knockback: 0.4, cooldownReduction: 0.1 }
+            },
+            machinegun: {
+                type: 'WEAPON',
+                category: 'weapon',
+                icon: '🔥',
+                namePrefix: ['Rapid', 'Twin', 'Auto', 'Rotary', 'Ultra'],
+                nameSuffix: ['Cannon', 'Gun', 'Repeater', 'Vulcan'],
+                baseShape: [[1], [1]],  // Typical 2x1 vertical
+                validSlots: ['leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 12,
+                    energyDraw: 8,
+                    damage: 18
+                },
+                baseBattle: {
+                    projectileSpeed: 60,
+                    projectileSize: 0.08,
+                    knockback: 8,
+                    recoil: 0.05,
+                    cooldown: 400,
+                    color: [1, 1, 0.5],
+                    isProjectile: true
+                },
+                statWeights: { damage: 0.4, cooldownReduction: 0.5, projectileSpeed: 0.1 }
+            },
+
+            // ARMOR
+            armor: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🛡️',
+                namePrefix: ['Light', 'Standard', 'Heavy', 'Reinforced', 'Composite'],
+                nameSuffix: ['Plating', 'Armor', 'Shield', 'Carapace'],
+                baseShape: [[1, 1], [1, 1]],  // Typical 2x2
+                validSlots: ['torso', 'leftLeg', 'rightLeg'],
+                baseStats: {
+                    weight: 25,
+                    energyDraw: 0,
+                    armorBonus: 40
+                },
+                statWeights: { armor: 0.8, weight: 0.2 }
+            },
+            reactive_armor: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '💥',
+                namePrefix: ['Reactive', 'Ablative', 'Hardened', 'Explosive'],
+                nameSuffix: ['Plates', 'Panels', 'Coating', 'Layer'],
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 wide
+                validSlots: ['torso'],
+                baseStats: {
+                    weight: 35,
+                    energyDraw: 5,
+                    armorBonus: 65
+                },
+                statWeights: { armor: 0.9, weight: 0.1 }
+            },
+
+            // REACTORS
+            reactor: {
+                type: 'REACTOR',
+                category: 'reactor',
+                icon: '⚛️',
+                namePrefix: ['Compact', 'Standard', 'High-Output', 'Fusion', 'Plasma'],
+                nameSuffix: ['Reactor', 'Core', 'Generator', 'Cell'],
+                baseShape: [[1], [1]],  // Typical 1x2
+                validSlots: ['torso'],
+                baseStats: {
+                    weight: 18,
+                    energyDraw: -25,  // Provides energy
+                    heatCapacity: 20
+                },
+                statWeights: { energyProvided: 0.8, heatCapacity: 0.2 }
+            },
+            power_cell: {
+                type: 'REACTOR',
+                category: 'reactor',
+                icon: '🔋',
+                namePrefix: ['Emergency', 'Backup', 'Auxiliary', 'Micro'],
+                nameSuffix: ['Cell', 'Battery', 'Pack', 'Unit'],
+                baseShape: [[1]],  // 1x1 small
+                validSlots: ['torso', 'leftLeg', 'rightLeg'],
+                baseStats: {
+                    weight: 8,
+                    energyDraw: -12,
+                    heatCapacity: 10
+                },
+                statWeights: { energyProvided: 0.9, weight: 0.1 }
+            },
+
+            // SYSTEMS
+            targeting: {
+                type: 'SYSTEM',
+                category: 'system',
+                icon: '🎯',
+                namePrefix: ['Basic', 'Advanced', 'Precision', 'Neural', 'Quantum'],
+                nameSuffix: ['Targeting', 'Computer', 'System', 'Interface'],
+                baseShape: [[1]],  // 1x1
+                validSlots: ['torso', 'leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 4,
+                    energyDraw: 6,
+                    accuracyBonus: 12
+                },
+                statWeights: { accuracy: 1.0 }
+            },
+            gyro: {
+                type: 'SYSTEM',
+                category: 'system',
+                icon: '🔄',
+                namePrefix: ['Light', 'Standard', 'Heavy', 'Stabilized'],
+                nameSuffix: ['Gyro', 'Stabilizer', 'Balance Unit'],
+                baseShape: [[1], [1]],  // 1x2
+                validSlots: ['torso', 'leftLeg', 'rightLeg'],
+                baseStats: {
+                    weight: 10,
+                    energyDraw: 4,
+                    accuracyBonus: 8
+                },
+                statWeights: { accuracy: 0.7, weight: 0.3 }
+            },
+
+            // COOLING
+            heat_sink: {
+                type: 'COOLING',
+                category: 'cooling',
+                icon: '❄️',
+                namePrefix: ['Basic', 'Double', 'Enhanced', 'Cryo'],
+                nameSuffix: ['Heat Sink', 'Cooler', 'Radiator', 'Vent'],
+                baseShape: [[1]],  // 1x1
+                validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
+                baseStats: {
+                    weight: 6,
+                    energyDraw: 0,
+                    energyReduction: 4
+                },
+                special: {
+                    onPlace: 'drawCard',
+                    locksOnPlace: true
+                },
+                statWeights: { energyReduction: 1.0 }
+            },
+            cooling_system: {
+                type: 'COOLING',
+                category: 'cooling',
+                icon: '🌡️',
+                namePrefix: ['Standard', 'Advanced', 'Integrated', 'Active'],
+                nameSuffix: ['Cooling', 'System', 'Module', 'Array'],
+                baseShape: [[1, 1]],  // 2x1 horizontal
+                validSlots: ['torso', 'leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 12,
+                    energyDraw: 3,
+                    energyReduction: 8
+                },
+                statWeights: { energyReduction: 0.8, weight: 0.2 }
+            }
+        };
+
+        // Variant modifications that can be applied to generated items
+        const ITEM_VARIANTS = {
+            // Shape variants
+            extended: {
+                name: 'Extended',
+                shapeModifier: (shape) => {
+                    // Add one row
+                    const newShape = [...shape.map(row => [...row])];
+                    newShape.push(new Array(shape[0].length).fill(1));
+                    return newShape;
+                },
+                budgetCost: -1  // Costs 1 budget square (larger = more space used)
+            },
+            compact: {
+                name: 'Compact',
+                shapeModifier: (shape) => {
+                    // Remove one row if possible
+                    if (shape.length > 1) {
+                        return shape.slice(0, -1).map(row => [...row]);
+                    }
+                    return shape.map(row => [...row]);
+                },
+                budgetCost: 1  // Gives 1 budget square (smaller = bonus)
+            },
+            widened: {
+                name: 'Wide',
+                shapeModifier: (shape) => {
+                    // Add one column
+                    return shape.map(row => [...row, 1]);
+                },
+                budgetCost: -1
+            },
+
+            // Stat variants
+            overcharged: {
+                name: 'Overcharged',
+                statModifier: (stats) => ({
+                    ...stats,
+                    damage: Math.round((stats.damage || 0) * 1.25),
+                    energyDraw: Math.round((stats.energyDraw || 0) * 1.4)
+                }),
+                budgetCost: 0  // Trade-off, no net budget change
+            },
+            lightweight: {
+                name: 'Lightweight',
+                statModifier: (stats) => ({
+                    ...stats,
+                    weight: Math.round((stats.weight || 0) * 0.7),
+                    armorBonus: Math.round((stats.armorBonus || 0) * 0.85)
+                }),
+                budgetCost: 0.5
+            },
+            armored: {
+                name: 'Armored',
+                statModifier: (stats) => ({
+                    ...stats,
+                    weight: Math.round((stats.weight || 0) * 1.3),
+                    armorBonus: (stats.armorBonus || 0) + 15
+                }),
+                budgetCost: 0
+            },
+            efficient: {
+                name: 'Efficient',
+                statModifier: (stats) => ({
+                    ...stats,
+                    energyDraw: Math.round((stats.energyDraw || 0) * 0.75)
+                }),
+                budgetCost: -0.5
+            },
+            rapid: {
+                name: 'Rapid',
+                battleModifier: (battle) => ({
+                    ...battle,
+                    cooldown: Math.round((battle.cooldown || 1000) * 0.8)
+                }),
+                budgetCost: -1
+            },
+            heavy: {
+                name: 'Heavy',
+                statModifier: (stats) => ({
+                    ...stats,
+                    damage: Math.round((stats.damage || 0) * 1.15),
+                    weight: Math.round((stats.weight || 0) * 1.25)
+                }),
+                budgetCost: 0
+            }
+        };
+
+        // Track enemy level progression
+        let currentEnemyLevel = 1;
+
+        // Generate a unique ID for generated items
+        let generatedItemCounter = 0;
+        function generateItemId(templateType, rarity, level) {
+            generatedItemCounter++;
+            return `gen_${templateType}_${rarity}_l${level}_${generatedItemCounter}_${Date.now()}`;
+        }
+
+        // Calculate budget for a shape based on area and shape bonuses
+        function calculateShapeBudget(shape) {
+            let area = 0;
+            let maxLength = shape.length;
+            let maxWidth = shape[0] ? shape[0].length : 0;
+
+            // Count actual squares in shape
+            for (let row of shape) {
+                for (let cell of row) {
+                    if (cell === 1) area++;
+                }
+            }
+
+            // Calculate length bonus
+            let lengthBonus = 0;
+            const maxDim = Math.max(maxLength, maxWidth);
+            for (let len in COMPONENT_GENERATION.lengthBonuses) {
+                if (maxDim >= parseInt(len)) {
+                    lengthBonus = COMPONENT_GENERATION.lengthBonuses[len];
+                }
+            }
+
+            // Calculate aspect ratio bonus
+            let aspectBonus = 0;
+            const minDim = Math.min(maxLength, maxWidth);
+            if (minDim > 0) {
+                const aspectRatio = Math.floor(maxDim / minDim);
+                for (let ratio in COMPONENT_GENERATION.aspectBonuses) {
+                    if (aspectRatio >= parseInt(ratio)) {
+                        aspectBonus = COMPONENT_GENERATION.aspectBonuses[ratio];
+                    }
+                }
+            }
+
+            return {
+                area,
+                lengthBonus,
+                aspectBonus,
+                total: area + lengthBonus + aspectBonus
+            };
+        }
+
+        // Generate a random component based on template, level, and rarity
+        function generateComponent(templateType, level = 1, rarity = 'common', options = {}) {
+            const template = ITEM_TEMPLATES[templateType];
+            if (!template) {
+                console.error(`Unknown template type: ${templateType}`);
+                return null;
+            }
+
+            // Clone base shape
+            let shape = template.baseShape.map(row => [...row]);
+
+            // Apply random variant (30% chance)
+            let appliedVariants = [];
+            const variantChance = options.variantChance !== undefined ? options.variantChance : 0.3;
+
+            if (Math.random() < variantChance) {
+                const variantKeys = Object.keys(ITEM_VARIANTS);
+                const variantKey = variantKeys[Math.floor(Math.random() * variantKeys.length)];
+                const variant = ITEM_VARIANTS[variantKey];
+
+                if (variant.shapeModifier) {
+                    shape = variant.shapeModifier(shape);
+                }
+                appliedVariants.push(variantKey);
+            }
+
+            // Calculate budget from shape
+            const shapeBudget = calculateShapeBudget(shape);
+
+            // Calculate total budget with rarity and level multipliers
+            const rarityMult = COMPONENT_GENERATION.rarityMultipliers[rarity] || 1.0;
+            const levelBonus = (level - 1) * COMPONENT_GENERATION.levelBudgetBonus;
+
+            // Apply variance (+/- budgetVariance%)
+            const variance = 1 + (Math.random() * 2 - 1) * COMPONENT_GENERATION.budgetVariance;
+
+            let totalBudget = (shapeBudget.total + levelBonus) * rarityMult * variance;
+
+            // Subtract variant costs
+            for (let variantKey of appliedVariants) {
+                const variant = ITEM_VARIANTS[variantKey];
+                totalBudget += variant.budgetCost || 0;
+            }
+
+            // Clone base stats
+            let stats = { ...template.baseStats };
+            let battle = template.baseBattle ? { ...template.baseBattle } : null;
+
+            // Apply stat variants
+            for (let variantKey of appliedVariants) {
+                const variant = ITEM_VARIANTS[variantKey];
+                if (variant.statModifier) {
+                    stats = variant.statModifier(stats);
+                }
+                if (variant.battleModifier && battle) {
+                    battle = variant.battleModifier(battle);
+                }
+            }
+
+            // Distribute remaining budget based on stat weights
+            const statWeights = template.statWeights || {};
+            const exchangeRates = COMPONENT_GENERATION.exchangeRates;
+
+            // Allocate budget to different stats based on weights
+            const budgetToSpend = Math.max(0, totalBudget - shapeBudget.area);  // Budget above base area
+
+            for (let stat in statWeights) {
+                const weight = statWeights[stat];
+                const budgetForStat = budgetToSpend * weight;
+
+                switch(stat) {
+                    case 'damage':
+                        stats.damage = (stats.damage || 0) + Math.round(budgetForStat * exchangeRates.damage);
+                        break;
+                    case 'armor':
+                        stats.armorBonus = (stats.armorBonus || 0) + Math.round(budgetForStat * exchangeRates.armor);
+                        break;
+                    case 'accuracy':
+                        stats.accuracyBonus = (stats.accuracyBonus || 0) + Math.round(budgetForStat * exchangeRates.accuracy);
+                        break;
+                    case 'energyProvided':
+                        stats.energyDraw = (stats.energyDraw || 0) - Math.round(budgetForStat * exchangeRates.energyProvided);
+                        break;
+                    case 'weight':
+                        stats.weight = Math.max(1, (stats.weight || 0) - Math.round(budgetForStat * Math.abs(exchangeRates.weight) * 0.3));
+                        break;
+                    case 'knockback':
+                        if (battle) {
+                            battle.knockback = (battle.knockback || 0) + Math.round(budgetForStat * exchangeRates.knockback);
+                        }
+                        break;
+                    case 'projectileSpeed':
+                        if (battle) {
+                            battle.projectileSpeed = (battle.projectileSpeed || 0) + Math.round(budgetForStat * exchangeRates.projectileSpeed);
+                        }
+                        break;
+                    case 'cooldownReduction':
+                        if (battle) {
+                            battle.cooldown = Math.max(200, (battle.cooldown || 1000) + Math.round(budgetForStat * exchangeRates.cooldownReduction));
+                        }
+                        break;
+                    case 'heatCapacity':
+                        stats.heatCapacity = (stats.heatCapacity || 0) + Math.round(budgetForStat * exchangeRates.heatCapacity);
+                        break;
+                    case 'energyReduction':
+                        stats.energyReduction = (stats.energyReduction || 0) + Math.round(budgetForStat * exchangeRates.energyReduction);
+                        break;
+                }
+            }
+
+            // Generate name
+            const prefix = template.namePrefix[Math.floor(Math.random() * template.namePrefix.length)];
+            const suffix = template.nameSuffix[Math.floor(Math.random() * template.nameSuffix.length)];
+            let name = `${prefix} ${suffix}`;
+
+            // Add variant names
+            for (let variantKey of appliedVariants) {
+                const variant = ITEM_VARIANTS[variantKey];
+                if (!name.includes(variant.name)) {
+                    name = `${variant.name} ${name}`;
+                }
+            }
+
+            // Add level indicator for higher levels
+            if (level > 1) {
+                name = `${name} Mk.${level}`;
+            }
+
+            // Generate unique ID
+            const id = generateItemId(templateType, rarity, level);
+
+            // Calculate grid dimensions
+            const gridDimensions = {
+                w: shape[0] ? shape[0].length : 1,
+                h: shape.length
+            };
+
+            // Build the complete item
+            const generatedItem = {
+                id,
+                name,
+                type: template.type,
+                category: template.category,
+                icon: template.icon,
+                gridShape: shape,
+                gridDimensions,
+                stats,
+                constraints: {
+                    validSlots: [...template.validSlots]
+                },
+                // Metadata for display
+                rarity,
+                level,
+                isGenerated: true,
+                templateType,
+                appliedVariants,
+                budgetInfo: {
+                    shapeBudget: shapeBudget.total,
+                    totalBudget,
+                    variance: variance
+                }
+            };
+
+            // Add battle properties if weapon
+            if (battle) {
+                generatedItem.battle = battle;
+            }
+
+            // Add special properties if they exist
+            if (template.special) {
+                generatedItem.special = { ...template.special };
+            }
+
+            return generatedItem;
+        }
+
+        // Generate random rarity based on probabilities
+        function getRandomRarity(enemyLevel = 1) {
+            // Higher enemy levels increase chance of better rarity
+            const levelBonus = (enemyLevel - 1) * 0.02;  // 2% better per level
+
+            const rand = Math.random() - levelBonus;
+
+            if (rand < 0.02) return 'legendary';      // 2% base
+            if (rand < 0.08) return 'epic';           // 6% base
+            if (rand < 0.22) return 'rare';           // 14% base
+            if (rand < 0.45) return 'uncommon';       // 23% base
+            return 'common';                           // 55% base
+        }
+
+        // Generate salvage components after battle
+        function generateSalvageOptions(result, enemyLevel = 1) {
+            const options = [];
+
+            // Determine number of options (0-3)
+            // Victory: 1-3 options, Defeat: 0-1 options
+            let numOptions;
+            if (result === 'victory') {
+                numOptions = 1 + Math.floor(Math.random() * 3);  // 1-3
+            } else {
+                numOptions = Math.random() < 0.3 ? 1 : 0;  // 30% chance of 1
+            }
+
+            // Available templates
+            const templateKeys = Object.keys(ITEM_TEMPLATES);
+
+            for (let i = 0; i < numOptions; i++) {
+                // Pick random template
+                const templateType = templateKeys[Math.floor(Math.random() * templateKeys.length)];
+
+                // Generate rarity
+                const rarity = getRandomRarity(enemyLevel);
+
+                // Item level based on enemy level with some variance
+                const level = Math.max(1, enemyLevel + Math.floor(Math.random() * 3) - 1);
+
+                // Generate the component
+                const component = generateComponent(templateType, level, rarity);
+                if (component) {
+                    options.push(component);
+                }
+            }
+
+            return options;
+        }
+
+        // Add a generated component to the ITEM_DATABASE so it can be used
+        function registerGeneratedComponent(component) {
+            ITEM_DATABASE[component.id] = component;
+            return component.id;
+        }
+
         // Mission definitions with enemy mech configurations
         const MISSIONS = {
             patrol: {
@@ -3125,6 +3800,17 @@
                 el.className = `bench-item ${item.category}`;
                 el.dataset.instanceId = item.instanceId;
 
+                // Get rarity color for generated items
+                const isGenerated = item.isGenerated;
+                const rarityColor = isGenerated ? (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+                const rarityName = isGenerated ? (item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)) : '';
+
+                // Apply rarity border color
+                if (isGenerated) {
+                    el.style.borderColor = rarityColor;
+                    el.style.boxShadow = `0 0 8px ${rarityColor}40`;
+                }
+
                 // Build shape preview HTML
                 const shape = item.gridShape;
                 const w = shape[0].length;
@@ -3133,7 +3819,8 @@
                 for (let y = 0; y < h; y++) {
                     for (let x = 0; x < w; x++) {
                         const filled = shape[y][x] === 1;
-                        shapeHTML += `<div class="shape-cell${filled ? '' : ' empty'}"></div>`;
+                        const cellStyle = filled && isGenerated ? `background: ${rarityColor};` : '';
+                        shapeHTML += `<div class="shape-cell${filled ? '' : ' empty'}" style="${cellStyle}"></div>`;
                     }
                 }
                 shapeHTML += '</div>';
@@ -3160,12 +3847,21 @@
                 const validSlots = item.constraints.validSlots || ['all'];
                 const slotsStr = validSlots.map(s => s.replace(/([A-Z])/g, ' $1').trim()).join(', ');
 
+                // Rarity/level badge for generated items
+                const rarityBadge = isGenerated ? `
+                    <div style="position: absolute; top: -6px; right: -6px; background: ${rarityColor}; color: #000; font-size: 8px; padding: 2px 4px; border-radius: 3px; font-weight: bold;">
+                        L${item.level}
+                    </div>
+                ` : '';
+
                 el.innerHTML = `
+                    ${rarityBadge}
                     <span class="item-icon">${item.icon}</span>
-                    <span class="item-name">${item.name}</span>
+                    <span class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</span>
                     ${shapeHTML}
                     <div class="bench-tooltip">
-                        <div class="tooltip-name">${item.icon} ${item.name}</div>
+                        <div class="tooltip-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.icon} ${item.name}</div>
+                        ${isGenerated ? `<div style="font-size: 10px; color: ${rarityColor}; margin-bottom: 5px;">${rarityName} - Level ${item.level}</div>` : ''}
                         <div class="tooltip-stats">${statsHTML}</div>
                         ${specialHTML ? `<div class="tooltip-special">${specialHTML}</div>` : ''}
                         <div class="tooltip-slots">Fits: ${slotsStr}</div>
@@ -3435,6 +4131,11 @@
                 placedEl.className = `placed-item ${item.category}${isLocked ? ' locked' : ''}`;
                 placedEl.dataset.instanceId = eq.instanceId;
 
+                // Get rarity color for generated items
+                const isGenerated = item.isGenerated;
+                const rarityColor = isGenerated ? (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : null;
+                const rarityName = isGenerated ? (item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)) : '';
+
                 const shape = item.gridShape;
                 const w = shape[0].length;
                 const h = shape.length;
@@ -3443,12 +4144,16 @@
                 placedEl.style.left = (4 + eq.position.x * cellSpacing) + 'px';
                 placedEl.style.top = (4 + eq.position.y * cellSpacing) + 'px';
 
-                // Add grid cells
+                // Add grid cells with rarity color
                 for (let dy = 0; dy < h; dy++) {
                     for (let dx = 0; dx < w; dx++) {
                         if (shape[dy][dx] === 1) {
                             const cell = document.createElement('div');
                             cell.className = 'placed-cell';
+                            if (isGenerated && rarityColor) {
+                                cell.style.borderColor = rarityColor;
+                                cell.style.boxShadow = `inset 0 0 8px ${rarityColor}40`;
+                            }
                             placedEl.appendChild(cell);
                         }
                     }
@@ -3459,6 +4164,25 @@
                 iconOverlay.className = 'item-icon-overlay';
                 iconOverlay.textContent = item.icon;
                 placedEl.appendChild(iconOverlay);
+
+                // Add level badge for generated items
+                if (isGenerated) {
+                    const levelBadge = document.createElement('div');
+                    levelBadge.style.cssText = `
+                        position: absolute;
+                        top: -6px;
+                        right: -6px;
+                        background: ${rarityColor};
+                        color: #000;
+                        font-size: 8px;
+                        padding: 2px 4px;
+                        border-radius: 3px;
+                        font-weight: bold;
+                        z-index: 5;
+                    `;
+                    levelBadge.textContent = `L${item.level}`;
+                    placedEl.appendChild(levelBadge);
+                }
 
                 // Add tooltip with item details
                 const tooltip = document.createElement('div');
@@ -3472,8 +4196,10 @@
                 if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
                 if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
                 const hintText = isLocked ? 'Locked this round' : 'Click to remove';
+                const rarityInfo = isGenerated ? `<div style="font-size: 10px; color: ${rarityColor}; margin-bottom: 3px;">${rarityName} - Level ${item.level}</div>` : '';
                 tooltip.innerHTML = `
-                    <div class="tooltip-name">${item.icon} ${item.name}</div>
+                    <div class="tooltip-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.icon} ${item.name}</div>
+                    ${rarityInfo}
                     <div class="tooltip-stats">${statsHTML}</div>
                     <div class="tooltip-hint">${hintText}</div>
                 `;
@@ -3734,11 +4460,21 @@
                 const item = ITEM_DATABASE[itemId];
                 if (!item) continue;
 
+                // Get rarity styling for generated items
+                const isGenerated = item.isGenerated;
+                const rarityColor = isGenerated ? (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+                const rarityName = isGenerated ? (item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)) : '';
+
                 const cardEl = document.createElement('div');
                 cardEl.className = 'pile-card';
+                if (isGenerated) {
+                    cardEl.style.borderColor = rarityColor;
+                    cardEl.style.boxShadow = `0 0 8px ${rarityColor}40`;
+                }
                 cardEl.innerHTML = `
                     <div class="card-icon">${item.icon}</div>
-                    <div class="card-name">${item.name}</div>
+                    <div class="card-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
+                    ${isGenerated ? `<div style="font-size: 9px; color: ${rarityColor};">${rarityName} L${item.level}</div>` : ''}
                     ${count > 1 ? `<div class="card-count" style="font-size: 11px; color: #ffcc00;">×${count}</div>` : ''}
                 `;
                 cardsContainer.appendChild(cardEl);
@@ -4119,11 +4855,59 @@
         });
 
         // Show salvage screen with rewards
+        // Build HTML for component stats display
+        function buildComponentStatsHTML(component) {
+            const stats = component.stats || {};
+            const battle = component.battle || {};
+            let statsLines = [];
+
+            // Format stat values
+            if (stats.damage) statsLines.push(`DMG: ${stats.damage}`);
+            if (stats.armorBonus) statsLines.push(`ARM: +${stats.armorBonus}`);
+            if (stats.accuracyBonus) statsLines.push(`ACC: +${stats.accuracyBonus}%`);
+            if (stats.weight) statsLines.push(`WT: ${stats.weight}`);
+            if (stats.energyDraw > 0) statsLines.push(`EN: ${stats.energyDraw}`);
+            if (stats.energyDraw < 0) statsLines.push(`EN: +${Math.abs(stats.energyDraw)}`);
+            if (stats.energyReduction) statsLines.push(`COOL: -${stats.energyReduction}`);
+            if (stats.heatCapacity) statsLines.push(`HEAT: ${stats.heatCapacity}`);
+            if (battle.cooldown) statsLines.push(`CD: ${battle.cooldown}ms`);
+            if (battle.knockback) statsLines.push(`KB: ${battle.knockback}`);
+
+            return statsLines.join(' | ');
+        }
+
+        // Build shape preview HTML for component
+        function buildShapePreviewHTML(component) {
+            const shape = component.gridShape;
+            const rarityColor = COMPONENT_GENERATION.rarityColors[component.rarity] || '#aaa';
+            let html = '<div style="display: inline-grid; gap: 1px; margin-top: 5px;">';
+
+            for (let row of shape) {
+                html += '<div style="display: flex; gap: 1px;">';
+                for (let cell of row) {
+                    if (cell === 1) {
+                        html += `<div style="width: 12px; height: 12px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3);"></div>`;
+                    } else {
+                        html += '<div style="width: 12px; height: 12px;"></div>';
+                    }
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
         function showSalvageScreen(result, rewards) {
             // Hide battle iframe
             const battleFrame = document.getElementById('battleFrame');
             battleFrame.style.display = 'none';
             battleFrame.src = '';
+
+            // Generate salvage options using the new system
+            const salvageOptions = generateSalvageOptions(result, currentEnemyLevel);
+
+            // Track selected component
+            let selectedComponent = null;
 
             // Create salvage overlay
             const overlay = document.createElement('div');
@@ -4138,80 +4922,218 @@
                 justify-content: center;
                 z-index: 1000;
                 font-family: 'Courier New', monospace;
+                overflow-y: auto;
+                padding: 20px;
             `;
 
             const resultColor = result === 'victory' ? '#00ff88' : '#ff4444';
             const resultText = result === 'victory' ? 'MISSION COMPLETE' : 'MISSION FAILED';
 
-            let componentsHTML = '';
-            if (rewards.components && rewards.components.length > 0) {
-                componentsHTML = `
-                    <div style="margin-top: 20px; padding: 15px; background: rgba(0, 255, 136, 0.1); border: 1px solid #00ff88; border-radius: 8px;">
-                        <div style="font-size: 14px; color: #00aa66; margin-bottom: 10px;">NEW COMPONENT SALVAGED:</div>
-                        ${rewards.components.map(id => {
-                            const item = ITEM_DATABASE[id];
-                            return `<div style="font-size: 18px; color: #00ff88;">${item ? item.icon + ' ' + item.name : id}</div>`;
-                        }).join('')}
+            // Build salvage options HTML
+            let salvageHTML = '';
+            if (salvageOptions.length > 0) {
+                salvageHTML = `
+                    <div style="margin-top: 25px; width: 100%; max-width: 800px;">
+                        <div style="font-size: 16px; color: #00aa66; margin-bottom: 15px; text-align: center; letter-spacing: 2px;">
+                            SALVAGEABLE COMPONENTS (Select 0 or 1):
+                        </div>
+                        <div id="salvageOptionsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                            ${salvageOptions.map((comp, index) => {
+                                const rarityColor = COMPONENT_GENERATION.rarityColors[comp.rarity] || '#aaa';
+                                const rarityName = comp.rarity.charAt(0).toUpperCase() + comp.rarity.slice(1);
+                                const statsText = buildComponentStatsHTML(comp);
+                                const shapePreview = buildShapePreviewHTML(comp);
+
+                                return `
+                                    <div class="salvage-option" data-index="${index}" style="
+                                        background: rgba(0, 0, 0, 0.5);
+                                        border: 2px solid ${rarityColor};
+                                        border-radius: 8px;
+                                        padding: 15px;
+                                        width: 220px;
+                                        cursor: pointer;
+                                        transition: all 0.2s;
+                                        position: relative;
+                                    ">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                            <div style="font-size: 24px;">${comp.icon}</div>
+                                            <div style="text-align: right;">
+                                                <div style="font-size: 10px; color: ${rarityColor}; text-transform: uppercase; letter-spacing: 1px;">${rarityName}</div>
+                                                <div style="font-size: 10px; color: #666;">Lv.${comp.level}</div>
+                                            </div>
+                                        </div>
+                                        <div style="font-size: 14px; color: ${rarityColor}; margin: 8px 0; font-weight: bold; line-height: 1.2;">
+                                            ${comp.name}
+                                        </div>
+                                        <div style="font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 5px;">
+                                            ${comp.type}
+                                        </div>
+                                        <div style="font-size: 11px; color: #aaa; line-height: 1.4;">
+                                            ${statsText}
+                                        </div>
+                                        <div style="display: flex; justify-content: center; margin-top: 8px;">
+                                            ${shapePreview}
+                                        </div>
+                                        <div class="selection-indicator" style="
+                                            position: absolute;
+                                            top: -8px; right: -8px;
+                                            width: 24px; height: 24px;
+                                            background: #00ff88;
+                                            border-radius: 50%;
+                                            display: none;
+                                            align-items: center;
+                                            justify-content: center;
+                                            font-size: 14px;
+                                            color: #000;
+                                            font-weight: bold;
+                                        ">✓</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                salvageHTML = `
+                    <div style="margin-top: 25px; color: #666; font-style: italic;">
+                        No salvageable components found.
                     </div>
                 `;
             }
 
             overlay.innerHTML = `
                 <div style="font-size: 16px; color: #666; letter-spacing: 4px; margin-bottom: 10px;">SALVAGE REPORT</div>
-                <div style="font-size: 42px; font-weight: bold; color: ${resultColor}; text-shadow: 0 0 20px ${resultColor}; margin-bottom: 30px;">
+                <div style="font-size: 36px; font-weight: bold; color: ${resultColor}; text-shadow: 0 0 20px ${resultColor}; margin-bottom: 20px;">
                     ${resultText}
                 </div>
-                <div style="background: rgba(0, 0, 0, 0.3); padding: 30px 50px; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 24px; color: #aaa; margin-bottom: 20px;">Rewards Collected:</div>
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 25px 40px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 20px; color: #aaa; margin-bottom: 15px;">Rewards Collected:</div>
                     <div style="display: flex; gap: 40px; justify-content: center;">
                         <div style="text-align: center;">
-                            <div style="font-size: 36px; color: #ffcc00;">+${rewards.xp}</div>
-                            <div style="font-size: 14px; color: #888;">EXPERIENCE</div>
+                            <div style="font-size: 32px; color: #ffcc00;">+${rewards.xp}</div>
+                            <div style="font-size: 12px; color: #888;">EXPERIENCE</div>
                         </div>
                         <div style="text-align: center;">
-                            <div style="font-size: 36px; color: #88aaff;">+${rewards.scrap}</div>
-                            <div style="font-size: 14px; color: #888;">SCRAP</div>
+                            <div style="font-size: 32px; color: #88aaff;">+${rewards.scrap}</div>
+                            <div style="font-size: 12px; color: #888;">SCRAP</div>
                         </div>
                     </div>
-                    ${componentsHTML}
                 </div>
-                <button id="continueFromSalvageBtn" style="
-                    margin-top: 40px;
-                    padding: 15px 50px;
-                    font-size: 18px;
-                    background: rgba(0, 255, 136, 0.2);
-                    border: 2px solid #00ff88;
-                    color: #00ff88;
-                    cursor: pointer;
-                    border-radius: 8px;
-                    font-family: 'Courier New', monospace;
-                    text-transform: uppercase;
-                    letter-spacing: 2px;
-                ">Continue to Loadout</button>
+                ${salvageHTML}
+                <div style="display: flex; gap: 15px; margin-top: 30px;">
+                    <button id="skipSalvageBtn" style="
+                        padding: 12px 30px;
+                        font-size: 14px;
+                        background: rgba(100, 100, 100, 0.3);
+                        border: 2px solid #666;
+                        color: #aaa;
+                        cursor: pointer;
+                        border-radius: 6px;
+                        font-family: 'Courier New', monospace;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                    ">Skip Salvage</button>
+                    <button id="confirmSalvageBtn" style="
+                        padding: 12px 30px;
+                        font-size: 14px;
+                        background: rgba(0, 255, 136, 0.2);
+                        border: 2px solid #00ff88;
+                        color: #00ff88;
+                        cursor: pointer;
+                        border-radius: 6px;
+                        font-family: 'Courier New', monospace;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        opacity: 0.5;
+                    " disabled>Take Selected</button>
+                </div>
             `;
 
             document.body.appendChild(overlay);
 
-            // Handle continue button
-            document.getElementById('continueFromSalvageBtn').addEventListener('click', () => {
-                // Apply rewards
-                playerResources.xp += rewards.xp;
-                playerResources.scrap += rewards.scrap;
-
-                // Add new components to draw pile
-                if (rewards.components) {
-                    rewards.components.forEach(id => {
-                        drawPile.push(id);
+            // Handle salvage option selection
+            const optionElements = overlay.querySelectorAll('.salvage-option');
+            optionElements.forEach((el, index) => {
+                el.addEventListener('click', () => {
+                    // Deselect all
+                    optionElements.forEach(opt => {
+                        opt.style.transform = 'scale(1)';
+                        opt.style.boxShadow = 'none';
+                        opt.querySelector('.selection-indicator').style.display = 'none';
                     });
-                    shuffleArray(drawPile);
-                }
 
-                // Remove salvage overlay
-                overlay.remove();
+                    // Select this one
+                    if (selectedComponent === salvageOptions[index]) {
+                        // Clicking same one deselects
+                        selectedComponent = null;
+                        document.getElementById('confirmSalvageBtn').disabled = true;
+                        document.getElementById('confirmSalvageBtn').style.opacity = '0.5';
+                    } else {
+                        selectedComponent = salvageOptions[index];
+                        el.style.transform = 'scale(1.05)';
+                        el.style.boxShadow = `0 0 20px ${COMPONENT_GENERATION.rarityColors[selectedComponent.rarity]}`;
+                        el.querySelector('.selection-indicator').style.display = 'flex';
+                        document.getElementById('confirmSalvageBtn').disabled = false;
+                        document.getElementById('confirmSalvageBtn').style.opacity = '1';
+                    }
+                });
 
-                // Handle post-battle cleanup and return to loadout
-                handlePostBattle();
+                // Hover effect
+                el.addEventListener('mouseenter', () => {
+                    if (selectedComponent !== salvageOptions[index]) {
+                        el.style.transform = 'scale(1.02)';
+                    }
+                });
+                el.addEventListener('mouseleave', () => {
+                    if (selectedComponent !== salvageOptions[index]) {
+                        el.style.transform = 'scale(1)';
+                    }
+                });
             });
+
+            // Handle skip button
+            document.getElementById('skipSalvageBtn').addEventListener('click', () => {
+                finishSalvage(null, rewards, overlay);
+            });
+
+            // Handle confirm button
+            document.getElementById('confirmSalvageBtn').addEventListener('click', () => {
+                if (selectedComponent) {
+                    finishSalvage(selectedComponent, rewards, overlay);
+                }
+            });
+        }
+
+        // Complete the salvage process
+        function finishSalvage(selectedComponent, rewards, overlay) {
+            // Apply XP and scrap rewards
+            playerResources.xp += rewards.xp;
+            playerResources.scrap += rewards.scrap;
+
+            // If a component was selected, register it and add to deck
+            if (selectedComponent) {
+                // Register in ITEM_DATABASE so it can be used in gameplay
+                registerGeneratedComponent(selectedComponent);
+
+                // Add to draw pile
+                drawPile.push(selectedComponent.id);
+                shuffleArray(drawPile);
+
+                console.log(`Salvaged: ${selectedComponent.name} (${selectedComponent.rarity} Lv.${selectedComponent.level})`);
+            }
+
+            // Increase enemy level for progression (victory = faster progression)
+            if (rewards.xp > 50) {  // Victory gives more XP
+                currentEnemyLevel = Math.min(10, currentEnemyLevel + 0.25);
+            } else {
+                currentEnemyLevel = Math.min(10, currentEnemyLevel + 0.1);
+            }
+
+            // Remove overlay
+            overlay.remove();
+
+            // Handle post-battle cleanup
+            handlePostBattle();
         }
 
         // Handle post-battle cleanup

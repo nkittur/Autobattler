@@ -165,6 +165,10 @@
             background: linear-gradient(90deg, #888888, #aaaaaa);
         }
 
+        .stat-fill.accuracy {
+            background: linear-gradient(90deg, #ffaa00, #ffcc44);
+        }
+
         /* Deck Piles */
         .deck-piles-container {
             display: flex;
@@ -1435,6 +1439,13 @@
                         </div>
                     </div>
                     <div class="stat-item">
+                        <span class="stat-label">Accuracy</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill accuracy" id="accuracyFill" style="width: 60%"></div>
+                            <span class="stat-text" id="accuracyText">60%</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
                         <span class="stat-label">Weight</span>
                         <div class="stat-bar">
                             <div class="stat-fill weight" id="weightFill" style="width: 0%"></div>
@@ -1485,15 +1496,6 @@
                     </div>
                 </div>
 
-            </div>
-
-            <!-- Pile Viewer Modal -->
-            <div id="pileViewer">
-                <div id="pileViewerTitle">Draw Pile</div>
-                <div id="pileViewerCards">
-                    <!-- Cards populated by JS -->
-                </div>
-                <button id="pileViewerClose" onclick="closePileViewer()">Close</button>
             </div>
 
             <!-- Mission Tab Content -->
@@ -1554,6 +1556,15 @@
                     <div>⭐ XP: +100</div>
                 </div>
                 <button id="returnToBuilderBtn" onclick="returnToBuilder()">Return to Loadout</button>
+            </div>
+
+            <!-- Pile Viewer Modal -->
+            <div id="pileViewer">
+                <div id="pileViewerTitle">Draw Pile</div>
+                <div id="pileViewerCards">
+                    <!-- Cards populated by JS -->
+                </div>
+                <button id="pileViewerClose" onclick="closePileViewer()">Close</button>
             </div>
         </div>
 
@@ -2575,18 +2586,21 @@
 
             const allItemIds = Object.keys(ITEM_DATABASE);
 
-            // Create starting deck: 2 of each weapon, 1 of each other item
+            // Create starting deck: 3 of each weapon, 2 of each other item
+            // This gives enough cards for 2 full draws (10 cards) before reshuffle
             const weaponIds = allItemIds.filter(id => ITEM_DATABASE[id].category === 'weapon');
             const otherIds = allItemIds.filter(id => ITEM_DATABASE[id].category !== 'weapon');
 
-            // Add 2 copies of each weapon
+            // Add 3 copies of each weapon
             weaponIds.forEach(id => {
+                drawPile.push(id);
                 drawPile.push(id);
                 drawPile.push(id);
             });
 
-            // Add 1 copy of each non-weapon
+            // Add 2 copies of each non-weapon
             otherIds.forEach(id => {
+                drawPile.push(id);
                 drawPile.push(id);
             });
 
@@ -3569,12 +3583,14 @@
             let energyUsed = 0;      // Positive energyDraw = consumes energy
             let energyProvided = 0;  // Negative energyDraw = provides energy (reactors)
             let totalArmor = 0;
+            let accuracyBonus = 0;
 
             loadoutState.equipment.forEach(eq => {
                 const item = ITEM_DATABASE[eq.itemId];
                 if (item && item.stats) {
                     totalWeight += item.stats.weight || 0;
                     totalArmor += item.stats.armorBonus || 0;
+                    accuracyBonus += item.stats.accuracyBonus || 0;
                     const draw = item.stats.energyDraw || 0;
                     if (draw > 0) {
                         energyUsed += draw;
@@ -3613,6 +3629,14 @@
             } else {
                 armorStatItem.style.display = 'none';
             }
+
+            // Update accuracy bar (base 60% + bonuses)
+            const baseAccuracy = 60;
+            const totalAccuracy = Math.min(100, baseAccuracy + accuracyBonus);
+            const accuracyFill = document.getElementById('accuracyFill');
+            const accuracyText = document.getElementById('accuracyText');
+            accuracyFill.style.width = totalAccuracy + '%';
+            accuracyText.textContent = `${totalAccuracy}%`;
 
             // Update weight bar
             const weightFill = document.getElementById('weightFill');

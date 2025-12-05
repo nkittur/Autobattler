@@ -295,7 +295,10 @@
             display: flex;
             gap: 15px;
             overflow-x: auto;
+            overflow-y: visible;
             padding: 10px 0;
+            padding-top: 120px;
+            margin-top: -110px;
             min-height: 100px;
             justify-content: center;
         }
@@ -711,21 +714,6 @@
             font-style: italic;
         }
 
-        /* Instructions overlay */
-        #instructions {
-            position: absolute;
-            bottom: 140px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,20,10,0.9);
-            border: 1px solid #00aa66;
-            border-radius: 6px;
-            padding: 10px 20px;
-            font-size: 11px;
-            color: #00aa66;
-            text-align: center;
-            pointer-events: none;
-        }
 
         /* Hidden during battle */
         .battle-mode #mechBuilderUI {
@@ -1203,11 +1191,6 @@
                 font-size: 8px;
             }
 
-            /* Instructions hidden on mobile */
-            #instructions {
-                display: none;
-            }
-
             /* Adjust grid label size */
             .grid-label {
                 font-size: 8px;
@@ -1353,9 +1336,6 @@
                     </div>
                 </div>
 
-                <div id="instructions">
-                    Drag equipment from the bench onto the mech's grid slots • Click placed items to return them
-                </div>
             </div>
 
             <!-- Mission Tab Content -->

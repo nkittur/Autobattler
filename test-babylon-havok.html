@@ -1564,14 +1564,15 @@
                 <button id="returnToBuilderBtn" onclick="returnToBuilder()">Return to Loadout</button>
             </div>
 
-            <!-- Pile Viewer Modal -->
-            <div id="pileViewer">
-                <div id="pileViewerTitle">Draw Pile</div>
-                <div id="pileViewerCards">
-                    <!-- Cards populated by JS -->
-                </div>
-                <button id="pileViewerClose">Close</button>
+        </div>
+
+        <!-- Pile Viewer Modal (outside mechBuilderUI to avoid pointer-events: none inheritance) -->
+        <div id="pileViewer">
+            <div id="pileViewerTitle">Draw Pile</div>
+            <div id="pileViewerCards">
+                <!-- Cards populated by JS -->
             </div>
+            <button id="pileViewerClose">Close</button>
         </div>
 
         <!-- Drag Ghost (hidden until dragging) -->
@@ -3707,11 +3708,18 @@
 
         // Show pile viewer modal
         function showPileViewer(pileType) {
+            console.log('[PILE] showPileViewer called with:', pileType);
             const viewer = document.getElementById('pileViewer');
+            console.log('[PILE] viewer element:', viewer);
+            if (!viewer) {
+                console.error('[PILE] pileViewer element not found!');
+                return;
+            }
             const title = document.getElementById('pileViewerTitle');
             const cardsContainer = document.getElementById('pileViewerCards');
 
             const pile = pileType === 'draw' ? drawPile : discardPile;
+            console.log('[PILE] pile contents:', pile.length, 'cards');
             title.textContent = pileType === 'draw' ? `Draw Pile (${pile.length} cards)` : `Discard Pile (${pile.length} cards)`;
 
             // Count occurrences of each card
@@ -3741,10 +3749,12 @@
             }
 
             viewer.classList.add('active');
+            console.log('[PILE] Added active class, viewer display:', window.getComputedStyle(viewer).display);
         }
 
         // Close pile viewer modal
         function closePileViewer() {
+            console.log('[PILE] closePileViewer called');
             const viewer = document.getElementById('pileViewer');
             viewer.classList.remove('active');
         }
@@ -4287,25 +4297,65 @@
                 switchTab('mission');
             });
 
-            // Pile viewer buttons
-            document.getElementById('drawPileDisplay').addEventListener('click', function(e) {
-                e.stopPropagation();
-                showPileViewer('draw');
-            });
-            document.getElementById('discardPileDisplay').addEventListener('click', function(e) {
-                e.stopPropagation();
-                showPileViewer('discard');
-            });
-            document.getElementById('pileViewerClose').addEventListener('click', function(e) {
-                e.stopPropagation();
-                closePileViewer();
-            });
+            // Pile viewer buttons - using mousedown/touchstart to ensure they fire before document handlers
+            const drawPileEl = document.getElementById('drawPileDisplay');
+            const discardPileEl = document.getElementById('discardPileDisplay');
+            const closeBtn = document.getElementById('pileViewerClose');
+            console.log('[PILE INIT] drawPileEl:', drawPileEl, 'discardPileEl:', discardPileEl, 'closeBtn:', closeBtn);
+
+            if (drawPileEl) {
+                drawPileEl.addEventListener('mousedown', function(e) {
+                    console.log('[PILE] Draw pile mousedown');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showPileViewer('draw');
+                });
+                drawPileEl.addEventListener('touchstart', function(e) {
+                    console.log('[PILE] Draw pile touchstart');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showPileViewer('draw');
+                }, { passive: false });
+            }
+            if (discardPileEl) {
+                discardPileEl.addEventListener('mousedown', function(e) {
+                    console.log('[PILE] Discard pile mousedown');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showPileViewer('discard');
+                });
+                discardPileEl.addEventListener('touchstart', function(e) {
+                    console.log('[PILE] Discard pile touchstart');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    showPileViewer('discard');
+                }, { passive: false });
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('mousedown', function(e) {
+                    console.log('[PILE] Close button mousedown');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    closePileViewer();
+                });
+                closeBtn.addEventListener('touchstart', function(e) {
+                    console.log('[PILE] Close button touchstart');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    closePileViewer();
+                }, { passive: false });
+            }
             // Also close pile viewer when clicking outside the cards
-            document.getElementById('pileViewer').addEventListener('click', function(e) {
+            document.getElementById('pileViewer').addEventListener('mousedown', function(e) {
                 if (e.target === this) {
                     closePileViewer();
                 }
             });
+            document.getElementById('pileViewer').addEventListener('touchstart', function(e) {
+                if (e.target === this) {
+                    closePileViewer();
+                }
+            }, { passive: false });
 
             // Main render loop with delta time for battle updates
             let lastFrameTime = performance.now();

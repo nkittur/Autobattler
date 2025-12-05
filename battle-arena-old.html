@@ -262,17 +262,17 @@
         }
         .zone-low {
             left: 0;
-            width: 20%;
+            width: 25%;
             background: linear-gradient(90deg, #553333, #664444);
         }
         .zone-green {
-            left: 20%;
-            width: 40%;
+            left: 25%;
+            width: 45%;
             background: linear-gradient(90deg, #335533, #447744);
         }
         .zone-yellow {
-            left: 60%;
-            width: 25%;
+            left: 70%;
+            width: 15%;
             background: linear-gradient(90deg, #665533, #887744);
         }
         .zone-red {
@@ -529,14 +529,14 @@
         // WEAPON MINIGAME SYSTEM
         // ============================================
         const MINIGAME_CONFIG = {
-            triggerChance: 0.25,         // 25% chance to trigger minigame
+            triggerChance: 0.50,         // 50% chance to trigger minigame
             chargeSpeed: 80,             // Percent per second
             autoFireDelay: 200,          // ms before auto-fire if not holding
             // Zone boundaries (as percentages)
             zones: {
-                low: { min: 0, max: 20, multiplier: 0.5, name: 'WEAK', class: 'weak' },
-                green: { min: 20, max: 60, multiplier: 1.0, name: 'GOOD', class: 'good' },
-                yellow: { min: 60, max: 85, multiplier: 1.25, name: 'PERFECT!', class: 'perfect' },
+                low: { min: 0, max: 25, multiplier: 0.5, name: 'WEAK', class: 'weak' },
+                green: { min: 25, max: 70, multiplier: 1.0, name: 'GOOD', class: 'good' },
+                yellow: { min: 70, max: 85, multiplier: 1.25, name: 'PERFECT!', class: 'perfect' },
                 red: { min: 85, max: 100, multiplier: 0, name: 'JAMMED!', class: 'jam' }
             },
             // Weapon-specific icons and colors
@@ -583,6 +583,28 @@
             const weaponType = getWeaponType(weaponData);
             const visuals = MINIGAME_CONFIG.weaponVisuals[weaponType] || MINIGAME_CONFIG.weaponVisuals.projectile;
 
+            // Save all mech positions and velocities before pausing
+            const savedMechStates = [];
+            if (typeof allMechs !== 'undefined') {
+                allMechs.forEach(m => {
+                    if (m && m.pelvis && m.pelvisAggregate) {
+                        const pos = m.pelvis.getAbsolutePosition().clone();
+                        const body = m.pelvisAggregate.body;
+                        const linVel = body.getLinearVelocity();
+                        const angVel = body.getAngularVelocity();
+                        savedMechStates.push({
+                            mech: m,
+                            position: pos,
+                            linearVelocity: linVel ? linVel.clone() : new BABYLON.Vector3(0, 0, 0),
+                            angularVelocity: angVel ? angVel.clone() : new BABYLON.Vector3(0, 0, 0)
+                        });
+                        // Freeze the physics body
+                        body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
+                        body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+                    }
+                });
+            }
+
             minigameState = {
                 active: true,
                 isCharging: false,
@@ -592,8 +614,15 @@
                 target: target,
                 startTime: performance.now(),
                 animationFrame: null,
-                pendingWeaponFire: null
+                pendingWeaponFire: null,
+                savedMechStates: savedMechStates
             };
+
+            // Disable physics timestep if possible
+            if (typeof scene !== 'undefined' && scene.physicsEnabled) {
+                minigameState.physicsTimeStep = scene.getPhysicsEngine().getTimeStep();
+                scene.getPhysicsEngine().setTimeStep(0);
+            }
 
             // Update UI
             const overlay = document.getElementById('weaponMinigameOverlay');
@@ -648,9 +677,9 @@
             // Change fill color based on zone
             if (minigameState.chargePercent >= 85) {
                 chargeFill.style.background = 'linear-gradient(180deg, rgba(255,100,100,0.5), rgba(255,50,50,0.3))';
-            } else if (minigameState.chargePercent >= 60) {
+            } else if (minigameState.chargePercent >= 70) {
                 chargeFill.style.background = 'linear-gradient(180deg, rgba(255,255,100,0.5), rgba(200,200,50,0.3))';
-            } else if (minigameState.chargePercent >= 20) {
+            } else if (minigameState.chargePercent >= 25) {
                 chargeFill.style.background = 'linear-gradient(180deg, rgba(100,255,100,0.5), rgba(50,200,50,0.3))';
             } else {
                 chargeFill.style.background = 'linear-gradient(180deg, rgba(255,150,100,0.4), rgba(200,100,50,0.2))';
@@ -723,23 +752,46 @@
 
             log(`[MINIGAME] Result: ${zone.name} (${minigameState.chargePercent.toFixed(0)}%) - ${zone.multiplier}x damage`);
 
-            // Store the fire data for after animation
+            // Store the fire data and saved states for after animation
             const fireData = {
                 mech: minigameState.mech,
                 weaponData: minigameState.weaponData,
                 target: minigameState.target,
                 damageMultiplier: zone.multiplier
             };
+            const savedStates = minigameState.savedMechStates;
+            const savedTimeStep = minigameState.physicsTimeStep;
 
             // Hide overlay after short delay
             setTimeout(() => {
                 const overlay = document.getElementById('weaponMinigameOverlay');
                 overlay.classList.remove('active');
 
+                // Restore physics timestep
+                if (typeof scene !== 'undefined' && scene.physicsEnabled && savedTimeStep) {
+                    scene.getPhysicsEngine().setTimeStep(savedTimeStep);
+                }
+
+                // Restore mech positions and velocities
+                if (savedStates && savedStates.length > 0) {
+                    savedStates.forEach(state => {
+                        if (state.mech && state.mech.pelvis && state.mech.pelvisAggregate) {
+                            const body = state.mech.pelvisAggregate.body;
+                            // Restore position
+                            body.transformNode.position.copyFrom(state.position);
+                            // Restore velocities
+                            body.setLinearVelocity(state.linearVelocity);
+                            body.setAngularVelocity(state.angularVelocity);
+                        }
+                    });
+                }
+
                 // Reset state
                 minigameState.active = false;
                 minigameState.isCharging = false;
                 minigameState.chargePercent = 0;
+                minigameState.savedMechStates = null;
+                minigameState.physicsTimeStep = null;
 
                 // Actually fire the weapon with the multiplier
                 if (fireData.damageMultiplier > 0) {
@@ -1070,15 +1122,22 @@
                             console.log(`[FRAME ${frameCount}] t=${gameTime.toFixed(2)}`);
                         }
 
-                        // Always update projectiles and beams (so they don't freeze)
+                        // Skip all game updates during minigame (full pause)
+                        if (minigameState.active) {
+                            // Only render the frozen scene, no physics or game logic
+                            scene.render();
+                            continue;
+                        }
+
+                        // Update projectiles and beams
                         updateProjectiles(dt);
                         updateBeams();
 
-                        // Only run AI/mech logic if battle hasn't ended and minigame isn't active
-                        if (!battleEnded && !minigameState.active) {
+                        // Only run AI/mech logic if battle hasn't ended
+                        if (!battleEnded) {
                             updateMechs(dt);
                             checkBattleEnd();
-                        } else if (battleEnded) {
+                        } else {
                             // Still update destroyed mech physics during death animation
                             allMechs.forEach(mech => {
                                 if (mech && mech.isDestroyed) {

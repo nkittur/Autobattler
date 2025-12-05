@@ -157,6 +157,127 @@
             text-shadow: 0 0 4px #000;
         }
 
+        .stat-fill.hp {
+            background: linear-gradient(90deg, #ff4444, #ff8888);
+        }
+
+        .stat-fill.armor {
+            background: linear-gradient(90deg, #888888, #aaaaaa);
+        }
+
+        /* Deck Piles */
+        .deck-piles-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 20px;
+            margin-bottom: 10px;
+            pointer-events: auto;
+        }
+
+        .pile-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 8px 15px;
+            background: rgba(0, 20, 10, 0.8);
+            border: 1px solid #00aa66;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .pile-display:hover {
+            background: rgba(0, 40, 20, 0.9);
+            border-color: #00ff88;
+        }
+
+        .pile-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .pile-count {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .pile-label {
+            font-size: 9px;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Pile Viewer Modal */
+        #pileViewer {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #pileViewer.active {
+            display: flex;
+        }
+
+        #pileViewerTitle {
+            font-size: 24px;
+            color: #00ff88;
+            margin-bottom: 20px;
+        }
+
+        #pileViewerCards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            max-width: 800px;
+        }
+
+        .pile-card {
+            width: 80px;
+            height: 100px;
+            background: rgba(0, 40, 20, 0.9);
+            border: 2px solid #00aa66;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+        }
+
+        .pile-card .card-icon {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .pile-card .card-name {
+            font-size: 9px;
+            color: #00ff88;
+            text-align: center;
+        }
+
+        #pileViewerClose {
+            margin-top: 20px;
+            padding: 10px 30px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
         #gameTitle {
             font-size: 18px;
             font-weight: bold;
@@ -1300,6 +1421,20 @@
                 <!-- Weight/Energy Stats (above mech) -->
                 <div id="mechStats">
                     <div class="stat-item">
+                        <span class="stat-label">HP</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill hp" id="hpFill" style="width: 100%"></div>
+                            <span class="stat-text" id="hpText">100</span>
+                        </div>
+                    </div>
+                    <div class="stat-item" id="armorStatItem" style="display: none;">
+                        <span class="stat-label">Armor</span>
+                        <div class="stat-bar">
+                            <div class="stat-fill armor" id="armorFill" style="width: 0%"></div>
+                            <span class="stat-text" id="armorText">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
                         <span class="stat-label">Weight</span>
                         <div class="stat-bar">
                             <div class="stat-fill weight" id="weightFill" style="width: 0%"></div>
@@ -1328,14 +1463,37 @@
                     <!-- Grids will be dynamically positioned here -->
                 </div>
 
+                <!-- Deck Piles and Bench -->
+                <div class="deck-piles-container">
+                    <div class="pile-display" id="drawPileDisplay" onclick="showPileViewer('draw')">
+                        <div class="pile-icon">📚</div>
+                        <div class="pile-count" id="drawPileCount">0</div>
+                        <div class="pile-label">Draw</div>
+                    </div>
+                    <div id="benchLabel">Equipment Bench</div>
+                    <div class="pile-display" id="discardPileDisplay" onclick="showPileViewer('discard')">
+                        <div class="pile-icon">🗑️</div>
+                        <div class="pile-count" id="discardPileCount">0</div>
+                        <div class="pile-label">Discard</div>
+                    </div>
+                </div>
+
                 <!-- Bottom Bench (Hand) -->
                 <div id="benchContainer">
-                    <div id="benchLabel">Equipment Bench - Drag items to mech slots</div>
                     <div id="bench">
                         <!-- Items populated by JS -->
                     </div>
                 </div>
 
+            </div>
+
+            <!-- Pile Viewer Modal -->
+            <div id="pileViewer">
+                <div id="pileViewerTitle">Draw Pile</div>
+                <div id="pileViewerCards">
+                    <!-- Cards populated by JS -->
+                </div>
+                <button id="pileViewerClose" onclick="closePileViewer()">Close</button>
             </div>
 
             <!-- Mission Tab Content -->
@@ -3410,11 +3568,13 @@
             let totalWeight = 0;
             let energyUsed = 0;      // Positive energyDraw = consumes energy
             let energyProvided = 0;  // Negative energyDraw = provides energy (reactors)
+            let totalArmor = 0;
 
             loadoutState.equipment.forEach(eq => {
                 const item = ITEM_DATABASE[eq.itemId];
                 if (item && item.stats) {
                     totalWeight += item.stats.weight || 0;
+                    totalArmor += item.stats.armorBonus || 0;
                     const draw = item.stats.energyDraw || 0;
                     if (draw > 0) {
                         energyUsed += draw;
@@ -3431,6 +3591,29 @@
             const maxWeight = MECH_CHASSIS.maxWeight;
             const maxEnergy = MECH_CHASSIS.baseEnergy + energyProvided;  // Reactors increase max energy
 
+            // Calculate HP (base + weight bonus + armor)
+            const baseHealth = 100;
+            const healthBonus = Math.floor(totalWeight * 0.5);
+            const totalHP = baseHealth + healthBonus + totalArmor;
+
+            // Update HP bar
+            const hpFill = document.getElementById('hpFill');
+            const hpText = document.getElementById('hpText');
+            hpFill.style.width = '100%';  // Always full (shows max HP)
+            hpText.textContent = totalHP;
+
+            // Update armor display (only show if armor > 0)
+            const armorStatItem = document.getElementById('armorStatItem');
+            const armorFill = document.getElementById('armorFill');
+            const armorText = document.getElementById('armorText');
+            if (totalArmor > 0) {
+                armorStatItem.style.display = '';
+                armorFill.style.width = '100%';
+                armorText.textContent = `+${totalArmor}`;
+            } else {
+                armorStatItem.style.display = 'none';
+            }
+
             // Update weight bar
             const weightFill = document.getElementById('weightFill');
             const weightText = document.getElementById('weightText');
@@ -3446,6 +3629,9 @@
             energyFill.style.width = energyPercent + '%';
             energyText.textContent = `${energyUsed} / ${maxEnergy}`;
             energyFill.classList.toggle('over-limit', energyUsed > maxEnergy);
+
+            // Update pile counts
+            updatePileCounts();
 
             // Check button states
             const hasEquipment = loadoutState.equipment.length > 0;
@@ -3479,6 +3665,58 @@
                     continueBtn.classList.remove('warning');
                 }
             }
+        }
+
+        // Update pile count displays
+        function updatePileCounts() {
+            const drawCount = document.getElementById('drawPileCount');
+            const discardCount = document.getElementById('discardPileCount');
+            if (drawCount) drawCount.textContent = drawPile.length;
+            if (discardCount) discardCount.textContent = discardPile.length;
+        }
+
+        // Show pile viewer modal
+        function showPileViewer(pileType) {
+            const viewer = document.getElementById('pileViewer');
+            const title = document.getElementById('pileViewerTitle');
+            const cardsContainer = document.getElementById('pileViewerCards');
+
+            const pile = pileType === 'draw' ? drawPile : discardPile;
+            title.textContent = pileType === 'draw' ? `Draw Pile (${pile.length} cards)` : `Discard Pile (${pile.length} cards)`;
+
+            // Count occurrences of each card
+            const cardCounts = {};
+            pile.forEach(itemId => {
+                cardCounts[itemId] = (cardCounts[itemId] || 0) + 1;
+            });
+
+            // Build cards HTML
+            cardsContainer.innerHTML = '';
+            for (const [itemId, count] of Object.entries(cardCounts)) {
+                const item = ITEM_DATABASE[itemId];
+                if (!item) continue;
+
+                const cardEl = document.createElement('div');
+                cardEl.className = 'pile-card';
+                cardEl.innerHTML = `
+                    <div class="card-icon">${item.icon}</div>
+                    <div class="card-name">${item.name}</div>
+                    ${count > 1 ? `<div class="card-count" style="font-size: 11px; color: #ffcc00;">×${count}</div>` : ''}
+                `;
+                cardsContainer.appendChild(cardEl);
+            }
+
+            if (pile.length === 0) {
+                cardsContainer.innerHTML = '<div style="color: #666; font-size: 14px;">Empty</div>';
+            }
+
+            viewer.classList.add('active');
+        }
+
+        // Close pile viewer modal
+        function closePileViewer() {
+            const viewer = document.getElementById('pileViewer');
+            viewer.classList.remove('active');
         }
 
         // ============================================

@@ -152,6 +152,60 @@
             border-radius: 3px;
         }
         .copy-btn:hover { background: rgba(255, 136, 0, 0.5); }
+
+        /* Countdown overlay styles */
+        #countdownOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        #countdownOverlay.hidden {
+            display: none;
+        }
+        #countdownText {
+            font-size: 150px;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 40px #00ff88, 0 0 80px #00ff88, 0 0 120px rgba(0, 255, 136, 0.5);
+            animation: countdownPulse 0.5s ease-out;
+            font-family: monospace;
+        }
+        #countdownText.fight {
+            color: #ff4444;
+            text-shadow: 0 0 40px #ff4444, 0 0 80px #ff4444, 0 0 120px rgba(255, 68, 68, 0.5);
+            font-size: 120px;
+            letter-spacing: 20px;
+        }
+        @keyframes countdownPulse {
+            0% {
+                transform: scale(2);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        @keyframes fightShake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        #countdownText.fight {
+            animation: countdownPulse 0.3s ease-out, fightShake 0.5s ease-out 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -163,6 +217,12 @@
         <button id="returnToLoadoutBtn" onclick="returnToLoadout()" style="background: rgba(0, 255, 136, 0.3); border-color: #00ff88; color: #00ff88;">Return to Loadout</button>
     </div>
     <canvas id="renderCanvas"></canvas>
+
+    <!-- Countdown overlay -->
+    <div id="countdownOverlay" class="hidden">
+        <div id="countdownText">3</div>
+    </div>
+
     <div id="polyCount">Triangles: <span id="triCount">0</span></div>
     <div id="status">
         <div id="logs"></div>
@@ -578,7 +638,7 @@
             window.addEventListener('resize', () => engine.resize());
             log('Scene ready!');
 
-            // Log initial mech state for debugging
+            // Log initial mech state for debugging and start countdown
             setTimeout(() => {
                 const motionTypes = ['STATIC', 'ANIMATED', 'DYNAMIC'];
                 dbg(`Created ${playerMechs.length} player mechs and ${enemyMechs.length} enemy mechs`, 'ai');
@@ -589,8 +649,54 @@
                     const side = mech.isPlayer ? 'P' : 'E';
                     dbg(`${side} ${mech.name}: pos=(${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)}) HP=${mech.maxHP}`, 'ai');
                 });
-                dbg('Click "AI Battle: OFF" to start battle', 'warn');
+                // Start countdown and then begin battle
+                startCountdown();
             }, 500);
+        }
+
+        // Countdown animation before battle starts
+        function startCountdown() {
+            const overlay = document.getElementById('countdownOverlay');
+            const text = document.getElementById('countdownText');
+
+            overlay.classList.remove('hidden');
+
+            const sequence = ['3', '2', '1', 'FIGHT!'];
+            let index = 0;
+
+            function showNext() {
+                if (index < sequence.length) {
+                    text.textContent = sequence[index];
+                    text.className = '';  // Reset classes
+
+                    if (sequence[index] === 'FIGHT!') {
+                        text.classList.add('fight');
+                    }
+
+                    // Force reflow to restart animation
+                    void text.offsetWidth;
+                    text.style.animation = 'none';
+                    void text.offsetWidth;
+                    text.style.animation = '';
+
+                    index++;
+
+                    if (index < sequence.length) {
+                        setTimeout(showNext, 800);
+                    } else {
+                        // After "FIGHT!", wait a moment then start battle and hide overlay
+                        setTimeout(() => {
+                            overlay.classList.add('hidden');
+                            // Auto-start the AI battle
+                            if (!autoFireEnabled) {
+                                toggleAutoFire();
+                            }
+                        }, 600);
+                    }
+                }
+            }
+
+            showNext();
         }
 
         function createScene() {
@@ -3532,11 +3638,11 @@
         // Extra chaotic limb movement for destruction - more extreme than regular ragdoll
         function destroyedLimbChaos(mech) {
             // Arms flail wildly
-            if (mech.leftArm) {
+            if (mech.leftArm && mech.leftArm.rotation) {
                 let t = 0;
                 const chaosInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 2.0 || !mech.leftArm) {
+                    if (t >= 2.0 || !mech.leftArm || !mech.leftArm.rotation) {
                         clearInterval(chaosInterval);
                         return;
                     }
@@ -3547,11 +3653,11 @@
                 }, 16);
             }
 
-            if (mech.rightArm) {
+            if (mech.rightArm && mech.rightArm.rotation) {
                 let t = 0;
                 const chaosInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 2.0 || !mech.rightArm) {
+                    if (t >= 2.0 || !mech.rightArm || !mech.rightArm.rotation) {
                         clearInterval(chaosInterval);
                         return;
                     }
@@ -3562,44 +3668,44 @@
             }
 
             // Legs kick wildly
-            if (mech.leftLeg && mech.leftLeg.upperLeg) {
+            if (mech.leftLeg && mech.leftLeg.upperLeg && mech.leftLeg.upperLeg.rotation) {
                 let t = 0;
                 const chaosInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 2.0 || !mech.leftLeg) {
+                    if (t >= 2.0 || !mech.leftLeg || !mech.leftLeg.upperLeg || !mech.leftLeg.upperLeg.rotation) {
                         clearInterval(chaosInterval);
                         return;
                     }
                     const chaos = Math.sin(t * 6) * Math.exp(-t * 1.0);
                     mech.leftLeg.upperLeg.rotation.x = 0.5 - chaos * 0.8;
-                    if (mech.leftLeg.lowerLeg) {
+                    if (mech.leftLeg.lowerLeg && mech.leftLeg.lowerLeg.rotation) {
                         mech.leftLeg.lowerLeg.rotation.x = -0.4 - Math.abs(chaos) * 0.5;
                     }
                 }, 16);
             }
 
-            if (mech.rightLeg && mech.rightLeg.upperLeg) {
+            if (mech.rightLeg && mech.rightLeg.upperLeg && mech.rightLeg.upperLeg.rotation) {
                 let t = 0;
                 const chaosInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 2.0 || !mech.rightLeg) {
+                    if (t >= 2.0 || !mech.rightLeg || !mech.rightLeg.upperLeg || !mech.rightLeg.upperLeg.rotation) {
                         clearInterval(chaosInterval);
                         return;
                     }
                     const chaos = Math.sin(t * 6 + 2) * Math.exp(-t * 1.0);
                     mech.rightLeg.upperLeg.rotation.x = 0.5 - chaos * 0.8;
-                    if (mech.rightLeg.lowerLeg) {
+                    if (mech.rightLeg.lowerLeg && mech.rightLeg.lowerLeg.rotation) {
                         mech.rightLeg.lowerLeg.rotation.x = -0.4 - Math.abs(chaos) * 0.5;
                     }
                 }, 16);
             }
 
             // Torso twist
-            if (mech.torso) {
+            if (mech.torso && mech.torso.rotation) {
                 let t = 0;
                 const torsoInterval = setInterval(() => {
                     t += 0.03;
-                    if (t >= 1.5 || !mech.torso) {
+                    if (t >= 1.5 || !mech.torso || !mech.torso.rotation) {
                         clearInterval(torsoInterval);
                         return;
                     }

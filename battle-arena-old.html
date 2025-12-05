@@ -5419,7 +5419,8 @@
             if (alivePlayerMechs.length === 0 || aliveEnemyMechs.length === 0) {
                 battleEnded = true;  // Mark as ended (AI already disabled in triggerDestruction)
 
-                const winner = alivePlayerMechs.length > 0 ? 'PLAYER TEAM' : 'ENEMY TEAM';
+                const playerWon = alivePlayerMechs.length > 0;
+                const winner = playerWon ? 'PLAYER TEAM' : 'ENEMY TEAM';
                 log(`Battle ended! ${winner} WINS!`, 'warn');
 
                 // Delay UI update to allow destruction animation to play
@@ -5430,8 +5431,97 @@
                     btn.style.background = 'rgba(255, 200, 0, 0.3)';
                     btn.style.borderColor = '#ffcc00';
                     btn.style.color = '#ffcc00';
+
+                    // Show victory/defeat overlay
+                    showBattleResult(playerWon);
                 }, 4000);  // 4 second delay to watch destruction
             }
+        }
+
+        function showBattleResult(playerWon) {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'battleResultOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0, 0, 0, 0.85);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            `;
+
+            const resultText = playerWon ? 'VICTORY!' : 'DEFEAT';
+            const resultColor = playerWon ? '#00ff88' : '#ff4444';
+
+            overlay.innerHTML = `
+                <div style="font-size: 72px; font-weight: bold; color: ${resultColor}; text-shadow: 0 0 30px ${resultColor}; margin-bottom: 30px;">
+                    ${resultText}
+                </div>
+                <div style="font-size: 24px; color: #aaa; margin-bottom: 50px;">
+                    ${playerWon ? 'All enemy mechs destroyed!' : 'Your mech was destroyed!'}
+                </div>
+                <button id="continueToSalvageBtn" style="
+                    padding: 15px 40px;
+                    font-size: 20px;
+                    background: rgba(0, 255, 136, 0.2);
+                    border: 2px solid #00ff88;
+                    color: #00ff88;
+                    cursor: pointer;
+                    border-radius: 8px;
+                    font-family: monospace;
+                ">Continue to Salvage →</button>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Handle continue button
+            document.getElementById('continueToSalvageBtn').addEventListener('click', () => {
+                // Generate salvage rewards
+                const rewards = generateSalvageRewards(playerWon);
+
+                // Send to parent with rewards
+                if (window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'battleEnd',
+                        result: playerWon ? 'victory' : 'defeat',
+                        rewards: rewards
+                    }, '*');
+                } else {
+                    // Standalone mode
+                    localStorage.setItem('battleRewards', JSON.stringify(rewards));
+                    window.location.href = 'test-babylon-havok.html';
+                }
+            });
+        }
+
+        function generateSalvageRewards(playerWon) {
+            const rewards = {
+                xp: 0,
+                scrap: 0,
+                components: []
+            };
+
+            if (playerWon) {
+                // Victory rewards
+                rewards.xp = 50 + Math.floor(Math.random() * 50);  // 50-100 XP
+                rewards.scrap = 100 + Math.floor(Math.random() * 150);  // 100-250 scrap
+
+                // 30% chance for a component
+                if (Math.random() < 0.3) {
+                    const componentIds = ['railgun_mk1', 'laser_array', 'armor_plate', 'reactor_core', 'targeting_computer', 'heat_sink'];
+                    const randomComponent = componentIds[Math.floor(Math.random() * componentIds.length)];
+                    rewards.components.push(randomComponent);
+                }
+            } else {
+                // Defeat rewards (consolation)
+                rewards.xp = 10 + Math.floor(Math.random() * 20);  // 10-30 XP
+                rewards.scrap = 25 + Math.floor(Math.random() * 50);  // 25-75 scrap
+            }
+
+            return rewards;
         }
 
         function updateUI() {

@@ -2283,7 +2283,7 @@
             }
         }
 
-        // Return to loadout
+        // Return to loadout (fallback if no rewards data)
         function returnToLoadout() {
             // Hide battle iframe
             const battleFrame = document.getElementById('battleFrame');
@@ -2297,12 +2297,25 @@
             document.getElementById('mechBuilderUI').style.display = 'flex';
             document.getElementById('renderCanvas').style.display = 'block';
 
+            // Switch to loadout tab (not mission)
+            switchTab('loadout');
+
             // Switch to builder phase
             currentPhase = GamePhase.MECHBUILDER;
         }
 
         // Current hand (drawn items)
         let currentHand = [];
+
+        // Deck system - draw pile and discard pile
+        let drawPile = [];
+        let discardPile = [];
+
+        // Player resources
+        let playerResources = {
+            xp: 0,
+            scrap: 0
+        };
 
         // Loadout state (items placed on mech)
         let loadoutState = {
@@ -2396,49 +2409,94 @@
         // ============================================
         // DECK / HAND SYSTEM
         // ============================================
-        function drawHand(count = 5) {
-            currentHand = [];
+
+        // Initialize the draw pile with starting cards
+        function initializeDeck() {
+            drawPile = [];
+            discardPile = [];
+
             const allItemIds = Object.keys(ITEM_DATABASE);
 
-            // Separate items by category to ensure variety
+            // Create starting deck: 2 of each weapon, 1 of each other item
             const weaponIds = allItemIds.filter(id => ITEM_DATABASE[id].category === 'weapon');
             const otherIds = allItemIds.filter(id => ITEM_DATABASE[id].category !== 'weapon');
 
-            // Guarantee at least 2 weapons
-            const guaranteedWeapons = 2;
-            for (let i = 0; i < guaranteedWeapons && i < count; i++) {
-                const randomId = weaponIds[Math.floor(Math.random() * weaponIds.length)];
-                currentHand.push({
-                    instanceId: `item_${Date.now()}_${i}`,
-                    itemId: randomId,
-                    ...ITEM_DATABASE[randomId]
-                });
-            }
+            // Add 2 copies of each weapon
+            weaponIds.forEach(id => {
+                drawPile.push(id);
+                drawPile.push(id);
+            });
 
-            // Fill rest with random items
-            for (let i = guaranteedWeapons; i < count; i++) {
-                const randomId = allItemIds[Math.floor(Math.random() * allItemIds.length)];
-                currentHand.push({
-                    instanceId: `item_${Date.now()}_${i}`,
-                    itemId: randomId,
-                    ...ITEM_DATABASE[randomId]
-                });
+            // Add 1 copy of each non-weapon
+            otherIds.forEach(id => {
+                drawPile.push(id);
+            });
+
+            // Shuffle the draw pile
+            shuffleArray(drawPile);
+        }
+
+        // Shuffle an array in place
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Reshuffle discard pile into draw pile
+        function reshuffleDiscardIntoDraw() {
+            drawPile = [...discardPile];
+            discardPile = [];
+            shuffleArray(drawPile);
+        }
+
+        // Draw cards from the draw pile
+        function drawHand(count = 5) {
+            currentHand = [];
+
+            for (let i = 0; i < count; i++) {
+                const card = drawCardFromPile();
+                if (card) {
+                    currentHand.push(card);
+                }
             }
 
             return currentHand;
         }
 
-        // Draw a single card and add to hand
-        function drawSingleCard() {
-            const allItemIds = Object.keys(ITEM_DATABASE);
-            const randomId = allItemIds[Math.floor(Math.random() * allItemIds.length)];
-            const newItem = {
-                instanceId: `item_${Date.now()}_${currentHand.length}`,
-                itemId: randomId,
-                ...ITEM_DATABASE[randomId]
+        // Draw a single card from the draw pile
+        function drawCardFromPile() {
+            // If draw pile is empty, reshuffle discard pile
+            if (drawPile.length === 0) {
+                if (discardPile.length === 0) {
+                    return null;  // No cards left at all
+                }
+                reshuffleDiscardIntoDraw();
+            }
+
+            const itemId = drawPile.pop();
+            if (!itemId) return null;
+
+            return {
+                instanceId: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                itemId: itemId,
+                ...ITEM_DATABASE[itemId]
             };
-            currentHand.push(newItem);
-            return newItem;
+        }
+
+        // Draw a single card and add to hand (called by heat sink placement)
+        function drawSingleCard() {
+            const card = drawCardFromPile();
+            if (card) {
+                currentHand.push(card);
+            }
+            return card;
+        }
+
+        // Discard a card (add to discard pile)
+        function discardCard(itemId) {
+            discardPile.push(itemId);
         }
 
         // ============================================
@@ -3771,9 +3829,153 @@
         // Listen for messages from battle iframe
         window.addEventListener('message', function(event) {
             if (event.data && event.data.type === 'battleEnd') {
-                returnToLoadout();
+                const result = event.data.result || 'victory';
+                const rewards = event.data.rewards || { xp: 0, scrap: 0, components: [] };
+                showSalvageScreen(result, rewards);
             }
         });
+
+        // Show salvage screen with rewards
+        function showSalvageScreen(result, rewards) {
+            // Hide battle iframe
+            const battleFrame = document.getElementById('battleFrame');
+            battleFrame.style.display = 'none';
+            battleFrame.src = '';
+
+            // Create salvage overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'salvageOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0, 20, 10, 0.95);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+                font-family: 'Courier New', monospace;
+            `;
+
+            const resultColor = result === 'victory' ? '#00ff88' : '#ff4444';
+            const resultText = result === 'victory' ? 'MISSION COMPLETE' : 'MISSION FAILED';
+
+            let componentsHTML = '';
+            if (rewards.components && rewards.components.length > 0) {
+                componentsHTML = `
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(0, 255, 136, 0.1); border: 1px solid #00ff88; border-radius: 8px;">
+                        <div style="font-size: 14px; color: #00aa66; margin-bottom: 10px;">NEW COMPONENT SALVAGED:</div>
+                        ${rewards.components.map(id => {
+                            const item = ITEM_DATABASE[id];
+                            return `<div style="font-size: 18px; color: #00ff88;">${item ? item.icon + ' ' + item.name : id}</div>`;
+                        }).join('')}
+                    </div>
+                `;
+            }
+
+            overlay.innerHTML = `
+                <div style="font-size: 16px; color: #666; letter-spacing: 4px; margin-bottom: 10px;">SALVAGE REPORT</div>
+                <div style="font-size: 42px; font-weight: bold; color: ${resultColor}; text-shadow: 0 0 20px ${resultColor}; margin-bottom: 30px;">
+                    ${resultText}
+                </div>
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 30px 50px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 24px; color: #aaa; margin-bottom: 20px;">Rewards Collected:</div>
+                    <div style="display: flex; gap: 40px; justify-content: center;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 36px; color: #ffcc00;">+${rewards.xp}</div>
+                            <div style="font-size: 14px; color: #888;">EXPERIENCE</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 36px; color: #88aaff;">+${rewards.scrap}</div>
+                            <div style="font-size: 14px; color: #888;">SCRAP</div>
+                        </div>
+                    </div>
+                    ${componentsHTML}
+                </div>
+                <button id="continueFromSalvageBtn" style="
+                    margin-top: 40px;
+                    padding: 15px 50px;
+                    font-size: 18px;
+                    background: rgba(0, 255, 136, 0.2);
+                    border: 2px solid #00ff88;
+                    color: #00ff88;
+                    cursor: pointer;
+                    border-radius: 8px;
+                    font-family: 'Courier New', monospace;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                ">Continue to Loadout</button>
+            `;
+
+            document.body.appendChild(overlay);
+
+            // Handle continue button
+            document.getElementById('continueFromSalvageBtn').addEventListener('click', () => {
+                // Apply rewards
+                playerResources.xp += rewards.xp;
+                playerResources.scrap += rewards.scrap;
+
+                // Add new components to draw pile
+                if (rewards.components) {
+                    rewards.components.forEach(id => {
+                        drawPile.push(id);
+                    });
+                    shuffleArray(drawPile);
+                }
+
+                // Remove salvage overlay
+                overlay.remove();
+
+                // Handle post-battle cleanup and return to loadout
+                handlePostBattle();
+            });
+        }
+
+        // Handle post-battle cleanup
+        function handlePostBattle() {
+            // Clear localStorage
+            localStorage.removeItem('battleConfig');
+
+            // Discard all cards in hand to discard pile
+            currentHand.forEach(item => {
+                discardCard(item.itemId);
+            });
+            currentHand = [];
+
+            // Discard all equipped items (especially locked ones) to discard pile
+            loadoutState.equipment.forEach(eq => {
+                discardCard(eq.itemId);
+            });
+
+            // Clear equipment and grids
+            loadoutState.equipment = [];
+            initializeGrids();
+
+            // Unlock all locked items (they're now discarded anyway)
+            lockedItems.clear();
+
+            // Draw new hand
+            drawHand(5);
+
+            // Clear mission selection
+            selectedMission = null;
+
+            // Show builder UI
+            document.getElementById('mechBuilderUI').style.display = 'flex';
+            document.getElementById('renderCanvas').style.display = 'block';
+
+            // Switch to loadout tab (not mission)
+            switchTab('loadout');
+
+            // Re-render everything
+            renderBench();
+            renderMissions();
+            renderGridOverlays();
+            renderGridItems();
+            updateStats();
+
+            currentPhase = GamePhase.MECHBUILDER;
+        }
 
         // ============================================
         // ENGINE INITIALIZATION
@@ -3793,7 +3995,8 @@
             createBuilderScene();
             initializeGrids();
 
-            // Draw initial hand
+            // Initialize deck and draw initial hand
+            initializeDeck();
             drawHand(5);
 
             // Render UI

@@ -1281,6 +1281,26 @@
             display: flex;
         }
 
+        #shopTab {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        #shopTab.active {
+            display: flex;
+        }
+
+        #backpackTab {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        #backpackTab.active {
+            display: flex;
+        }
+
         /* Tab Navigation Headers */
         .tab-nav-header {
             display: flex;
@@ -1758,14 +1778,14 @@
 
             <!-- Shop Tab Content (solid background to hide 3D mech) -->
             <div id="shopTab" class="tab-content" style="background: linear-gradient(180deg, #0a1a0f 0%, #051008 100%); position: relative; z-index: 100;">
-                <div class="tab-nav-header">
+                <div class="tab-nav-header" style="pointer-events: auto;">
                     <button class="nav-btn" onclick="switchTab('loadout')">← Back to Loadout</button>
                     <div class="nav-spacer"></div>
                     <div style="color: #ffcc00; font-size: 16px; font-weight: bold;">💰 <span id="shopGoldDisplay">10</span> Gold</div>
                 </div>
-                <div class="shop-layout" style="display: flex; flex: 1; overflow: hidden;">
+                <div class="shop-layout" style="display: flex; flex: 1; overflow: hidden; pointer-events: auto;">
                     <!-- Left Panel: Your Inventory -->
-                    <div class="shop-inventory-panel" style="width: 250px; min-width: 250px; background: rgba(0,20,10,0.8); border-right: 2px solid #00aa66; display: flex; flex-direction: column;">
+                    <div class="shop-inventory-panel" style="width: 250px; min-width: 250px; background: rgba(0,20,10,0.95); border-right: 2px solid #00aa66; display: flex; flex-direction: column;">
                         <div style="padding: 15px; border-bottom: 1px solid rgba(0,255,136,0.3); text-align: center;">
                             <div style="font-size: 14px; color: #ffaa00; letter-spacing: 2px;">YOUR ITEMS</div>
                             <div style="font-size: 10px; color: #888; margin-top: 5px;">Click to sell</div>
@@ -1789,10 +1809,18 @@
                     </div>
 
                     <!-- Right Panel: Shop Items for Sale -->
-                    <div class="shop-content" style="flex: 1; padding: 20px; overflow-y: auto;">
+                    <div class="shop-content" style="flex: 1; padding: 20px; overflow-y: auto; background: rgba(0,10,5,0.95);">
                         <div style="text-align: center; margin-bottom: 20px;">
                             <div style="font-size: 24px; color: #00ff88; letter-spacing: 3px;">SHOP</div>
-                            <div style="font-size: 12px; color: #666;">Buy weapons to strengthen your arsenal</div>
+                            <div style="font-size: 12px; color: #666;">Buy mechs and weapons to strengthen your arsenal</div>
+                        </div>
+
+                        <!-- Mechs Section -->
+                        <div style="margin-bottom: 30px;">
+                            <div style="font-size: 14px; color: #00aa66; margin-bottom: 15px; letter-spacing: 2px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">MECHS FOR SALE</div>
+                            <div id="shopMechsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
 
                         <!-- Weapons Section -->
@@ -1804,6 +1832,14 @@
                                 </button>
                             </div>
                             <div id="shopWeaponsContainer" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Owned Mechs Section -->
+                        <div>
+                            <div style="font-size: 14px; color: #00aa66; margin-bottom: 15px; letter-spacing: 2px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">YOUR MECHS</div>
+                            <div id="ownedMechsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
                                 <!-- Populated by JS -->
                             </div>
                         </div>

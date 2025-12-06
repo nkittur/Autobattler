@@ -2024,7 +2024,7 @@
                     projectileSize: 0.12,
                     knockback: 20,
                     recoil: 0.1,
-                    cooldown: 1800,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [1, 0.9, 0.3],  // Yellow-orange
                     isProjectile: true
                 }
@@ -2049,7 +2049,7 @@
                     beamDuration: 150,
                     knockback: 5,
                     recoil: 0.15,
-                    cooldown: 2200,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [0.2, 1, 0.3]  // Green
                 }
             },
@@ -2133,7 +2133,6 @@
                 energyProvided: 1,   // 1 square = 1 energy provided
                 armor: 1,            // 1 square = 1 armor
                 accuracy: 4,         // 1 square = 4% accuracy
-                cooldownReduction: -100,  // 1 square = -100ms cooldown
                 knockback: 5,        // 1 square = 5 knockback
                 projectileSpeed: 8,  // 1 square = 8 projectile speed
                 heatCapacity: 8,     // 1 square = 8 heat capacity
@@ -2144,7 +2143,6 @@
             conversionRates: {
                 energyToDamage: 2,      // 1 energy cost = 2 damage
                 weightToDamage: 1,      // 1 weight = 1 damage (weight is more valuable now)
-                cooldownToDamage: 0.01, // 1ms cooldown = 0.01 damage
                 accuracyToDamage: 0.3,  // 1% accuracy = 0.3 damage
                 armorToWeight: 2        // 1 armor = 2 weight
             },
@@ -2212,7 +2210,7 @@
                     projectileSize: 0.15,
                     knockback: 30,
                     recoil: 0.12,
-                    cooldown: 1300,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [1, 0.9, 0.3],
                     isProjectile: true
                 },
@@ -2236,10 +2234,10 @@
                     beamDuration: 200,
                     knockback: 8,
                     recoil: 0.15,
-                    cooldown: 1600,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [0.2, 1, 0.3]
                 },
-                statWeights: { damage: 0.7, cooldownReduction: 0.3 }
+                statWeights: { damage: 0.8, knockback: 0.2 }
             },
             missile: {
                 type: 'WEAPON',
@@ -2259,11 +2257,11 @@
                     projectileSize: 0.2,
                     knockback: 35,
                     recoil: 0.2,
-                    cooldown: 2200,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [1, 0.4, 0.2],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.5, knockback: 0.4, cooldownReduction: 0.1 }
+                statWeights: { damage: 0.6, knockback: 0.4 }
             },
             machinegun: {
                 type: 'WEAPON',
@@ -2283,11 +2281,11 @@
                     projectileSize: 0.08,
                     knockback: 8,
                     recoil: 0.05,
-                    cooldown: 400,
+                    shotsPerRound: 3,  // Fires 3 times per 3-second round
                     color: [1, 1, 0.5],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.4, cooldownReduction: 0.5, projectileSpeed: 0.1 }
+                statWeights: { damage: 0.7, projectileSpeed: 0.3 }
             },
 
             // ARMOR
@@ -2496,7 +2494,7 @@
                 name: 'Rapid',
                 battleModifier: (battle) => ({
                     ...battle,
-                    cooldown: Math.round((battle.cooldown || 1000) * 0.8)
+                    shotsPerRound: (battle.shotsPerRound || 1) + 1  // Fire one extra time per round
                 }),
                 budgetCost: -1
             },
@@ -2657,11 +2655,6 @@
                     case 'projectileSpeed':
                         if (battle) {
                             battle.projectileSpeed = (battle.projectileSpeed || 0) + Math.round(budgetForStat * exchangeRates.projectileSpeed);
-                        }
-                        break;
-                    case 'cooldownReduction':
-                        if (battle) {
-                            battle.cooldown = Math.max(200, (battle.cooldown || 1000) + Math.round(budgetForStat * exchangeRates.cooldownReduction));
                         }
                         break;
                     case 'heatCapacity':
@@ -2956,8 +2949,8 @@
             rapid_assault: {
                 name: 'Rapid Assault Package',
                 items: ['machinegun', 'machinegun'],
-                bonus: '-15% Cooldown',
-                effect: { type: 'cooldown_reduction', amount: 0.15 }
+                bonus: '+1 Shot/Round',
+                effect: { type: 'shots_boost', amount: 1 }
             },
             heavy_hitter: {
                 name: 'Heavy Hitter Bundle',
@@ -3522,7 +3515,10 @@
         // Fire a weapon from loadout
         function fireLoadoutWeapon(mech, weaponData, target) {
             const now = performance.now();
-            if (now - weaponData.lastFired < weaponData.battle.cooldown) {
+            // Calculate cooldown from shotsPerRound (3 second round)
+            const shotsPerRound = weaponData.battle.shotsPerRound || 1;
+            const cooldown = 3000 / shotsPerRound;
+            if (now - weaponData.lastFired < cooldown) {
                 return; // Still on cooldown
             }
             weaponData.lastFired = now;
@@ -5021,16 +5017,24 @@
         // Build tooltip HTML for an item
         function buildItemTooltipHtml(item) {
             const stats = item.stats || {};
+            const battle = item.battle || {};
             let statsHtml = '';
 
-            if (stats.damage) statsHtml += `<div>⚔️ Damage: ${stats.damage}</div>`;
+            // Show damage with xN if fires multiple times per round
+            if (stats.damage) {
+                const shotsPerRound = battle.shotsPerRound || 1;
+                if (shotsPerRound > 1) {
+                    statsHtml += `<div>⚔️ Damage: ${stats.damage} x${shotsPerRound}</div>`;
+                } else {
+                    statsHtml += `<div>⚔️ Damage: ${stats.damage}</div>`;
+                }
+            }
             if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
             if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
             if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
             if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
             if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: -${stats.energyDraw}</div>`;
             if (stats.weight) statsHtml += `<div>⚖️ Weight: ${stats.weight}</div>`;
-            if (stats.cooldownReduction) statsHtml += `<div>❄️ Cooldown: -${stats.cooldownReduction}</div>`;
             if (stats.heatCapacity) statsHtml += `<div>🌡️ Heat Cap: +${stats.heatCapacity}</div>`;
 
             let specialHtml = '';
@@ -6367,8 +6371,15 @@
             const battle = component.battle || {};
             let statsLines = [];
 
-            // Format stat values
-            if (stats.damage) statsLines.push(`DMG: ${stats.damage}`);
+            // Format stat values - show damage with xN if fires multiple times
+            if (stats.damage) {
+                const shotsPerRound = battle.shotsPerRound || 1;
+                if (shotsPerRound > 1) {
+                    statsLines.push(`DMG: ${stats.damage} x${shotsPerRound}`);
+                } else {
+                    statsLines.push(`DMG: ${stats.damage}`);
+                }
+            }
             if (stats.armorBonus) statsLines.push(`ARM: +${stats.armorBonus}`);
             if (stats.accuracyBonus) statsLines.push(`ACC: +${stats.accuracyBonus}%`);
             if (stats.weight) statsLines.push(`WT: ${stats.weight}`);
@@ -6376,10 +6387,6 @@
             if (stats.energyDraw < 0) statsLines.push(`EN: +${Math.abs(stats.energyDraw)}`);
             if (stats.energyReduction) statsLines.push(`COOL: -${stats.energyReduction}`);
             if (stats.heatCapacity) statsLines.push(`HEAT: ${stats.heatCapacity}`);
-            if (battle.cooldown && stats.damage) {
-                const dps = (stats.damage / (battle.cooldown / 1000)).toFixed(1);
-                statsLines.push(`DPS: ${dps}`);
-            }
             if (battle.knockback) statsLines.push(`KB: ${battle.knockback}`);
 
             return statsLines.join(' | ');

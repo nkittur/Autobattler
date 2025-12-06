@@ -5118,24 +5118,112 @@
                 }
 
                 const dir = target.subtract(start).normalize();
-                const projSize = weapon.projectileSize || 0.1;  // Default if missing
-                const proj = BABYLON.MeshBuilder.CreateSphere('proj' + Date.now(), { diameter: projSize * 2 }, scene);
-                proj.position = start.clone();
+                const projSize = weapon.projectileSize || 0.1;
 
-                const mat = new BABYLON.StandardMaterial('projMat' + Date.now(), scene);
-                mat.emissiveColor = weapon.color;
-                proj.material = mat;
+                // Determine projectile type based on weapon characteristics
+                const isMissileWeapon = weapon.name && (weapon.name.toLowerCase().includes('missile') || weapon.name.toLowerCase().includes('rocket'));
+                const isBallistic = weapon.projectileSpeed > 40 || (weapon.name && (weapon.name.toLowerCase().includes('railgun') || weapon.name.toLowerCase().includes('cannon') || weapon.name.toLowerCase().includes('gun')));
+
+                let proj;
+                let projectileData = { weapon, target: to, firedAt: Date.now() };
+
+                if (isMissileWeapon) {
+                    // MISSILE: Elongated with pointed nose, slower start with acceleration
+                    proj = BABYLON.MeshBuilder.CreateCylinder('missile' + Date.now(), {
+                        height: 0.4, diameterTop: 0, diameterBottom: 0.12, tessellation: 8
+                    }, scene);
+                    proj.position = start.clone();
+                    proj.lookAt(target);
+                    proj.rotation.x += Math.PI / 2;  // Point forward
+
+                    const mat = new BABYLON.StandardMaterial('missileMat' + Date.now(), scene);
+                    mat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.35);
+                    mat.emissiveColor = weapon.color.scale(0.3);
+                    proj.material = mat;
+
+                    // Add engine glow at back
+                    const engineGlow = BABYLON.MeshBuilder.CreateSphere('engineGlow' + Date.now(), { diameter: 0.1 }, scene);
+                    engineGlow.position = new BABYLON.Vector3(0, -0.2, 0);
+                    engineGlow.parent = proj;
+                    const glowMat = new BABYLON.StandardMaterial('glowMat' + Date.now(), scene);
+                    glowMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0.2);
+                    glowMat.alpha = 0.9;
+                    engineGlow.material = glowMat;
+
+                    projectileData.isMissile = true;
+                    projectileData.currentSpeed = weapon.projectileSpeed * 0.3;  // Start slow
+                    projectileData.maxSpeed = weapon.projectileSpeed * 1.5;  // Accelerate to faster
+                    projectileData.acceleration = weapon.projectileSpeed * 2;  // Acceleration rate
+                    projectileData.direction = dir.clone();
+                    projectileData.lastSmokeTime = Date.now();
+                    projectileData.engineGlow = engineGlow;
+
+                } else if (isBallistic) {
+                    // BALLISTIC: Fast elongated bullet/tracer
+                    proj = BABYLON.MeshBuilder.CreateCylinder('bullet' + Date.now(), {
+                        height: 0.25, diameter: 0.04, tessellation: 6
+                    }, scene);
+                    proj.position = start.clone();
+                    proj.lookAt(target);
+                    proj.rotation.x += Math.PI / 2;
+
+                    const mat = new BABYLON.StandardMaterial('bulletMat' + Date.now(), scene);
+                    mat.emissiveColor = weapon.color;
+                    mat.alpha = 0.95;
+                    proj.material = mat;
+
+                    // Add tracer glow
+                    const tracer = BABYLON.MeshBuilder.CreateCylinder('tracer' + Date.now(), {
+                        height: 0.35, diameter: 0.08, tessellation: 6
+                    }, scene);
+                    tracer.position = new BABYLON.Vector3(0, 0, 0);
+                    tracer.parent = proj;
+                    const tracerMat = new BABYLON.StandardMaterial('tracerMat' + Date.now(), scene);
+                    tracerMat.emissiveColor = weapon.color;
+                    tracerMat.alpha = 0.4;
+                    tracer.material = tracerMat;
+
+                    projectileData.isBallistic = true;
+                    // Ballistic rounds are FAST
+                    projectileData.speed = weapon.projectileSpeed * 2;
+
+                } else {
+                    // DEFAULT: Energy bolt (glowing sphere)
+                    proj = BABYLON.MeshBuilder.CreateSphere('proj' + Date.now(), { diameter: projSize * 2 }, scene);
+                    proj.position = start.clone();
+
+                    const mat = new BABYLON.StandardMaterial('projMat' + Date.now(), scene);
+                    mat.emissiveColor = weapon.color;
+                    mat.alpha = 0.9;
+                    proj.material = mat;
+
+                    // Add outer glow
+                    const glow = BABYLON.MeshBuilder.CreateSphere('glow' + Date.now(), { diameter: projSize * 4 }, scene);
+                    glow.parent = proj;
+                    const glowMat = new BABYLON.StandardMaterial('glowMat' + Date.now(), scene);
+                    glowMat.emissiveColor = weapon.color;
+                    glowMat.alpha = 0.25;
+                    glow.material = glowMat;
+
+                    projectileData.isEnergyBolt = true;
+                }
 
                 const agg = new BABYLON.PhysicsAggregate(proj, BABYLON.PhysicsShapeType.SPHERE,
                     { mass: 0.8, friction: 0, restitution: 0.1 }, scene);
 
                 // Disable projectile-to-projectile collisions
-                agg.shape.filterMembershipMask = 4;  // Projectile group
-                agg.shape.filterCollideMask = 1 | 2;  // Collide with ground (1) and mechs (2), not projectiles (4)
+                agg.shape.filterMembershipMask = 4;
+                agg.shape.filterCollideMask = 1 | 2;
 
-                agg.body.setLinearVelocity(dir.scale(weapon.projectileSpeed));
+                // Set initial velocity
+                const initialSpeed = projectileData.isMissile ? projectileData.currentSpeed :
+                                    projectileData.isBallistic ? projectileData.speed :
+                                    weapon.projectileSpeed;
+                agg.body.setLinearVelocity(dir.scale(initialSpeed));
 
-                projectiles.push({ mesh: proj, aggregate: agg, weapon, target: to, firedAt: Date.now() });
+                projectileData.mesh = proj;
+                projectileData.aggregate = agg;
+                projectiles.push(projectileData);
                 createMuzzleFlash(start, weapon.color);
                 log(`[PROJ] Projectile created successfully`);
             } catch (e) {
@@ -5179,15 +5267,43 @@
                 }
 
                 log(`[BEAM] Creating tube: dist=${dist.toFixed(2)}`);
+
+                // Create main beam core
                 const beam = BABYLON.MeshBuilder.CreateTube('beam' + Date.now(), {
-                    path: [start, end], radius: 0.1, updatable: false
+                    path: [start, end], radius: 0.08, updatable: false
                 }, scene);
                 const mat = new BABYLON.StandardMaterial('beamMat' + Date.now(), scene);
                 mat.emissiveColor = weapon.color;
-                mat.alpha = 0.85;
+                mat.alpha = 0.95;
+                mat.disableLighting = true;
                 beam.material = mat;
 
-                beams.push({ mesh: beam, material: mat, createdAt: Date.now(), duration: weapon.beamDuration });
+                // Create outer glow tube
+                const beamGlow = BABYLON.MeshBuilder.CreateTube('beamGlow' + Date.now(), {
+                    path: [start, end], radius: 0.2, updatable: false
+                }, scene);
+                const glowMat = new BABYLON.StandardMaterial('beamGlowMat' + Date.now(), scene);
+                glowMat.emissiveColor = weapon.color;
+                glowMat.alpha = 0.25;
+                glowMat.disableLighting = true;
+                beamGlow.material = glowMat;
+
+                // Create even larger outer halo
+                const beamHalo = BABYLON.MeshBuilder.CreateTube('beamHalo' + Date.now(), {
+                    path: [start, end], radius: 0.35, updatable: false
+                }, scene);
+                const haloMat = new BABYLON.StandardMaterial('beamHaloMat' + Date.now(), scene);
+                haloMat.emissiveColor = weapon.color;
+                haloMat.alpha = 0.1;
+                haloMat.disableLighting = true;
+                beamHalo.material = haloMat;
+
+                beams.push({
+                    mesh: beam, material: mat,
+                    glow: beamGlow, glowMat: glowMat,
+                    halo: beamHalo, haloMat: haloMat,
+                    createdAt: Date.now(), duration: weapon.beamDuration
+                });
                 applyDamage(to, weapon, from.isPlayer ? 1 : -1);
                 createImpact(end.clone(), weapon.color);
                 log(`[BEAM] Beam created successfully`);
@@ -5450,7 +5566,34 @@
                         return false;
                     }
 
-                    if (p.isMissile && Math.random() < 0.25) createSmoke(p.mesh.position.clone());
+                    // Handle missile acceleration and smoke trails
+                    if (p.isMissile) {
+                        // Accelerate missile
+                        if (p.currentSpeed < p.maxSpeed) {
+                            p.currentSpeed += p.acceleration * dt;
+                            if (p.currentSpeed > p.maxSpeed) p.currentSpeed = p.maxSpeed;
+
+                            // Update velocity with new speed
+                            if (p.aggregate && p.aggregate.body) {
+                                const currentVel = p.aggregate.body.getLinearVelocity();
+                                const newVel = currentVel.normalize().scale(p.currentSpeed);
+                                p.aggregate.body.setLinearVelocity(newVel);
+                            }
+                        }
+
+                        // Create smoke trail more frequently
+                        if (now - p.lastSmokeTime > 30) {  // Every 30ms
+                            createMissileSmoke(p.mesh.position.clone());
+                            p.lastSmokeTime = now;
+                        }
+
+                        // Flicker engine glow
+                        if (p.engineGlow && p.engineGlow.material) {
+                            const flicker = 0.7 + Math.random() * 0.3;
+                            p.engineGlow.material.emissiveColor = new BABYLON.Color3(1 * flicker, 0.5 * flicker, 0.1 * flicker);
+                        }
+                    }
+
                     return true;
                 } catch (e) {
                     console.error('[PROJECTILE ERROR]', e);
@@ -5460,12 +5603,46 @@
             });
         }
 
+        // Create missile smoke trail particle
+        function createMissileSmoke(pos) {
+            const smoke = BABYLON.MeshBuilder.CreateSphere('smoke' + Date.now(), { diameter: 0.15 }, scene);
+            smoke.position = pos;
+
+            const mat = new BABYLON.StandardMaterial('smokeMat' + Date.now(), scene);
+            mat.diffuseColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+            mat.emissiveColor = new BABYLON.Color3(0.3, 0.25, 0.2);
+            mat.alpha = 0.6;
+            smoke.material = mat;
+
+            // Animate smoke: expand and fade
+            let smokeLife = 0;
+            const smokeUpdate = scene.onBeforeRenderObservable.add(() => {
+                smokeLife += scene.getEngine().getDeltaTime() / 1000;
+                const scale = 1 + smokeLife * 3;  // Expand
+                smoke.scaling = new BABYLON.Vector3(scale, scale, scale);
+                mat.alpha = Math.max(0, 0.6 - smokeLife * 1.5);  // Fade
+
+                if (smokeLife > 0.5) {
+                    scene.onBeforeRenderObservable.remove(smokeUpdate);
+                    smoke.dispose();
+                }
+            });
+        }
+
         function updateBeams() {
             const now = Date.now();
             beams = beams.filter(b => {
                 const age = now - b.createdAt;
-                if (age > b.duration) { b.mesh.dispose(); return false; }
-                b.material.alpha = 0.85 * (1 - age / b.duration);
+                if (age > b.duration) {
+                    b.mesh.dispose();
+                    if (b.glow) b.glow.dispose();
+                    if (b.halo) b.halo.dispose();
+                    return false;
+                }
+                const fadeRatio = 1 - age / b.duration;
+                b.material.alpha = 0.95 * fadeRatio;
+                if (b.glowMat) b.glowMat.alpha = 0.25 * fadeRatio;
+                if (b.haloMat) b.haloMat.alpha = 0.1 * fadeRatio;
                 return true;
             });
         }

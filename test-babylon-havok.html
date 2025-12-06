@@ -468,11 +468,11 @@
             z-index: 20;
         }
 
-        .placed-item-unified.weapon { background: rgba(255, 102, 68, 0.7); border: 2px solid #ff6644; }
-        .placed-item-unified.armor { background: rgba(68, 136, 255, 0.7); border: 2px solid #4488ff; }
-        .placed-item-unified.reactor { background: rgba(255, 170, 0, 0.7); border: 2px solid #ffaa00; }
-        .placed-item-unified.system { background: rgba(170, 68, 255, 0.7); border: 2px solid #aa44ff; }
-        .placed-item-unified.cooling { background: rgba(68, 221, 255, 0.7); border: 2px solid #44ddff; }
+        .placed-item-unified.weapon { --item-bg: rgba(255, 102, 68, 0.7); --item-border: #ff6644; }
+        .placed-item-unified.armor { --item-bg: rgba(68, 136, 255, 0.7); --item-border: #4488ff; }
+        .placed-item-unified.reactor { --item-bg: rgba(255, 170, 0, 0.7); --item-border: #ffaa00; }
+        .placed-item-unified.system { --item-bg: rgba(170, 68, 255, 0.7); --item-border: #aa44ff; }
+        .placed-item-unified.cooling { --item-bg: rgba(68, 221, 255, 0.7); --item-border: #44ddff; }
 
         /* Tooltips for placed items in unified grid */
         .placed-item-unified .item-tooltip {
@@ -2301,26 +2301,26 @@
         // Base item templates - define the "class" of item with typical shape/stats
         // Scaled for smaller economy: weight limit 6, energy ~6, small grid
         const ITEM_TEMPLATES = {
-            // WEAPONS
+            // WEAPONS - base stats ~25% better than starters (damage 4-5), shapes 3+ squares
             railgun: {
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔫',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Precision', 'Rapid'],
                 nameSuffix: ['Railgun', 'Cannon', 'Driver', 'Accelerator'],
-                baseShape: [[1], [1]],  // 1x2 vertical (fits in new grid)
+                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 4,
+                    weight: 3,
                     energyDraw: 1,
-                    damage: 8
+                    damage: 5
                 },
                 baseBattle: {
                     projectileSpeed: 55,
                     projectileSize: 0.15,
-                    knockback: 30,
+                    knockback: 25,
                     recoil: 0.12,
-                    shotsPerRound: 1,  // Fires once per 3-second round
+                    shotsPerRound: 1,
                     color: [1, 0.9, 0.3],
                     isProjectile: true
                 },
@@ -2332,19 +2332,19 @@
                 icon: '⚡',
                 namePrefix: ['ER', 'Pulse', 'Focused', 'Burst', 'Heavy'],
                 nameSuffix: ['Laser', 'Beam', 'Array', 'Emitter'],
-                baseShape: [[1, 1]],  // 2x1 horizontal (fits in new grid)
+                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 2,
                     energyDraw: 2,
-                    damage: 6
+                    damage: 4
                 },
                 baseBattle: {
                     isBeam: true,
                     beamDuration: 200,
                     knockback: 8,
                     recoil: 0.15,
-                    shotsPerRound: 1,  // Fires once per 3-second round
+                    shotsPerRound: 1,
                     color: [0.2, 1, 0.3]
                 },
                 statWeights: { damage: 0.8, knockback: 0.2 }
@@ -2355,19 +2355,19 @@
                 icon: '🚀',
                 namePrefix: ['Light', 'Cluster', 'Heavy', 'Guided', 'Swarm'],
                 nameSuffix: ['Missile', 'Rocket', 'Launcher', 'Pod'],
-                baseShape: [[1, 1]],  // 2x1 horizontal (scaled down)
+                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 3,
                     energyDraw: 1,
-                    damage: 9
+                    damage: 5
                 },
                 baseBattle: {
                     projectileSpeed: 30,
                     projectileSize: 0.2,
-                    knockback: 35,
+                    knockback: 30,
                     recoil: 0.2,
-                    shotsPerRound: 1,  // Fires once per 3-second round
+                    shotsPerRound: 1,
                     color: [1, 0.4, 0.2],
                     isProjectile: true
                 },
@@ -2379,38 +2379,38 @@
                 icon: '🔥',
                 namePrefix: ['Rapid', 'Twin', 'Auto', 'Rotary', 'Ultra'],
                 nameSuffix: ['Cannon', 'Gun', 'Repeater', 'Vulcan'],
-                baseShape: [[1]],  // 1x1 single (compact)
+                baseShape: [[1, 1]],  // 2x1 (2 squares - compact rapid fire)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,
                     energyDraw: 1,
-                    damage: 4
+                    damage: 2
                 },
                 baseBattle: {
                     projectileSpeed: 60,
                     projectileSize: 0.08,
-                    knockback: 8,
+                    knockback: 5,
                     recoil: 0.05,
-                    shotsPerRound: 3,  // Fires 3 times per 3-second round
+                    shotsPerRound: 3,
                     color: [1, 1, 0.5],
                     isProjectile: true
                 },
                 statWeights: { damage: 0.7, projectileSpeed: 0.3 }
             },
 
-            // ARMOR
+            // ARMOR - 3+ squares, scales with size
             armor: {
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '🛡️',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Reinforced', 'Composite'],
                 nameSuffix: ['Plating', 'Armor', 'Shield', 'Carapace'],
-                baseShape: [[1, 1]],  // 2x1 horizontal (scaled down)
+                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 2,
                     energyDraw: 0,
-                    armorBonus: 4
+                    armorBonus: 3
                 },
                 statWeights: { armor: 0.8, weight: 0.2 }
             },
@@ -2420,29 +2420,29 @@
                 icon: '💥',
                 namePrefix: ['Reactive', 'Ablative', 'Hardened', 'Explosive'],
                 nameSuffix: ['Plates', 'Panels', 'Coating', 'Layer'],
-                baseShape: [[1, 1]],  // 2x1 (scaled down)
+                baseShape: [[1, 1], [1, 0]],  // L-shape (3 squares)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 3,
+                    weight: 2,
                     energyDraw: 1,
-                    armorBonus: 6
+                    armorBonus: 4
                 },
                 statWeights: { armor: 0.9, weight: 0.1 }
             },
 
-            // REACTORS - provide energy
+            // REACTORS - provide energy, 3+ squares
             reactor: {
                 type: 'REACTOR',
                 category: 'reactor',
                 icon: '⚛️',
                 namePrefix: ['Compact', 'Standard', 'High-Output', 'Fusion', 'Plasma'],
                 nameSuffix: ['Reactor', 'Core', 'Generator', 'Cell'],
-                baseShape: [[1]],  // 1x1 (scaled down)
+                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 1,
-                    energyDraw: -4,  // Provides 4 energy
-                    heatCapacity: 20
+                    weight: 2,
+                    energyDraw: -3,  // Provides 3 energy
+                    heatCapacity: 15
                 },
                 statWeights: { energyProvided: 0.8, heatCapacity: 0.2 }
             },
@@ -2450,9 +2450,9 @@
                 type: 'REACTOR',
                 category: 'reactor',
                 icon: '🔋',
-                namePrefix: ['Emergency', 'Backup', 'Auxiliary', 'Micro'],
+                namePrefix: ['Emergency', 'Backup', 'Auxiliary', 'Compact'],
                 nameSuffix: ['Cell', 'Battery', 'Pack', 'Unit'],
-                baseShape: [[1]],  // 1x1 small
+                baseShape: [[1, 1]],  // 2x1 (2 squares - smaller reactor option)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2462,19 +2462,19 @@
                 statWeights: { energyProvided: 0.9, weight: 0.1 }
             },
 
-            // SYSTEMS
+            // SYSTEMS - 3+ squares
             targeting: {
                 type: 'SYSTEM',
                 category: 'system',
                 icon: '🎯',
                 namePrefix: ['Advanced', 'Precision', 'Neural', 'Quantum', 'Elite'],
                 nameSuffix: ['Targeting', 'Computer', 'System', 'Interface'],
-                baseShape: [[1]],  // 1x1
+                baseShape: [[1, 1], [0, 1]],  // L-shape (3 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,
                     energyDraw: 1,
-                    accuracyBonus: 15
+                    accuracyBonus: 10
                 },
                 statWeights: { accuracy: 1.0 }
             },
@@ -2484,7 +2484,7 @@
                 icon: '🔄',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Stabilized'],
                 nameSuffix: ['Gyro', 'Stabilizer', 'Balance Unit'],
-                baseShape: [[1]],  // 1x1 (scaled down)
+                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2494,14 +2494,14 @@
                 statWeights: { accuracy: 0.7, weight: 0.3 }
             },
 
-            // COOLING
+            // COOLING - heat sinks reduce energy cost of adjacent weapons
             heat_sink: {
                 type: 'COOLING',
                 category: 'cooling',
                 icon: '❄️',
                 namePrefix: ['Double', 'Enhanced', 'Cryo', 'Advanced'],
                 nameSuffix: ['Heat Sink', 'Cooler', 'Radiator', 'Vent'],
-                baseShape: [[1]],  // 1x1
+                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2509,7 +2509,7 @@
                     energyReduction: 1
                 },
                 special: {
-                    onPlace: 'drawCard',
+                    adjacentEffect: 'reduceEnergy',
                     locksOnPlace: true
                 },
                 statWeights: { energyReduction: 1.0 }
@@ -2520,14 +2520,76 @@
                 icon: '🌡️',
                 namePrefix: ['Advanced', 'Integrated', 'Active', 'Elite'],
                 nameSuffix: ['Cooling', 'System', 'Module', 'Array'],
-                baseShape: [[1, 1]],  // 2x1 horizontal
+                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares - larger = more efficient)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 10,
-                    energyDraw: 1,
-                    energyReduction: 3
+                    weight: 2,
+                    energyDraw: 0,
+                    energyReduction: 2
+                },
+                special: {
+                    adjacentEffect: 'reduceEnergy'
                 },
                 statWeights: { energyReduction: 0.8, weight: 0.2 }
+            },
+
+            // SYNERGY EQUIPMENT - affects adjacent items
+            weapon_amplifier: {
+                type: 'SYSTEM',
+                category: 'system',
+                icon: '⚡',
+                namePrefix: ['Tactical', 'Combat', 'Strike', 'War'],
+                nameSuffix: ['Amplifier', 'Booster', 'Enhancer', 'Module'],
+                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                validSlots: ['torso', 'leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 2,
+                    energyDraw: 1,
+                    adjacentDamageBonus: 1  // +1 damage to adjacent weapons
+                },
+                special: {
+                    adjacentEffect: 'weaponDamage',
+                    effectValue: 1
+                },
+                statWeights: { weight: 0.5 }
+            },
+            armor_linkage: {
+                type: 'SYSTEM',
+                category: 'system',
+                icon: '🔗',
+                namePrefix: ['Reactive', 'Adaptive', 'Linked', 'Network'],
+                nameSuffix: ['Linkage', 'Matrix', 'Network', 'Grid'],
+                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                validSlots: ['torso'],
+                baseStats: {
+                    weight: 1,
+                    energyDraw: 1,
+                    adjacentArmorBonus: 1  // +1 armor to adjacent armor pieces
+                },
+                special: {
+                    adjacentEffect: 'armorBonus',
+                    effectValue: 1
+                },
+                statWeights: { weight: 0.5 }
+            },
+            capacitor: {
+                type: 'REACTOR',
+                category: 'reactor',
+                icon: '⚡',
+                namePrefix: ['Flux', 'Charged', 'Power', 'Energy'],
+                nameSuffix: ['Capacitor', 'Bank', 'Store', 'Reserve'],
+                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
+                validSlots: ['torso', 'leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 1,
+                    energyDraw: -2,  // Provides 2 energy
+                    adjacentEnergyBonus: 1  // +1 energy to adjacent reactors
+                },
+                special: {
+                    adjacentEffect: 'reactorBonus',
+                    effectValue: 1
+                },
+                statWeights: { energyProvided: 0.8, weight: 0.2 }
             }
         };
 
@@ -4324,19 +4386,22 @@
             const shuffledMechs = [...availableMechs].sort(() => Math.random() - 0.5);
             shopInventory.mechs = shuffledMechs.slice(0, SHOP.mechSlots);
 
-            // Generate weapon offerings
-            const weaponTemplates = Object.keys(ITEM_TEMPLATES).filter(key => {
-                return ITEM_TEMPLATES[key].type === 'WEAPON';
-            });
+            // Generate equipment offerings (mix of weapons and other equipment)
+            const allTemplates = Object.keys(ITEM_TEMPLATES);
+            const weaponTemplates = allTemplates.filter(key => ITEM_TEMPLATES[key].type === 'WEAPON');
+            const equipTemplates = allTemplates.filter(key => ITEM_TEMPLATES[key].type !== 'WEAPON');
 
             for (let i = 0; i < SHOP.weaponSlots; i++) {
-                const templateType = weaponTemplates[Math.floor(Math.random() * weaponTemplates.length)];
+                // 60% weapons, 40% other equipment
+                const useWeapon = Math.random() < 0.6;
+                const templates = useWeapon ? weaponTemplates : equipTemplates;
+                const templateType = templates[Math.floor(Math.random() * templates.length)];
                 const rarity = getShopWeaponRarity();
                 const level = Math.max(1, Math.floor(gameProgression.round / 3) + 1);
-                const weapon = generateComponent(templateType, level, rarity);
+                const item = generateComponent(templateType, level, rarity);
 
-                if (weapon) {
-                    registerGeneratedComponent(weapon);
+                if (item) {
+                    registerGeneratedComponent(item);
 
                     const isBargain = Math.random() < SHOP.bargainChance;
                     const basePrice = ECONOMY.weaponPrices[rarity] || 5;
@@ -4345,7 +4410,7 @@
                         basePrice;
 
                     shopInventory.weapons.push({
-                        itemId: weapon.id,
+                        itemId: item.id,
                         isBargain: isBargain,
                         price: price,
                         originalPrice: basePrice
@@ -5100,13 +5165,10 @@
                 const w = shape[0].length;
                 const h = shape.length;
 
+                // Create a container for the item that spans the bounding box
                 const placedEl = document.createElement('div');
                 placedEl.className = `placed-item-unified ${item.category}`;
                 placedEl.dataset.instanceId = eq.instanceId;
-
-                // Build tooltip HTML
-                const tooltipHtml = buildItemTooltipHtml(item);
-                placedEl.innerHTML = `${item.icon}${tooltipHtml}`;
 
                 // Position based on grid cell
                 placedEl.style.position = 'absolute';
@@ -5114,6 +5176,64 @@
                 placedEl.style.top = `${10 + eq.position.y * (cellSize + gap)}px`;
                 placedEl.style.width = `${w * cellSize + (w - 1) * gap}px`;
                 placedEl.style.height = `${h * cellSize + (h - 1) * gap}px`;
+                placedEl.style.background = 'transparent';
+                placedEl.style.border = 'none';
+
+                // Build the shape cells
+                let shapeCellsHtml = '';
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        if (shape[dy][dx] === 1) {
+                            const cellLeft = dx * (cellSize + gap);
+                            const cellTop = dy * (cellSize + gap);
+                            shapeCellsHtml += `<div class="item-shape-cell" style="
+                                position: absolute;
+                                left: ${cellLeft}px;
+                                top: ${cellTop}px;
+                                width: ${cellSize}px;
+                                height: ${cellSize}px;
+                                background: var(--item-bg);
+                                border: 2px solid var(--item-border);
+                                border-radius: 4px;
+                                box-sizing: border-box;
+                            "></div>`;
+                        }
+                    }
+                }
+
+                // Find center cell for icon placement
+                let centerX = 0, centerY = 0, cellCount = 0;
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        if (shape[dy][dx] === 1) {
+                            centerX += dx;
+                            centerY += dy;
+                            cellCount++;
+                        }
+                    }
+                }
+                centerX = Math.floor(centerX / cellCount);
+                centerY = Math.floor(centerY / cellCount);
+
+                const iconLeft = centerX * (cellSize + gap) + cellSize / 2;
+                const iconTop = centerY * (cellSize + gap) + cellSize / 2;
+
+                // Build tooltip HTML
+                const tooltipHtml = buildItemTooltipHtml(item);
+
+                placedEl.innerHTML = `
+                    ${shapeCellsHtml}
+                    <div class="item-icon-overlay" style="
+                        position: absolute;
+                        left: ${iconLeft}px;
+                        top: ${iconTop}px;
+                        transform: translate(-50%, -50%);
+                        font-size: 24px;
+                        z-index: 2;
+                        pointer-events: none;
+                    ">${item.icon}</div>
+                    ${tooltipHtml}
+                `;
 
                 // Make draggable (to move or remove)
                 placedEl.addEventListener('mousedown', (e) => handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid'));

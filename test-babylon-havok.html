@@ -372,6 +372,116 @@
         .placed-item-unified.system { background: rgba(170, 68, 255, 0.7); border: 2px solid #aa44ff; }
         .placed-item-unified.cooling { background: rgba(68, 221, 255, 0.7); border: 2px solid #44ddff; }
 
+        /* Tooltips for placed items in unified grid */
+        .placed-item-unified .item-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 10, 0.95);
+            border: 2px solid currentColor;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            z-index: 100;
+            pointer-events: none;
+            text-align: left;
+        }
+
+        .placed-item-unified:hover .item-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .placed-item-unified .item-tooltip .tooltip-name {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .placed-item-unified .item-tooltip .tooltip-stats {
+            color: #aaa;
+        }
+
+        .placed-item-unified .item-tooltip .tooltip-stats div {
+            margin: 3px 0;
+        }
+
+        .placed-item-unified .item-tooltip .tooltip-special {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            color: #ffcc00;
+            font-style: italic;
+            font-size: 10px;
+        }
+
+        /* Shop inventory sellable items */
+        .shop-sell-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: rgba(0, 40, 20, 0.6);
+            border: 2px solid #00aa66;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 8px;
+        }
+
+        .shop-sell-item:hover {
+            background: rgba(255, 170, 0, 0.2);
+            border-color: #ffaa00;
+        }
+
+        .shop-sell-item .item-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .shop-sell-item .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .shop-sell-item .item-name {
+            font-size: 10px;
+            color: #00ff88;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .shop-sell-item .item-sell-price {
+            font-size: 10px;
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .shop-sell-item.weapon { border-color: #ff6644; }
+        .shop-sell-item.weapon .item-icon { color: #ff6644; }
+        .shop-sell-item.armor { border-color: #4488ff; }
+        .shop-sell-item.armor .item-icon { color: #4488ff; }
+        .shop-sell-item.reactor { border-color: #ffaa00; }
+        .shop-sell-item.reactor .item-icon { color: #ffaa00; }
+        .shop-sell-item.system { border-color: #aa44ff; }
+        .shop-sell-item.system .item-icon { color: #aa44ff; }
+        .shop-sell-item.cooling { border-color: #44ddff; }
+        .shop-sell-item.cooling .item-icon { color: #44ddff; }
+
+        .shop-empty-msg {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            font-size: 11px;
+            padding: 10px;
+        }
+
         #pileViewerClose {
             margin-top: 20px;
             padding: 10px 30px;
@@ -1653,38 +1763,49 @@
                     <div class="nav-spacer"></div>
                     <div style="color: #ffcc00; font-size: 16px; font-weight: bold;">💰 <span id="shopGoldDisplay">10</span> Gold</div>
                 </div>
-                <div class="shop-content" style="flex: 1; padding: 20px; overflow-y: auto;">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div style="font-size: 24px; color: #00ff88; letter-spacing: 3px;">SHOP</div>
-                        <div style="font-size: 12px; color: #666;">Buy mechs and weapons to strengthen your arsenal</div>
-                    </div>
-
-                    <!-- Mechs Section -->
-                    <div style="margin-bottom: 30px;">
-                        <div style="font-size: 14px; color: #00aa66; margin-bottom: 15px; letter-spacing: 2px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">MECHS FOR SALE</div>
-                        <div id="shopMechsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-                            <!-- Populated by JS -->
+                <div class="shop-layout" style="display: flex; flex: 1; overflow: hidden;">
+                    <!-- Left Panel: Your Inventory -->
+                    <div class="shop-inventory-panel" style="width: 250px; min-width: 250px; background: rgba(0,20,10,0.8); border-right: 2px solid #00aa66; display: flex; flex-direction: column;">
+                        <div style="padding: 15px; border-bottom: 1px solid rgba(0,255,136,0.3); text-align: center;">
+                            <div style="font-size: 14px; color: #ffaa00; letter-spacing: 2px;">YOUR ITEMS</div>
+                            <div style="font-size: 10px; color: #888; margin-top: 5px;">Click to sell</div>
+                        </div>
+                        <div id="shopInventoryScroll" style="flex: 1; overflow-y: auto; padding: 10px;">
+                            <!-- Equipped Items Section -->
+                            <div style="margin-bottom: 15px;">
+                                <div style="font-size: 11px; color: #00aa66; margin-bottom: 8px; letter-spacing: 1px;">EQUIPPED</div>
+                                <div id="shopEquippedItems">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                            <!-- Bench Items Section -->
+                            <div>
+                                <div style="font-size: 11px; color: #00aa66; margin-bottom: 8px; letter-spacing: 1px;">BENCH</div>
+                                <div id="shopBenchItems">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Weapons Section -->
-                    <div style="margin-bottom: 30px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">
-                            <div style="font-size: 14px; color: #00aa66; letter-spacing: 2px;">WEAPONS FOR SALE</div>
-                            <button id="refreshShopBtn" onclick="handleRefreshShop()" style="padding: 6px 15px; background: rgba(255, 170, 0, 0.2); border: 1px solid #ffaa00; color: #ffaa00; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px;">
-                                Refresh (2g)
-                            </button>
+                    <!-- Right Panel: Shop Items for Sale -->
+                    <div class="shop-content" style="flex: 1; padding: 20px; overflow-y: auto;">
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <div style="font-size: 24px; color: #00ff88; letter-spacing: 3px;">SHOP</div>
+                            <div style="font-size: 12px; color: #666;">Buy weapons to strengthen your arsenal</div>
                         </div>
-                        <div id="shopWeaponsContainer" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
-                            <!-- Populated by JS -->
-                        </div>
-                    </div>
 
-                    <!-- Owned Mechs Section -->
-                    <div>
-                        <div style="font-size: 14px; color: #00aa66; margin-bottom: 15px; letter-spacing: 2px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">YOUR MECHS</div>
-                        <div id="ownedMechsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-                            <!-- Populated by JS -->
+                        <!-- Weapons Section -->
+                        <div style="margin-bottom: 30px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">
+                                <div style="font-size: 14px; color: #00aa66; letter-spacing: 2px;">WEAPONS FOR SALE</div>
+                                <button id="refreshShopBtn" onclick="handleRefreshShop()" style="padding: 6px 15px; background: rgba(255, 170, 0, 0.2); border: 1px solid #ffaa00; color: #ffaa00; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px;">
+                                    Refresh (2g)
+                                </button>
+                            </div>
+                            <div id="shopWeaponsContainer" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+                                <!-- Populated by JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4840,7 +4961,10 @@
                 const placedEl = document.createElement('div');
                 placedEl.className = `placed-item-unified ${item.category}`;
                 placedEl.dataset.instanceId = eq.instanceId;
-                placedEl.innerHTML = item.icon;
+
+                // Build tooltip HTML
+                const tooltipHtml = buildItemTooltipHtml(item);
+                placedEl.innerHTML = `${item.icon}${tooltipHtml}`;
 
                 // Position based on grid cell
                 placedEl.style.position = 'absolute';
@@ -4855,6 +4979,43 @@
 
                 container.appendChild(placedEl);
             });
+        }
+
+        // Build tooltip HTML for an item
+        function buildItemTooltipHtml(item) {
+            const stats = item.stats || {};
+            let statsHtml = '';
+
+            if (stats.damage) statsHtml += `<div>⚔️ Damage: ${stats.damage}</div>`;
+            if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
+            if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
+            if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
+            if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
+            if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: -${stats.energyDraw}</div>`;
+            if (stats.weight) statsHtml += `<div>⚖️ Weight: ${stats.weight}</div>`;
+            if (stats.cooldownReduction) statsHtml += `<div>❄️ Cooldown: -${stats.cooldownReduction}</div>`;
+            if (stats.heatCapacity) statsHtml += `<div>🌡️ Heat Cap: +${stats.heatCapacity}</div>`;
+
+            let specialHtml = '';
+            if (item.special) {
+                if (item.special.damageBoost) specialHtml += `+${Math.round((item.special.damageBoost - 1) * 100)}% damage to adjacent weapons<br>`;
+                if (item.special.adjacentArmorBoost) specialHtml += `+${item.special.adjacentArmorBoost} armor to adjacent items<br>`;
+                if (item.special.energyPerAdjacentWeapon) specialHtml += `+${item.special.energyPerAdjacentWeapon} energy per adjacent weapon<br>`;
+            }
+            if (item.description) {
+                specialHtml += item.description;
+            }
+
+            const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
+                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+
+            return `
+                <div class="item-tooltip">
+                    <div class="tooltip-name" style="color: ${rarityColor};">${item.name}</div>
+                    <div class="tooltip-stats">${statsHtml}</div>
+                    ${specialHtml ? `<div class="tooltip-special">${specialHtml}</div>` : ''}
+                </div>
+            `;
         }
 
         // ============================================
@@ -5242,6 +5403,108 @@
                     ownedContainer.appendChild(card);
                 });
             }
+
+            // Render player's equipped items (for selling)
+            renderShopInventory();
+        }
+
+        // Render player's inventory in the shop (for selling)
+        function renderShopInventory() {
+            const equippedContainer = document.getElementById('shopEquippedItems');
+            const benchContainer = document.getElementById('shopBenchItems');
+
+            // Render equipped items
+            if (equippedContainer) {
+                equippedContainer.innerHTML = '';
+                if (loadoutState.equipment.length === 0) {
+                    equippedContainer.innerHTML = '<div class="shop-empty-msg">No items equipped</div>';
+                } else {
+                    loadoutState.equipment.forEach(eq => {
+                        const item = eq.item || ITEM_DATABASE[eq.itemId];
+                        if (!item) return;
+                        const sellPrice = calculateSellPrice(item);
+                        const el = createShopSellItem(item, eq.instanceId, sellPrice, 'equipped');
+                        equippedContainer.appendChild(el);
+                    });
+                }
+            }
+
+            // Render bench items
+            if (benchContainer) {
+                benchContainer.innerHTML = '';
+                if (benchItems.length === 0) {
+                    benchContainer.innerHTML = '<div class="shop-empty-msg">No items on bench</div>';
+                } else {
+                    benchItems.forEach(item => {
+                        const sellPrice = calculateSellPrice(item);
+                        const el = createShopSellItem(item, item.instanceId, sellPrice, 'bench');
+                        benchContainer.appendChild(el);
+                    });
+                }
+            }
+        }
+
+        // Create a sellable item element for the shop
+        function createShopSellItem(item, instanceId, sellPrice, source) {
+            const el = document.createElement('div');
+            el.className = `shop-sell-item ${item.category}`;
+            el.dataset.instanceId = instanceId;
+            el.dataset.source = source;
+
+            const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
+                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+
+            el.innerHTML = `
+                <span class="item-icon">${item.icon}</span>
+                <div class="item-info">
+                    <div class="item-name" style="color: ${rarityColor};">${item.name}</div>
+                    <div class="item-sell-price">💰 ${sellPrice}g</div>
+                </div>
+            `;
+
+            el.addEventListener('click', () => handleSellItem(instanceId, source, sellPrice, item.name));
+            return el;
+        }
+
+        // Calculate sell price (50% of item value)
+        function calculateSellPrice(item) {
+            // Base value from stats
+            let value = 0;
+            if (item.stats) {
+                if (item.stats.damage) value += item.stats.damage * 2;
+                if (item.stats.armorBonus) value += item.stats.armorBonus * 3;
+                if (item.stats.hpBonus) value += item.stats.hpBonus;
+                if (item.stats.energyDraw < 0) value += (-item.stats.energyDraw) * 5;
+            }
+
+            // Rarity multiplier
+            const rarityMult = { common: 1, uncommon: 1.5, rare: 2, epic: 3, legendary: 5 };
+            value *= rarityMult[item.rarity] || 1;
+
+            // Minimum 1 gold, sell at 50% value
+            return Math.max(1, Math.floor(value * 0.5));
+        }
+
+        // Handle selling an item
+        function handleSellItem(instanceId, source, sellPrice, itemName) {
+            if (!confirm(`Sell ${itemName} for ${sellPrice} gold?`)) return;
+
+            if (source === 'equipped') {
+                // Remove from equipment and grid
+                removeItemFromGrid(instanceId);
+            } else if (source === 'bench') {
+                // Remove from bench
+                removeItemFromBench(instanceId);
+            }
+
+            // Add gold
+            playerResources.gold += sellPrice;
+
+            // Re-render everything
+            renderShop();
+            renderBench();
+            renderUnifiedGridItems();
+            updateStats();
         }
 
         // ============================================

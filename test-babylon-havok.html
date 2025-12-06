@@ -281,11 +281,28 @@
             color: #aaa;
         }
 
-        .item-stat.damage { color: #ff6644; }
-        .item-stat.energy { color: #ffaa00; }
+        .item-stat.damage { color: #ff6644; font-size: 14px; }
+        .item-stat.damage .item-stat-icon { font-size: 14px; }
+        .item-stat.damage .item-stat-value { font-size: 13px; }
+        .item-stat.energy { color: #4488ff; }
         .item-stat.weight { color: #888; }
         .item-stat.armor { color: #4488ff; }
         .item-stat.squares { color: #00aa66; }
+
+        /* Secondary stats row (energy, weight, size) for bottom left */
+        .item-secondary-stats {
+            display: flex;
+            gap: 6px;
+            font-size: 11px;
+        }
+
+        .item-secondary-stats .item-stat {
+            font-size: 11px;
+        }
+
+        .item-secondary-stats .item-stat-icon {
+            font-size: 11px;
+        }
 
         .item-stat-icon {
             font-size: 10px;
@@ -5086,6 +5103,31 @@
         function buildItemStatIcons(item) {
             const stats = item.stats || {};
             const battle = item.battle || {};
+
+            let html = '<div class="item-stat-row">';
+
+            // Damage (with xN for multi-shot) - using flame icon
+            if (stats.damage) {
+                const shotsPerRound = battle.shotsPerRound || 1;
+                if (shotsPerRound > 1) {
+                    html += `<span class="item-stat damage"><span class="item-stat-icon">💥</span><span class="item-stat-value">${stats.damage}x${shotsPerRound}</span></span>`;
+                } else {
+                    html += `<span class="item-stat damage"><span class="item-stat-icon">💥</span><span class="item-stat-value">${stats.damage}</span></span>`;
+                }
+            }
+
+            // Armor
+            if (stats.armorBonus) {
+                html += `<span class="item-stat armor"><span class="item-stat-icon">🛡</span><span class="item-stat-value">+${stats.armorBonus}</span></span>`;
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        // Build secondary stat icons (energy, weight, size) for bottom left display
+        function buildItemSecondaryStats(item) {
+            const stats = item.stats || {};
             const shape = item.gridShape || [[1]];
 
             // Calculate squares used
@@ -5096,22 +5138,7 @@
                 }
             }
 
-            let html = '<div class="item-stat-row">';
-
-            // Damage (with xN for multi-shot)
-            if (stats.damage) {
-                const shotsPerRound = battle.shotsPerRound || 1;
-                if (shotsPerRound > 1) {
-                    html += `<span class="item-stat damage"><span class="item-stat-icon">⚔</span><span class="item-stat-value">${stats.damage}x${shotsPerRound}</span></span>`;
-                } else {
-                    html += `<span class="item-stat damage"><span class="item-stat-icon">⚔</span><span class="item-stat-value">${stats.damage}</span></span>`;
-                }
-            }
-
-            // Armor
-            if (stats.armorBonus) {
-                html += `<span class="item-stat armor"><span class="item-stat-icon">🛡</span><span class="item-stat-value">+${stats.armorBonus}</span></span>`;
-            }
+            let html = '<div class="item-secondary-stats">';
 
             // Energy (negative = provides, positive = uses)
             if (stats.energyDraw !== undefined && stats.energyDraw !== 0) {
@@ -5168,9 +5195,9 @@
             if (stats.damage) {
                 const shotsPerRound = battle.shotsPerRound || 1;
                 if (shotsPerRound > 1) {
-                    statsHtml += `<div>⚔️ Damage: ${stats.damage} x${shotsPerRound}</div>`;
+                    statsHtml += `<div>💥 Damage: ${stats.damage} x${shotsPerRound}</div>`;
                 } else {
-                    statsHtml += `<div>⚔️ Damage: ${stats.damage}</div>`;
+                    statsHtml += `<div>💥 Damage: ${stats.damage}</div>`;
                 }
             }
             if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
@@ -5565,7 +5592,7 @@
                             <div style="font-size: 11px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
                             ${buildItemStatIcons(item)}
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);">
-                                <span style="font-size: 9px; color: #666;">${item.rarity.toUpperCase()}</span>
+                                ${buildItemSecondaryStats(item)}
                                 ${shapeHtml}
                             </div>
                         `;

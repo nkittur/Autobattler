@@ -4986,6 +4986,7 @@
 
         function renderMissions() {
             const missionList = document.getElementById('missionList');
+            if (!missionList) return;  // Mission list may not exist in new layout
             missionList.innerHTML = '';
 
             for (const mission of Object.values(MISSIONS)) {

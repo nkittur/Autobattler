@@ -2918,8 +2918,21 @@
             return 'common';                           // 55% base
         }
 
+        // Get rarity based on mission difficulty
+        function getSalvageRarity(missionDifficulty = 'Easy') {
+            const rates = SALVAGE.rarityRates[missionDifficulty] || SALVAGE.rarityRates.Easy;
+            const rand = Math.random();
+            let cumulative = 0;
+
+            for (const [rarity, chance] of Object.entries(rates)) {
+                cumulative += chance;
+                if (rand < cumulative) return rarity;
+            }
+            return 'common';
+        }
+
         // Generate salvage components after battle
-        function generateSalvageOptions(result, enemyLevel = 1) {
+        function generateSalvageOptions(result, enemyLevel = 1, missionDifficulty = 'Easy') {
             const options = [];
             const round = gameProgression.round;
             const isBoss = DIFFICULTY.isBossRound(round);
@@ -2962,18 +2975,41 @@
                 // Pick weighted random template
                 const templateType = weightedTemplates[Math.floor(Math.random() * weightedTemplates.length)];
 
-                // Generate rarity (better on boss rounds)
-                const rarityBonus = isBoss ? 2 : 0;
-                const rarity = getRandomRarity(enemyLevel + rarityBonus);
+                // Generate rarity based on mission difficulty
+                const rarity = getSalvageRarity(missionDifficulty);
 
                 // Item level based on enemy level with some variance
-                const level = Math.max(1, enemyLevel + Math.floor(Math.random() * 3) - 1);
+                const baseLevel = Math.max(1, enemyLevel + Math.floor(Math.random() * 3) - 1);
 
-                // Generate the component
-                const component = generateComponent(templateType, level, rarity);
+                // Determine if item is damaged (90% chance)
+                const isDamaged = Math.random() < SALVAGE.damagedChance;
+
+                // Store original level for skip bonus calculation
+                const originalLevel = baseLevel;
+
+                // Calculate effective level (reduced for damaged items)
+                let effectiveLevel = baseLevel;
+                if (isDamaged) {
+                    const reduction = SALVAGE.damagedLevelReduction[
+                        Math.floor(Math.random() * SALVAGE.damagedLevelReduction.length)
+                    ];
+                    effectiveLevel = Math.max(1, baseLevel - reduction);
+                }
+
+                // Generate the component at effective level
+                const component = generateComponent(templateType, effectiveLevel, rarity);
                 if (component) {
-                    // Mark some items as high resale value
-                    if (Math.random() < SALVAGE.highValueChance) {
+                    // Mark damaged status
+                    component.isDamaged = isDamaged;
+                    component.originalLevel = originalLevel;
+
+                    // Damaged items have 0 sell value
+                    if (isDamaged) {
+                        component.sellValue = 0;
+                    }
+
+                    // Mark some undamaged items as high resale value
+                    if (!isDamaged && Math.random() < SALVAGE.highValueChance) {
                         component.isHighValue = true;
                         component.resaleBonus = 0.5;  // 50% extra sell value
                     }
@@ -3101,7 +3137,15 @@
             normalPicks: 1,        // Can pick 1 after normal rounds
             bossPicks: 2,          // Can pick 2 after boss rounds
             highValueChance: 0.2,  // 20% chance for high resale value item
-            comboChance: 0.15      // 15% chance for combo items (synergize)
+            comboChance: 0.15,     // 15% chance for combo items (synergize)
+            damagedChance: 0.9,    // 90% of salvage is damaged
+            damagedLevelReduction: [1, 2],  // Damaged items lose 1-2 levels of effectiveness
+            // Rarity rates by mission difficulty
+            rarityRates: {
+                Easy: { common: 0.75, uncommon: 0.20, rare: 0.05, epic: 0, legendary: 0 },
+                Medium: { common: 0.60, uncommon: 0.30, rare: 0.08, epic: 0.02, legendary: 0 },
+                Hard: { common: 0.45, uncommon: 0.35, rare: 0.12, epic: 0.06, legendary: 0.02 }
+            }
         };
 
         // Item combos that synergize
@@ -5495,6 +5539,16 @@
                     }
                 });
 
+                // Build salvage rarity rates display for mobile
+                const rates = SALVAGE.rarityRates[mission.difficulty] || SALVAGE.rarityRates.Easy;
+                const salvageRatesHTML = Object.entries(rates)
+                    .filter(([rarity, chance]) => chance > 0)
+                    .map(([rarity, chance]) => {
+                        const rarityColor = COMPONENT_GENERATION.rarityColors[rarity] || '#aaa';
+                        return `<span style="color: ${rarityColor};">${Math.round(chance * 100)}% ${rarity}</span>`;
+                    })
+                    .join(' • ');
+
                 card.innerHTML = `
                     <div class="mission-card-header">
                         <span class="mission-name">${mission.name}</span>
@@ -5509,6 +5563,9 @@
                         <div class="mission-enemy">
                             <div class="mission-enemy-name">⚠️ ${enemy.name}</div>
                             <div>HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>
+                        </div>
+                        <div class="mission-salvage" style="margin-top: 6px; font-size: 9px; color: #888;">
+                            📦 ${salvageRatesHTML}
                         </div>
                     </div>
                 `;
@@ -5592,6 +5649,16 @@
                     `;
                 });
 
+                // Build salvage rarity rates display
+                const rates = SALVAGE.rarityRates[mission.difficulty] || SALVAGE.rarityRates.Easy;
+                const salvageRatesHTML = Object.entries(rates)
+                    .filter(([rarity, chance]) => chance > 0)
+                    .map(([rarity, chance]) => {
+                        const rarityColor = COMPONENT_GENERATION.rarityColors[rarity] || '#aaa';
+                        return `<span style="color: ${rarityColor}; font-size: 9px;">${Math.round(chance * 100)}% ${rarity}</span>`;
+                    })
+                    .join(' • ');
+
                 card.innerHTML = `
                     <div class="mission-header">
                         <span class="mission-name">${mission.name}</span>
@@ -5604,6 +5671,9 @@
                     <div class="mission-reward">
                         <span>💰 ${mission.reward.credits}</span>
                         <span>⭐ ${mission.reward.xp} XP</span>
+                    </div>
+                    <div class="mission-salvage" style="margin-top: 6px; font-size: 9px; color: #888;">
+                        📦 Salvage: ${salvageRatesHTML}
                     </div>
                     <div class="enemy-tooltip">
                         <div style="font-size: 12px; color: #00aa66; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">
@@ -6825,11 +6895,16 @@
             battleFrame.style.display = 'none';
             battleFrame.src = '';
 
-            // Get enemy level from the mission we just fought
+            // Get enemy level and difficulty from the mission we just fought
             const missionEnemyLevel = lastBattleMission ? lastBattleMission.averageLevel : Math.floor(currentEnemyLevel);
+            const missionDifficulty = lastBattleMission ? lastBattleMission.difficulty : 'Easy';
 
-            // Generate salvage options using the mission's enemy level
-            const salvageOptions = generateSalvageOptions(result, missionEnemyLevel);
+            // Generate salvage options using the mission's enemy level and difficulty
+            const salvageOptions = generateSalvageOptions(result, missionEnemyLevel, missionDifficulty);
+
+            // Calculate skip salvage gold bonus (highest original level of salvage)
+            const skipGoldBonus = salvageOptions.length > 0 ?
+                Math.max(...salvageOptions.map(opt => opt.originalLevel || opt.level || 1)) : 0;
 
             // Get max picks allowed
             const maxPicks = getSalvagePicks(result);
@@ -6875,6 +6950,8 @@
 
             // Calculate sell prices for each salvage option
             function getSellPrice(comp) {
+                // Damaged items have 0 sell value
+                if (comp.isDamaged) return 0;
                 const basePrice = ECONOMY.weaponPrices[comp.rarity || 'common'] || 2;
                 const bonus = comp.isHighValue ? (1 + comp.resaleBonus) : 1;
                 return Math.floor(basePrice * ECONOMY.sellMultiplier * bonus);
@@ -6895,26 +6972,39 @@
                                 const statsText = buildComponentStatsHTML(comp);
                                 const shapePreview = buildShapePreviewHTML(comp);
                                 const sellPrice = getSellPrice(comp);
-                                const highValueBadge = comp.isHighValue ?
-                                    `<div style="position: absolute; top: -8px; left: -8px; background: #ffcc00; color: #000; font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: bold;">💰 HIGH VALUE</div>` : '';
+
+                                // Show appropriate badge
+                                let badgeHTML = '';
+                                if (comp.isDamaged) {
+                                    badgeHTML = `<div style="position: absolute; top: -8px; left: -8px; background: #ff6644; color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: bold;">⚠️ DAMAGED</div>`;
+                                } else if (comp.isHighValue) {
+                                    badgeHTML = `<div style="position: absolute; top: -8px; left: -8px; background: #ffcc00; color: #000; font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: bold;">💰 HIGH VALUE</div>`;
+                                } else {
+                                    // Undamaged but not high value - show pristine badge
+                                    badgeHTML = `<div style="position: absolute; top: -8px; left: -8px; background: #44ff88; color: #000; font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: bold;">✨ PRISTINE</div>`;
+                                }
+
+                                // Border style for damaged items
+                                const borderStyle = comp.isDamaged ? 'dashed' : 'solid';
 
                                 return `
                                     <div class="salvage-option" data-index="${index}" style="
                                         background: rgba(0, 0, 0, 0.5);
-                                        border: 2px solid ${rarityColor};
+                                        border: 2px ${borderStyle} ${rarityColor};
                                         border-radius: 8px;
                                         padding: 12px;
                                         width: 180px;
                                         cursor: pointer;
                                         transition: all 0.2s;
                                         position: relative;
+                                        ${comp.isDamaged ? 'opacity: 0.85;' : ''}
                                     ">
-                                        ${highValueBadge}
+                                        ${badgeHTML}
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                             <div style="font-size: 22px;">${comp.icon}</div>
                                             <div style="text-align: right;">
                                                 <div style="font-size: 9px; color: ${rarityColor}; text-transform: uppercase; letter-spacing: 1px;">${rarityName}</div>
-                                                <div style="font-size: 9px; color: #666;">Lv.${comp.level}</div>
+                                                <div style="font-size: 9px; color: #666;">Lv.${comp.level}${comp.isDamaged ? ` <span style="color: #ff6644;">(↓)</span>` : ''}</div>
                                             </div>
                                         </div>
                                         <div style="font-size: 12px; color: ${rarityColor}; margin: 6px 0; font-weight: bold; line-height: 1.2;">
@@ -6928,7 +7018,7 @@
                                         </div>
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid #333;">
                                             ${shapePreview}
-                                            <div style="font-size: 10px; color: #ffcc00;">Sell: ${sellPrice}g</div>
+                                            <div style="font-size: 10px; color: ${sellPrice > 0 ? '#ffcc00' : '#666'};">${sellPrice > 0 ? `Sell: ${sellPrice}g` : 'No value'}</div>
                                         </div>
                                         <div class="selection-indicator" style="
                                             position: absolute;
@@ -6987,15 +7077,15 @@
                     <button id="skipSalvageBtn" style="
                         padding: 10px 25px;
                         font-size: 13px;
-                        background: rgba(100, 100, 100, 0.3);
-                        border: 2px solid #666;
-                        color: #aaa;
+                        background: rgba(255, 200, 0, 0.15);
+                        border: 2px solid #aa8800;
+                        color: #ffcc00;
                         cursor: pointer;
                         border-radius: 6px;
                         font-family: 'Courier New', monospace;
                         text-transform: uppercase;
                         letter-spacing: 1px;
-                    ">Skip Salvage</button>
+                    ">Skip Salvage (+${skipGoldBonus}g)</button>
                     <button id="confirmSalvageBtn" style="
                         padding: 10px 25px;
                         font-size: 13px;
@@ -7068,17 +7158,19 @@
 
             // Handle skip button
             document.getElementById('skipSalvageBtn').addEventListener('click', () => {
-                finishSalvage([], rewards, overlay, result);
+                // Award skip gold bonus
+                playerResources.gold += skipGoldBonus;
+                finishSalvage([], rewards, overlay, result, skipGoldBonus);
             });
 
             // Handle confirm button
             document.getElementById('confirmSalvageBtn').addEventListener('click', () => {
-                finishSalvage(selectedComponents, rewards, overlay, result);
+                finishSalvage(selectedComponents, rewards, overlay, result, 0);
             });
         }
 
         // Complete the salvage process
-        function finishSalvage(selectedComponents, rewards, overlay, result) {
+        function finishSalvage(selectedComponents, rewards, overlay, result, skipGoldBonus = 0) {
             // Apply XP and scrap rewards
             playerResources.xp += rewards.xp;
             playerResources.scrap += rewards.scrap;

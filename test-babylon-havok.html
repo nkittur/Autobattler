@@ -169,114 +169,202 @@
             background: linear-gradient(90deg, #ffaa00, #ffcc44);
         }
 
-        /* Deck Piles */
-        .deck-piles-container {
+        /* Loadout Main Layout - Bench on left, Mech Grid on right */
+        #loadoutMain {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            padding: 0 20px;
-            margin-bottom: 10px;
-            pointer-events: auto;
+            flex: 1;
+            overflow: hidden;
         }
 
-        .pile-display {
+        /* Left Bench Panel */
+        #benchPanel {
+            width: 200px;
+            min-width: 200px;
+            background: linear-gradient(90deg, rgba(0,20,10,0.95) 0%, rgba(0,20,10,0.8) 100%);
+            border-right: 2px solid #00ff88;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            padding: 8px 15px;
-            background: rgba(0, 20, 10, 0.8);
-            border: 1px solid #00aa66;
-            border-radius: 6px;
-            transition: all 0.2s;
             pointer-events: auto;
-            z-index: 10;
         }
 
-        .pile-display:hover {
-            background: rgba(0, 40, 20, 0.9);
-            border-color: #00ff88;
+        #benchHeader {
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            text-align: center;
         }
 
-        .pile-icon {
-            font-size: 24px;
-            margin-bottom: 4px;
-            pointer-events: none;
-        }
-
-        .pile-count {
+        #benchTitle {
             font-size: 14px;
-            font-weight: bold;
             color: #00ff88;
-            pointer-events: none;
-        }
-
-        .pile-label {
-            font-size: 9px;
-            color: #00aa66;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            pointer-events: none;
-        }
-
-        /* Pile Viewer Modal */
-        #pileViewer {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 2000;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        #pileViewer.active {
-            display: flex;
-            pointer-events: auto;
-        }
-
-        #pileViewerTitle {
-            font-size: 24px;
-            color: #00ff88;
-            margin-bottom: 20px;
-        }
-
-        #pileViewerCards {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-            max-width: 800px;
-        }
-
-        .pile-card {
-            width: 80px;
-            height: 100px;
-            background: rgba(0, 40, 20, 0.9);
-            border: 2px solid #00aa66;
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 8px;
-        }
-
-        .pile-card .card-icon {
-            font-size: 28px;
+            letter-spacing: 2px;
             margin-bottom: 5px;
         }
 
-        .pile-card .card-name {
-            font-size: 9px;
-            color: #00ff88;
-            text-align: center;
+        #benchSubtitle {
+            font-size: 10px;
+            color: #00aa66;
         }
+
+        #benchScroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .bench-item-vertical {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(0, 40, 20, 0.6);
+            border: 2px solid #00aa66;
+            border-radius: 6px;
+            cursor: grab;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bench-item-vertical:hover {
+            background: rgba(0, 60, 30, 0.8);
+            border-color: #00ff88;
+            transform: translateX(3px);
+        }
+
+        .bench-item-vertical:active {
+            cursor: grabbing;
+        }
+
+        .bench-item-vertical.dragging {
+            opacity: 0.5;
+        }
+
+        .bench-item-vertical .item-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .bench-item-vertical .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bench-item-vertical .item-name {
+            font-size: 11px;
+            color: #00ff88;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bench-item-vertical .item-stats {
+            font-size: 9px;
+            color: #00aa66;
+        }
+
+        .bench-item-vertical.weapon { border-color: #ff6644; }
+        .bench-item-vertical.weapon .item-icon { color: #ff6644; }
+        .bench-item-vertical.armor { border-color: #4488ff; }
+        .bench-item-vertical.armor .item-icon { color: #4488ff; }
+        .bench-item-vertical.reactor { border-color: #ffaa00; }
+        .bench-item-vertical.reactor .item-icon { color: #ffaa00; }
+        .bench-item-vertical.system { border-color: #aa44ff; }
+        .bench-item-vertical.system .item-icon { color: #aa44ff; }
+        .bench-item-vertical.cooling { border-color: #44ddff; }
+        .bench-item-vertical.cooling .item-icon { color: #44ddff; }
+
+        #benchEmpty {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+            font-size: 11px;
+        }
+
+        /* Mech Grid Area */
+        #mechGridArea {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        /* Unified Mech Grid */
+        #unifiedMechGrid {
+            display: grid;
+            gap: 2px;
+            padding: 10px;
+            background: rgba(0, 20, 10, 0.9);
+            border: 2px solid rgba(0, 255, 136, 0.6);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            pointer-events: auto;
+        }
+
+        .mech-cell {
+            width: 45px;
+            height: 45px;
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid rgba(0, 255, 136, 0.5);
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .mech-cell.invalid {
+            background: transparent;
+            border-color: transparent;
+            pointer-events: none;
+        }
+
+        .mech-cell:not(.invalid):hover {
+            background: rgba(0, 255, 136, 0.25);
+            border-color: #00ff88;
+        }
+
+        .mech-cell.valid-drop {
+            background: rgba(0, 255, 136, 0.4);
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0,255,136,0.5);
+        }
+
+        .mech-cell.invalid-drop {
+            background: rgba(255, 68, 68, 0.4);
+            border-color: #ff4444;
+        }
+
+        .mech-cell.occupied {
+            background: rgba(0, 170, 255, 0.3);
+            border-color: #00aaff;
+        }
+
+        /* Placed items in unified grid */
+        .placed-item-unified {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 20px;
+            cursor: grab;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+
+        .placed-item-unified:hover {
+            transform: scale(1.05);
+            z-index: 20;
+        }
+
+        .placed-item-unified.weapon { background: rgba(255, 102, 68, 0.7); border: 2px solid #ff6644; }
+        .placed-item-unified.armor { background: rgba(68, 136, 255, 0.7); border: 2px solid #4488ff; }
+        .placed-item-unified.reactor { background: rgba(255, 170, 0, 0.7); border: 2px solid #ffaa00; }
+        .placed-item-unified.system { background: rgba(170, 68, 255, 0.7); border: 2px solid #aa44ff; }
+        .placed-item-unified.cooling { background: rgba(68, 221, 255, 0.7); border: 2px solid #44ddff; }
 
         #pileViewerClose {
             margin-top: 20px;
@@ -1506,38 +1594,25 @@
                     </div>
                 </div>
 
-                <!-- Mission Selection Panel (hidden - use tab) -->
-                <div id="missionContainer">
-                    <div id="missionLabel">Select Mission</div>
-                    <div id="missionList">
-                        <!-- Missions populated by JS -->
+                <!-- Main Layout: Bench on left, Mech Grid on right -->
+                <div id="loadoutMain">
+                    <!-- Left Bench Panel -->
+                    <div id="benchPanel">
+                        <div id="benchHeader">
+                            <div id="benchTitle">Equipment</div>
+                            <div id="benchSubtitle">Drag to equip</div>
+                        </div>
+                        <div id="benchScroll">
+                            <!-- Items populated by JS -->
+                        </div>
+                        <div id="benchEmpty" style="display: none;">No items available</div>
                     </div>
-                </div>
 
-                <!-- Grid Overlay Container (positioned over 3D mech) -->
-                <div id="gridOverlayContainer">
-                    <!-- Grids will be dynamically positioned here -->
-                </div>
-
-                <!-- Deck Piles and Bench -->
-                <div class="deck-piles-container">
-                    <div class="pile-display" id="drawPileDisplay">
-                        <div class="pile-icon">📚</div>
-                        <div class="pile-count" id="drawPileCount">0</div>
-                        <div class="pile-label">Draw</div>
-                    </div>
-                    <div id="benchLabel">Equipment Bench</div>
-                    <div class="pile-display" id="discardPileDisplay">
-                        <div class="pile-icon">🗑️</div>
-                        <div class="pile-count" id="discardPileCount">0</div>
-                        <div class="pile-label">Discard</div>
-                    </div>
-                </div>
-
-                <!-- Bottom Bench (Hand) -->
-                <div id="benchContainer">
-                    <div id="bench">
-                        <!-- Items populated by JS -->
+                    <!-- Mech Grid Area -->
+                    <div id="mechGridArea">
+                        <div id="unifiedMechGrid">
+                            <!-- Unified mech-shaped grid populated by JS -->
+                        </div>
                     </div>
                 </div>
 
@@ -1565,8 +1640,8 @@
                 </div>
             </div>
 
-            <!-- Shop Tab Content -->
-            <div id="shopTab" class="tab-content">
+            <!-- Shop Tab Content (solid background to hide 3D mech) -->
+            <div id="shopTab" class="tab-content" style="background: linear-gradient(180deg, #0a1a0f 0%, #051008 100%); position: relative; z-index: 100;">
                 <div class="tab-nav-header">
                     <button class="nav-btn" onclick="switchTab('loadout')">← Back to Loadout</button>
                     <div class="nav-spacer"></div>
@@ -1609,8 +1684,8 @@
                 </div>
             </div>
 
-            <!-- Backpack Tab Content -->
-            <div id="backpackTab" class="tab-content">
+            <!-- Backpack Tab Content (solid background) -->
+            <div id="backpackTab" class="tab-content" style="background: linear-gradient(180deg, #0a1a0f 0%, #051008 100%); position: relative; z-index: 100;">
                 <div class="tab-nav-header">
                     <button class="nav-btn" onclick="switchTab('loadout')">← Back to Loadout</button>
                     <div class="nav-spacer"></div>
@@ -1677,15 +1752,6 @@
 
         </div>
 
-        <!-- Pile Viewer Modal (outside mechBuilderUI to avoid pointer-events: none inheritance) -->
-        <div id="pileViewer">
-            <div id="pileViewerTitle">Draw Pile</div>
-            <div id="pileViewerCards">
-                <!-- Cards populated by JS -->
-            </div>
-            <button id="pileViewerClose">Close</button>
-        </div>
-
         <!-- Drag Ghost (hidden until dragging) -->
         <div id="dragGhost" style="display: none;"></div>
 
@@ -1743,19 +1809,34 @@
         // MECHBUILDER DATA STRUCTURES
         // ============================================
 
-        // Mech Chassis Definition
+        // Mech Chassis Definition - Unified grid shape
         const MECH_CHASSIS = {
             id: 'starter_chassis',
             name: 'Timber Wolf Chassis',
             maxWeight: 100,
             baseEnergy: 7,
-            slots: {
-                torso: { cols: 2, rows: 2, position: { x: 0.5, y: 0.6 } },      // Center of screen (2x2)
-                leftArm: { cols: 1, rows: 5, position: { x: 0.25, y: 0.55 } },  // Left side (5x1 for railgun)
-                rightArm: { cols: 2, rows: 3, position: { x: 0.75, y: 0.55 } }, // Right side (3x2)
-                leftLeg: { cols: 2, rows: 2, position: { x: 0.35, y: 0.85 } },  // Lower left
-                rightLeg: { cols: 2, rows: 2, position: { x: 0.65, y: 0.85 } }  // Lower right
-            }
+            // Unified mech-shaped grid (7 cols x 7 rows)
+            // 1 = valid cell, 0 = empty/invalid
+            gridCols: 7,
+            gridRows: 7,
+            gridShape: [
+                // Row 0: Head
+                [0, 0, 1, 1, 1, 0, 0],
+                // Row 1: Shoulders
+                [0, 1, 1, 1, 1, 1, 0],
+                // Row 2: Arms + Torso
+                [1, 1, 1, 1, 1, 1, 1],
+                // Row 3: Arms + Torso
+                [1, 1, 1, 1, 1, 1, 1],
+                // Row 4: Waist
+                [0, 0, 1, 1, 1, 0, 0],
+                // Row 5: Upper Legs (split)
+                [0, 1, 1, 0, 1, 1, 0],
+                // Row 6: Lower Legs (split)
+                [0, 1, 1, 0, 1, 1, 0]
+            ],
+            // For backwards compat - map old slot names to grid regions (not used with unified grid)
+            slots: {}
         };
 
         // Item Definitions (The Deck)
@@ -1773,9 +1854,7 @@
                     energyDraw: 2,
                     damage: 25
                 },
-                constraints: {
-                    validSlots: ['leftArm', 'rightArm']
-                },
+                constraints: {},
                 // Battle properties
                 battle: {
                     projectileSpeed: 40,
@@ -1800,9 +1879,7 @@
                     energyDraw: 2,
                     damage: 18
                 },
-                constraints: {
-                    validSlots: ['torso', 'leftArm', 'rightArm']
-                },
+                constraints: {},
                 // Battle properties
                 battle: {
                     isBeam: true,
@@ -1826,9 +1903,7 @@
                     energyDraw: 0,
                     armorBonus: 30
                 },
-                constraints: {
-                    validSlots: ['torso', 'leftLeg', 'rightLeg']
-                }
+                constraints: {}
             },
             reactor_core: {
                 id: 'reactor_core',
@@ -1843,9 +1918,7 @@
                     energyDraw: -3,  // Negative = provides energy
                     heatCapacity: 15
                 },
-                constraints: {
-                    validSlots: ['torso']
-                }
+                constraints: {}
             },
             targeting_computer: {
                 id: 'targeting_computer',
@@ -1860,9 +1933,7 @@
                     energyDraw: 1,
                     accuracyBonus: 8
                 },
-                constraints: {
-                    validSlots: ['torso', 'leftArm', 'rightArm']
-                }
+                constraints: {}
             },
             heat_sink: {
                 id: 'heat_sink',
@@ -1877,9 +1948,7 @@
                     energyDraw: 0,
                     energyReduction: 1  // Reduces energy cost of adjacent items
                 },
-                constraints: {
-                    validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg']
-                },
+                constraints: {},
                 special: {
                     onPlace: 'drawCard',      // Draw a card when placed
                     locksOnPlace: true        // Cannot be moved after placement this round
@@ -3611,12 +3680,18 @@
             currentPhase = GamePhase.MECHBUILDER;
         }
 
-        // Current hand (drawn items)
-        let currentHand = [];
+        // Persistent bench items (no deck system - items stay on bench or mech)
+        let benchItems = [];  // Array of item objects on the bench
 
-        // Deck system - draw pile and discard pile
-        let drawPile = [];
-        let discardPile = [];
+        // Initialize with starter items
+        function initializeStarterItems() {
+            benchItems = [];
+            // Add starter weapons
+            const starterWeapon1 = { ...ITEM_DATABASE.railgun_mk1, instanceId: 'start_1' };
+            const starterWeapon2 = { ...ITEM_DATABASE.laser_array, instanceId: 'start_2' };
+            const starterReactor = { ...ITEM_DATABASE.reactor_core, instanceId: 'start_3' };
+            benchItems.push(starterWeapon1, starterWeapon2, starterReactor);
+        }
 
         // Player resources
         let playerResources = {
@@ -4077,29 +4152,37 @@
         // Loadout state (items placed on mech)
         let loadoutState = {
             mechId: MECH_CHASSIS.id,
-            equipment: []  // Array of { itemId, slot, position: {x, y}, rotation }
+            equipment: []  // Array of { itemId, instanceId, position: {x, y}, rotation }
         };
 
         // Track locked items (cannot be moved this round - e.g. heat sinks after placement)
         let lockedItems = new Set();
 
-        // Grid occupation tracking
-        let gridOccupation = {};  // slot -> 2D array of item IDs or null
+        // Unified grid occupation tracking (single mech-shaped grid)
+        let unifiedGridOccupation = null;  // InventoryGrid instance for the unified mech grid
+        let gridElements = {};  // For backwards compat - now just stores the unified grid element
 
         // ============================================
-        // 2D GRID DATA STRUCTURE CLASS
+        // 2D GRID DATA STRUCTURE CLASS (Supports mech-shaped grids)
         // ============================================
-        class InventoryGrid {
-            constructor(width, height) {
-                this.width = width;
-                this.height = height;
+        class MechGrid {
+            constructor(cols, rows, shapeMatrix) {
+                this.cols = cols;
+                this.rows = rows;
+                this.shapeMatrix = shapeMatrix;  // 2D array where 1=valid cell, 0=invalid
                 this.cells = [];
-                for (let y = 0; y < height; y++) {
+                for (let y = 0; y < rows; y++) {
                     this.cells[y] = [];
-                    for (let x = 0; x < width; x++) {
-                        this.cells[y][x] = null;  // null = empty, string = item ID
+                    for (let x = 0; x < cols; x++) {
+                        // Use 'invalid' for cells outside the mech shape, null for empty valid cells
+                        this.cells[y][x] = shapeMatrix[y][x] === 1 ? null : 'invalid';
                     }
                 }
+            }
+
+            isValidCell(x, y) {
+                if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) return false;
+                return this.shapeMatrix[y][x] === 1;
             }
 
             canPlaceItem(item, posX, posY) {
@@ -4107,17 +4190,19 @@
                 const h = shape.length;
                 const w = shape[0].length;
 
-                // Check bounds
-                if (posX < 0 || posY < 0 || posX + w > this.width || posY + h > this.height) {
-                    return false;
-                }
-
                 // Check each cell of the shape
                 for (let dy = 0; dy < h; dy++) {
                     for (let dx = 0; dx < w; dx++) {
                         if (shape[dy][dx] === 1) {
-                            if (this.cells[posY + dy][posX + dx] !== null) {
-                                return false;  // Cell occupied
+                            const cellX = posX + dx;
+                            const cellY = posY + dy;
+                            // Check if position is valid in mech shape
+                            if (!this.isValidCell(cellX, cellY)) {
+                                return false;
+                            }
+                            // Check if cell is occupied
+                            if (this.cells[cellY][cellX] !== null) {
+                                return false;
                             }
                         }
                     }
@@ -4140,8 +4225,8 @@
             }
 
             removeItem(instanceId) {
-                for (let y = 0; y < this.height; y++) {
-                    for (let x = 0; x < this.width; x++) {
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
                         if (this.cells[y][x] === instanceId) {
                             this.cells[y][x] = null;
                         }
@@ -4150,51 +4235,23 @@
             }
 
             isCellOccupied(x, y) {
-                if (x < 0 || y < 0 || x >= this.width || y >= this.height) return true;
+                if (!this.isValidCell(x, y)) return true;
                 return this.cells[y][x] !== null;
             }
         }
 
-        // Initialize grids for each slot
+        // Initialize the unified mech grid
         function initializeGrids() {
-            gridOccupation = {};
-            for (const [slotName, slotDef] of Object.entries(MECH_CHASSIS.slots)) {
-                gridOccupation[slotName] = new InventoryGrid(slotDef.cols, slotDef.rows);
-            }
+            unifiedGridOccupation = new MechGrid(
+                MECH_CHASSIS.gridCols,
+                MECH_CHASSIS.gridRows,
+                MECH_CHASSIS.gridShape
+            );
         }
 
         // ============================================
-        // DECK / HAND SYSTEM
+        // ITEM MANAGEMENT (NO DECK - PERSISTENT BENCH)
         // ============================================
-
-        // Initialize the draw pile with starting cards
-        function initializeDeck() {
-            drawPile = [];
-            discardPile = [];
-
-            const allItemIds = Object.keys(ITEM_DATABASE);
-
-            // Create starting deck: 3 of each weapon, 2 of each other item
-            // This gives enough cards for 2 full draws (10 cards) before reshuffle
-            const weaponIds = allItemIds.filter(id => ITEM_DATABASE[id].category === 'weapon');
-            const otherIds = allItemIds.filter(id => ITEM_DATABASE[id].category !== 'weapon');
-
-            // Add 3 copies of each weapon
-            weaponIds.forEach(id => {
-                drawPile.push(id);
-                drawPile.push(id);
-                drawPile.push(id);
-            });
-
-            // Add 2 copies of each non-weapon
-            otherIds.forEach(id => {
-                drawPile.push(id);
-                drawPile.push(id);
-            });
-
-            // Shuffle the draw pile
-            shuffleArray(drawPile);
-        }
 
         // Shuffle an array in place
         function shuffleArray(array) {
@@ -4204,59 +4261,31 @@
             }
         }
 
-        // Reshuffle discard pile into draw pile
-        function reshuffleDiscardIntoDraw() {
-            drawPile = [...discardPile];
-            discardPile = [];
-            shuffleArray(drawPile);
-        }
+        // Add an item to the bench
+        function addItemToBench(itemId, instanceId = null) {
+            const item = ITEM_DATABASE[itemId];
+            if (!item) return null;
 
-        // Draw cards from the draw pile
-        function drawHand(count = 5) {
-            currentHand = [];
-
-            for (let i = 0; i < count; i++) {
-                const card = drawCardFromPile();
-                if (card) {
-                    currentHand.push(card);
-                }
-            }
-
-            return currentHand;
-        }
-
-        // Draw a single card from the draw pile
-        function drawCardFromPile() {
-            // If draw pile is empty, reshuffle discard pile
-            if (drawPile.length === 0) {
-                if (discardPile.length === 0) {
-                    return null;  // No cards left at all
-                }
-                reshuffleDiscardIntoDraw();
-            }
-
-            const itemId = drawPile.pop();
-            if (!itemId) return null;
-
-            return {
-                instanceId: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                itemId: itemId,
-                ...ITEM_DATABASE[itemId]
+            const newItem = {
+                ...item,
+                instanceId: instanceId || `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             };
+            benchItems.push(newItem);
+            return newItem;
         }
 
-        // Draw a single card and add to hand (called by heat sink placement)
-        function drawSingleCard() {
-            const card = drawCardFromPile();
-            if (card) {
-                currentHand.push(card);
+        // Remove an item from the bench by instanceId
+        function removeItemFromBench(instanceId) {
+            const idx = benchItems.findIndex(item => item.instanceId === instanceId);
+            if (idx !== -1) {
+                return benchItems.splice(idx, 1)[0];
             }
-            return card;
+            return null;
         }
 
-        // Discard a card (add to discard pile)
-        function discardCard(itemId) {
-            discardPile.push(itemId);
+        // Get item from bench by instanceId
+        function getBenchItem(instanceId) {
+            return benchItems.find(item => item.instanceId === instanceId);
         }
 
         // Rotate an item's gridShape 90 degrees clockwise
@@ -4326,7 +4355,7 @@
             if (benchItem) {
                 e.preventDefault();
                 const instanceId = benchItem.dataset.instanceId;
-                const item = currentHand.find(i => i.instanceId === instanceId);
+                const item = benchItems.find(i => i.instanceId === instanceId);
                 if (item) {
                     startDrag(item, 'bench', null, null, touch.clientX, touch.clientY);
                     benchItem.classList.add('dragging');
@@ -4334,8 +4363,8 @@
                 return;
             }
 
-            // Check if we clicked on a placed item
-            const placedItem = target.closest('.placed-item');
+            // Check if we clicked on a placed item (unified grid)
+            const placedItem = target.closest('.placed-item-unified');
             if (placedItem) {
                 e.preventDefault();
                 const instanceId = placedItem.dataset.instanceId;
@@ -4347,11 +4376,11 @@
 
                 const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
                 if (equipment) {
-                    const item = { ...ITEM_DATABASE[equipment.itemId], instanceId };
-                    startDrag(item, 'grid', equipment.slot, equipment.position, touch.clientX, touch.clientY);
+                    const item = equipment.item || { ...ITEM_DATABASE[equipment.itemId], instanceId };
+                    startDrag(item, 'grid', null, equipment.position, touch.clientX, touch.clientY);
 
                     // Remove from grid temporarily
-                    removeItemFromGrid(instanceId, equipment.slot);
+                    removeItemFromGrid(instanceId);
                     placedItem.style.opacity = '0.3';
                 }
                 return;
@@ -4381,17 +4410,8 @@
         }
 
         function updateSlotValidity(item) {
-            // Show which grids accept this item type
-            const validSlots = item.constraints.validSlots || Object.keys(MECH_CHASSIS.slots);
-
-            for (const [slotName, gridEl] of Object.entries(gridElements)) {
-                gridEl.classList.remove('slot-valid', 'slot-invalid');
-                if (validSlots.includes(slotName)) {
-                    gridEl.classList.add('slot-valid');
-                } else {
-                    gridEl.classList.add('slot-invalid');
-                }
-            }
+            // With unified grid, all valid cells can accept any item
+            // No slot-specific highlighting needed
         }
 
         function createGhostHTML(item) {
@@ -4425,19 +4445,22 @@
             updateDropHighlight(dropInfo);
 
             // Check if over bench (for items from grid)
-            const benchContainer = document.getElementById('benchContainer');
-            const benchRect = benchContainer.getBoundingClientRect();
-            const overBench = dragState.sourceType === 'grid' &&
-                              touch.clientX >= benchRect.left &&
-                              touch.clientX <= benchRect.right &&
-                              touch.clientY >= benchRect.top &&
-                              touch.clientY <= benchRect.bottom;
+            const benchPanel = document.getElementById('benchPanel');
+            let overBench = false;
+            if (benchPanel) {
+                const benchRect = benchPanel.getBoundingClientRect();
+                overBench = dragState.sourceType === 'grid' &&
+                            touch.clientX >= benchRect.left &&
+                            touch.clientX <= benchRect.right &&
+                            touch.clientY >= benchRect.top &&
+                            touch.clientY <= benchRect.bottom;
 
-            if (overBench) {
-                benchContainer.classList.add('drop-target');
-                ghost.classList.remove('invalid');
-            } else {
-                benchContainer.classList.remove('drop-target');
+                if (overBench) {
+                    benchPanel.classList.add('drop-target');
+                    ghost.classList.remove('invalid');
+                } else {
+                    benchPanel.classList.remove('drop-target');
+                }
             }
 
             // Update ghost validity
@@ -4454,31 +4477,32 @@
             const touch = e.changedTouches ? e.changedTouches[0] : e;
             const dropInfo = getDropTarget(touch.clientX, touch.clientY);
 
-            // Check if dropped on bench area
-            const benchContainer = document.getElementById('benchContainer');
-            const benchRect = benchContainer.getBoundingClientRect();
-            const droppedOnBench = touch.clientX >= benchRect.left &&
-                                   touch.clientX <= benchRect.right &&
-                                   touch.clientY >= benchRect.top &&
-                                   touch.clientY <= benchRect.bottom;
+            // Check if dropped on bench panel area
+            const benchPanel = document.getElementById('benchPanel');
+            let droppedOnBench = false;
+            if (benchPanel) {
+                const benchRect = benchPanel.getBoundingClientRect();
+                droppedOnBench = touch.clientX >= benchRect.left &&
+                                 touch.clientX <= benchRect.right &&
+                                 touch.clientY >= benchRect.top &&
+                                 touch.clientY <= benchRect.bottom;
+            }
 
             if (dropInfo && dropInfo.valid) {
                 // Place item on grid
-                placeItemOnGrid(dragState.item, dropInfo.slot, dropInfo.gridX, dropInfo.gridY);
+                placeItemOnGrid(dragState.item, dropInfo.gridX, dropInfo.gridY);
 
                 // Remove from bench if it came from there
                 if (dragState.sourceType === 'bench') {
-                    const idx = currentHand.findIndex(i => i.instanceId === dragState.item.instanceId);
-                    if (idx !== -1) currentHand.splice(idx, 1);
+                    removeItemFromBench(dragState.item.instanceId);
                 }
             } else if (droppedOnBench && dragState.sourceType === 'grid') {
                 // Return item to bench
-                currentHand.push(dragState.item);
+                benchItems.push(dragState.item);
             } else if (dragState.sourceType === 'grid') {
                 // Return to original position on grid
                 placeItemOnGrid(
                     dragState.item,
-                    dragState.sourceSlot,
                     dragState.sourcePosition.x,
                     dragState.sourcePosition.y
                 );
@@ -4487,20 +4511,18 @@
             // Cleanup
             cleanupDrag();
             renderBench();
-            renderGridItems();
+            renderUnifiedGridItems();
             updateStats();
         }
 
         function cleanupDrag() {
-            document.querySelectorAll('.bench-item.dragging').forEach(el => el.classList.remove('dragging'));
-            document.querySelectorAll('.placed-item').forEach(el => el.style.opacity = '1');
-            document.querySelectorAll('.grid-cell').forEach(el => {
+            document.querySelectorAll('.bench-item-vertical.dragging').forEach(el => el.classList.remove('dragging'));
+            document.querySelectorAll('.placed-item-unified').forEach(el => el.style.opacity = '1');
+            document.querySelectorAll('.mech-cell').forEach(el => {
                 el.classList.remove('valid-drop', 'invalid-drop');
             });
-            document.querySelectorAll('.mech-grid-overlay').forEach(el => {
-                el.classList.remove('slot-valid', 'slot-invalid');
-            });
-            document.getElementById('benchContainer').classList.remove('drop-target');
+            const benchPanel = document.getElementById('benchPanel');
+            if (benchPanel) benchPanel.classList.remove('drop-target');
 
             const ghost = document.getElementById('dragGhost');
             ghost.style.display = 'none';
@@ -4520,96 +4542,82 @@
         function getDropTarget(clientX, clientY) {
             if (!dragState.item) return null;
 
-            // Check each grid
-            for (const [slotName, gridEl] of Object.entries(gridElements)) {
-                const rect = gridEl.getBoundingClientRect();
-                // Account for label offset (label is at top: -20px)
-                const labelOffset = 20;
-                const adjustedTop = rect.top + labelOffset;
+            // Check the unified mech grid
+            const gridEl = document.getElementById('unifiedMechGrid');
+            if (!gridEl) return null;
 
-                if (clientX >= rect.left && clientX <= rect.right &&
-                    clientY >= adjustedTop && clientY <= rect.bottom) {
+            const rect = gridEl.getBoundingClientRect();
 
-                    // Calculate grid cell position
-                    // Account for: 2px border + 4px padding = 6px offset
-                    const cellSize = 42;  // 40px + 2px gap
-                    const borderAndPadding = 6;
-                    const localX = clientX - rect.left - borderAndPadding;
-                    const localY = clientY - adjustedTop - borderAndPadding;
+            if (clientX >= rect.left && clientX <= rect.right &&
+                clientY >= rect.top && clientY <= rect.bottom) {
 
-                    const item = dragState.item;
-                    const shape = item.gridShape;
-                    const itemW = shape[0].length;
-                    const itemH = shape.length;
+                // Calculate grid cell position
+                const cellSize = 47;  // 45px + 2px gap
+                const padding = 10;
+                const localX = clientX - rect.left - padding;
+                const localY = clientY - rect.top - padding;
 
-                    const slotDef = MECH_CHASSIS.slots[slotName];
-                    const grid = gridOccupation[slotName];
+                const item = dragState.item;
+                const shape = item.gridShape;
+                const itemW = shape[0].length;
+                const itemH = shape.length;
 
-                    // Check slot constraints first
-                    const validSlot = !item.constraints.validSlots ||
-                                      item.constraints.validSlots.includes(slotName);
+                // Calculate the cell the cursor is over
+                const cursorCellX = Math.floor(localX / cellSize);
+                const cursorCellY = Math.floor(localY / cellSize);
 
-                    // Calculate the cell the cursor is over (not centered)
-                    const cursorCellX = Math.floor(localX / cellSize);
-                    const cursorCellY = Math.floor(localY / cellSize);
+                // Find the best position for the item nearest to cursor
+                const bestPos = findBestPosition(unifiedGridOccupation, item, cursorCellX, cursorCellY);
 
-                    // Find the best position for the item nearest to cursor
-                    const bestPos = findBestPosition(grid, item, cursorCellX, cursorCellY, slotDef);
+                if (bestPos) {
+                    return {
+                        gridX: bestPos.x,
+                        gridY: bestPos.y,
+                        valid: true
+                    };
+                } else {
+                    // No valid position, show where cursor would place it (clamped)
+                    let gridX = cursorCellX - Math.floor(itemW / 2);
+                    let gridY = cursorCellY - Math.floor(itemH / 2);
+                    gridX = Math.max(0, Math.min(gridX, MECH_CHASSIS.gridCols - itemW));
+                    gridY = Math.max(0, Math.min(gridY, MECH_CHASSIS.gridRows - itemH));
 
-                    if (bestPos) {
-                        return {
-                            slot: slotName,
-                            gridX: bestPos.x,
-                            gridY: bestPos.y,
-                            valid: validSlot
-                        };
-                    } else {
-                        // No valid position, show where cursor would place it (clamped)
-                        let gridX = cursorCellX - Math.floor(itemW / 2);
-                        let gridY = cursorCellY - Math.floor(itemH / 2);
-                        gridX = Math.max(0, Math.min(gridX, slotDef.cols - itemW));
-                        gridY = Math.max(0, Math.min(gridY, slotDef.rows - itemH));
-
-                        return {
-                            slot: slotName,
-                            gridX: gridX,
-                            gridY: gridY,
-                            valid: false
-                        };
-                    }
+                    return {
+                        gridX: gridX,
+                        gridY: gridY,
+                        valid: false
+                    };
                 }
             }
 
             return null;
         }
 
-        function findBestPosition(grid, item, cursorX, cursorY, slotDef) {
+        function findBestPosition(grid, item, cursorX, cursorY) {
             const itemW = item.gridShape[0].length;
             const itemH = item.gridShape.length;
-
-            // Generate candidate positions: center on cursor, then expand outward
-            const candidates = [];
 
             // Centered position
             const centerX = cursorX - Math.floor(itemW / 2);
             const centerY = cursorY - Math.floor(itemH / 2);
 
             // Search in expanding rings around cursor
-            for (let radius = 0; radius <= Math.max(slotDef.cols, slotDef.rows); radius++) {
+            const maxRadius = Math.max(MECH_CHASSIS.gridCols, MECH_CHASSIS.gridRows);
+            for (let radius = 0; radius <= maxRadius; radius++) {
                 for (let dy = -radius; dy <= radius; dy++) {
                     for (let dx = -radius; dx <= radius; dx++) {
-                        if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                        if (radius > 0 && Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
 
                         const testX = centerX + dx;
                         const testY = centerY + dy;
 
                         // Check bounds
                         if (testX < 0 || testY < 0 ||
-                            testX + itemW > slotDef.cols ||
-                            testY + itemH > slotDef.rows) continue;
+                            testX + itemW > MECH_CHASSIS.gridCols ||
+                            testY + itemH > MECH_CHASSIS.gridRows) continue;
 
                         // Check if can place
-                        if (grid.canPlaceItem(item, testX, testY)) {
+                        if (grid && grid.canPlaceItem(item, testX, testY)) {
                             return { x: testX, y: testY };
                         }
                     }
@@ -4621,19 +4629,18 @@
 
         function updateDropHighlight(dropInfo) {
             // Clear all highlights
-            document.querySelectorAll('.grid-cell').forEach(el => {
+            document.querySelectorAll('.mech-cell').forEach(el => {
                 el.classList.remove('valid-drop', 'invalid-drop');
             });
 
             if (!dropInfo || !dragState.item) return;
 
-            const gridEl = gridElements[dropInfo.slot];
+            const gridEl = document.getElementById('unifiedMechGrid');
             if (!gridEl) return;
 
             const item = dragState.item;
             const shape = item.gridShape;
-            const cells = gridEl.querySelectorAll('.grid-cell');
-            const slotDef = MECH_CHASSIS.slots[dropInfo.slot];
+            const cells = gridEl.querySelectorAll('.mech-cell');
 
             // Highlight cells that would be covered
             for (let dy = 0; dy < shape.length; dy++) {
@@ -4643,11 +4650,11 @@
                         const cellY = dropInfo.gridY + dy;
 
                         // Check bounds before calculating index
-                        if (cellX < 0 || cellX >= slotDef.cols || cellY < 0 || cellY >= slotDef.rows) {
+                        if (cellX < 0 || cellX >= MECH_CHASSIS.gridCols || cellY < 0 || cellY >= MECH_CHASSIS.gridRows) {
                             continue;  // Skip out-of-bounds cells
                         }
 
-                        const cellIdx = cellY * slotDef.cols + cellX;
+                        const cellIdx = cellY * MECH_CHASSIS.gridCols + cellX;
 
                         if (cellIdx >= 0 && cellIdx < cells.length) {
                             cells[cellIdx].classList.add(dropInfo.valid ? 'valid-drop' : 'invalid-drop');
@@ -4657,30 +4664,24 @@
             }
         }
 
-        function placeItemOnGrid(item, slot, gridX, gridY) {
+        function placeItemOnGrid(item, gridX, gridY) {
             const instanceId = item.instanceId;
-            const itemDef = ITEM_DATABASE[item.id || item.itemId];
+            const itemDef = item;
 
             // Add to loadout state
             loadoutState.equipment.push({
                 instanceId: instanceId,
                 itemId: item.id || item.itemId,
-                slot: slot,
+                item: item,  // Store full item data
                 position: { x: gridX, y: gridY },
                 rotation: 0
             });
 
             // Mark grid cells as occupied
-            gridOccupation[slot].placeItem(item, gridX, gridY, instanceId);
+            unifiedGridOccupation.placeItem(item, gridX, gridY, instanceId);
 
             // Handle special placement effects
             if (itemDef && itemDef.special) {
-                // Draw a card when placed (heat sink effect)
-                if (itemDef.special.onPlace === 'drawCard') {
-                    drawSingleCard();
-                    renderBench();
-                }
-
                 // Lock the item so it cannot be moved this round
                 if (itemDef.special.locksOnPlace) {
                     lockedItems.add(instanceId);
@@ -4688,7 +4689,10 @@
             }
         }
 
-        function removeItemFromGrid(instanceId, slot) {
+        function removeItemFromGrid(instanceId) {
+            // Find the equipment entry
+            const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
+
             // Remove from loadout
             const idx = loadoutState.equipment.findIndex(eq => eq.instanceId === instanceId);
             if (idx !== -1) {
@@ -4696,7 +4700,9 @@
             }
 
             // Clear grid cells
-            gridOccupation[slot].removeItem(instanceId);
+            unifiedGridOccupation.removeItem(instanceId);
+
+            return equipment;  // Return for re-adding to bench
         }
 
         // Click to remove placed item
@@ -4709,16 +4715,16 @@
             const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
             if (!equipment) return;
 
-            const item = { ...ITEM_DATABASE[equipment.itemId], instanceId };
+            const item = equipment.item || { ...ITEM_DATABASE[equipment.itemId], instanceId };
 
             // Remove from grid
-            removeItemFromGrid(instanceId, equipment.slot);
+            removeItemFromGrid(instanceId);
 
             // Add back to bench
-            currentHand.push(item);
+            benchItems.push(item);
 
             renderBench();
-            renderGridItems();
+            renderUnifiedGridItems();
             updateStats();
         }
 
@@ -4726,96 +4732,131 @@
         // UI RENDERING
         // ============================================
         function renderBench() {
-            const bench = document.getElementById('bench');
-            bench.innerHTML = '';
+            const benchScroll = document.getElementById('benchScroll');
+            const benchEmpty = document.getElementById('benchEmpty');
+            if (!benchScroll) return;
 
-            currentHand.forEach(item => {
+            benchScroll.innerHTML = '';
+
+            if (benchItems.length === 0) {
+                if (benchEmpty) benchEmpty.style.display = 'block';
+                return;
+            }
+
+            if (benchEmpty) benchEmpty.style.display = 'none';
+
+            benchItems.forEach(item => {
                 const el = document.createElement('div');
-                el.className = `bench-item ${item.category}`;
+                el.className = `bench-item-vertical ${item.category}`;
                 el.dataset.instanceId = item.instanceId;
 
                 // Get rarity color for generated items
                 const isGenerated = item.isGenerated;
                 const rarityColor = isGenerated ? (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
-                const rarityName = isGenerated ? (item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)) : '';
 
                 // Apply rarity border color
                 if (isGenerated) {
                     el.style.borderColor = rarityColor;
-                    el.style.boxShadow = `0 0 8px ${rarityColor}40`;
                 }
 
-                // Build shape preview HTML
-                const shape = item.gridShape;
-                const w = shape[0].length;
-                const h = shape.length;
-                let shapeHTML = `<div class="shape-preview" style="grid-template-columns: repeat(${w}, 10px);">`;
-                for (let y = 0; y < h; y++) {
-                    for (let x = 0; x < w; x++) {
-                        const filled = shape[y][x] === 1;
-                        const cellStyle = filled && isGenerated ? `background: ${rarityColor};` : '';
-                        shapeHTML += `<div class="shape-cell${filled ? '' : ' empty'}" style="${cellStyle}"></div>`;
-                    }
-                }
-                shapeHTML += '</div>';
-
-                // Build stats HTML for tooltip
-                let statsHTML = '';
-                if (item.stats.weight) statsHTML += `<span>Weight: ${item.stats.weight}</span>`;
-                if (item.stats.energyDraw > 0) statsHTML += `<span>Energy: ${item.stats.energyDraw}</span>`;
-                if (item.stats.energyDraw < 0) statsHTML += `<span>Energy: +${-item.stats.energyDraw}</span>`;
-                if (item.stats.damage) statsHTML += `<span>Damage: ${item.stats.damage}</span>`;
-                if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
-                if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
-                if (item.stats.heatCapacity) statsHTML += `<span>Heat Cap: +${item.stats.heatCapacity}</span>`;
-                if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
-
-                // Build special effects HTML
-                let specialHTML = '';
-                if (item.special) {
-                    if (item.special.onPlace === 'drawCard') specialHTML += '<span>On Place: Draw a card</span>';
-                    if (item.special.locksOnPlace) specialHTML += '<span>Locks after placement</span>';
-                }
-
-                // Build valid slots string
-                const validSlots = item.constraints.validSlots || ['all'];
-                const slotsStr = validSlots.map(s => s.replace(/([A-Z])/g, ' $1').trim()).join(', ');
-
-                // Rarity/level badge for generated items
-                const rarityBadge = isGenerated ? `
-                    <div style="position: absolute; top: -6px; right: -6px; background: ${rarityColor}; color: #000; font-size: 8px; padding: 2px 4px; border-radius: 3px; font-weight: bold;">
-                        L${item.level}
-                    </div>
-                ` : '';
+                // Build stats string
+                let statsStr = '';
+                if (item.stats.damage) statsStr += `${item.stats.damage} DMG `;
+                if (item.stats.armorBonus) statsStr += `+${item.stats.armorBonus} Armor `;
+                if (item.stats.energyDraw < 0) statsStr += `+${-item.stats.energyDraw} Energy `;
 
                 el.innerHTML = `
-                    ${rarityBadge}
-                    <div class="rotate-btn" title="Rotate">↻</div>
                     <span class="item-icon">${item.icon}</span>
-                    <span class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</span>
-                    ${shapeHTML}
-                    <div class="bench-tooltip">
-                        <div class="tooltip-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.icon} ${item.name}</div>
-                        ${isGenerated ? `<div style="font-size: 10px; color: ${rarityColor}; margin-bottom: 5px;">${rarityName} - Level ${item.level}</div>` : ''}
-                        <div class="tooltip-stats">${statsHTML}</div>
-                        ${specialHTML ? `<div class="tooltip-special">${specialHTML}</div>` : ''}
-                        <div class="tooltip-slots">Fits: ${slotsStr}</div>
+                    <div class="item-info">
+                        <div class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
+                        <div class="item-stats">${statsStr || 'W:' + item.stats.weight}</div>
                     </div>
                 `;
 
-                // Add click handler for rotate button
-                const rotateBtn = el.querySelector('.rotate-btn');
-                rotateBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();  // Prevent drag from starting
-                    rotateItemShape(item);
-                });
-                rotateBtn.addEventListener('touchstart', (e) => {
-                    e.stopPropagation();  // Prevent drag from starting on touch
-                    e.preventDefault();
-                    rotateItemShape(item);
-                });
+                // Make draggable
+                el.addEventListener('mousedown', (e) => handleDragStart(e, item, 'bench'));
+                el.addEventListener('touchstart', (e) => handleDragStart(e, item, 'bench'), { passive: false });
 
-                bench.appendChild(el);
+                benchScroll.appendChild(el);
+            });
+        }
+
+        // Render the unified mech-shaped grid
+        function renderUnifiedMechGrid() {
+            const container = document.getElementById('unifiedMechGrid');
+            if (!container) return;
+
+            container.innerHTML = '';
+            container.style.gridTemplateColumns = `repeat(${MECH_CHASSIS.gridCols}, 45px)`;
+
+            // Create cells for the mech grid
+            for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
+                for (let x = 0; x < MECH_CHASSIS.gridCols; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'mech-cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+
+                    // Mark invalid cells (not part of mech shape)
+                    if (MECH_CHASSIS.gridShape[y][x] === 0) {
+                        cell.classList.add('invalid');
+                    }
+
+                    container.appendChild(cell);
+                }
+            }
+
+            // Store reference
+            gridElements.unified = container;
+        }
+
+        // Render placed items on the unified grid
+        function renderUnifiedGridItems() {
+            // Remove old placed items
+            document.querySelectorAll('.placed-item-unified').forEach(el => el.remove());
+
+            const container = document.getElementById('unifiedMechGrid');
+            if (!container || !unifiedGridOccupation) return;
+
+            const cellSize = 45;
+            const gap = 2;
+
+            // Update cell states (occupied highlighting)
+            const cells = container.querySelectorAll('.mech-cell');
+            cells.forEach(cell => {
+                const x = parseInt(cell.dataset.x);
+                const y = parseInt(cell.dataset.y);
+                if (unifiedGridOccupation.isValidCell(x, y)) {
+                    cell.classList.toggle('occupied', unifiedGridOccupation.cells[y][x] !== null);
+                }
+            });
+
+            // Render placed items
+            loadoutState.equipment.forEach(eq => {
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
+                if (!item) return;
+
+                const shape = item.gridShape;
+                const w = shape[0].length;
+                const h = shape.length;
+
+                const placedEl = document.createElement('div');
+                placedEl.className = `placed-item-unified ${item.category}`;
+                placedEl.dataset.instanceId = eq.instanceId;
+                placedEl.innerHTML = item.icon;
+
+                // Position based on grid cell
+                placedEl.style.position = 'absolute';
+                placedEl.style.left = `${10 + eq.position.x * (cellSize + gap)}px`;
+                placedEl.style.top = `${10 + eq.position.y * (cellSize + gap)}px`;
+                placedEl.style.width = `${w * cellSize + (w - 1) * gap}px`;
+                placedEl.style.height = `${h * cellSize + (h - 1) * gap}px`;
+
+                // Make draggable (to move or remove)
+                placedEl.addEventListener('mousedown', (e) => handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid'));
+                placedEl.addEventListener('touchstart', (e) => handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid'), { passive: false });
+
+                container.appendChild(placedEl);
             });
         }
 
@@ -5264,16 +5305,15 @@
                     </div>
                 `;
 
-                // Equip button - add to deck
+                // Equip button - add to bench (for equipping)
                 const equipBtn = card.querySelector('.equip-btn');
                 equipBtn.addEventListener('click', () => {
-                    // Move from backpack to draw pile
+                    // Move from backpack to bench
                     removeFromBackpack(itemId);
-                    drawPile.push(itemId);
-                    shuffleArray(drawPile);
+                    addItemToBench(itemId);
                     renderBackpack();
+                    renderBench();
                     updateHeaderDisplay();
-                    updatePileCounts();
                 });
 
                 // Sell button
@@ -5399,7 +5439,7 @@
             }
         }
 
-        function renderGridItems() {
+        function renderUnifiedGridItems() {
             // Remove old placed items
             document.querySelectorAll('.placed-item').forEach(el => el.remove());
 
@@ -5731,27 +5771,21 @@
             }
         }
 
-        // Update pile count displays
+        // Update pile count displays (no longer used - no deck system)
         function updatePileCounts() {
-            const drawCount = document.getElementById('drawPileCount');
-            const discardCount = document.getElementById('discardPileCount');
-            if (drawCount) drawCount.textContent = drawPile.length;
-            if (discardCount) discardCount.textContent = discardPile.length;
+            // No deck piles to update
         }
 
-        // Show pile viewer modal
+        // Show pile viewer modal (no longer used - no deck system)
         function showPileViewer(pileType) {
-            console.log('[PILE] showPileViewer called with:', pileType);
+            // No deck viewer needed
+            return;
             const viewer = document.getElementById('pileViewer');
-            console.log('[PILE] viewer element:', viewer);
-            if (!viewer) {
-                console.error('[PILE] pileViewer element not found!');
-                return;
-            }
+            if (!viewer) return;
             const title = document.getElementById('pileViewerTitle');
             const cardsContainer = document.getElementById('pileViewerCards');
 
-            const pile = pileType === 'draw' ? drawPile : discardPile;
+            const pile = [];
             console.log('[PILE] pile contents:', pile.length, 'cards');
             title.textContent = pileType === 'draw' ? `Draw Pile (${pile.length} cards)` : `Discard Pile (${pile.length} cards)`;
 
@@ -6519,26 +6553,18 @@
             // Clear localStorage
             localStorage.removeItem('battleConfig');
 
-            // Discard all cards in hand to discard pile
-            currentHand.forEach(item => {
-                discardCard(item.itemId);
-            });
-            currentHand = [];
-
-            // Discard all equipped items (especially locked ones) to discard pile
+            // Return all equipped items to bench (persistent items)
             loadoutState.equipment.forEach(eq => {
-                discardCard(eq.itemId);
+                const item = eq.item || { ...ITEM_DATABASE[eq.itemId], instanceId: eq.instanceId };
+                benchItems.push(item);
             });
 
             // Clear equipment and grids
             loadoutState.equipment = [];
             initializeGrids();
 
-            // Unlock all locked items (they're now discarded anyway)
+            // Unlock all locked items
             lockedItems.clear();
-
-            // Draw new hand
-            drawHand(5);
 
             // Clear mission selection
             selectedMission = null;
@@ -6556,8 +6582,8 @@
             // Re-render everything
             renderBench();
             renderMissions();
-            renderGridOverlays();
-            renderGridItems();
+            renderUnifiedMechGrid();
+            renderUnifiedGridItems();
             updateStats();
 
             currentPhase = GamePhase.MECHBUILDER;
@@ -6581,15 +6607,14 @@
             createBuilderScene();
             initializeGrids();
 
-            // Initialize deck and draw initial hand
-            initializeDeck();
-            drawHand(5);
+            // Initialize starter items on bench (no deck system)
+            initializeStarterItems();
 
             // Render UI
             renderBench();
             renderMissions();
-            renderGridOverlays();
-            renderGridItems();
+            renderUnifiedMechGrid();
+            renderUnifiedGridItems();
             updateStats();
 
             // Initialize drag and drop
@@ -6614,65 +6639,7 @@
             generateShopInventory();
             updateHeaderDisplay();
 
-            // Pile viewer buttons - using mousedown/touchstart to ensure they fire before document handlers
-            const drawPileEl = document.getElementById('drawPileDisplay');
-            const discardPileEl = document.getElementById('discardPileDisplay');
-            const closeBtn = document.getElementById('pileViewerClose');
-            console.log('[PILE INIT] drawPileEl:', drawPileEl, 'discardPileEl:', discardPileEl, 'closeBtn:', closeBtn);
-
-            if (drawPileEl) {
-                drawPileEl.addEventListener('mousedown', function(e) {
-                    console.log('[PILE] Draw pile mousedown');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showPileViewer('draw');
-                });
-                drawPileEl.addEventListener('touchstart', function(e) {
-                    console.log('[PILE] Draw pile touchstart');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showPileViewer('draw');
-                }, { passive: false });
-            }
-            if (discardPileEl) {
-                discardPileEl.addEventListener('mousedown', function(e) {
-                    console.log('[PILE] Discard pile mousedown');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showPileViewer('discard');
-                });
-                discardPileEl.addEventListener('touchstart', function(e) {
-                    console.log('[PILE] Discard pile touchstart');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showPileViewer('discard');
-                }, { passive: false });
-            }
-            if (closeBtn) {
-                closeBtn.addEventListener('mousedown', function(e) {
-                    console.log('[PILE] Close button mousedown');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    closePileViewer();
-                });
-                closeBtn.addEventListener('touchstart', function(e) {
-                    console.log('[PILE] Close button touchstart');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    closePileViewer();
-                }, { passive: false });
-            }
-            // Also close pile viewer when clicking outside the cards
-            document.getElementById('pileViewer').addEventListener('mousedown', function(e) {
-                if (e.target === this) {
-                    closePileViewer();
-                }
-            });
-            document.getElementById('pileViewer').addEventListener('touchstart', function(e) {
-                if (e.target === this) {
-                    closePileViewer();
-                }
-            }, { passive: false });
+            // (Deck pile viewers removed - no deck system)
 
             // Main render loop with delta time for battle updates
             let lastFrameTime = performance.now();
@@ -6696,12 +6663,12 @@
             // Handle window resize
             window.addEventListener('resize', () => {
                 engine.resize();
-                // Check mobile layout and re-render grid overlays on resize
+                // Check mobile layout and re-render grid on resize
                 if (currentPhase === GamePhase.MECHBUILDER) {
                     setTimeout(() => {
                         checkMobileLayout();
-                        renderGridOverlays();
-                        renderGridItems();
+                        renderUnifiedMechGrid();
+                        renderUnifiedGridItems();
                     }, 100);
                 }
             });
@@ -6711,8 +6678,8 @@
                 setTimeout(() => {
                     checkMobileLayout();
                     if (currentPhase === GamePhase.MECHBUILDER) {
-                        renderGridOverlays();
-                        renderGridItems();
+                        renderUnifiedMechGrid();
+                        renderUnifiedGridItems();
                     }
                 }, 200);
             });

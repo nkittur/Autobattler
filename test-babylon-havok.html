@@ -4327,7 +4327,6 @@
         let placedItemElements = {};  // Store references to placed item DOM elements
 
         function initDragAndDrop() {
-            const bench = document.getElementById('bench');
             const dragGhost = document.getElementById('dragGhost');
 
             // Touch/Mouse event handlers
@@ -4349,8 +4348,8 @@
                 return;  // Let the rotate button handle its own click
             }
 
-            // Check if we clicked on a bench item
-            const benchItem = target.closest('.bench-item');
+            // Check if we clicked on a bench item (supports both old and new class names)
+            const benchItem = target.closest('.bench-item-vertical') || target.closest('.bench-item');
             if (benchItem) {
                 e.preventDefault();
                 const instanceId = benchItem.dataset.instanceId;
@@ -5389,7 +5388,9 @@
         }
 
         function renderGridOverlays() {
+            // Legacy function - gridOverlayContainer no longer exists in new layout
             const container = document.getElementById('gridOverlayContainer');
+            if (!container) return;  // Use renderUnifiedMechGrid instead
             container.innerHTML = '';
             gridElements = {};
 
@@ -5439,145 +5440,9 @@
             }
         }
 
-        function renderUnifiedGridItems() {
-            // Remove old placed items
-            document.querySelectorAll('.placed-item').forEach(el => el.remove());
-
-            // Get responsive cell size
-            let placedCellSize = 36;
-            let cellSpacing = 42;
-            if (window.innerWidth <= 480) {
-                placedCellSize = 24;
-                cellSpacing = 30;
-            } else if (window.innerWidth <= 768) {
-                placedCellSize = 28;
-                cellSpacing = 34;
-            }
-
-            // Update cell states
-            for (const [slotName, gridEl] of Object.entries(gridElements)) {
-                const cells = gridEl.querySelectorAll('.grid-cell');
-                const grid = gridOccupation[slotName];
-                const slotDef = MECH_CHASSIS.slots[slotName];
-
-                cells.forEach((cell, idx) => {
-                    const x = idx % slotDef.cols;
-                    const y = Math.floor(idx / slotDef.cols);
-                    cell.classList.toggle('occupied', grid.isCellOccupied(x, y));
-                });
-            }
-
-            // Render placed items
-            loadoutState.equipment.forEach(eq => {
-                const item = ITEM_DATABASE[eq.itemId];
-                const gridEl = gridElements[eq.slot];
-                if (!gridEl || !item) return;
-
-                const placedEl = document.createElement('div');
-                const isLocked = lockedItems.has(eq.instanceId);
-                placedEl.className = `placed-item ${item.category}${isLocked ? ' locked' : ''}`;
-                placedEl.dataset.instanceId = eq.instanceId;
-
-                // Get rarity color for generated items
-                const isGenerated = item.isGenerated;
-                const rarityColor = isGenerated ? (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : null;
-                const rarityName = isGenerated ? (item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)) : '';
-
-                const shape = item.gridShape;
-                const w = shape[0].length;
-                const h = shape.length;
-
-                placedEl.style.gridTemplateColumns = `repeat(${w}, ${placedCellSize}px)`;
-                placedEl.style.left = (4 + eq.position.x * cellSpacing) + 'px';
-                placedEl.style.top = (4 + eq.position.y * cellSpacing) + 'px';
-
-                // Add grid cells with rarity color
-                for (let dy = 0; dy < h; dy++) {
-                    for (let dx = 0; dx < w; dx++) {
-                        if (shape[dy][dx] === 1) {
-                            const cell = document.createElement('div');
-                            cell.className = 'placed-cell';
-                            if (isGenerated && rarityColor) {
-                                cell.style.borderColor = rarityColor;
-                                cell.style.boxShadow = `inset 0 0 8px ${rarityColor}40`;
-                            }
-                            placedEl.appendChild(cell);
-                        }
-                    }
-                }
-
-                // Add icon overlay
-                const iconOverlay = document.createElement('span');
-                iconOverlay.className = 'item-icon-overlay';
-                iconOverlay.textContent = item.icon;
-                placedEl.appendChild(iconOverlay);
-
-                // Add level badge for generated items
-                if (isGenerated) {
-                    const levelBadge = document.createElement('div');
-                    levelBadge.style.cssText = `
-                        position: absolute;
-                        top: -6px;
-                        right: -6px;
-                        background: ${rarityColor};
-                        color: #000;
-                        font-size: 8px;
-                        padding: 2px 4px;
-                        border-radius: 3px;
-                        font-weight: bold;
-                        z-index: 5;
-                    `;
-                    levelBadge.textContent = `L${item.level}`;
-                    placedEl.appendChild(levelBadge);
-                }
-
-                // Add tooltip with item details
-                const tooltip = document.createElement('div');
-                tooltip.className = 'item-tooltip';
-                let statsHTML = '';
-                if (item.stats.weight) statsHTML += `<span>Weight: ${item.stats.weight}</span>`;
-                if (item.stats.energyDraw > 0) statsHTML += `<span>Energy: ${item.stats.energyDraw}</span>`;
-                if (item.stats.energyDraw < 0) statsHTML += `<span>Energy: +${-item.stats.energyDraw}</span>`;
-                if (item.stats.damage) statsHTML += `<span>Damage: ${item.stats.damage}</span>`;
-                if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
-                if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
-                if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
-                const hintText = isLocked ? 'Locked this round' : 'Click to remove';
-                const rarityInfo = isGenerated ? `<div style="font-size: 10px; color: ${rarityColor}; margin-bottom: 3px;">${rarityName} - Level ${item.level}</div>` : '';
-                tooltip.innerHTML = `
-                    <div class="tooltip-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.icon} ${item.name}</div>
-                    ${rarityInfo}
-                    <div class="tooltip-stats">${statsHTML}</div>
-                    <div class="tooltip-hint">${hintText}</div>
-                `;
-                placedEl.appendChild(tooltip);
-
-                // Click to remove
-                placedEl.addEventListener('click', (e) => {
-                    if (!dragState.isDragging) {
-                        handlePlacedItemClick(eq.instanceId);
-                    }
-                });
-
-                // Touch hold for mobile tooltip
-                let holdTimer = null;
-                placedEl.addEventListener('touchstart', (e) => {
-                    holdTimer = setTimeout(() => {
-                        placedEl.classList.add('show-tooltip');
-                    }, 500);
-                });
-                placedEl.addEventListener('touchend', () => {
-                    clearTimeout(holdTimer);
-                    setTimeout(() => placedEl.classList.remove('show-tooltip'), 1500);
-                });
-
-                gridEl.appendChild(placedEl);
-            });
-        }
-
-        // Check if two items are adjacent (share an edge) in the same slot
+        // Check if two items are adjacent (share an edge) in the unified grid
         function areItemsAdjacent(eq1, eq2) {
-            if (eq1.slot !== eq2.slot) return false;
+            // With unified grid, all items are in the same grid space
 
             const item1 = ITEM_DATABASE[eq1.itemId];
             const item2 = ITEM_DATABASE[eq2.itemId];

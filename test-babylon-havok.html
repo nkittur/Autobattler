@@ -2798,6 +2798,14 @@
             }
         };
 
+        // Game progression state (defined early for getEnemyLevel)
+        let gameProgression = {
+            round: 1,
+            wins: 0,
+            losses: 0,
+            maxRound: 1
+        };
+
         // Calculate enemy level based on currentEnemyLevel and mission difficulty
         function getEnemyLevel(missionRisk) {
             // Use new difficulty system based on round
@@ -3615,14 +3623,6 @@
             xp: 0,
             scrap: 0,
             gold: 10  // Starting gold
-        };
-
-        // Game progression state
-        let gameProgression = {
-            round: 1,
-            wins: 0,
-            losses: 0,
-            maxRound: 1
         };
 
         // ============================================

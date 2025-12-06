@@ -1346,7 +1346,16 @@
                     // Loadout damage is total damage from all equipped weapons
                     playerMech.loadoutDamage = battleConfig.player.stats.damage || 0;
                     playerMech.loadoutWeapons = battleConfig.player.stats.weapons || [];
+                    // New armor stats
+                    playerMech.damageReduction = battleConfig.player.stats.damageReduction || 0;
+                    playerMech.energyShieldMaxHP = battleConfig.player.stats.energyShieldHP || 0;
+                    playerMech.energyShieldHP = playerMech.energyShieldMaxHP;
                     console.log('Player loadout damage:', playerMech.loadoutDamage, 'weapons:', playerMech.loadoutWeapons);
+                    console.log('Player armor stats - DR:', playerMech.damageReduction, 'Shield:', playerMech.energyShieldHP);
+                    // Create energy shield visual if equipped
+                    if (playerMech.energyShieldMaxHP > 0) {
+                        setTimeout(() => createEnergyShield(playerMech), 100);
+                    }
                 }
                 playerMechs = [playerMech];
 
@@ -4446,6 +4455,99 @@
             }
         }
 
+        // Create shimmering energy shield visual around mech
+        function createEnergyShield(mech) {
+            if (!mech.energyShieldMaxHP || mech.energyShieldMaxHP <= 0) return;
+
+            // Create shield sphere around the mech
+            const shield = BABYLON.MeshBuilder.CreateSphere('energyShield', {
+                diameter: 4.5,
+                segments: 16
+            }, scene);
+            shield.position = mech.torso.getAbsolutePosition().clone();
+            shield.parent = mech.torso;
+            shield.position = new BABYLON.Vector3(0, 0.5, 0);  // Offset to center on torso
+
+            // Shield material - translucent blue with shimmer
+            const shieldMat = new BABYLON.StandardMaterial('shieldMat', scene);
+            shieldMat.diffuseColor = new BABYLON.Color3(0.2, 0.6, 1);
+            shieldMat.emissiveColor = new BABYLON.Color3(0.1, 0.4, 0.9);
+            shieldMat.alpha = 0.15;
+            shieldMat.backFaceCulling = false;
+            shieldMat.specularColor = new BABYLON.Color3(0.5, 0.8, 1);
+            shield.material = shieldMat;
+
+            // Store reference on mech
+            mech.shieldMesh = shield;
+            mech.shieldMaterial = shieldMat;
+
+            // Add shimmer animation
+            let shimmerPhase = 0;
+            mech.shieldShimmer = setInterval(() => {
+                if (!mech.shieldMesh || mech.energyShieldHP <= 0) {
+                    clearInterval(mech.shieldShimmer);
+                    if (mech.shieldMesh) {
+                        mech.shieldMesh.dispose();
+                        mech.shieldMesh = null;
+                    }
+                    return;
+                }
+                shimmerPhase += 0.1;
+                const shimmer = 0.1 + 0.05 * Math.sin(shimmerPhase * 3);
+                const healthRatio = mech.energyShieldHP / mech.energyShieldMaxHP;
+                shieldMat.alpha = shimmer * healthRatio;
+                shieldMat.emissiveColor = new BABYLON.Color3(0.1, 0.4 * healthRatio, 0.9 * healthRatio);
+            }, 50);
+        }
+
+        // Flash effect when energy shield absorbs damage
+        function createShieldFlash(mech) {
+            if (!mech.shieldMesh || !mech.shieldMaterial) return;
+
+            // Bright flash
+            const originalAlpha = mech.shieldMaterial.alpha;
+            mech.shieldMaterial.alpha = 0.6;
+            mech.shieldMaterial.emissiveColor = new BABYLON.Color3(0.5, 0.8, 1);
+
+            // Create ripple particles
+            const pos = mech.torso.getAbsolutePosition();
+            for (let i = 0; i < 12; i++) {
+                const particle = BABYLON.MeshBuilder.CreateSphere('shieldParticle', { diameter: 0.15 }, scene);
+                const angle = (i / 12) * Math.PI * 2;
+                particle.position = pos.add(new BABYLON.Vector3(Math.cos(angle) * 2, 0.5, Math.sin(angle) * 2));
+
+                const pMat = new BABYLON.StandardMaterial('shieldParticleMat', scene);
+                pMat.emissiveColor = new BABYLON.Color3(0.3, 0.7, 1);
+                pMat.disableLighting = true;
+                pMat.alpha = 0.8;
+                particle.material = pMat;
+
+                // Expand outward and fade
+                let age = 0;
+                const update = setInterval(() => {
+                    age += 30;
+                    if (age > 400) {
+                        clearInterval(update);
+                        particle.dispose();
+                        return;
+                    }
+                    const t = age / 400;
+                    particle.position.addInPlace(new BABYLON.Vector3(Math.cos(angle) * 0.1, 0, Math.sin(angle) * 0.1));
+                    pMat.alpha = 0.8 * (1 - t);
+                    particle.scaling = new BABYLON.Vector3(1 + t, 1 + t, 1 + t);
+                }, 30);
+            }
+
+            // Fade back
+            setTimeout(() => {
+                if (mech.shieldMaterial) {
+                    mech.shieldMaterial.alpha = originalAlpha;
+                    const healthRatio = mech.energyShieldHP / mech.energyShieldMaxHP;
+                    mech.shieldMaterial.emissiveColor = new BABYLON.Color3(0.1, 0.4 * healthRatio, 0.9 * healthRatio);
+                }
+            }, 200);
+        }
+
         function updateRecoil(mech, dt) {
             if (mech.recoilRecovery <= 0) return;
             mech.recoilRecovery -= dt * 4.5;
@@ -5469,7 +5571,33 @@
             if (mech.isDestroyed) return;
             if (mech.mechState === MechState.RECOVERING) return;  // Don't damage during recovery
 
-            mech.currentHP -= weapon.damage;
+            let actualDamage = weapon.damage;
+            const isEnergyWeapon = weapon.isBeam || false;
+            const isBallistic = weapon.isProjectile || weapon.isMissile || false;
+
+            // Energy weapons hit energy shields first
+            if (isEnergyWeapon && mech.energyShieldHP > 0) {
+                const shieldAbsorbed = Math.min(mech.energyShieldHP, actualDamage);
+                mech.energyShieldHP -= shieldAbsorbed;
+                actualDamage -= shieldAbsorbed;
+                if (shieldAbsorbed > 0) {
+                    log(`${mech.name}'s shield absorbs ${shieldAbsorbed} energy damage!`, 'info');
+                    // Create shield flash effect
+                    createShieldFlash(mech);
+                }
+                if (actualDamage <= 0) return;  // All damage absorbed by shield
+            }
+
+            // Ballistic/missile weapons are reduced by damage reduction armor
+            if (isBallistic && mech.damageReduction > 0) {
+                const reduced = Math.min(mech.damageReduction, actualDamage - 1);  // Always deal at least 1 damage
+                actualDamage = Math.max(1, actualDamage - reduced);
+                if (reduced > 0) {
+                    log(`${mech.name}'s armor absorbs ${reduced} damage!`, 'info');
+                }
+            }
+
+            mech.currentHP -= actualDamage;
             if (mech.currentHP < 0) mech.currentHP = 0;
 
             const knockback = weapon.knockback;

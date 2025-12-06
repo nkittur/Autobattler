@@ -818,7 +818,8 @@
         .bench-item.cooling .item-icon { color: #44ddff; }
 
         /* Rotate button on bench items */
-        .bench-item .rotate-btn {
+        .bench-item .rotate-btn,
+        .bench-item-vertical .rotate-btn {
             position: absolute;
             top: -8px;
             left: -8px;
@@ -837,15 +838,18 @@
             transition: opacity 0.15s, visibility 0.15s, transform 0.15s;
             z-index: 50;
         }
-        .bench-item:hover .rotate-btn {
+        .bench-item:hover .rotate-btn,
+        .bench-item-vertical:hover .rotate-btn {
             opacity: 1;
             visibility: visible;
         }
-        .bench-item .rotate-btn:hover {
+        .bench-item .rotate-btn:hover,
+        .bench-item-vertical .rotate-btn:hover {
             transform: scale(1.2);
             background: rgba(0, 255, 136, 0.3);
         }
-        .bench-item .rotate-btn:active {
+        .bench-item .rotate-btn:active,
+        .bench-item-vertical .rotate-btn:active {
             transform: scale(0.9);
         }
 
@@ -3003,9 +3007,28 @@
                     component.isDamaged = isDamaged;
                     component.originalLevel = originalLevel;
 
-                    // Damaged items have 0 sell value
+                    // Damaged items have reduced stats (20-40% penalty) and 0 sell value
                     if (isDamaged) {
                         component.sellValue = 0;
+                        const damagePenalty = 0.6 + Math.random() * 0.2;  // 60-80% of original stats
+
+                        // Reduce primary stats
+                        if (component.stats.damage) {
+                            component.stats.damage = Math.max(1, Math.floor(component.stats.damage * damagePenalty));
+                        }
+                        if (component.stats.armorBonus) {
+                            component.stats.armorBonus = Math.max(1, Math.floor(component.stats.armorBonus * damagePenalty));
+                        }
+                        if (component.stats.energyDraw < 0) {
+                            // Energy providers give less energy when damaged
+                            component.stats.energyDraw = Math.ceil(component.stats.energyDraw * damagePenalty);
+                        }
+                        if (component.stats.accuracyBonus) {
+                            component.stats.accuracyBonus = Math.floor(component.stats.accuracyBonus * damagePenalty);
+                        }
+                        if (component.stats.energyReduction) {
+                            component.stats.energyReduction = Math.max(1, Math.floor(component.stats.energyReduction * damagePenalty));
+                        }
                     }
 
                     // Mark some undamaged items as high resale value
@@ -5131,6 +5154,7 @@
                 }
 
                 el.innerHTML = `
+                    <div class="rotate-btn" title="Rotate (R)">↻</div>
                     <span class="item-icon">${item.icon}</span>
                     <div class="item-info">
                         <div class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
@@ -5141,6 +5165,13 @@
                         </div>
                     </div>
                 `;
+
+                // Rotate button click
+                const rotateBtn = el.querySelector('.rotate-btn');
+                rotateBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    rotateItemShape(item);
+                });
 
                 // Make draggable
                 el.addEventListener('mousedown', (e) => handleDragStart(e, item, 'bench'));
@@ -7216,18 +7247,14 @@
             // Handle array of selected components (or empty array)
             const components = Array.isArray(selectedComponents) ? selectedComponents : (selectedComponents ? [selectedComponents] : []);
 
-            // Add each selected component to backpack
+            // Add each selected component to bench
             components.forEach(comp => {
                 // Register in ITEM_DATABASE so it can be used in gameplay
                 registerGeneratedComponent(comp);
 
-                // Add to backpack instead of deck
-                const result = addToBackpack(comp.id);
-                if (result.success) {
-                    console.log(`Salvaged: ${comp.name} (${comp.rarity} Lv.${comp.level})`);
-                } else {
-                    console.log(`Failed to salvage ${comp.name}: ${result.reason}`);
-                }
+                // Add to bench so it's immediately available
+                addItemToBench(comp.id);
+                console.log(`Salvaged: ${comp.name} (${comp.rarity} Lv.${comp.level})`);
             });
 
             // Increase enemy level for progression based on round (using new difficulty system)
@@ -7254,18 +7281,8 @@
             // Clear localStorage
             localStorage.removeItem('battleConfig');
 
-            // Return all equipped items to bench (persistent items)
-            loadoutState.equipment.forEach(eq => {
-                const item = eq.item || { ...ITEM_DATABASE[eq.itemId], instanceId: eq.instanceId };
-                benchItems.push(item);
-            });
-
-            // Clear equipment and grids
-            loadoutState.equipment = [];
-            initializeGrids();
-
-            // Unlock all locked items
-            lockedItems.clear();
+            // Keep equipped items on mech - don't return to bench
+            // Equipment persists between battles
 
             // Clear mission selection
             selectedMission = null;

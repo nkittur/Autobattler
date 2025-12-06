@@ -283,11 +283,11 @@
             font-size: 11px;
         }
 
-        /* Mech Grid Area - positioned to center over 3D mech */
+        /* Mech Grid Area - positioned to center over 3D mech on full viewport */
         #mechGridArea {
             position: absolute;
             top: 0;
-            left: 200px;  /* Account for bench panel width */
+            left: 0;
             right: 0;
             bottom: 0;
             display: flex;
@@ -4569,28 +4569,21 @@
                 const cursorCellX = Math.floor(localX / cellSize);
                 const cursorCellY = Math.floor(localY / cellSize);
 
-                // Find the best position for the item nearest to cursor
-                const bestPos = findBestPosition(unifiedGridOccupation, item, cursorCellX, cursorCellY);
+                // Calculate centered position for highlighting (same for valid and invalid)
+                let highlightX = cursorCellX - Math.floor(itemW / 2);
+                let highlightY = cursorCellY - Math.floor(itemH / 2);
+                // Clamp to grid bounds
+                highlightX = Math.max(0, Math.min(highlightX, MECH_CHASSIS.gridCols - itemW));
+                highlightY = Math.max(0, Math.min(highlightY, MECH_CHASSIS.gridRows - itemH));
 
-                if (bestPos) {
-                    return {
-                        gridX: bestPos.x,
-                        gridY: bestPos.y,
-                        valid: true
-                    };
-                } else {
-                    // No valid position, show where cursor would place it (clamped)
-                    let gridX = cursorCellX - Math.floor(itemW / 2);
-                    let gridY = cursorCellY - Math.floor(itemH / 2);
-                    gridX = Math.max(0, Math.min(gridX, MECH_CHASSIS.gridCols - itemW));
-                    gridY = Math.max(0, Math.min(gridY, MECH_CHASSIS.gridRows - itemH));
+                // Check if this position is valid for placement
+                const canPlace = unifiedGridOccupation && unifiedGridOccupation.canPlaceItem(item, highlightX, highlightY);
 
-                    return {
-                        gridX: gridX,
-                        gridY: gridY,
-                        valid: false
-                    };
-                }
+                return {
+                    gridX: highlightX,
+                    gridY: highlightY,
+                    valid: canPlace
+                };
             }
 
             return null;

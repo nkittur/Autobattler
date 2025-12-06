@@ -206,6 +206,173 @@
         #countdownText.fight {
             animation: countdownPulse 0.3s ease-out, fightShake 0.5s ease-out 0.3s;
         }
+
+        /* ============================================
+           WEAPON MINIGAME OVERLAY STYLES
+           ============================================ */
+        #weaponMinigameOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001;
+            flex-direction: column;
+            gap: 20px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        #weaponMinigameOverlay.active {
+            display: flex;
+        }
+        #minigameWeaponName {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 20px #00ff88;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        #minigameInstruction {
+            font-size: 16px;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        #minigameChargeContainer {
+            width: 400px;
+            max-width: 90vw;
+            height: 60px;
+            background: #111;
+            border: 3px solid #444;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        /* Zone backgrounds */
+        .minigame-zone {
+            position: absolute;
+            top: 0;
+            height: 100%;
+        }
+        .zone-low {
+            left: 0;
+            width: 30%;
+            background: linear-gradient(90deg, #553333, #664444);
+        }
+        .zone-green {
+            left: 30%;
+            width: 48%;
+            background: linear-gradient(90deg, #335533, #447744);
+        }
+        .zone-yellow {
+            left: 78%;
+            width: 10%;
+            background: linear-gradient(90deg, #665533, #887744);
+        }
+        .zone-red {
+            left: 88%;
+            width: 12%;
+            background: linear-gradient(90deg, #663333, #884444);
+        }
+        /* Zone labels */
+        .zone-label {
+            position: absolute;
+            bottom: 4px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            text-align: center;
+        }
+        .zone-low .zone-label { color: #ff8888; }
+        .zone-green .zone-label { color: #88ff88; }
+        .zone-yellow .zone-label { color: #ffff88; }
+        .zone-red .zone-label { color: #ff6666; }
+
+        /* Charge fill bar */
+        #minigameChargeFill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+            border-right: 3px solid #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+            transition: none;
+        }
+        #minigameChargeFill.charging {
+            animation: chargeGlow 0.2s infinite alternate;
+        }
+        @keyframes chargeGlow {
+            from { box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+            to { box-shadow: 0 0 40px rgba(255,255,255,0.9); }
+        }
+
+        /* Weapon image container */
+        #minigameWeaponVisual {
+            width: 150px;
+            height: 150px;
+            border: 3px solid #00ff88;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 60px;
+            background: radial-gradient(circle, #002211 0%, #001108 100%);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        #minigameWeaponVisual.charging {
+            animation: weaponPulse 0.3s infinite alternate;
+        }
+        @keyframes weaponPulse {
+            from {
+                box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+                transform: scale(1);
+            }
+            to {
+                box-shadow: 0 0 60px rgba(0, 255, 136, 0.7);
+                transform: scale(1.05);
+            }
+        }
+        #minigameEnergyFill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            background: linear-gradient(180deg, rgba(0,255,136,0.8), rgba(0,200,100,0.4));
+            transition: none;
+        }
+        #minigameWeaponIcon {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Result display */
+        #minigameResult {
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px currentColor;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #minigameResult.show {
+            opacity: 1;
+        }
+        #minigameResult.perfect { color: #ffff00; }
+        #minigameResult.good { color: #00ff88; }
+        #minigameResult.weak { color: #ff8844; }
+        #minigameResult.jam { color: #ff4444; }
     </style>
 </head>
 <body>
@@ -221,6 +388,24 @@
     <!-- Countdown overlay -->
     <div id="countdownOverlay" class="hidden">
         <div id="countdownText">3</div>
+    </div>
+
+    <!-- Weapon Minigame overlay -->
+    <div id="weaponMinigameOverlay">
+        <div id="minigameWeaponName">LASER</div>
+        <div id="minigameWeaponVisual">
+            <div id="minigameEnergyFill"></div>
+            <span id="minigameWeaponIcon">⚡</span>
+        </div>
+        <div id="minigameInstruction">HOLD TO CHARGE - RELEASE TO FIRE!</div>
+        <div id="minigameChargeContainer">
+            <div class="minigame-zone zone-low"><span class="zone-label">WEAK</span></div>
+            <div class="minigame-zone zone-green"><span class="zone-label">GOOD</span></div>
+            <div class="minigame-zone zone-yellow"><span class="zone-label">PERFECT!</span></div>
+            <div class="minigame-zone zone-red"><span class="zone-label">JAM!</span></div>
+            <div id="minigameChargeFill"></div>
+        </div>
+        <div id="minigameResult"></div>
     </div>
 
     <div id="polyCount">Triangles: <span id="triCount">0</span></div>
@@ -339,6 +524,348 @@
         // Weapon cooldowns per mech (keyed by mech name)
         const mechCooldowns = {};
         const COOLDOWN_TIMES = { erlaser: 2000, lrm: 3500, ac: 1500, hatchet: 1800 };
+
+        // ============================================
+        // WEAPON MINIGAME SYSTEM
+        // ============================================
+        const MINIGAME_CONFIG = {
+            triggerChance: 0.50,         // 50% chance to trigger minigame
+            chargeSpeed: 80,             // Percent per second
+            autoFireDelay: 200,          // ms before auto-fire if not holding
+            // Zone boundaries (as percentages)
+            zones: {
+                low: { min: 0, max: 30, multiplier: 0.5, name: 'WEAK', class: 'weak' },
+                green: { min: 30, max: 78, multiplier: 1.0, name: 'GOOD', class: 'good' },
+                yellow: { min: 78, max: 88, multiplier: 1.25, name: 'PERFECT!', class: 'perfect' },
+                red: { min: 88, max: 100, multiplier: 0, name: 'JAMMED!', class: 'jam' }
+            },
+            // Weapon-specific icons and colors
+            weaponVisuals: {
+                laser: { icon: '⚡', name: 'LASER', color: '#00ff88' },
+                beam: { icon: '⚡', name: 'ENERGY BEAM', color: '#00ffff' },
+                projectile: { icon: '💥', name: 'CANNON', color: '#ffaa00' },
+                cluster: { icon: '🚀', name: 'MISSILES', color: '#ff6600' },
+                melee: { icon: '⚔️', name: 'MELEE', color: '#ff4444' }
+            }
+        };
+
+        // Minigame state
+        let minigameState = {
+            active: false,
+            isCharging: false,
+            chargePercent: 0,
+            weaponData: null,
+            mech: null,
+            target: null,
+            startTime: 0,
+            animationFrame: null,
+            pendingWeaponFire: null
+        };
+
+        // Get weapon type for visuals
+        function getWeaponType(weaponData) {
+            const battle = weaponData.battle || {};
+            if (battle.isBeam) return 'beam';
+            if (battle.isCluster) return 'cluster';
+            if (battle.isMelee) return 'melee';
+            // Check weapon name for hints
+            const name = (weaponData.name || weaponData.itemId || '').toLowerCase();
+            if (name.includes('laser') || name.includes('beam') || name.includes('ppc')) return 'laser';
+            if (name.includes('missile') || name.includes('lrm') || name.includes('srm')) return 'cluster';
+            if (name.includes('hatchet') || name.includes('sword') || name.includes('melee')) return 'melee';
+            return 'projectile';
+        }
+
+        // Start the minigame
+        function startWeaponMinigame(mech, weaponData, target) {
+            if (minigameState.active) return false;
+
+            const weaponType = getWeaponType(weaponData);
+            const visuals = MINIGAME_CONFIG.weaponVisuals[weaponType] || MINIGAME_CONFIG.weaponVisuals.projectile;
+
+            // Save all mech positions and velocities before pausing
+            const savedMechStates = [];
+            if (typeof allMechs !== 'undefined') {
+                allMechs.forEach(m => {
+                    if (m && m.pelvis && m.pelvisAggregate) {
+                        const pos = m.pelvis.getAbsolutePosition().clone();
+                        const body = m.pelvisAggregate.body;
+                        const linVel = body.getLinearVelocity();
+                        const angVel = body.getAngularVelocity();
+                        savedMechStates.push({
+                            mech: m,
+                            position: pos,
+                            linearVelocity: linVel ? linVel.clone() : new BABYLON.Vector3(0, 0, 0),
+                            angularVelocity: angVel ? angVel.clone() : new BABYLON.Vector3(0, 0, 0)
+                        });
+                        // Freeze the physics body
+                        body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
+                        body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+                    }
+                });
+            }
+
+            minigameState = {
+                active: true,
+                isCharging: false,
+                chargePercent: 0,
+                weaponData: weaponData,
+                mech: mech,
+                target: target,
+                startTime: performance.now(),
+                animationFrame: null,
+                pendingWeaponFire: null,
+                savedMechStates: savedMechStates
+            };
+
+            // Disable physics entirely during minigame
+            if (typeof scene !== 'undefined' && scene.physicsEnabled) {
+                minigameState.wasPhysicsEnabled = true;
+                scene.physicsEnabled = false;
+            }
+
+            // Update UI
+            const overlay = document.getElementById('weaponMinigameOverlay');
+            const weaponName = document.getElementById('minigameWeaponName');
+            const weaponIcon = document.getElementById('minigameWeaponIcon');
+            const chargeFill = document.getElementById('minigameChargeFill');
+            const energyFill = document.getElementById('minigameEnergyFill');
+            const result = document.getElementById('minigameResult');
+            const weaponVisual = document.getElementById('minigameWeaponVisual');
+
+            weaponName.textContent = weaponData.name || visuals.name;
+            weaponName.style.color = visuals.color;
+            weaponName.style.textShadow = `0 0 20px ${visuals.color}`;
+            weaponIcon.textContent = visuals.icon;
+            weaponVisual.style.borderColor = visuals.color;
+            chargeFill.style.width = '0%';
+            chargeFill.classList.remove('charging');
+            energyFill.style.height = '0%';
+            result.textContent = '';
+            result.className = '';
+            weaponVisual.classList.remove('charging');
+
+            overlay.classList.add('active');
+
+            // Pause the game during minigame
+            if (typeof gameTime !== 'undefined') {
+                minigameState.pausedGameTime = gameTime;
+            }
+
+            log(`[MINIGAME] Started for ${weaponData.name || 'weapon'}`);
+
+            return true;
+        }
+
+        // Update minigame charge (called on animation frame)
+        function updateMinigameCharge() {
+            if (!minigameState.active || !minigameState.isCharging) return;
+
+            const now = performance.now();
+            const elapsed = now - minigameState.chargeStartTime;
+            const chargeAmount = (elapsed / 1000) * MINIGAME_CONFIG.chargeSpeed;
+
+            minigameState.chargePercent = Math.min(100, chargeAmount);
+
+            // Update UI
+            const chargeFill = document.getElementById('minigameChargeFill');
+            const energyFill = document.getElementById('minigameEnergyFill');
+
+            chargeFill.style.width = minigameState.chargePercent + '%';
+            energyFill.style.height = minigameState.chargePercent + '%';
+
+            // Change fill color based on zone
+            if (minigameState.chargePercent >= 88) {
+                chargeFill.style.background = 'linear-gradient(180deg, rgba(255,100,100,0.5), rgba(255,50,50,0.3))';
+            } else if (minigameState.chargePercent >= 78) {
+                chargeFill.style.background = 'linear-gradient(180deg, rgba(255,255,100,0.5), rgba(200,200,50,0.3))';
+            } else if (minigameState.chargePercent >= 30) {
+                chargeFill.style.background = 'linear-gradient(180deg, rgba(100,255,100,0.5), rgba(50,200,50,0.3))';
+            } else {
+                chargeFill.style.background = 'linear-gradient(180deg, rgba(255,150,100,0.4), rgba(200,100,50,0.2))';
+            }
+
+            // Continue animation if still charging
+            if (minigameState.chargePercent < 100) {
+                minigameState.animationFrame = requestAnimationFrame(updateMinigameCharge);
+            } else {
+                // Auto-fire at 100%
+                endMinigame();
+            }
+        }
+
+        // Start charging (on mouse/touch down)
+        function startCharging() {
+            if (!minigameState.active || minigameState.isCharging) return;
+
+            minigameState.isCharging = true;
+            minigameState.chargeStartTime = performance.now();
+
+            const chargeFill = document.getElementById('minigameChargeFill');
+            const weaponVisual = document.getElementById('minigameWeaponVisual');
+
+            chargeFill.classList.add('charging');
+            weaponVisual.classList.add('charging');
+
+            minigameState.animationFrame = requestAnimationFrame(updateMinigameCharge);
+        }
+
+        // Stop charging (on mouse/touch up)
+        function stopCharging() {
+            if (!minigameState.active || !minigameState.isCharging) return;
+
+            minigameState.isCharging = false;
+
+            if (minigameState.animationFrame) {
+                cancelAnimationFrame(minigameState.animationFrame);
+                minigameState.animationFrame = null;
+            }
+
+            const chargeFill = document.getElementById('minigameChargeFill');
+            const weaponVisual = document.getElementById('minigameWeaponVisual');
+
+            chargeFill.classList.remove('charging');
+            weaponVisual.classList.remove('charging');
+
+            endMinigame();
+        }
+
+        // Determine zone and multiplier from charge percent
+        function getZoneResult(percent) {
+            const zones = MINIGAME_CONFIG.zones;
+            if (percent >= zones.red.min) return zones.red;
+            if (percent >= zones.yellow.min) return zones.yellow;
+            if (percent >= zones.green.min) return zones.green;
+            return zones.low;
+        }
+
+        // End the minigame and fire weapon
+        function endMinigame() {
+            if (!minigameState.active) return;
+
+            const zone = getZoneResult(minigameState.chargePercent);
+
+            // Show result
+            const result = document.getElementById('minigameResult');
+            result.textContent = zone.name;
+            result.className = 'show ' + zone.class;
+
+            log(`[MINIGAME] Result: ${zone.name} (${minigameState.chargePercent.toFixed(0)}%) - ${zone.multiplier}x damage`);
+
+            // Store the fire data and saved states for after animation
+            const fireData = {
+                mech: minigameState.mech,
+                weaponData: minigameState.weaponData,
+                target: minigameState.target,
+                damageMultiplier: zone.multiplier
+            };
+            const savedStates = minigameState.savedMechStates;
+            const wasPhysicsEnabled = minigameState.wasPhysicsEnabled;
+
+            // Hide overlay after short delay
+            setTimeout(() => {
+                const overlay = document.getElementById('weaponMinigameOverlay');
+                overlay.classList.remove('active');
+
+                // Re-enable physics
+                if (typeof scene !== 'undefined' && wasPhysicsEnabled) {
+                    scene.physicsEnabled = true;
+                }
+
+                // Restore mech positions and velocities
+                if (savedStates && savedStates.length > 0) {
+                    savedStates.forEach(state => {
+                        if (state.mech && state.mech.pelvis && state.mech.pelvisAggregate) {
+                            const body = state.mech.pelvisAggregate.body;
+                            // Restore position
+                            body.transformNode.position.copyFrom(state.position);
+                            // Restore velocities
+                            body.setLinearVelocity(state.linearVelocity);
+                            body.setAngularVelocity(state.angularVelocity);
+                        }
+                    });
+                }
+
+                // Reset state
+                minigameState.active = false;
+                minigameState.isCharging = false;
+                minigameState.chargePercent = 0;
+                minigameState.savedMechStates = null;
+                minigameState.wasPhysicsEnabled = false;
+
+                // Actually fire the weapon with the multiplier
+                if (fireData.damageMultiplier > 0) {
+                    fireLoadoutWeaponWithMultiplier(
+                        fireData.mech,
+                        fireData.weaponData,
+                        fireData.target,
+                        fireData.damageMultiplier
+                    );
+                } else {
+                    // Weapon jammed - play jam effect
+                    log(`[MINIGAME] Weapon JAMMED! No damage dealt.`);
+                    // Could add jam visual/sound effect here
+                }
+            }, 600);
+        }
+
+        // Set up minigame event listeners
+        function setupMinigameListeners() {
+            const overlay = document.getElementById('weaponMinigameOverlay');
+            const chargeContainer = document.getElementById('minigameChargeContainer');
+            const weaponVisual = document.getElementById('minigameWeaponVisual');
+
+            // Mouse events
+            overlay.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                startCharging();
+            });
+            overlay.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                stopCharging();
+            });
+            overlay.addEventListener('mouseleave', (e) => {
+                if (minigameState.isCharging) {
+                    stopCharging();
+                }
+            });
+
+            // Touch events
+            overlay.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startCharging();
+            });
+            overlay.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                stopCharging();
+            });
+            overlay.addEventListener('touchcancel', (e) => {
+                if (minigameState.isCharging) {
+                    stopCharging();
+                }
+            });
+
+            // Keyboard support (spacebar)
+            document.addEventListener('keydown', (e) => {
+                if (minigameState.active && e.code === 'Space' && !e.repeat) {
+                    e.preventDefault();
+                    startCharging();
+                }
+            });
+            document.addEventListener('keyup', (e) => {
+                if (minigameState.active && e.code === 'Space') {
+                    e.preventDefault();
+                    stopCharging();
+                }
+            });
+        }
+
+        // Initialize minigame listeners when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupMinigameListeners);
+        } else {
+            setupMinigameListeners();
+        }
 
         // Helper to get alive mechs
         function getAliveMechs(team) {
@@ -595,7 +1122,14 @@
                             console.log(`[FRAME ${frameCount}] t=${gameTime.toFixed(2)}`);
                         }
 
-                        // Always update projectiles and beams (so they don't freeze)
+                        // Skip all game updates during minigame (full pause)
+                        if (minigameState.active) {
+                            // Only render the frozen scene, no physics or game logic
+                            scene.render();
+                            return;
+                        }
+
+                        // Update projectiles and beams
                         updateProjectiles(dt);
                         updateBeams();
 
@@ -4448,22 +4982,54 @@
         }
 
         // Fire a weapon from loadout data (uses actual weapon stats)
+        // For player mechs, this may trigger the minigame
         function fireLoadoutWeapon(mech, loadoutWeapon) {
             try {
                 const from = mech;
                 const to = mech.ai.target;
                 if (!from || !to || to.isDestroyed) return;
 
+                // Check if this is a player mech and should trigger minigame
+                if (from.isPlayer && !minigameState.active) {
+                    // Roll for minigame trigger
+                    if (Math.random() < MINIGAME_CONFIG.triggerChance) {
+                        // Start the minigame instead of firing immediately
+                        if (startWeaponMinigame(from, loadoutWeapon, to)) {
+                            return; // Minigame started, weapon will fire after
+                        }
+                    }
+                }
+
+                // Normal fire (no minigame or enemy mech)
+                fireLoadoutWeaponWithMultiplier(mech, loadoutWeapon, to, 1.0);
+            } catch (e) {
+                log(`[LOADOUT FIRE ERROR] ${e.message}`, 'error');
+                console.error('fireLoadoutWeapon error:', e);
+            }
+        }
+
+        // Fire a weapon with a damage multiplier (called after minigame or directly)
+        function fireLoadoutWeaponWithMultiplier(mech, loadoutWeapon, target, damageMultiplier) {
+            try {
+                const from = mech;
+                const to = target || mech.ai.target;
+                if (!from || !to || to.isDestroyed) return;
+
                 const wpnName = loadoutWeapon.name || loadoutWeapon.itemId;
                 const battleProps = loadoutWeapon.battle || {};
-                const damage = loadoutWeapon.damage || 10;
+                const baseDamage = loadoutWeapon.damage || 10;
+                const finalDamage = Math.round(baseDamage * damageMultiplier);
 
-                log(`[LOADOUT FIRE] ${from.name} fires ${wpnName} (${damage} damage)`);
+                if (damageMultiplier !== 1.0) {
+                    log(`[LOADOUT FIRE] ${from.name} fires ${wpnName} (${baseDamage} × ${damageMultiplier} = ${finalDamage} damage)`);
+                } else {
+                    log(`[LOADOUT FIRE] ${from.name} fires ${wpnName} (${finalDamage} damage)`);
+                }
 
-                // Build weapon object from loadout data - NO damage multipliers
+                // Build weapon object from loadout data with modified damage
                 const weapon = {
                     name: wpnName,
-                    damage: damage,
+                    damage: finalDamage,
                     knockback: battleProps.knockback || 15,
                     recoil: battleProps.recoil || 0.15,
                     projectileSpeed: battleProps.projectileSpeed || 40,
@@ -4509,7 +5075,7 @@
                 }
             } catch (e) {
                 log(`[LOADOUT FIRE ERROR] ${e.message}`, 'error');
-                console.error('fireLoadoutWeapon error:', e);
+                console.error('fireLoadoutWeaponWithMultiplier error:', e);
             }
         }
 

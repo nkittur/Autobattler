@@ -5176,7 +5176,8 @@
             // Show and load the battle iframe with the original physics simulation
             const battleFrame = document.getElementById('battleFrame');
             battleFrame.style.display = 'block';
-            battleFrame.src = 'battle-arena-old.html';
+            // Add cache-busting parameter to prevent browser caching
+            battleFrame.src = 'battle-arena-old.html?t=' + Date.now();
 
             currentPhase = GamePhase.BATTLE;
         }

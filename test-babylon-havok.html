@@ -1976,27 +1976,27 @@
         const MECH_CHASSIS = {
             id: 'starter_chassis',
             name: 'Timber Wolf Chassis',
-            maxWeight: 100,
-            baseEnergy: 7,
-            // Unified mech-shaped grid (7 cols x 7 rows)
+            maxWeight: 6,
+            baseEnergy: 2,
+            // Unified mech-shaped grid (7 cols x 7 rows) - slimmed down ~30%
             // 1 = valid cell, 0 = empty/invalid
             gridCols: 7,
             gridRows: 7,
             gridShape: [
-                // Row 0: Head
+                // Row 0: Head (slim)
+                [0, 0, 0, 1, 0, 0, 0],
+                // Row 1: Shoulders (narrow)
                 [0, 0, 1, 1, 1, 0, 0],
-                // Row 1: Shoulders
+                // Row 2: Arms + Torso (reduced)
                 [0, 1, 1, 1, 1, 1, 0],
-                // Row 2: Arms + Torso
-                [1, 1, 1, 1, 1, 1, 1],
-                // Row 3: Arms + Torso
-                [1, 1, 1, 1, 1, 1, 1],
-                // Row 4: Waist
-                [0, 0, 1, 1, 1, 0, 0],
+                // Row 3: Arms + Torso (reduced)
+                [0, 1, 1, 1, 1, 1, 0],
+                // Row 4: Waist (slim)
+                [0, 0, 0, 1, 0, 0, 0],
                 // Row 5: Upper Legs (split)
-                [0, 1, 1, 0, 1, 1, 0],
+                [0, 0, 1, 0, 1, 0, 0],
                 // Row 6: Lower Legs (split)
-                [0, 1, 1, 0, 1, 1, 0]
+                [0, 0, 1, 0, 1, 0, 0]
             ],
             // For backwards compat - map old slot names to grid regions (not used with unified grid)
             slots: {}
@@ -2010,11 +2010,11 @@
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔫',
-                gridShape: [[1], [1], [1], [1], [1]],  // 1x5 Vertical
-                gridDimensions: { w: 1, h: 5 },
+                gridShape: [[1], [1]],  // 1x2 Vertical (smaller to fit new grid)
+                gridDimensions: { w: 1, h: 2 },
                 stats: {
-                    weight: 18,
-                    energyDraw: 2,
+                    weight: 4,
+                    energyDraw: 1,
                     damage: 25
                 },
                 constraints: {},
@@ -2038,7 +2038,7 @@
                 gridShape: [[1, 1]],  // 2x1 Horizontal
                 gridDimensions: { w: 2, h: 1 },
                 stats: {
-                    weight: 10,
+                    weight: 2,
                     energyDraw: 2,
                     damage: 18
                 },
@@ -2059,12 +2059,12 @@
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '🛡️',
-                gridShape: [[1, 1], [1, 1]],  // 2x2 Square
-                gridDimensions: { w: 2, h: 2 },
+                gridShape: [[1, 1]],  // 2x1 Horizontal (smaller)
+                gridDimensions: { w: 2, h: 1 },
                 stats: {
-                    weight: 28,
+                    weight: 2,
                     energyDraw: 0,
-                    armorBonus: 30
+                    armorBonus: 15
                 },
                 constraints: {}
             },
@@ -2074,11 +2074,11 @@
                 type: 'REACTOR',
                 category: 'reactor',
                 icon: '⚛️',
-                gridShape: [[1], [1]],  // 1x2 Vertical
-                gridDimensions: { w: 1, h: 2 },
+                gridShape: [[1]],  // 1x1 Single (smaller)
+                gridDimensions: { w: 1, h: 1 },
                 stats: {
-                    weight: 8,
-                    energyDraw: -3,  // Negative = provides energy
+                    weight: 1,
+                    energyDraw: -4,  // Provides 4 energy
                     heatCapacity: 15
                 },
                 constraints: {}
@@ -2092,7 +2092,7 @@
                 gridShape: [[1]],  // 1x1 Single
                 gridDimensions: { w: 1, h: 1 },
                 stats: {
-                    weight: 6,
+                    weight: 1,
                     energyDraw: 1,
                     accuracyBonus: 8
                 },
@@ -2107,7 +2107,7 @@
                 gridShape: [[1]],  // 1x1 Single
                 gridDimensions: { w: 1, h: 1 },
                 stats: {
-                    weight: 8,
+                    weight: 1,
                     energyDraw: 0,
                     energyReduction: 1  // Reduces energy cost of adjacent items
                 },
@@ -2125,13 +2125,13 @@
 
         // Budget Exchange Rates: 1 square of "currency" converts to these values
         const COMPONENT_GENERATION = {
-            // Base exchange rates (1 square = X) - energy scaled to smaller units
+            // Base exchange rates (1 square = X) - scaled for smaller economy (weight limit 6)
             exchangeRates: {
                 damage: 5,           // 1 square = 5 damage
-                weight: -10,         // 1 square = -10 weight (lighter is better, costs budget)
-                energyCost: -1.5,    // 1 square = -1.5 energy cost (cheaper is better)
-                energyProvided: 1.5, // 1 square = 1.5 energy provided
-                armor: 8,            // 1 square = 8 armor
+                weight: -1,          // 1 square = -1 weight (scaled down from -10)
+                energyCost: -0.5,    // 1 square = -0.5 energy cost
+                energyProvided: 1,   // 1 square = 1 energy provided
+                armor: 5,            // 1 square = 5 armor
                 accuracy: 4,         // 1 square = 4% accuracy
                 cooldownReduction: -100,  // 1 square = -100ms cooldown
                 knockback: 5,        // 1 square = 5 knockback
@@ -2140,13 +2140,13 @@
                 energyReduction: 0.3 // 1 square = 0.3 energy reduction (for heat sinks)
             },
 
-            // Resource conversion rates (for trade-offs within same item) - energy scaled
+            // Resource conversion rates (for trade-offs within same item)
             conversionRates: {
-                energyToDamage: 14,     // 1 energy cost = 14 damage (scaled from 2)
-                weightToDamage: 0.5,    // 1 weight = 0.5 damage
+                energyToDamage: 10,     // 1 energy cost = 10 damage
+                weightToDamage: 5,      // 1 weight = 5 damage (weight is more valuable now)
                 cooldownToDamage: 0.05, // 1ms cooldown = 0.05 damage
                 accuracyToDamage: 1.5,  // 1% accuracy = 1.5 damage
-                armorToWeight: 0.6      // 1 armor = 0.6 weight
+                armorToWeight: 2        // 1 armor = 2 weight
             },
 
             // Shape bonuses: longer shapes get bonus budget squares
@@ -2191,6 +2191,7 @@
         };
 
         // Base item templates - define the "class" of item with typical shape/stats
+        // Scaled for smaller economy: weight limit 6, energy ~6, small grid
         const ITEM_TEMPLATES = {
             // WEAPONS
             railgun: {
@@ -2199,11 +2200,11 @@
                 icon: '🔫',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Precision', 'Rapid'],
                 nameSuffix: ['Railgun', 'Cannon', 'Driver', 'Accelerator'],
-                baseShape: [[1], [1], [1], [1], [1]],  // 5x1 vertical
+                baseShape: [[1], [1]],  // 1x2 vertical (fits in new grid)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 22,
-                    energyDraw: 3,
+                    weight: 4,
+                    energyDraw: 1,
                     damage: 45
                 },
                 baseBattle: {
@@ -2223,11 +2224,11 @@
                 icon: '⚡',
                 namePrefix: ['ER', 'Pulse', 'Focused', 'Burst', 'Heavy'],
                 nameSuffix: ['Laser', 'Beam', 'Array', 'Emitter'],
-                baseShape: [[1, 1], [1, 1]],  // Typical 2x2 square
+                baseShape: [[1, 1]],  // 2x1 horizontal (fits in new grid)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 14,
-                    energyDraw: 3,
+                    weight: 2,
+                    energyDraw: 2,
                     damage: 35
                 },
                 baseBattle: {
@@ -2246,11 +2247,11 @@
                 icon: '🚀',
                 namePrefix: ['Light', 'Cluster', 'Heavy', 'Guided', 'Swarm'],
                 nameSuffix: ['Missile', 'Rocket', 'Launcher', 'Pod'],
-                baseShape: [[1, 1, 1]],  // Typical 3x1 horizontal
+                baseShape: [[1, 1]],  // 2x1 horizontal (scaled down)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 20,
-                    energyDraw: 2,
+                    weight: 3,
+                    energyDraw: 1,
                     damage: 55
                 },
                 baseBattle: {
@@ -2270,10 +2271,10 @@
                 icon: '🔥',
                 namePrefix: ['Rapid', 'Twin', 'Auto', 'Rotary', 'Ultra'],
                 nameSuffix: ['Cannon', 'Gun', 'Repeater', 'Vulcan'],
-                baseShape: [[1], [1]],  // Typical 2x1 vertical
+                baseShape: [[1]],  // 1x1 single (compact)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 10,
+                    weight: 1,
                     energyDraw: 1,
                     damage: 22
                 },
@@ -2296,12 +2297,12 @@
                 icon: '🛡️',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Reinforced', 'Composite'],
                 nameSuffix: ['Plating', 'Armor', 'Shield', 'Carapace'],
-                baseShape: [[1, 1], [1, 1]],  // Typical 2x2
+                baseShape: [[1, 1]],  // 2x1 horizontal (scaled down)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 22,
+                    weight: 2,
                     energyDraw: 0,
-                    armorBonus: 55
+                    armorBonus: 25
                 },
                 statWeights: { armor: 0.8, weight: 0.2 }
             },
@@ -2311,28 +2312,28 @@
                 icon: '💥',
                 namePrefix: ['Reactive', 'Ablative', 'Hardened', 'Explosive'],
                 nameSuffix: ['Plates', 'Panels', 'Coating', 'Layer'],
-                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 wide
+                baseShape: [[1, 1]],  // 2x1 (scaled down)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 35,
+                    weight: 3,
                     energyDraw: 1,
-                    armorBonus: 65
+                    armorBonus: 35
                 },
                 statWeights: { armor: 0.9, weight: 0.1 }
             },
 
-            // REACTORS - less common, lighter weight
+            // REACTORS - provide energy
             reactor: {
                 type: 'REACTOR',
                 category: 'reactor',
                 icon: '⚛️',
                 namePrefix: ['Compact', 'Standard', 'High-Output', 'Fusion', 'Plasma'],
                 nameSuffix: ['Reactor', 'Core', 'Generator', 'Cell'],
-                baseShape: [[1], [1]],  // Typical 1x2
+                baseShape: [[1]],  // 1x1 (scaled down)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 6,
-                    energyDraw: -4,  // Provides energy
+                    weight: 1,
+                    energyDraw: -4,  // Provides 4 energy
                     heatCapacity: 20
                 },
                 statWeights: { energyProvided: 0.8, heatCapacity: 0.2 }
@@ -2346,7 +2347,7 @@
                 baseShape: [[1]],  // 1x1 small
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 3,
+                    weight: 1,
                     energyDraw: -2,
                     heatCapacity: 10
                 },
@@ -2363,7 +2364,7 @@
                 baseShape: [[1]],  // 1x1
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 4,
+                    weight: 1,
                     energyDraw: 1,
                     accuracyBonus: 15
                 },
@@ -2375,10 +2376,10 @@
                 icon: '🔄',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Stabilized'],
                 nameSuffix: ['Gyro', 'Stabilizer', 'Balance Unit'],
-                baseShape: [[1], [1]],  // 1x2
+                baseShape: [[1]],  // 1x1 (scaled down)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 10,
+                    weight: 1,
                     energyDraw: 1,
                     accuracyBonus: 8
                 },
@@ -2395,9 +2396,9 @@
                 baseShape: [[1]],  // 1x1
                 validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 5,
+                    weight: 1,
                     energyDraw: 0,
-                    energyReduction: 2
+                    energyReduction: 1
                 },
                 special: {
                     onPlace: 'drawCard',
@@ -3860,40 +3861,40 @@
         let playerResources = {
             xp: 0,
             scrap: 0,
-            gold: 10  // Starting gold
+            gold: 5  // Starting gold (scaled down economy)
         };
 
         // ============================================
         // ECONOMY & INTEREST SYSTEM
         // ============================================
         const ECONOMY = {
-            startingGold: 10,
-            winBonus: 3,           // Gold for winning
+            startingGold: 5,
+            winBonus: 2,           // Gold for winning
             lossBonus: 1,          // Gold for losing (consolation)
-            interestRate: 0.1,     // 10% interest
-            interestCap: 5,        // Max 5 gold interest per round
-            interestThreshold: 10, // Need 10+ gold to earn interest
+            interestRate: 0.2,     // 20% interest
+            interestCap: 2,        // Max 2 gold interest per round
+            interestThreshold: 5,  // Need 5+ gold to earn interest
             streakBonus: 1,        // Extra gold per win streak
-            maxStreak: 5,          // Cap streak bonus at 5
+            maxStreak: 3,          // Cap streak bonus at 3
 
-            // Shop costs
-            shopRefreshCost: 2,
+            // Shop costs (smaller scale: level 1 averages ~3g)
+            shopRefreshCost: 1,
             mechPrices: {
                 common: 3,
-                uncommon: 6,
-                rare: 12,
-                epic: 20,
-                legendary: 35
+                uncommon: 5,
+                rare: 8,
+                epic: 12,
+                legendary: 18
             },
             weaponPrices: {
-                common: 2,
+                common: 3,       // Level 1 items cost ~3g
                 uncommon: 4,
-                rare: 8,
-                epic: 15,
-                legendary: 25
+                rare: 6,
+                epic: 9,
+                legendary: 14
             },
-            sellMultiplier: 0.5,  // Sell back for 50% of buy price
-            bargainDiscount: 0.6   // Bargain items cost 60% of normal
+            sellMultiplier: 0.33,  // Sell back for ~1g (most items)
+            bargainDiscount: 0.7   // Bargain items cost 70% of normal
         };
 
         // Calculate interest earned
@@ -5502,23 +5503,17 @@
             return el;
         }
 
-        // Calculate sell price (50% of item value)
+        // Calculate sell price (most items sell for 1g, rare+ sell for more)
         function calculateSellPrice(item) {
-            // Base value from stats
-            let value = 0;
-            if (item.stats) {
-                if (item.stats.damage) value += item.stats.damage * 2;
-                if (item.stats.armorBonus) value += item.stats.armorBonus * 3;
-                if (item.stats.hpBonus) value += item.stats.hpBonus;
-                if (item.stats.energyDraw < 0) value += (-item.stats.energyDraw) * 5;
-            }
-
-            // Rarity multiplier
-            const rarityMult = { common: 1, uncommon: 1.5, rare: 2, epic: 3, legendary: 5 };
-            value *= rarityMult[item.rarity] || 1;
-
-            // Minimum 1 gold, sell at 50% value
-            return Math.max(1, Math.floor(value * 0.5));
+            // Base sell price by rarity (scaled down economy)
+            const rarityPrices = {
+                common: 1,
+                uncommon: 1,
+                rare: 2,
+                epic: 3,
+                legendary: 5
+            };
+            return rarityPrices[item.rarity] || 1;
         }
 
         // Handle selling an item

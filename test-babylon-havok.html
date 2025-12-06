@@ -1075,6 +1075,13 @@
             border-radius: 2px;
         }
 
+        #dragGhost .ghost-cell-empty {
+            width: 38px;
+            height: 38px;
+            background: transparent;
+            border: none;
+        }
+
         #dragGhost.invalid .ghost-grid {
             background: rgba(255, 68, 68, 0.3);
             border-color: #ff4444;
@@ -4719,6 +4726,9 @@
                 for (let x = 0; x < w; x++) {
                     if (shape[y][x] === 1) {
                         cellsHTML += '<div class="ghost-cell"></div>';
+                    } else {
+                        // Add empty placeholder cell for proper grid layout
+                        cellsHTML += '<div class="ghost-cell-empty"></div>';
                     }
                 }
             }

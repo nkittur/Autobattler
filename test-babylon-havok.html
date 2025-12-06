@@ -2932,26 +2932,26 @@
         // ENEMY GENERATION SYSTEM
         // ============================================
 
-        // Enemy generation constants
+        // Enemy generation constants (scaled to match player economy: 13-42 HP, 4-5 damage weapons)
         const ENEMY_GENERATION = {
             // Base budget per enemy level
-            baseBudget: 100,
-            budgetPerLevel: 50,
+            baseBudget: 20,
+            budgetPerLevel: 10,
 
             // Budget allocation weights
             allocation: {
-                health: 0.35,      // 35% to health
+                health: 0.40,      // 40% to health
                 damage: 0.30,      // 30% to damage
-                armor: 0.20,       // 20% to armor
+                armor: 0.15,       // 15% to armor
                 weapons: 0.15      // 15% to weapon count/quality
             },
 
-            // Conversion rates (HP doubled for longer battles)
+            // Conversion rates (scaled down to match player economy)
             rates: {
-                healthPerBudget: 6,     // 1 budget = 6 HP (doubled)
-                damagePerBudget: 2,     // 1 budget = 2 damage
-                armorPerBudget: 1.5,    // 1 budget = 1.5 armor
-                weaponBudget: 25        // Cost per weapon slot
+                healthPerBudget: 1.5,   // 1 budget = 1.5 HP
+                damagePerBudget: 0.4,   // 1 budget = 0.4 damage
+                armorPerBudget: 0.3,    // 1 budget = 0.3 armor
+                weaponBudget: 15        // Cost per weapon slot
             },
 
             // Enemy chassis types
@@ -3015,11 +3015,11 @@
                 return 'BOSS_' + round;
             },
 
-            // Boss stat multipliers
+            // Boss stat multipliers (scaled for lower HP economy)
             bossMultipliers: {
-                ELITE_COMMANDER: { hp: 1.8, damage: 1.4, armor: 1.5 },
-                WARLORD: { hp: 2.5, damage: 1.8, armor: 2.0 },
-                TITAN_PRIME: { hp: 3.5, damage: 2.2, armor: 2.5 }
+                ELITE_COMMANDER: { hp: 1.5, damage: 1.3, armor: 1.3 },
+                WARLORD: { hp: 2.0, damage: 1.5, armor: 1.5 },
+                TITAN_PRIME: { hp: 2.5, damage: 1.8, armor: 2.0 }
             }
         };
 
@@ -3172,9 +3172,9 @@
             const armorBudget = budget * ENEMY_GENERATION.allocation.armor;
             const weaponBudget = budget * ENEMY_GENERATION.allocation.weapons;
 
-            // Calculate stats
-            const baseHealth = 100 + Math.round(healthBudget * ENEMY_GENERATION.rates.healthPerBudget * chassis.healthMult);
-            const baseDamage = 20 + Math.round(damageBudget * ENEMY_GENERATION.rates.damagePerBudget * chassis.damageMult);
+            // Calculate stats (scaled to match player economy: ~15-40 HP, ~3-8 damage)
+            const baseHealth = 12 + Math.round(healthBudget * ENEMY_GENERATION.rates.healthPerBudget * chassis.healthMult);
+            const baseDamage = 3 + Math.round(damageBudget * ENEMY_GENERATION.rates.damagePerBudget * chassis.damageMult);
             const baseArmor = Math.round(armorBudget * ENEMY_GENERATION.rates.armorPerBudget * chassis.armorMult);
 
             // Determine weapon count

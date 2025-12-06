@@ -529,15 +529,16 @@
         // WEAPON MINIGAME SYSTEM
         // ============================================
         const MINIGAME_CONFIG = {
-            triggerChance: 0.50,         // 50% chance to trigger minigame
-            chargeSpeed: 80,             // Percent per second
+            triggerChance: 0.40,         // 40% chance to trigger minigame
+            chargeSpeed: 110,            // Percent per second (faster = harder)
             autoFireDelay: 200,          // ms before auto-fire if not holding
-            // Zone boundaries (as percentages)
+            cooldownMs: 7000,            // 7 seconds between minigames (5-10 range)
+            // Zone boundaries (as percentages) - narrower perfect zone for difficulty
             zones: {
-                low: { min: 0, max: 30, multiplier: 0.5, name: 'WEAK', class: 'weak' },
-                green: { min: 30, max: 78, multiplier: 1.0, name: 'GOOD', class: 'good' },
-                yellow: { min: 78, max: 88, multiplier: 1.25, name: 'PERFECT!', class: 'perfect' },
-                red: { min: 88, max: 100, multiplier: 0, name: 'JAMMED!', class: 'jam' }
+                low: { min: 0, max: 35, multiplier: 0.5, name: 'WEAK', class: 'weak' },
+                green: { min: 35, max: 75, multiplier: 1.0, name: 'GOOD', class: 'good' },
+                yellow: { min: 75, max: 85, multiplier: 1.25, name: 'PERFECT!', class: 'perfect' },
+                red: { min: 85, max: 100, multiplier: 0, name: 'JAMMED!', class: 'jam' }
             },
             // Weapon-specific icons and colors
             weaponVisuals: {
@@ -559,7 +560,8 @@
             target: null,
             startTime: 0,
             animationFrame: null,
-            pendingWeaponFire: null
+            pendingWeaponFire: null,
+            lastMinigameEndTime: 0    // Track when last minigame ended for cooldown
         };
 
         // Get weapon type for visuals
@@ -786,12 +788,13 @@
                     });
                 }
 
-                // Reset state
+                // Reset state and record end time for cooldown
                 minigameState.active = false;
                 minigameState.isCharging = false;
                 minigameState.chargePercent = 0;
                 minigameState.savedMechStates = null;
                 minigameState.wasPhysicsEnabled = false;
+                minigameState.lastMinigameEndTime = performance.now();
 
                 // Actually fire the weapon with the multiplier
                 if (fireData.damageMultiplier > 0) {
@@ -4991,11 +4994,15 @@
 
                 // Check if this is a player mech and should trigger minigame
                 if (from.isPlayer && !minigameState.active) {
-                    // Roll for minigame trigger
-                    if (Math.random() < MINIGAME_CONFIG.triggerChance) {
-                        // Start the minigame instead of firing immediately
-                        if (startWeaponMinigame(from, loadoutWeapon, to)) {
-                            return; // Minigame started, weapon will fire after
+                    // Check cooldown - only trigger if enough time has passed since last minigame
+                    const timeSinceLastMinigame = performance.now() - minigameState.lastMinigameEndTime;
+                    if (timeSinceLastMinigame >= MINIGAME_CONFIG.cooldownMs) {
+                        // Roll for minigame trigger
+                        if (Math.random() < MINIGAME_CONFIG.triggerChance) {
+                            // Start the minigame instead of firing immediately
+                            if (startWeaponMinigame(from, loadoutWeapon, to)) {
+                                return; // Minigame started, weapon will fire after
+                            }
                         }
                     }
                 }

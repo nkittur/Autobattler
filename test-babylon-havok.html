@@ -1902,9 +1902,16 @@
                                 </div>
                             </div>
                             <!-- Bench Items Section -->
-                            <div>
+                            <div style="margin-bottom: 15px;">
                                 <div style="font-size: 11px; color: #00aa66; margin-bottom: 8px; letter-spacing: 1px;">BENCH</div>
                                 <div id="shopBenchItems">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                            <!-- Buyback Section -->
+                            <div>
+                                <div style="font-size: 11px; color: #ffaa00; margin-bottom: 8px; letter-spacing: 1px;">🔄 BUYBACK (1g)</div>
+                                <div id="shopBuybackItems">
                                     <!-- Populated by JS -->
                                 </div>
                             </div>
@@ -2113,8 +2120,8 @@
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔫',
-                gridShape: [[1], [1]],  // 1x2 Vertical (smaller to fit new grid)
-                gridDimensions: { w: 1, h: 2 },
+                gridShape: [[1], [1], [1], [1], [1]],  // 1x5 Vertical line
+                gridDimensions: { w: 1, h: 5 },
                 stats: {
                     weight: 4,
                     energyDraw: 1,
@@ -2138,8 +2145,8 @@
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '⚡',
-                gridShape: [[1, 1]],  // 2x1 Horizontal
-                gridDimensions: { w: 2, h: 1 },
+                gridShape: [[1, 0], [1, 1]],  // L-shape (3 spaces)
+                gridDimensions: { w: 2, h: 2 },
                 stats: {
                     weight: 2,
                     energyDraw: 2,
@@ -4291,7 +4298,8 @@
         let shopInventory = {
             mechs: [],      // Array of mech IDs available
             weapons: [],    // Array of weapon objects { itemId, isBargain, price }
-            refreshes: 0    // Free refreshes used this round
+            refreshes: 0,   // Free refreshes used this round
+            buyback: []     // Items sold this turn that can be bought back for 1g
         };
 
         // Generate shop inventory
@@ -4299,6 +4307,7 @@
             shopInventory.mechs = [];
             shopInventory.weapons = [];
             shopInventory.refreshes = 0;
+            shopInventory.buyback = [];  // Clear buyback items when new turn starts
 
             // Generate mech offerings based on round
             const availableMechs = Object.keys(MECH_TEMPLATES).filter(id => {
@@ -4391,9 +4400,8 @@
                 return { success: false, reason: 'Not enough gold' };
             }
 
-            const result = addToBackpack(shopItem.itemId);
-            if (!result.success) return result;
-
+            // Add directly to bench instead of backpack
+            addItemToBench(shopItem.itemId);
             playerResources.gold -= shopItem.price;
 
             // Remove from shop
@@ -5699,6 +5707,36 @@
                     });
                 }
             }
+
+            // Render buyback items
+            const buybackContainer = document.getElementById('shopBuybackItems');
+            if (buybackContainer) {
+                buybackContainer.innerHTML = '';
+                if (shopInventory.buyback.length === 0) {
+                    buybackContainer.innerHTML = '<div class="shop-empty-msg">No items to buy back</div>';
+                } else {
+                    shopInventory.buyback.forEach((buybackItem, index) => {
+                        const item = buybackItem.item || ITEM_DATABASE[buybackItem.itemId];
+                        if (!item) return;
+                        const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
+                            (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+
+                        const el = document.createElement('div');
+                        el.className = `shop-sell-item ${item.category}`;
+                        el.style.borderColor = '#ffaa00';
+                        el.innerHTML = `
+                            <span class="item-icon">${item.icon}</span>
+                            <div class="item-info">
+                                <div class="item-name" style="color: ${rarityColor};">${item.name}</div>
+                                ${buildItemStatIcons(item)}
+                                <div style="margin-top: 4px; color: #ffaa00; font-size: 10px;">🔄 Buyback: 1g</div>
+                            </div>
+                        `;
+                        el.addEventListener('click', () => handleBuyback(index));
+                        buybackContainer.appendChild(el);
+                    });
+                }
+            }
         }
 
         // Create a sellable item element for the shop
@@ -5721,7 +5759,7 @@
                 </div>
             `;
 
-            el.addEventListener('click', () => handleSellItem(instanceId, source, sellPrice, item.name));
+            el.addEventListener('click', () => handleSellItem(instanceId, source, sellPrice, item.name, item.id));
             return el;
         }
 
@@ -5738,26 +5776,55 @@
             return rarityPrices[item.rarity] || 1;
         }
 
-        // Handle selling an item
-        function handleSellItem(instanceId, source, sellPrice, itemName) {
-            if (!confirm(`Sell ${itemName} for ${sellPrice} gold?`)) return;
+        // Handle selling an item (no confirmation - can buyback for 1g this turn)
+        function handleSellItem(instanceId, source, sellPrice, itemName, itemId) {
+            let soldItem = null;
 
             if (source === 'equipped') {
                 // Remove from equipment and grid
-                removeItemFromGrid(instanceId);
+                soldItem = removeItemFromGrid(instanceId);
             } else if (source === 'bench') {
                 // Remove from bench
-                removeItemFromBench(instanceId);
+                soldItem = removeItemFromBench(instanceId);
             }
 
             // Add gold
             playerResources.gold += sellPrice;
+
+            // Add to buyback list (can repurchase for 1g this turn)
+            if (soldItem || itemId) {
+                shopInventory.buyback.push({
+                    item: soldItem || { ...ITEM_DATABASE[itemId], instanceId },
+                    itemId: soldItem ? soldItem.id : itemId,
+                    name: itemName
+                });
+            }
 
             // Re-render everything
             renderShop();
             renderBench();
             renderUnifiedGridItems();
             updateStats();
+        }
+
+        // Handle buying back a sold item
+        function handleBuyback(buybackIndex) {
+            if (buybackIndex < 0 || buybackIndex >= shopInventory.buyback.length) return;
+            if (playerResources.gold < 1) return;
+
+            const buybackItem = shopInventory.buyback[buybackIndex];
+
+            // Deduct gold and add to bench
+            playerResources.gold -= 1;
+            addItemToBench(buybackItem.itemId);
+
+            // Remove from buyback permanently
+            shopInventory.buyback.splice(buybackIndex, 1);
+
+            // Re-render
+            renderShop();
+            renderBench();
+            updateHeaderDisplay();
         }
 
         // ============================================
@@ -5876,6 +5943,7 @@
             const result = buyWeapon(shopIndex);
             if (result.success) {
                 renderShop();
+                renderBench();
                 updateHeaderDisplay();
             } else {
                 console.log('Failed to buy weapon:', result.reason);

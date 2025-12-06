@@ -214,6 +214,7 @@
         }
 
         .bench-item-vertical {
+            position: relative;
             width: 100%;
             padding: 10px;
             margin-bottom: 8px;
@@ -262,6 +263,77 @@
         .bench-item-vertical .item-stats {
             font-size: 9px;
             color: #00aa66;
+        }
+
+        /* Item stat icons row */
+        .item-stat-row {
+            display: flex;
+            gap: 8px;
+            font-size: 10px;
+            margin-top: 3px;
+            flex-wrap: wrap;
+        }
+
+        .item-stat {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            color: #aaa;
+        }
+
+        .item-stat.damage { color: #ff6644; }
+        .item-stat.energy { color: #ffaa00; }
+        .item-stat.weight { color: #888; }
+        .item-stat.armor { color: #4488ff; }
+        .item-stat.squares { color: #00aa66; }
+
+        .item-stat-icon {
+            font-size: 10px;
+        }
+
+        .item-stat-value {
+            font-weight: bold;
+        }
+
+        /* Item shape preview (shown on hover) */
+        .item-shape-preview {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 10, 0.95);
+            border: 1px solid #00aa66;
+            border-radius: 4px;
+            padding: 6px;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            margin-bottom: 5px;
+        }
+
+        .bench-item-vertical:hover .item-shape-preview,
+        .shop-sell-item:hover .item-shape-preview {
+            opacity: 1;
+        }
+
+        .shape-grid {
+            display: inline-grid;
+            gap: 2px;
+        }
+
+        .shape-cell {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .shape-cell.filled {
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .shape-cell.empty {
+            background: transparent;
         }
 
         .bench-item-vertical.weapon { border-color: #ff6644; }
@@ -422,6 +494,7 @@
 
         /* Shop inventory sellable items */
         .shop-sell-item {
+            position: relative;
             display: flex;
             align-items: center;
             padding: 8px 10px;
@@ -4910,17 +4983,12 @@
                     el.style.borderColor = rarityColor;
                 }
 
-                // Build stats string
-                let statsStr = '';
-                if (item.stats.damage) statsStr += `${item.stats.damage} DMG `;
-                if (item.stats.armorBonus) statsStr += `+${item.stats.armorBonus} Armor `;
-                if (item.stats.energyDraw < 0) statsStr += `+${-item.stats.energyDraw} Energy `;
-
                 el.innerHTML = `
+                    ${buildItemShapePreview(item)}
                     <span class="item-icon">${item.icon}</span>
                     <div class="item-info">
                         <div class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
-                        <div class="item-stats">${statsStr || 'W:' + item.stats.weight}</div>
+                        ${buildItemStatIcons(item)}
                     </div>
                 `;
 
@@ -5014,6 +5082,82 @@
             });
         }
 
+        // Build compact stat icons row for item cards
+        function buildItemStatIcons(item) {
+            const stats = item.stats || {};
+            const battle = item.battle || {};
+            const shape = item.gridShape || [[1]];
+
+            // Calculate squares used
+            let squares = 0;
+            for (let row of shape) {
+                for (let cell of row) {
+                    if (cell === 1) squares++;
+                }
+            }
+
+            let html = '<div class="item-stat-row">';
+
+            // Damage (with xN for multi-shot)
+            if (stats.damage) {
+                const shotsPerRound = battle.shotsPerRound || 1;
+                if (shotsPerRound > 1) {
+                    html += `<span class="item-stat damage"><span class="item-stat-icon">⚔</span><span class="item-stat-value">${stats.damage}x${shotsPerRound}</span></span>`;
+                } else {
+                    html += `<span class="item-stat damage"><span class="item-stat-icon">⚔</span><span class="item-stat-value">${stats.damage}</span></span>`;
+                }
+            }
+
+            // Armor
+            if (stats.armorBonus) {
+                html += `<span class="item-stat armor"><span class="item-stat-icon">🛡</span><span class="item-stat-value">+${stats.armorBonus}</span></span>`;
+            }
+
+            // Energy (negative = provides, positive = uses)
+            if (stats.energyDraw !== undefined && stats.energyDraw !== 0) {
+                if (stats.energyDraw < 0) {
+                    html += `<span class="item-stat energy"><span class="item-stat-icon">⚡</span><span class="item-stat-value">+${-stats.energyDraw}</span></span>`;
+                } else {
+                    html += `<span class="item-stat energy"><span class="item-stat-icon">⚡</span><span class="item-stat-value">${stats.energyDraw}</span></span>`;
+                }
+            }
+
+            // Weight
+            if (stats.weight) {
+                html += `<span class="item-stat weight"><span class="item-stat-icon">⚖</span><span class="item-stat-value">${stats.weight}</span></span>`;
+            }
+
+            // Squares
+            html += `<span class="item-stat squares"><span class="item-stat-icon">▣</span><span class="item-stat-value">${squares}</span></span>`;
+
+            html += '</div>';
+            return html;
+        }
+
+        // Build shape preview HTML for hover display
+        function buildItemShapePreview(item) {
+            const shape = item.gridShape || [[1]];
+            const rarityColor = (item.isGenerated && COMPONENT_GENERATION) ?
+                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00aa66') : '#00aa66';
+
+            const cols = shape[0].length;
+            let html = `<div class="item-shape-preview">`;
+            html += `<div class="shape-grid" style="grid-template-columns: repeat(${cols}, 10px);">`;
+
+            for (let row of shape) {
+                for (let cell of row) {
+                    if (cell === 1) {
+                        html += `<div class="shape-cell filled" style="background: ${rarityColor};"></div>`;
+                    } else {
+                        html += `<div class="shape-cell empty"></div>`;
+                    }
+                }
+            }
+
+            html += '</div></div>';
+            return html;
+        }
+
         // Build tooltip HTML for an item
         function buildItemTooltipHtml(item) {
             const stats = item.stats || {};
@@ -5050,11 +5194,30 @@
             const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
                 (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
 
+            // Build inline shape preview for tooltip
+            const shape = item.gridShape || [[1]];
+            const cols = shape[0].length;
+            let shapeHtml = `<div style="display: inline-grid; gap: 2px; grid-template-columns: repeat(${cols}, 12px); margin-top: 6px;">`;
+            for (let row of shape) {
+                for (let cell of row) {
+                    if (cell === 1) {
+                        shapeHtml += `<div style="width: 12px; height: 12px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 2px;"></div>`;
+                    } else {
+                        shapeHtml += `<div style="width: 12px; height: 12px;"></div>`;
+                    }
+                }
+            }
+            shapeHtml += '</div>';
+
             return `
                 <div class="item-tooltip">
                     <div class="tooltip-name" style="color: ${rarityColor};">${item.name}</div>
                     <div class="tooltip-stats">${statsHtml}</div>
                     ${specialHtml ? `<div class="tooltip-special">${specialHtml}</div>` : ''}
+                    <div class="tooltip-shape" style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 6px;">
+                        <span style="font-size: 9px; color: #888;">Shape:</span>
+                        ${shapeHtml}
+                    </div>
                 </div>
             `;
         }
@@ -5375,7 +5538,20 @@
                         const bargainBadge = shopItem.isBargain ?
                             `<div style="position: absolute; top: -8px; left: -8px; background: #ff6600; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold;">BARGAIN!</div>` : '';
 
-                        const statsText = buildComponentStatsHTML(item);
+                        // Build inline shape preview
+                        const shape = item.gridShape || [[1]];
+                        const cols = shape[0].length;
+                        let shapeHtml = `<div style="display: inline-grid; gap: 2px; grid-template-columns: repeat(${cols}, 8px);">`;
+                        for (let row of shape) {
+                            for (let cell of row) {
+                                if (cell === 1) {
+                                    shapeHtml += `<div style="width: 8px; height: 8px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 1px;"></div>`;
+                                } else {
+                                    shapeHtml += `<div style="width: 8px; height: 8px;"></div>`;
+                                }
+                            }
+                        }
+                        shapeHtml += '</div>';
 
                         card.innerHTML = `
                             ${bargainBadge}
@@ -5386,9 +5562,12 @@
                                     <div style="color: #ffcc00; font-weight: bold; font-size: 14px;">${shopItem.price}g</div>
                                 </div>
                             </div>
-                            <div style="font-size: 12px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
-                            <div style="font-size: 9px; color: #888;">${item.rarity.toUpperCase()} Lv.${item.level}</div>
-                            <div style="font-size: 10px; color: #aaa; margin-top: 5px;">${statsText}</div>
+                            <div style="font-size: 11px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
+                            ${buildItemStatIcons(item)}
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <span style="font-size: 9px; color: #666;">${item.rarity.toUpperCase()}</span>
+                                ${shapeHtml}
+                            </div>
                         `;
 
                         if (canAfford && !backpackFull) {
@@ -5496,10 +5675,12 @@
                 (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
 
             el.innerHTML = `
+                ${buildItemShapePreview(item)}
                 <span class="item-icon">${item.icon}</span>
                 <div class="item-info">
                     <div class="item-name" style="color: ${rarityColor};">${item.name}</div>
-                    <div class="item-sell-price">💰 ${sellPrice}g</div>
+                    ${buildItemStatIcons(item)}
+                    <div class="item-sell-price" style="margin-top: 4px;">💰 Sell: ${sellPrice}g</div>
                 </div>
             `;
 

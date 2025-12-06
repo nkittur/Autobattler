@@ -169,113 +169,390 @@
             background: linear-gradient(90deg, #ffaa00, #ffcc44);
         }
 
-        /* Deck Piles */
-        .deck-piles-container {
+        /* Loadout Main Layout - Bench on left, Mech Grid on right */
+        #loadoutMain {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            padding: 0 20px;
-            margin-bottom: 10px;
-            pointer-events: auto;
+            flex: 1;
+            overflow: hidden;
+            position: relative;  /* For absolute positioning of mechGridArea */
         }
 
-        .pile-display {
+        /* Left Bench Panel */
+        #benchPanel {
+            width: 200px;
+            min-width: 200px;
+            background: linear-gradient(90deg, rgba(0,20,10,0.95) 0%, rgba(0,20,10,0.8) 100%);
+            border-right: 2px solid #00ff88;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            padding: 8px 15px;
-            background: rgba(0, 20, 10, 0.8);
-            border: 1px solid #00aa66;
-            border-radius: 6px;
-            transition: all 0.2s;
             pointer-events: auto;
-            z-index: 10;
         }
 
-        .pile-display:hover {
-            background: rgba(0, 40, 20, 0.9);
-            border-color: #00ff88;
+        #benchHeader {
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            text-align: center;
         }
 
-        .pile-icon {
-            font-size: 24px;
-            margin-bottom: 4px;
-            pointer-events: none;
-        }
-
-        .pile-count {
+        #benchTitle {
             font-size: 14px;
-            font-weight: bold;
             color: #00ff88;
-            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
         }
 
-        .pile-label {
+        #benchSubtitle {
+            font-size: 10px;
+            color: #00aa66;
+        }
+
+        #benchScroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .bench-item-vertical {
+            position: relative;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(0, 40, 20, 0.6);
+            border: 2px solid #00aa66;
+            border-radius: 6px;
+            cursor: grab;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bench-item-vertical:hover {
+            background: rgba(0, 60, 30, 0.8);
+            border-color: #00ff88;
+            transform: translateX(3px);
+        }
+
+        .bench-item-vertical:active {
+            cursor: grabbing;
+        }
+
+        .bench-item-vertical.dragging {
+            opacity: 0.5;
+        }
+
+        .bench-item-vertical .item-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .bench-item-vertical .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .bench-item-vertical .item-name {
+            font-size: 11px;
+            color: #00ff88;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bench-item-vertical .item-stats {
             font-size: 9px;
             color: #00aa66;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            pointer-events: none;
         }
 
-        /* Pile Viewer Modal */
-        #pileViewer {
-            display: none;
-            position: fixed;
+        /* Item stat icons row */
+        .item-stat-row {
+            display: flex;
+            gap: 8px;
+            font-size: 10px;
+            margin-top: 3px;
+            flex-wrap: wrap;
+        }
+
+        .item-stat {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            color: #aaa;
+        }
+
+        .item-stat.damage { color: #ff6644; }
+        .item-stat.energy { color: #ffaa00; }
+        .item-stat.weight { color: #888; }
+        .item-stat.armor { color: #4488ff; }
+        .item-stat.squares { color: #00aa66; }
+
+        .item-stat-icon {
+            font-size: 10px;
+        }
+
+        .item-stat-value {
+            font-weight: bold;
+        }
+
+        /* Item shape preview (shown on hover) */
+        .item-shape-preview {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 10, 0.95);
+            border: 1px solid #00aa66;
+            border-radius: 4px;
+            padding: 6px;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            margin-bottom: 5px;
+        }
+
+        .bench-item-vertical:hover .item-shape-preview,
+        .shop-sell-item:hover .item-shape-preview {
+            opacity: 1;
+        }
+
+        .shape-grid {
+            display: inline-grid;
+            gap: 2px;
+        }
+
+        .shape-cell {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .shape-cell.filled {
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .shape-cell.empty {
+            background: transparent;
+        }
+
+        .bench-item-vertical.weapon { border-color: #ff6644; }
+        .bench-item-vertical.weapon .item-icon { color: #ff6644; }
+        .bench-item-vertical.armor { border-color: #4488ff; }
+        .bench-item-vertical.armor .item-icon { color: #4488ff; }
+        .bench-item-vertical.reactor { border-color: #ffaa00; }
+        .bench-item-vertical.reactor .item-icon { color: #ffaa00; }
+        .bench-item-vertical.system { border-color: #aa44ff; }
+        .bench-item-vertical.system .item-icon { color: #aa44ff; }
+        .bench-item-vertical.cooling { border-color: #44ddff; }
+        .bench-item-vertical.cooling .item-icon { color: #44ddff; }
+
+        #benchEmpty {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+            font-size: 11px;
+        }
+
+        /* Mech Grid Area - positioned to center over 3D mech on full viewport */
+        #mechGridArea {
+            position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 2000;
+            display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        #pileViewer.active {
-            display: flex;
-            pointer-events: auto;
-        }
-
-        #pileViewerTitle {
-            font-size: 24px;
-            color: #00ff88;
-            margin-bottom: 20px;
-        }
-
-        #pileViewerCards {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
             justify-content: center;
-            max-width: 800px;
+            padding: 20px;
+            pointer-events: none;  /* Allow clicks through except on grid */
         }
 
-        .pile-card {
-            width: 80px;
-            height: 100px;
-            background: rgba(0, 40, 20, 0.9);
+        /* Unified Mech Grid */
+        #unifiedMechGrid {
+            display: grid;
+            gap: 2px;
+            padding: 10px;
+            background: rgba(0, 20, 10, 0.9);
+            border: 2px solid rgba(0, 255, 136, 0.6);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            pointer-events: auto;
+            position: relative;  /* Required for absolute positioned placed items */
+        }
+
+        .mech-cell {
+            width: 45px;
+            height: 45px;
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid rgba(0, 255, 136, 0.5);
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .mech-cell.invalid {
+            background: transparent;
+            border-color: transparent;
+            pointer-events: none;
+        }
+
+        .mech-cell:not(.invalid):hover {
+            background: rgba(0, 255, 136, 0.25);
+            border-color: #00ff88;
+        }
+
+        .mech-cell.valid-drop {
+            background: rgba(0, 255, 136, 0.4);
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0,255,136,0.5);
+        }
+
+        .mech-cell.invalid-drop {
+            background: rgba(255, 68, 68, 0.4);
+            border-color: #ff4444;
+        }
+
+        .mech-cell.occupied {
+            background: rgba(0, 170, 255, 0.3);
+            border-color: #00aaff;
+        }
+
+        /* Placed items in unified grid */
+        .placed-item-unified {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 20px;
+            cursor: grab;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+
+        .placed-item-unified:hover {
+            transform: scale(1.05);
+            z-index: 20;
+        }
+
+        .placed-item-unified.weapon { background: rgba(255, 102, 68, 0.7); border: 2px solid #ff6644; }
+        .placed-item-unified.armor { background: rgba(68, 136, 255, 0.7); border: 2px solid #4488ff; }
+        .placed-item-unified.reactor { background: rgba(255, 170, 0, 0.7); border: 2px solid #ffaa00; }
+        .placed-item-unified.system { background: rgba(170, 68, 255, 0.7); border: 2px solid #aa44ff; }
+        .placed-item-unified.cooling { background: rgba(68, 221, 255, 0.7); border: 2px solid #44ddff; }
+
+        /* Tooltips for placed items in unified grid */
+        .placed-item-unified .item-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 10, 0.95);
+            border: 2px solid currentColor;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 11px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            z-index: 100;
+            pointer-events: none;
+            text-align: left;
+        }
+
+        .placed-item-unified:hover .item-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .placed-item-unified .item-tooltip .tooltip-name {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .placed-item-unified .item-tooltip .tooltip-stats {
+            color: #aaa;
+        }
+
+        .placed-item-unified .item-tooltip .tooltip-stats div {
+            margin: 3px 0;
+        }
+
+        .placed-item-unified .item-tooltip .tooltip-special {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            color: #ffcc00;
+            font-style: italic;
+            font-size: 10px;
+        }
+
+        /* Shop inventory sellable items */
+        .shop-sell-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: rgba(0, 40, 20, 0.6);
             border: 2px solid #00aa66;
             border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 8px;
         }
 
-        .pile-card .card-icon {
-            font-size: 28px;
-            margin-bottom: 5px;
+        .shop-sell-item:hover {
+            background: rgba(255, 170, 0, 0.2);
+            border-color: #ffaa00;
         }
 
-        .pile-card .card-name {
-            font-size: 9px;
+        .shop-sell-item .item-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .shop-sell-item .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .shop-sell-item .item-name {
+            font-size: 10px;
             color: #00ff88;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .shop-sell-item .item-sell-price {
+            font-size: 10px;
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .shop-sell-item.weapon { border-color: #ff6644; }
+        .shop-sell-item.weapon .item-icon { color: #ff6644; }
+        .shop-sell-item.armor { border-color: #4488ff; }
+        .shop-sell-item.armor .item-icon { color: #4488ff; }
+        .shop-sell-item.reactor { border-color: #ffaa00; }
+        .shop-sell-item.reactor .item-icon { color: #ffaa00; }
+        .shop-sell-item.system { border-color: #aa44ff; }
+        .shop-sell-item.system .item-icon { color: #aa44ff; }
+        .shop-sell-item.cooling { border-color: #44ddff; }
+        .shop-sell-item.cooling .item-icon { color: #44ddff; }
+
+        .shop-empty-msg {
             text-align: center;
+            color: #666;
+            font-style: italic;
+            font-size: 11px;
+            padding: 10px;
         }
 
         #pileViewerClose {
@@ -1077,6 +1354,26 @@
             display: flex;
         }
 
+        #shopTab {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        #shopTab.active {
+            display: flex;
+        }
+
+        #backpackTab {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        #backpackTab.active {
+            display: flex;
+        }
+
         /* Tab Navigation Headers */
         .tab-nav-header {
             display: flex;
@@ -1454,8 +1751,15 @@
             <!-- Header Panel -->
             <div id="statsPanel">
                 <div id="gameTitle">Loadout</div>
+                <div id="headerInfo" style="display: flex; gap: 20px; align-items: center;">
+                    <div id="roundDisplay" style="color: #00aa66; font-size: 12px;">Round <span id="roundNum">1</span></div>
+                    <div id="goldDisplay" style="color: #ffcc00; font-size: 14px; font-weight: bold;">💰 <span id="goldAmount">10</span></div>
+                    <div id="backpackDisplay" style="color: #88aaff; font-size: 12px;">🎒 <span id="backpackCount">0</span>/<span id="backpackMax">12</span></div>
+                </div>
                 <div class="nav-spacer"></div>
-                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Go to Missions →</button>
+                <button id="goToShopBtn" class="header-nav-btn" style="margin-right: 10px;">Shop</button>
+                <button id="goToBackpackBtn" class="header-nav-btn" style="margin-right: 10px;">Backpack</button>
+                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Battle →</button>
             </div>
 
             <!-- Loadout Tab Content -->
@@ -1499,38 +1803,25 @@
                     </div>
                 </div>
 
-                <!-- Mission Selection Panel (hidden - use tab) -->
-                <div id="missionContainer">
-                    <div id="missionLabel">Select Mission</div>
-                    <div id="missionList">
-                        <!-- Missions populated by JS -->
+                <!-- Main Layout: Bench on left, Mech Grid on right -->
+                <div id="loadoutMain">
+                    <!-- Left Bench Panel -->
+                    <div id="benchPanel">
+                        <div id="benchHeader">
+                            <div id="benchTitle">Equipment</div>
+                            <div id="benchSubtitle">Drag to equip</div>
+                        </div>
+                        <div id="benchScroll">
+                            <!-- Items populated by JS -->
+                        </div>
+                        <div id="benchEmpty" style="display: none;">No items available</div>
                     </div>
-                </div>
 
-                <!-- Grid Overlay Container (positioned over 3D mech) -->
-                <div id="gridOverlayContainer">
-                    <!-- Grids will be dynamically positioned here -->
-                </div>
-
-                <!-- Deck Piles and Bench -->
-                <div class="deck-piles-container">
-                    <div class="pile-display" id="drawPileDisplay">
-                        <div class="pile-icon">📚</div>
-                        <div class="pile-count" id="drawPileCount">0</div>
-                        <div class="pile-label">Draw</div>
-                    </div>
-                    <div id="benchLabel">Equipment Bench</div>
-                    <div class="pile-display" id="discardPileDisplay">
-                        <div class="pile-icon">🗑️</div>
-                        <div class="pile-count" id="discardPileCount">0</div>
-                        <div class="pile-label">Discard</div>
-                    </div>
-                </div>
-
-                <!-- Bottom Bench (Hand) -->
-                <div id="benchContainer">
-                    <div id="bench">
-                        <!-- Items populated by JS -->
+                    <!-- Mech Grid Area -->
+                    <div id="mechGridArea">
+                        <div id="unifiedMechGrid">
+                            <!-- Unified mech-shaped grid populated by JS -->
+                        </div>
                     </div>
                 </div>
 
@@ -1554,6 +1845,105 @@
                     </div>
                     <div class="mission-grid" id="missionTabList">
                         <!-- Missions populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shop Tab Content (solid background to hide 3D mech) -->
+            <div id="shopTab" class="tab-content" style="background: linear-gradient(180deg, #0a1a0f 0%, #051008 100%); position: relative; z-index: 100;">
+                <div class="tab-nav-header" style="pointer-events: auto;">
+                    <button class="nav-btn" onclick="switchTab('loadout')">← Back to Loadout</button>
+                    <div class="nav-spacer"></div>
+                    <div style="color: #ffcc00; font-size: 16px; font-weight: bold;">💰 <span id="shopGoldDisplay">10</span> Gold</div>
+                </div>
+                <div class="shop-layout" style="display: flex; flex: 1; overflow: hidden; pointer-events: auto;">
+                    <!-- Left Panel: Your Inventory -->
+                    <div class="shop-inventory-panel" style="width: 250px; min-width: 250px; background: rgba(0,20,10,0.95); border-right: 2px solid #00aa66; display: flex; flex-direction: column;">
+                        <div style="padding: 15px; border-bottom: 1px solid rgba(0,255,136,0.3); text-align: center;">
+                            <div style="font-size: 14px; color: #ffaa00; letter-spacing: 2px;">YOUR ITEMS</div>
+                            <div style="font-size: 10px; color: #888; margin-top: 5px;">Click to sell</div>
+                        </div>
+                        <div id="shopInventoryScroll" style="flex: 1; overflow-y: auto; padding: 10px;">
+                            <!-- Equipped Items Section -->
+                            <div style="margin-bottom: 15px;">
+                                <div style="font-size: 11px; color: #00aa66; margin-bottom: 8px; letter-spacing: 1px;">EQUIPPED</div>
+                                <div id="shopEquippedItems">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                            <!-- Bench Items Section -->
+                            <div>
+                                <div style="font-size: 11px; color: #00aa66; margin-bottom: 8px; letter-spacing: 1px;">BENCH</div>
+                                <div id="shopBenchItems">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel: Shop Items for Sale -->
+                    <div class="shop-content" style="flex: 1; padding: 20px; overflow-y: auto; background: rgba(0,10,5,0.95);">
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <div style="font-size: 24px; color: #00ff88; letter-spacing: 3px;">SHOP</div>
+                            <div style="font-size: 12px; color: #666;">Buy mechs and weapons to strengthen your arsenal</div>
+                        </div>
+
+                        <!-- Mechs Section -->
+                        <div style="margin-bottom: 30px;">
+                            <div style="font-size: 14px; color: #00aa66; margin-bottom: 15px; letter-spacing: 2px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">MECHS FOR SALE</div>
+                            <div id="shopMechsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Weapons Section -->
+                        <div style="margin-bottom: 30px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">
+                                <div style="font-size: 14px; color: #00aa66; letter-spacing: 2px;">WEAPONS FOR SALE</div>
+                                <button id="refreshShopBtn" onclick="handleRefreshShop()" style="padding: 6px 15px; background: rgba(255, 170, 0, 0.2); border: 1px solid #ffaa00; color: #ffaa00; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px;">
+                                    Refresh (2g)
+                                </button>
+                            </div>
+                            <div id="shopWeaponsContainer" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Owned Mechs Section -->
+                        <div>
+                            <div style="font-size: 14px; color: #00aa66; margin-bottom: 15px; letter-spacing: 2px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">YOUR MECHS</div>
+                            <div id="ownedMechsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backpack Tab Content (solid background) -->
+            <div id="backpackTab" class="tab-content" style="background: linear-gradient(180deg, #0a1a0f 0%, #051008 100%); position: relative; z-index: 100;">
+                <div class="tab-nav-header">
+                    <button class="nav-btn" onclick="switchTab('loadout')">← Back to Loadout</button>
+                    <div class="nav-spacer"></div>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div style="color: #88aaff; font-size: 14px;">🎒 <span id="backpackSlotsDisplay">0/12</span></div>
+                        <button id="upgradeBackpackBtn" onclick="handleUpgradeBackpack()" style="padding: 6px 15px; background: rgba(0, 255, 136, 0.2); border: 1px solid #00ff88; color: #00ff88; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px;">
+                            Upgrade (+3 slots, 10g)
+                        </button>
+                    </div>
+                </div>
+                <div class="backpack-content" style="flex: 1; padding: 20px; overflow-y: auto;">
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div style="font-size: 24px; color: #88aaff; letter-spacing: 3px;">BACKPACK</div>
+                        <div style="font-size: 12px; color: #666;">Manage your inventory - equip items or sell for gold</div>
+                    </div>
+
+                    <div id="backpackItemsContainer" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div id="backpackEmpty" style="display: none; text-align: center; padding: 40px; color: #666; font-style: italic;">
+                        Your backpack is empty. Salvage items after battles or buy from the shop!
                     </div>
                 </div>
             </div>
@@ -1596,15 +1986,6 @@
                 <button id="returnToBuilderBtn" onclick="returnToBuilder()">Return to Loadout</button>
             </div>
 
-        </div>
-
-        <!-- Pile Viewer Modal (outside mechBuilderUI to avoid pointer-events: none inheritance) -->
-        <div id="pileViewer">
-            <div id="pileViewerTitle">Draw Pile</div>
-            <div id="pileViewerCards">
-                <!-- Cards populated by JS -->
-            </div>
-            <button id="pileViewerClose">Close</button>
         </div>
 
         <!-- Drag Ghost (hidden until dragging) -->
@@ -1664,19 +2045,34 @@
         // MECHBUILDER DATA STRUCTURES
         // ============================================
 
-        // Mech Chassis Definition
+        // Mech Chassis Definition - Unified grid shape
         const MECH_CHASSIS = {
             id: 'starter_chassis',
             name: 'Timber Wolf Chassis',
-            maxWeight: 100,
-            baseEnergy: 7,
-            slots: {
-                torso: { cols: 2, rows: 2, position: { x: 0.5, y: 0.6 } },      // Center of screen (2x2)
-                leftArm: { cols: 1, rows: 5, position: { x: 0.25, y: 0.55 } },  // Left side (5x1 for railgun)
-                rightArm: { cols: 2, rows: 3, position: { x: 0.75, y: 0.55 } }, // Right side (3x2)
-                leftLeg: { cols: 2, rows: 2, position: { x: 0.35, y: 0.85 } },  // Lower left
-                rightLeg: { cols: 2, rows: 2, position: { x: 0.65, y: 0.85 } }  // Lower right
-            }
+            maxWeight: 6,
+            baseEnergy: 2,
+            // Unified mech-shaped grid (7 cols x 7 rows) - slimmed down ~30%
+            // 1 = valid cell, 0 = empty/invalid
+            gridCols: 7,
+            gridRows: 7,
+            gridShape: [
+                // Row 0: Head (slim)
+                [0, 0, 0, 1, 0, 0, 0],
+                // Row 1: Shoulders (narrow)
+                [0, 0, 1, 1, 1, 0, 0],
+                // Row 2: Arms + Torso (reduced)
+                [0, 1, 1, 1, 1, 1, 0],
+                // Row 3: Arms + Torso (reduced)
+                [0, 1, 1, 1, 1, 1, 0],
+                // Row 4: Waist (slim)
+                [0, 0, 0, 1, 0, 0, 0],
+                // Row 5: Upper Legs (split)
+                [0, 0, 1, 0, 1, 0, 0],
+                // Row 6: Lower Legs (split)
+                [0, 0, 1, 0, 1, 0, 0]
+            ],
+            // For backwards compat - map old slot names to grid regions (not used with unified grid)
+            slots: {}
         };
 
         // Item Definitions (The Deck)
@@ -1687,23 +2083,21 @@
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔫',
-                gridShape: [[1], [1], [1], [1], [1]],  // 1x5 Vertical
-                gridDimensions: { w: 1, h: 5 },
+                gridShape: [[1], [1]],  // 1x2 Vertical (smaller to fit new grid)
+                gridDimensions: { w: 1, h: 2 },
                 stats: {
-                    weight: 18,
-                    energyDraw: 2,
-                    damage: 25
+                    weight: 4,
+                    energyDraw: 1,
+                    damage: 4
                 },
-                constraints: {
-                    validSlots: ['leftArm', 'rightArm']
-                },
+                constraints: {},
                 // Battle properties
                 battle: {
                     projectileSpeed: 40,
                     projectileSize: 0.12,
                     knockback: 20,
                     recoil: 0.1,
-                    cooldown: 1800,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [1, 0.9, 0.3],  // Yellow-orange
                     isProjectile: true
                 }
@@ -1717,20 +2111,18 @@
                 gridShape: [[1, 1]],  // 2x1 Horizontal
                 gridDimensions: { w: 2, h: 1 },
                 stats: {
-                    weight: 10,
+                    weight: 2,
                     energyDraw: 2,
-                    damage: 18
+                    damage: 3
                 },
-                constraints: {
-                    validSlots: ['torso', 'leftArm', 'rightArm']
-                },
+                constraints: {},
                 // Battle properties
                 battle: {
                     isBeam: true,
                     beamDuration: 150,
                     knockback: 5,
                     recoil: 0.15,
-                    cooldown: 2200,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [0.2, 1, 0.3]  // Green
                 }
             },
@@ -1740,16 +2132,14 @@
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '🛡️',
-                gridShape: [[1, 1], [1, 1]],  // 2x2 Square
-                gridDimensions: { w: 2, h: 2 },
+                gridShape: [[1, 1]],  // 2x1 Horizontal (smaller)
+                gridDimensions: { w: 2, h: 1 },
                 stats: {
-                    weight: 28,
+                    weight: 2,
                     energyDraw: 0,
-                    armorBonus: 30
+                    armorBonus: 3
                 },
-                constraints: {
-                    validSlots: ['torso', 'leftLeg', 'rightLeg']
-                }
+                constraints: {}
             },
             reactor_core: {
                 id: 'reactor_core',
@@ -1757,16 +2147,14 @@
                 type: 'REACTOR',
                 category: 'reactor',
                 icon: '⚛️',
-                gridShape: [[1], [1]],  // 1x2 Vertical
-                gridDimensions: { w: 1, h: 2 },
+                gridShape: [[1]],  // 1x1 Single (smaller)
+                gridDimensions: { w: 1, h: 1 },
                 stats: {
-                    weight: 8,
-                    energyDraw: -3,  // Negative = provides energy
+                    weight: 1,
+                    energyDraw: -4,  // Provides 4 energy
                     heatCapacity: 15
                 },
-                constraints: {
-                    validSlots: ['torso']
-                }
+                constraints: {}
             },
             targeting_computer: {
                 id: 'targeting_computer',
@@ -1777,13 +2165,11 @@
                 gridShape: [[1]],  // 1x1 Single
                 gridDimensions: { w: 1, h: 1 },
                 stats: {
-                    weight: 6,
+                    weight: 1,
                     energyDraw: 1,
                     accuracyBonus: 8
                 },
-                constraints: {
-                    validSlots: ['torso', 'leftArm', 'rightArm']
-                }
+                constraints: {}
             },
             heat_sink: {
                 id: 'heat_sink',
@@ -1794,13 +2180,11 @@
                 gridShape: [[1]],  // 1x1 Single
                 gridDimensions: { w: 1, h: 1 },
                 stats: {
-                    weight: 8,
+                    weight: 1,
                     energyDraw: 0,
                     energyReduction: 1  // Reduces energy cost of adjacent items
                 },
-                constraints: {
-                    validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg']
-                },
+                constraints: {},
                 special: {
                     onPlace: 'drawCard',      // Draw a card when placed
                     locksOnPlace: true        // Cannot be moved after placement this round
@@ -1814,28 +2198,26 @@
 
         // Budget Exchange Rates: 1 square of "currency" converts to these values
         const COMPONENT_GENERATION = {
-            // Base exchange rates (1 square = X) - energy scaled to smaller units
+            // Base exchange rates (1 square = X) - scaled for smaller economy (weight limit 6)
             exchangeRates: {
-                damage: 5,           // 1 square = 5 damage
-                weight: -10,         // 1 square = -10 weight (lighter is better, costs budget)
-                energyCost: -1.5,    // 1 square = -1.5 energy cost (cheaper is better)
-                energyProvided: 1.5, // 1 square = 1.5 energy provided
-                armor: 8,            // 1 square = 8 armor
+                damage: 1,           // 1 square = 1 damage
+                weight: -1,          // 1 square = -1 weight (scaled down from -10)
+                energyCost: -0.5,    // 1 square = -0.5 energy cost
+                energyProvided: 1,   // 1 square = 1 energy provided
+                armor: 1,            // 1 square = 1 armor
                 accuracy: 4,         // 1 square = 4% accuracy
-                cooldownReduction: -100,  // 1 square = -100ms cooldown
                 knockback: 5,        // 1 square = 5 knockback
                 projectileSpeed: 8,  // 1 square = 8 projectile speed
                 heatCapacity: 8,     // 1 square = 8 heat capacity
                 energyReduction: 0.3 // 1 square = 0.3 energy reduction (for heat sinks)
             },
 
-            // Resource conversion rates (for trade-offs within same item) - energy scaled
+            // Resource conversion rates (for trade-offs within same item)
             conversionRates: {
-                energyToDamage: 14,     // 1 energy cost = 14 damage (scaled from 2)
-                weightToDamage: 0.5,    // 1 weight = 0.5 damage
-                cooldownToDamage: 0.05, // 1ms cooldown = 0.05 damage
-                accuracyToDamage: 1.5,  // 1% accuracy = 1.5 damage
-                armorToWeight: 0.6      // 1 armor = 0.6 weight
+                energyToDamage: 2,      // 1 energy cost = 2 damage
+                weightToDamage: 1,      // 1 weight = 1 damage (weight is more valuable now)
+                accuracyToDamage: 0.3,  // 1% accuracy = 0.3 damage
+                armorToWeight: 2        // 1 armor = 2 weight
             },
 
             // Shape bonuses: longer shapes get bonus budget squares
@@ -1880,6 +2262,7 @@
         };
 
         // Base item templates - define the "class" of item with typical shape/stats
+        // Scaled for smaller economy: weight limit 6, energy ~6, small grid
         const ITEM_TEMPLATES = {
             // WEAPONS
             railgun: {
@@ -1888,19 +2271,19 @@
                 icon: '🔫',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Precision', 'Rapid'],
                 nameSuffix: ['Railgun', 'Cannon', 'Driver', 'Accelerator'],
-                baseShape: [[1], [1], [1], [1], [1]],  // 5x1 vertical
+                baseShape: [[1], [1]],  // 1x2 vertical (fits in new grid)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 22,
-                    energyDraw: 3,
-                    damage: 45
+                    weight: 4,
+                    energyDraw: 1,
+                    damage: 8
                 },
                 baseBattle: {
                     projectileSpeed: 55,
                     projectileSize: 0.15,
                     knockback: 30,
                     recoil: 0.12,
-                    cooldown: 1300,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [1, 0.9, 0.3],
                     isProjectile: true
                 },
@@ -1912,22 +2295,22 @@
                 icon: '⚡',
                 namePrefix: ['ER', 'Pulse', 'Focused', 'Burst', 'Heavy'],
                 nameSuffix: ['Laser', 'Beam', 'Array', 'Emitter'],
-                baseShape: [[1, 1], [1, 1]],  // Typical 2x2 square
+                baseShape: [[1, 1]],  // 2x1 horizontal (fits in new grid)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 14,
-                    energyDraw: 3,
-                    damage: 35
+                    weight: 2,
+                    energyDraw: 2,
+                    damage: 6
                 },
                 baseBattle: {
                     isBeam: true,
                     beamDuration: 200,
                     knockback: 8,
                     recoil: 0.15,
-                    cooldown: 1600,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [0.2, 1, 0.3]
                 },
-                statWeights: { damage: 0.7, cooldownReduction: 0.3 }
+                statWeights: { damage: 0.8, knockback: 0.2 }
             },
             missile: {
                 type: 'WEAPON',
@@ -1935,23 +2318,23 @@
                 icon: '🚀',
                 namePrefix: ['Light', 'Cluster', 'Heavy', 'Guided', 'Swarm'],
                 nameSuffix: ['Missile', 'Rocket', 'Launcher', 'Pod'],
-                baseShape: [[1, 1, 1]],  // Typical 3x1 horizontal
+                baseShape: [[1, 1]],  // 2x1 horizontal (scaled down)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 20,
-                    energyDraw: 2,
-                    damage: 55
+                    weight: 3,
+                    energyDraw: 1,
+                    damage: 9
                 },
                 baseBattle: {
                     projectileSpeed: 30,
                     projectileSize: 0.2,
                     knockback: 35,
                     recoil: 0.2,
-                    cooldown: 2200,
+                    shotsPerRound: 1,  // Fires once per 3-second round
                     color: [1, 0.4, 0.2],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.5, knockback: 0.4, cooldownReduction: 0.1 }
+                statWeights: { damage: 0.6, knockback: 0.4 }
             },
             machinegun: {
                 type: 'WEAPON',
@@ -1959,23 +2342,23 @@
                 icon: '🔥',
                 namePrefix: ['Rapid', 'Twin', 'Auto', 'Rotary', 'Ultra'],
                 nameSuffix: ['Cannon', 'Gun', 'Repeater', 'Vulcan'],
-                baseShape: [[1], [1]],  // Typical 2x1 vertical
+                baseShape: [[1]],  // 1x1 single (compact)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 10,
+                    weight: 1,
                     energyDraw: 1,
-                    damage: 22
+                    damage: 4
                 },
                 baseBattle: {
                     projectileSpeed: 60,
                     projectileSize: 0.08,
                     knockback: 8,
                     recoil: 0.05,
-                    cooldown: 400,
+                    shotsPerRound: 3,  // Fires 3 times per 3-second round
                     color: [1, 1, 0.5],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.4, cooldownReduction: 0.5, projectileSpeed: 0.1 }
+                statWeights: { damage: 0.7, projectileSpeed: 0.3 }
             },
 
             // ARMOR
@@ -1985,12 +2368,12 @@
                 icon: '🛡️',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Reinforced', 'Composite'],
                 nameSuffix: ['Plating', 'Armor', 'Shield', 'Carapace'],
-                baseShape: [[1, 1], [1, 1]],  // Typical 2x2
+                baseShape: [[1, 1]],  // 2x1 horizontal (scaled down)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 22,
+                    weight: 2,
                     energyDraw: 0,
-                    armorBonus: 55
+                    armorBonus: 4
                 },
                 statWeights: { armor: 0.8, weight: 0.2 }
             },
@@ -2000,28 +2383,28 @@
                 icon: '💥',
                 namePrefix: ['Reactive', 'Ablative', 'Hardened', 'Explosive'],
                 nameSuffix: ['Plates', 'Panels', 'Coating', 'Layer'],
-                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 wide
+                baseShape: [[1, 1]],  // 2x1 (scaled down)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 35,
+                    weight: 3,
                     energyDraw: 1,
-                    armorBonus: 65
+                    armorBonus: 6
                 },
                 statWeights: { armor: 0.9, weight: 0.1 }
             },
 
-            // REACTORS - less common, lighter weight
+            // REACTORS - provide energy
             reactor: {
                 type: 'REACTOR',
                 category: 'reactor',
                 icon: '⚛️',
                 namePrefix: ['Compact', 'Standard', 'High-Output', 'Fusion', 'Plasma'],
                 nameSuffix: ['Reactor', 'Core', 'Generator', 'Cell'],
-                baseShape: [[1], [1]],  // Typical 1x2
+                baseShape: [[1]],  // 1x1 (scaled down)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 6,
-                    energyDraw: -4,  // Provides energy
+                    weight: 1,
+                    energyDraw: -4,  // Provides 4 energy
                     heatCapacity: 20
                 },
                 statWeights: { energyProvided: 0.8, heatCapacity: 0.2 }
@@ -2035,7 +2418,7 @@
                 baseShape: [[1]],  // 1x1 small
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 3,
+                    weight: 1,
                     energyDraw: -2,
                     heatCapacity: 10
                 },
@@ -2052,7 +2435,7 @@
                 baseShape: [[1]],  // 1x1
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 4,
+                    weight: 1,
                     energyDraw: 1,
                     accuracyBonus: 15
                 },
@@ -2064,10 +2447,10 @@
                 icon: '🔄',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Stabilized'],
                 nameSuffix: ['Gyro', 'Stabilizer', 'Balance Unit'],
-                baseShape: [[1], [1]],  // 1x2
+                baseShape: [[1]],  // 1x1 (scaled down)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 10,
+                    weight: 1,
                     energyDraw: 1,
                     accuracyBonus: 8
                 },
@@ -2084,9 +2467,9 @@
                 baseShape: [[1]],  // 1x1
                 validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 5,
+                    weight: 1,
                     energyDraw: 0,
-                    energyReduction: 2
+                    energyReduction: 1
                 },
                 special: {
                     onPlace: 'drawCard',
@@ -2184,7 +2567,7 @@
                 name: 'Rapid',
                 battleModifier: (battle) => ({
                     ...battle,
-                    cooldown: Math.round((battle.cooldown || 1000) * 0.8)
+                    shotsPerRound: (battle.shotsPerRound || 1) + 1  // Fire one extra time per round
                 }),
                 budgetCost: -1
             },
@@ -2347,11 +2730,6 @@
                             battle.projectileSpeed = (battle.projectileSpeed || 0) + Math.round(budgetForStat * exchangeRates.projectileSpeed);
                         }
                         break;
-                    case 'cooldownReduction':
-                        if (battle) {
-                            battle.cooldown = Math.max(200, (battle.cooldown || 1000) + Math.round(budgetForStat * exchangeRates.cooldownReduction));
-                        }
-                        break;
                     case 'heatCapacity':
                         stats.heatCapacity = (stats.heatCapacity || 0) + Math.round(budgetForStat * exchangeRates.heatCapacity);
                         break;
@@ -2444,14 +2822,15 @@
         // Generate salvage components after battle
         function generateSalvageOptions(result, enemyLevel = 1) {
             const options = [];
+            const round = gameProgression.round;
+            const isBoss = DIFFICULTY.isBossRound(round);
 
-            // Determine number of options (0-3)
-            // Victory: 1-3 options, Defeat: 0-1 options
+            // Determine number of options based on result and boss status
             let numOptions;
             if (result === 'victory') {
-                numOptions = 1 + Math.floor(Math.random() * 3);  // 1-3
+                numOptions = isBoss ? SALVAGE.bossOptions : SALVAGE.normalOptions;
             } else {
-                numOptions = Math.random() < 0.3 ? 1 : 0;  // 30% chance of 1
+                numOptions = Math.max(1, Math.floor((isBoss ? SALVAGE.bossOptions : SALVAGE.normalOptions) / 2));
             }
 
             // Available templates with weighted selection (reactors are rare)
@@ -2484,8 +2863,9 @@
                 // Pick weighted random template
                 const templateType = weightedTemplates[Math.floor(Math.random() * weightedTemplates.length)];
 
-                // Generate rarity
-                const rarity = getRandomRarity(enemyLevel);
+                // Generate rarity (better on boss rounds)
+                const rarityBonus = isBoss ? 2 : 0;
+                const rarity = getRandomRarity(enemyLevel + rarityBonus);
 
                 // Item level based on enemy level with some variance
                 const level = Math.max(1, enemyLevel + Math.floor(Math.random() * 3) - 1);
@@ -2493,11 +2873,23 @@
                 // Generate the component
                 const component = generateComponent(templateType, level, rarity);
                 if (component) {
+                    // Mark some items as high resale value
+                    if (Math.random() < SALVAGE.highValueChance) {
+                        component.isHighValue = true;
+                        component.resaleBonus = 0.5;  // 50% extra sell value
+                    }
                     options.push(component);
                 }
             }
 
             return options;
+        }
+
+        // Get number of salvage picks allowed
+        function getSalvagePicks(result) {
+            const isBoss = DIFFICULTY.isBossRound(gameProgression.round);
+            if (result !== 'victory') return 1;  // Always at least 1 on defeat
+            return isBoss ? SALVAGE.bossPicks : SALVAGE.normalPicks;
         }
 
         // Add a generated component to the ITEM_DATABASE so it can be used
@@ -2552,6 +2944,93 @@
 
             // Enemy name suffixes
             nameSuffixes: ['Mech', 'Walker', 'Unit', 'Bot', 'Drone', 'Hunter', 'Striker']
+        };
+
+        // ============================================
+        // DIFFICULTY SCALING SYSTEM
+        // ============================================
+        const DIFFICULTY = {
+            // Base difficulty multiplier by round
+            getMultiplier: function(round) {
+                // Slow ramp for rounds 1-4 (easy intro)
+                if (round <= 4) {
+                    return 0.6 + (round - 1) * 0.1;  // 0.6, 0.7, 0.8, 0.9
+                }
+                // Spike at round 5 (first boss wave)
+                if (round === 5) {
+                    return 1.5;  // 1.5x difficulty spike
+                }
+                // Moderate ramp for rounds 6-9
+                if (round <= 9) {
+                    return 1.0 + (round - 5) * 0.15;  // 1.0, 1.15, 1.3, 1.45
+                }
+                // Big spike at round 10 (major boss)
+                if (round === 10) {
+                    return 2.5;  // 2.5x difficulty spike!
+                }
+                // Continued scaling after round 10
+                return 2.0 + (round - 10) * 0.2;
+            },
+
+            // Is this round a boss round?
+            isBossRound: function(round) {
+                return round === 5 || round === 10 || (round > 10 && round % 5 === 0);
+            },
+
+            // Get boss type for boss rounds
+            getBossType: function(round) {
+                if (round === 5) return 'ELITE_COMMANDER';
+                if (round === 10) return 'WARLORD';
+                if (round === 15) return 'TITAN_PRIME';
+                return 'BOSS_' + round;
+            },
+
+            // Boss stat multipliers
+            bossMultipliers: {
+                ELITE_COMMANDER: { hp: 1.8, damage: 1.4, armor: 1.5 },
+                WARLORD: { hp: 2.5, damage: 1.8, armor: 2.0 },
+                TITAN_PRIME: { hp: 3.5, damage: 2.2, armor: 2.5 }
+            }
+        };
+
+        // ============================================
+        // SALVAGE SYSTEM (Multiple Options, Limited Picks)
+        // ============================================
+        const SALVAGE = {
+            normalOptions: 4,      // Number of salvage options after normal rounds
+            bossOptions: 6,        // More options after boss rounds
+            normalPicks: 1,        // Can pick 1 after normal rounds
+            bossPicks: 2,          // Can pick 2 after boss rounds
+            highValueChance: 0.2,  // 20% chance for high resale value item
+            comboChance: 0.15      // 15% chance for combo items (synergize)
+        };
+
+        // Item combos that synergize
+        const ITEM_COMBOS = {
+            laser_set: {
+                name: 'Laser Array Set',
+                items: ['laser', 'laser'],
+                bonus: '+15% Laser Damage',
+                effect: { type: 'damage_boost', damageType: 'laser', amount: 0.15 }
+            },
+            missile_barrage: {
+                name: 'Missile Barrage Kit',
+                items: ['missile', 'missile'],
+                bonus: '+20% Knockback',
+                effect: { type: 'knockback_boost', amount: 0.20 }
+            },
+            rapid_assault: {
+                name: 'Rapid Assault Package',
+                items: ['machinegun', 'machinegun'],
+                bonus: '+1 Shot/Round',
+                effect: { type: 'shots_boost', amount: 1 }
+            },
+            heavy_hitter: {
+                name: 'Heavy Hitter Bundle',
+                items: ['railgun', 'armor'],
+                bonus: '+10% Damage, +10 Armor',
+                effect: { type: 'mixed', damage: 0.10, armor: 10 }
+            }
         };
 
         // Mission templates (base structure, enemies generated dynamically)
@@ -2618,11 +3097,34 @@
             }
         };
 
+        // Game progression state (defined early for getEnemyLevel)
+        let gameProgression = {
+            round: 1,
+            wins: 0,
+            losses: 0,
+            maxRound: 1
+        };
+
         // Calculate enemy level based on currentEnemyLevel and mission difficulty
         function getEnemyLevel(missionRisk) {
-            const baseLevel = Math.floor(currentEnemyLevel);
-            const levelVariance = Math.floor(Math.random() * 2) - 1;  // -1 to +1
-            return Math.max(1, Math.min(10, baseLevel + (missionRisk - 2) + levelVariance));
+            // Use new difficulty system based on round
+            const round = gameProgression.round;
+            const difficultyMult = DIFFICULTY.getMultiplier(round);
+            const isBoss = DIFFICULTY.isBossRound(round);
+
+            // Base level scales with difficulty multiplier
+            const baseLevel = Math.max(1, Math.floor(difficultyMult * 2));
+
+            // Add variance for non-boss rounds
+            const levelVariance = isBoss ? 0 : (Math.floor(Math.random() * 2) - 1);
+
+            // Risk affects level (1=easy, 2=medium, 3=hard)
+            const riskBonus = missionRisk - 2;
+
+            // Boss rounds get extra levels
+            const bossBonus = isBoss ? 2 : 0;
+
+            return Math.max(1, Math.min(15, baseLevel + riskBonus + levelVariance + bossBonus));
         }
 
         // Generate a single enemy mech
@@ -3086,7 +3588,10 @@
         // Fire a weapon from loadout
         function fireLoadoutWeapon(mech, weaponData, target) {
             const now = performance.now();
-            if (now - weaponData.lastFired < weaponData.battle.cooldown) {
+            // Calculate cooldown from shotsPerRound (3 second round)
+            const shotsPerRound = weaponData.battle.shotsPerRound || 1;
+            const cooldown = 3000 / shotsPerRound;
+            if (now - weaponData.lastFired < cooldown) {
                 return; // Still on cooldown
             }
             weaponData.lastFired = now;
@@ -3408,45 +3913,509 @@
             currentPhase = GamePhase.MECHBUILDER;
         }
 
-        // Current hand (drawn items)
-        let currentHand = [];
+        // Persistent bench items (no deck system - items stay on bench or mech)
+        let benchItems = [];  // Array of item objects on the bench
 
-        // Deck system - draw pile and discard pile
-        let drawPile = [];
-        let discardPile = [];
+        // Initialize with starter items
+        function initializeStarterItems() {
+            benchItems = [];
+            // Add starter weapons
+            const starterWeapon1 = { ...ITEM_DATABASE.railgun_mk1, instanceId: 'start_1' };
+            const starterWeapon2 = { ...ITEM_DATABASE.laser_array, instanceId: 'start_2' };
+            const starterReactor = { ...ITEM_DATABASE.reactor_core, instanceId: 'start_3' };
+            benchItems.push(starterWeapon1, starterWeapon2, starterReactor);
+        }
 
         // Player resources
         let playerResources = {
             xp: 0,
-            scrap: 0
+            scrap: 0,
+            gold: 5  // Starting gold (scaled down economy)
         };
+
+        // ============================================
+        // ECONOMY & INTEREST SYSTEM
+        // ============================================
+        const ECONOMY = {
+            startingGold: 5,
+            winBonus: 2,           // Gold for winning
+            lossBonus: 1,          // Gold for losing (consolation)
+            interestRate: 0.2,     // 20% interest
+            interestCap: 2,        // Max 2 gold interest per round
+            interestThreshold: 5,  // Need 5+ gold to earn interest
+            streakBonus: 1,        // Extra gold per win streak
+            maxStreak: 3,          // Cap streak bonus at 3
+
+            // Shop costs (smaller scale: level 1 averages ~3g)
+            shopRefreshCost: 1,
+            mechPrices: {
+                common: 3,
+                uncommon: 5,
+                rare: 8,
+                epic: 12,
+                legendary: 18
+            },
+            weaponPrices: {
+                common: 3,       // Level 1 items cost ~3g
+                uncommon: 4,
+                rare: 6,
+                epic: 9,
+                legendary: 14
+            },
+            sellMultiplier: 0.33,  // Sell back for ~1g (most items)
+            bargainDiscount: 0.7   // Bargain items cost 70% of normal
+        };
+
+        // Calculate interest earned
+        function calculateInterest() {
+            if (playerResources.gold < ECONOMY.interestThreshold) return 0;
+            const interest = Math.floor(playerResources.gold * ECONOMY.interestRate);
+            return Math.min(interest, ECONOMY.interestCap);
+        }
+
+        // Award end-of-round gold
+        function awardRoundGold(isVictory) {
+            let goldEarned = isVictory ? ECONOMY.winBonus : ECONOMY.lossBonus;
+
+            // Win streak bonus
+            if (isVictory) {
+                const streak = Math.min(gameProgression.wins, ECONOMY.maxStreak);
+                goldEarned += streak * ECONOMY.streakBonus;
+            }
+
+            // Interest on savings
+            const interest = calculateInterest();
+            goldEarned += interest;
+
+            playerResources.gold += goldEarned;
+
+            return {
+                base: isVictory ? ECONOMY.winBonus : ECONOMY.lossBonus,
+                streak: isVictory ? Math.min(gameProgression.wins, ECONOMY.maxStreak) * ECONOMY.streakBonus : 0,
+                interest: interest,
+                total: goldEarned
+            };
+        }
+
+        // ============================================
+        // MECH CHASSIS SYSTEM (Multiple Mechs)
+        // ============================================
+        const MECH_TEMPLATES = {
+            scout: {
+                id: 'scout',
+                name: 'Scout Frame',
+                class: 'Light',
+                icon: '🏃',
+                tonnage: 35,           // Low weight capacity
+                modSpace: 12,          // Grid cells available
+                growthCapacity: 3,     // Max upgrades
+                baseHP: 13,
+                baseArmor: 1,
+                baseSpeed: 1.3,
+                baseAccuracy: 70,
+                specialAbility: 'EVASION',  // 15% dodge chance
+                specialDesc: '+15% Evasion',
+                price: 0,  // Starting mech (free)
+                rarity: 'common',
+                slots: {
+                    torso: { cols: 2, rows: 2 },
+                    leftArm: { cols: 1, rows: 3 },
+                    rightArm: { cols: 1, rows: 3 },
+                    leftLeg: { cols: 1, rows: 2 },
+                    rightLeg: { cols: 1, rows: 2 }
+                }
+            },
+            warrior: {
+                id: 'warrior',
+                name: 'Warrior Frame',
+                class: 'Medium',
+                icon: '⚔️',
+                tonnage: 55,
+                modSpace: 18,
+                growthCapacity: 4,
+                baseHP: 20,
+                baseArmor: 2,
+                baseSpeed: 1.0,
+                baseAccuracy: 65,
+                specialAbility: 'FOCUS_FIRE',  // +10% damage to same target
+                specialDesc: '+10% Damage Focus',
+                price: 8,
+                rarity: 'uncommon',
+                slots: {
+                    torso: { cols: 2, rows: 2 },
+                    leftArm: { cols: 2, rows: 3 },
+                    rightArm: { cols: 2, rows: 3 },
+                    leftLeg: { cols: 2, rows: 2 },
+                    rightLeg: { cols: 2, rows: 2 }
+                }
+            },
+            titan: {
+                id: 'titan',
+                name: 'Titan Frame',
+                class: 'Heavy',
+                icon: '🛡️',
+                tonnage: 80,
+                modSpace: 24,
+                growthCapacity: 5,
+                baseHP: 30,
+                baseArmor: 3,
+                baseSpeed: 0.7,
+                baseAccuracy: 55,
+                specialAbility: 'FORTIFY',  // +25% armor when stationary
+                specialDesc: '+25% Armor (Stationary)',
+                price: 15,
+                rarity: 'rare',
+                slots: {
+                    torso: { cols: 3, rows: 3 },
+                    leftArm: { cols: 2, rows: 4 },
+                    rightArm: { cols: 2, rows: 4 },
+                    leftLeg: { cols: 2, rows: 3 },
+                    rightLeg: { cols: 2, rows: 3 }
+                }
+            },
+            striker: {
+                id: 'striker',
+                name: 'Striker Frame',
+                class: 'Medium',
+                icon: '⚡',
+                tonnage: 45,
+                modSpace: 16,
+                growthCapacity: 4,
+                baseHP: 17,
+                baseArmor: 1,
+                baseSpeed: 1.2,
+                baseAccuracy: 75,
+                specialAbility: 'FIRST_STRIKE',  // Attack first, +20% first attack damage
+                specialDesc: '+20% First Attack',
+                price: 12,
+                rarity: 'rare',
+                slots: {
+                    torso: { cols: 2, rows: 2 },
+                    leftArm: { cols: 2, rows: 4 },
+                    rightArm: { cols: 2, rows: 4 },
+                    leftLeg: { cols: 1, rows: 2 },
+                    rightLeg: { cols: 1, rows: 2 }
+                }
+            },
+            juggernaut: {
+                id: 'juggernaut',
+                name: 'Juggernaut Frame',
+                class: 'Assault',
+                icon: '💀',
+                tonnage: 100,
+                modSpace: 30,
+                growthCapacity: 6,
+                baseHP: 42,
+                baseArmor: 5,
+                baseSpeed: 0.5,
+                baseAccuracy: 50,
+                specialAbility: 'UNSTOPPABLE',  // Immune to knockback, +50% knockback dealt
+                specialDesc: 'Immune to KB, +50% KB',
+                price: 25,
+                rarity: 'epic',
+                slots: {
+                    torso: { cols: 4, rows: 3 },
+                    leftArm: { cols: 2, rows: 5 },
+                    rightArm: { cols: 2, rows: 5 },
+                    leftLeg: { cols: 2, rows: 3 },
+                    rightLeg: { cols: 2, rows: 3 }
+                }
+            },
+            phantom: {
+                id: 'phantom',
+                name: 'Phantom Frame',
+                class: 'Light',
+                icon: '👻',
+                tonnage: 30,
+                modSpace: 10,
+                growthCapacity: 3,
+                baseHP: 10,
+                baseArmor: 0,
+                baseSpeed: 1.5,
+                baseAccuracy: 80,
+                specialAbility: 'CLOAK',  // 30% miss chance against this mech
+                specialDesc: '30% Enemy Miss Chance',
+                price: 18,
+                rarity: 'epic',
+                slots: {
+                    torso: { cols: 2, rows: 2 },
+                    leftArm: { cols: 1, rows: 2 },
+                    rightArm: { cols: 1, rows: 2 },
+                    leftLeg: { cols: 1, rows: 2 },
+                    rightLeg: { cols: 1, rows: 2 }
+                }
+            },
+            berserker: {
+                id: 'berserker',
+                name: 'Berserker Frame',
+                class: 'Medium',
+                icon: '🔥',
+                tonnage: 50,
+                modSpace: 14,
+                growthCapacity: 4,
+                baseHP: 15,
+                baseArmor: 1,
+                baseSpeed: 1.1,
+                baseAccuracy: 60,
+                specialAbility: 'RAGE',  // +2% damage per 1% HP missing
+                specialDesc: '+2% DMG per 1% HP Lost',
+                price: 20,
+                rarity: 'epic',
+                slots: {
+                    torso: { cols: 2, rows: 2 },
+                    leftArm: { cols: 2, rows: 3 },
+                    rightArm: { cols: 2, rows: 3 },
+                    leftLeg: { cols: 1, rows: 2 },
+                    rightLeg: { cols: 1, rows: 2 }
+                }
+            }
+        };
+
+        // Player's owned mechs
+        let ownedMechs = ['scout'];  // Start with scout
+
+        // Currently selected mech for battle
+        let activeMechId = 'scout';
+
+        // Get active mech template
+        function getActiveMech() {
+            return MECH_TEMPLATES[activeMechId] || MECH_TEMPLATES.scout;
+        }
+
+        // ============================================
+        // BACKPACK / INVENTORY SYSTEM
+        // ============================================
+        const BACKPACK = {
+            maxSlots: 12,              // Starting backpack size
+            upgradeSlots: 3,           // Slots added per upgrade
+            upgradeCost: 10,           // Gold to upgrade backpack
+            maxUpgrades: 4             // Max 4 upgrades (12 + 12 = 24 slots max)
+        };
+
+        let backpack = {
+            items: [],         // Array of item IDs owned
+            slots: BACKPACK.maxSlots,
+            upgrades: 0
+        };
+
+        // Add item to backpack
+        function addToBackpack(itemId) {
+            if (backpack.items.length >= backpack.slots) {
+                return { success: false, reason: 'Backpack full!' };
+            }
+            backpack.items.push(itemId);
+            return { success: true };
+        }
+
+        // Remove item from backpack
+        function removeFromBackpack(itemId) {
+            const index = backpack.items.indexOf(itemId);
+            if (index > -1) {
+                backpack.items.splice(index, 1);
+                return true;
+            }
+            return false;
+        }
+
+        // Sell item from backpack
+        function sellItem(itemId) {
+            const item = ITEM_DATABASE[itemId];
+            if (!item) return { success: false, reason: 'Item not found' };
+
+            // Calculate sell price
+            const basePrice = item.type === 'WEAPON' ?
+                ECONOMY.weaponPrices[item.rarity || 'common'] :
+                ECONOMY.weaponPrices[item.rarity || 'common'];
+            const sellPrice = Math.floor(basePrice * ECONOMY.sellMultiplier);
+
+            if (removeFromBackpack(itemId)) {
+                playerResources.gold += sellPrice;
+                return { success: true, gold: sellPrice };
+            }
+            return { success: false, reason: 'Item not in backpack' };
+        }
+
+        // Upgrade backpack
+        function upgradeBackpack() {
+            if (backpack.upgrades >= BACKPACK.maxUpgrades) {
+                return { success: false, reason: 'Max upgrades reached' };
+            }
+            if (playerResources.gold < BACKPACK.upgradeCost) {
+                return { success: false, reason: 'Not enough gold' };
+            }
+            playerResources.gold -= BACKPACK.upgradeCost;
+            backpack.upgrades++;
+            backpack.slots += BACKPACK.upgradeSlots;
+            return { success: true, newSlots: backpack.slots };
+        }
+
+        // ============================================
+        // SHOP SYSTEM
+        // ============================================
+        const SHOP = {
+            mechSlots: 2,      // Number of mechs in shop
+            weaponSlots: 4,    // Number of weapons in shop
+            bargainChance: 0.15 // 15% chance for bargain
+        };
+
+        let shopInventory = {
+            mechs: [],      // Array of mech IDs available
+            weapons: [],    // Array of weapon objects { itemId, isBargain, price }
+            refreshes: 0    // Free refreshes used this round
+        };
+
+        // Generate shop inventory
+        function generateShopInventory() {
+            shopInventory.mechs = [];
+            shopInventory.weapons = [];
+            shopInventory.refreshes = 0;
+
+            // Generate mech offerings based on round
+            const availableMechs = Object.keys(MECH_TEMPLATES).filter(id => {
+                const mech = MECH_TEMPLATES[id];
+                // Don't offer mechs player already owns
+                if (ownedMechs.includes(id)) return false;
+                // Rarer mechs appear in later rounds
+                if (mech.rarity === 'epic' && gameProgression.round < 5) return false;
+                if (mech.rarity === 'legendary' && gameProgression.round < 8) return false;
+                return true;
+            });
+
+            // Pick random mechs for shop
+            const shuffledMechs = [...availableMechs].sort(() => Math.random() - 0.5);
+            shopInventory.mechs = shuffledMechs.slice(0, SHOP.mechSlots);
+
+            // Generate weapon offerings
+            const weaponTemplates = Object.keys(ITEM_TEMPLATES).filter(key => {
+                return ITEM_TEMPLATES[key].type === 'WEAPON';
+            });
+
+            for (let i = 0; i < SHOP.weaponSlots; i++) {
+                const templateType = weaponTemplates[Math.floor(Math.random() * weaponTemplates.length)];
+                const rarity = getShopWeaponRarity();
+                const level = Math.max(1, Math.floor(gameProgression.round / 3) + 1);
+                const weapon = generateComponent(templateType, level, rarity);
+
+                if (weapon) {
+                    registerGeneratedComponent(weapon);
+
+                    const isBargain = Math.random() < SHOP.bargainChance;
+                    const basePrice = ECONOMY.weaponPrices[rarity] || 5;
+                    const price = isBargain ?
+                        Math.floor(basePrice * ECONOMY.bargainDiscount) :
+                        basePrice;
+
+                    shopInventory.weapons.push({
+                        itemId: weapon.id,
+                        isBargain: isBargain,
+                        price: price,
+                        originalPrice: basePrice
+                    });
+                }
+            }
+        }
+
+        // Get weapon rarity based on round (better items later)
+        function getShopWeaponRarity() {
+            const round = gameProgression.round;
+            const rand = Math.random();
+
+            // Rarity chances improve with rounds
+            const legendaryChance = Math.min(0.02 + round * 0.01, 0.15);
+            const epicChance = Math.min(0.05 + round * 0.02, 0.25);
+            const rareChance = Math.min(0.15 + round * 0.03, 0.35);
+            const uncommonChance = 0.30;
+
+            if (rand < legendaryChance) return 'legendary';
+            if (rand < legendaryChance + epicChance) return 'epic';
+            if (rand < legendaryChance + epicChance + rareChance) return 'rare';
+            if (rand < legendaryChance + epicChance + rareChance + uncommonChance) return 'uncommon';
+            return 'common';
+        }
+
+        // Buy mech from shop
+        function buyMech(mechId) {
+            const mech = MECH_TEMPLATES[mechId];
+            if (!mech) return { success: false, reason: 'Mech not found' };
+            if (ownedMechs.includes(mechId)) return { success: false, reason: 'Already owned' };
+            if (playerResources.gold < mech.price) return { success: false, reason: 'Not enough gold' };
+
+            playerResources.gold -= mech.price;
+            ownedMechs.push(mechId);
+
+            // Remove from shop
+            const idx = shopInventory.mechs.indexOf(mechId);
+            if (idx > -1) shopInventory.mechs.splice(idx, 1);
+
+            return { success: true };
+        }
+
+        // Buy weapon from shop
+        function buyWeapon(shopIndex) {
+            if (shopIndex < 0 || shopIndex >= shopInventory.weapons.length) {
+                return { success: false, reason: 'Invalid shop index' };
+            }
+
+            const shopItem = shopInventory.weapons[shopIndex];
+            if (playerResources.gold < shopItem.price) {
+                return { success: false, reason: 'Not enough gold' };
+            }
+
+            const result = addToBackpack(shopItem.itemId);
+            if (!result.success) return result;
+
+            playerResources.gold -= shopItem.price;
+
+            // Remove from shop
+            shopInventory.weapons.splice(shopIndex, 1);
+
+            return { success: true };
+        }
+
+        // Refresh shop
+        function refreshShop() {
+            if (playerResources.gold < ECONOMY.shopRefreshCost) {
+                return { success: false, reason: 'Not enough gold' };
+            }
+            playerResources.gold -= ECONOMY.shopRefreshCost;
+            generateShopInventory();
+            return { success: true };
+        }
 
         // Loadout state (items placed on mech)
         let loadoutState = {
             mechId: MECH_CHASSIS.id,
-            equipment: []  // Array of { itemId, slot, position: {x, y}, rotation }
+            equipment: []  // Array of { itemId, instanceId, position: {x, y}, rotation }
         };
 
         // Track locked items (cannot be moved this round - e.g. heat sinks after placement)
         let lockedItems = new Set();
 
-        // Grid occupation tracking
-        let gridOccupation = {};  // slot -> 2D array of item IDs or null
+        // Unified grid occupation tracking (single mech-shaped grid)
+        let unifiedGridOccupation = null;  // InventoryGrid instance for the unified mech grid
+        let gridElements = {};  // For backwards compat - now just stores the unified grid element
 
         // ============================================
-        // 2D GRID DATA STRUCTURE CLASS
+        // 2D GRID DATA STRUCTURE CLASS (Supports mech-shaped grids)
         // ============================================
-        class InventoryGrid {
-            constructor(width, height) {
-                this.width = width;
-                this.height = height;
+        class MechGrid {
+            constructor(cols, rows, shapeMatrix) {
+                this.cols = cols;
+                this.rows = rows;
+                this.shapeMatrix = shapeMatrix;  // 2D array where 1=valid cell, 0=invalid
                 this.cells = [];
-                for (let y = 0; y < height; y++) {
+                for (let y = 0; y < rows; y++) {
                     this.cells[y] = [];
-                    for (let x = 0; x < width; x++) {
-                        this.cells[y][x] = null;  // null = empty, string = item ID
+                    for (let x = 0; x < cols; x++) {
+                        // Use 'invalid' for cells outside the mech shape, null for empty valid cells
+                        this.cells[y][x] = shapeMatrix[y][x] === 1 ? null : 'invalid';
                     }
                 }
+            }
+
+            isValidCell(x, y) {
+                if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) return false;
+                return this.shapeMatrix[y][x] === 1;
             }
 
             canPlaceItem(item, posX, posY) {
@@ -3454,17 +4423,19 @@
                 const h = shape.length;
                 const w = shape[0].length;
 
-                // Check bounds
-                if (posX < 0 || posY < 0 || posX + w > this.width || posY + h > this.height) {
-                    return false;
-                }
-
                 // Check each cell of the shape
                 for (let dy = 0; dy < h; dy++) {
                     for (let dx = 0; dx < w; dx++) {
                         if (shape[dy][dx] === 1) {
-                            if (this.cells[posY + dy][posX + dx] !== null) {
-                                return false;  // Cell occupied
+                            const cellX = posX + dx;
+                            const cellY = posY + dy;
+                            // Check if position is valid in mech shape
+                            if (!this.isValidCell(cellX, cellY)) {
+                                return false;
+                            }
+                            // Check if cell is occupied
+                            if (this.cells[cellY][cellX] !== null) {
+                                return false;
                             }
                         }
                     }
@@ -3487,8 +4458,8 @@
             }
 
             removeItem(instanceId) {
-                for (let y = 0; y < this.height; y++) {
-                    for (let x = 0; x < this.width; x++) {
+                for (let y = 0; y < this.rows; y++) {
+                    for (let x = 0; x < this.cols; x++) {
                         if (this.cells[y][x] === instanceId) {
                             this.cells[y][x] = null;
                         }
@@ -3497,51 +4468,23 @@
             }
 
             isCellOccupied(x, y) {
-                if (x < 0 || y < 0 || x >= this.width || y >= this.height) return true;
+                if (!this.isValidCell(x, y)) return true;
                 return this.cells[y][x] !== null;
             }
         }
 
-        // Initialize grids for each slot
+        // Initialize the unified mech grid
         function initializeGrids() {
-            gridOccupation = {};
-            for (const [slotName, slotDef] of Object.entries(MECH_CHASSIS.slots)) {
-                gridOccupation[slotName] = new InventoryGrid(slotDef.cols, slotDef.rows);
-            }
+            unifiedGridOccupation = new MechGrid(
+                MECH_CHASSIS.gridCols,
+                MECH_CHASSIS.gridRows,
+                MECH_CHASSIS.gridShape
+            );
         }
 
         // ============================================
-        // DECK / HAND SYSTEM
+        // ITEM MANAGEMENT (NO DECK - PERSISTENT BENCH)
         // ============================================
-
-        // Initialize the draw pile with starting cards
-        function initializeDeck() {
-            drawPile = [];
-            discardPile = [];
-
-            const allItemIds = Object.keys(ITEM_DATABASE);
-
-            // Create starting deck: 3 of each weapon, 2 of each other item
-            // This gives enough cards for 2 full draws (10 cards) before reshuffle
-            const weaponIds = allItemIds.filter(id => ITEM_DATABASE[id].category === 'weapon');
-            const otherIds = allItemIds.filter(id => ITEM_DATABASE[id].category !== 'weapon');
-
-            // Add 3 copies of each weapon
-            weaponIds.forEach(id => {
-                drawPile.push(id);
-                drawPile.push(id);
-                drawPile.push(id);
-            });
-
-            // Add 2 copies of each non-weapon
-            otherIds.forEach(id => {
-                drawPile.push(id);
-                drawPile.push(id);
-            });
-
-            // Shuffle the draw pile
-            shuffleArray(drawPile);
-        }
 
         // Shuffle an array in place
         function shuffleArray(array) {
@@ -3551,59 +4494,31 @@
             }
         }
 
-        // Reshuffle discard pile into draw pile
-        function reshuffleDiscardIntoDraw() {
-            drawPile = [...discardPile];
-            discardPile = [];
-            shuffleArray(drawPile);
-        }
+        // Add an item to the bench
+        function addItemToBench(itemId, instanceId = null) {
+            const item = ITEM_DATABASE[itemId];
+            if (!item) return null;
 
-        // Draw cards from the draw pile
-        function drawHand(count = 5) {
-            currentHand = [];
-
-            for (let i = 0; i < count; i++) {
-                const card = drawCardFromPile();
-                if (card) {
-                    currentHand.push(card);
-                }
-            }
-
-            return currentHand;
-        }
-
-        // Draw a single card from the draw pile
-        function drawCardFromPile() {
-            // If draw pile is empty, reshuffle discard pile
-            if (drawPile.length === 0) {
-                if (discardPile.length === 0) {
-                    return null;  // No cards left at all
-                }
-                reshuffleDiscardIntoDraw();
-            }
-
-            const itemId = drawPile.pop();
-            if (!itemId) return null;
-
-            return {
-                instanceId: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                itemId: itemId,
-                ...ITEM_DATABASE[itemId]
+            const newItem = {
+                ...item,
+                instanceId: instanceId || `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             };
+            benchItems.push(newItem);
+            return newItem;
         }
 
-        // Draw a single card and add to hand (called by heat sink placement)
-        function drawSingleCard() {
-            const card = drawCardFromPile();
-            if (card) {
-                currentHand.push(card);
+        // Remove an item from the bench by instanceId
+        function removeItemFromBench(instanceId) {
+            const idx = benchItems.findIndex(item => item.instanceId === instanceId);
+            if (idx !== -1) {
+                return benchItems.splice(idx, 1)[0];
             }
-            return card;
+            return null;
         }
 
-        // Discard a card (add to discard pile)
-        function discardCard(itemId) {
-            discardPile.push(itemId);
+        // Get item from bench by instanceId
+        function getBenchItem(instanceId) {
+            return benchItems.find(item => item.instanceId === instanceId);
         }
 
         // Rotate an item's gridShape 90 degrees clockwise
@@ -3642,11 +4557,9 @@
             startY: 0
         };
 
-        let gridElements = {};  // Store references to grid DOM elements
         let placedItemElements = {};  // Store references to placed item DOM elements
 
         function initDragAndDrop() {
-            const bench = document.getElementById('bench');
             const dragGhost = document.getElementById('dragGhost');
 
             // Touch/Mouse event handlers
@@ -3668,12 +4581,12 @@
                 return;  // Let the rotate button handle its own click
             }
 
-            // Check if we clicked on a bench item
-            const benchItem = target.closest('.bench-item');
+            // Check if we clicked on a bench item (supports both old and new class names)
+            const benchItem = target.closest('.bench-item-vertical') || target.closest('.bench-item');
             if (benchItem) {
                 e.preventDefault();
                 const instanceId = benchItem.dataset.instanceId;
-                const item = currentHand.find(i => i.instanceId === instanceId);
+                const item = benchItems.find(i => i.instanceId === instanceId);
                 if (item) {
                     startDrag(item, 'bench', null, null, touch.clientX, touch.clientY);
                     benchItem.classList.add('dragging');
@@ -3681,8 +4594,8 @@
                 return;
             }
 
-            // Check if we clicked on a placed item
-            const placedItem = target.closest('.placed-item');
+            // Check if we clicked on a placed item (unified grid)
+            const placedItem = target.closest('.placed-item-unified');
             if (placedItem) {
                 e.preventDefault();
                 const instanceId = placedItem.dataset.instanceId;
@@ -3694,11 +4607,11 @@
 
                 const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
                 if (equipment) {
-                    const item = { ...ITEM_DATABASE[equipment.itemId], instanceId };
-                    startDrag(item, 'grid', equipment.slot, equipment.position, touch.clientX, touch.clientY);
+                    const item = equipment.item || { ...ITEM_DATABASE[equipment.itemId], instanceId };
+                    startDrag(item, 'grid', null, equipment.position, touch.clientX, touch.clientY);
 
                     // Remove from grid temporarily
-                    removeItemFromGrid(instanceId, equipment.slot);
+                    removeItemFromGrid(instanceId);
                     placedItem.style.opacity = '0.3';
                 }
                 return;
@@ -3728,17 +4641,8 @@
         }
 
         function updateSlotValidity(item) {
-            // Show which grids accept this item type
-            const validSlots = item.constraints.validSlots || Object.keys(MECH_CHASSIS.slots);
-
-            for (const [slotName, gridEl] of Object.entries(gridElements)) {
-                gridEl.classList.remove('slot-valid', 'slot-invalid');
-                if (validSlots.includes(slotName)) {
-                    gridEl.classList.add('slot-valid');
-                } else {
-                    gridEl.classList.add('slot-invalid');
-                }
-            }
+            // With unified grid, all valid cells can accept any item
+            // No slot-specific highlighting needed
         }
 
         function createGhostHTML(item) {
@@ -3772,19 +4676,22 @@
             updateDropHighlight(dropInfo);
 
             // Check if over bench (for items from grid)
-            const benchContainer = document.getElementById('benchContainer');
-            const benchRect = benchContainer.getBoundingClientRect();
-            const overBench = dragState.sourceType === 'grid' &&
-                              touch.clientX >= benchRect.left &&
-                              touch.clientX <= benchRect.right &&
-                              touch.clientY >= benchRect.top &&
-                              touch.clientY <= benchRect.bottom;
+            const benchPanel = document.getElementById('benchPanel');
+            let overBench = false;
+            if (benchPanel) {
+                const benchRect = benchPanel.getBoundingClientRect();
+                overBench = dragState.sourceType === 'grid' &&
+                            touch.clientX >= benchRect.left &&
+                            touch.clientX <= benchRect.right &&
+                            touch.clientY >= benchRect.top &&
+                            touch.clientY <= benchRect.bottom;
 
-            if (overBench) {
-                benchContainer.classList.add('drop-target');
-                ghost.classList.remove('invalid');
-            } else {
-                benchContainer.classList.remove('drop-target');
+                if (overBench) {
+                    benchPanel.classList.add('drop-target');
+                    ghost.classList.remove('invalid');
+                } else {
+                    benchPanel.classList.remove('drop-target');
+                }
             }
 
             // Update ghost validity
@@ -3801,31 +4708,32 @@
             const touch = e.changedTouches ? e.changedTouches[0] : e;
             const dropInfo = getDropTarget(touch.clientX, touch.clientY);
 
-            // Check if dropped on bench area
-            const benchContainer = document.getElementById('benchContainer');
-            const benchRect = benchContainer.getBoundingClientRect();
-            const droppedOnBench = touch.clientX >= benchRect.left &&
-                                   touch.clientX <= benchRect.right &&
-                                   touch.clientY >= benchRect.top &&
-                                   touch.clientY <= benchRect.bottom;
+            // Check if dropped on bench panel area
+            const benchPanel = document.getElementById('benchPanel');
+            let droppedOnBench = false;
+            if (benchPanel) {
+                const benchRect = benchPanel.getBoundingClientRect();
+                droppedOnBench = touch.clientX >= benchRect.left &&
+                                 touch.clientX <= benchRect.right &&
+                                 touch.clientY >= benchRect.top &&
+                                 touch.clientY <= benchRect.bottom;
+            }
 
             if (dropInfo && dropInfo.valid) {
                 // Place item on grid
-                placeItemOnGrid(dragState.item, dropInfo.slot, dropInfo.gridX, dropInfo.gridY);
+                placeItemOnGrid(dragState.item, dropInfo.gridX, dropInfo.gridY);
 
                 // Remove from bench if it came from there
                 if (dragState.sourceType === 'bench') {
-                    const idx = currentHand.findIndex(i => i.instanceId === dragState.item.instanceId);
-                    if (idx !== -1) currentHand.splice(idx, 1);
+                    removeItemFromBench(dragState.item.instanceId);
                 }
             } else if (droppedOnBench && dragState.sourceType === 'grid') {
                 // Return item to bench
-                currentHand.push(dragState.item);
+                benchItems.push(dragState.item);
             } else if (dragState.sourceType === 'grid') {
                 // Return to original position on grid
                 placeItemOnGrid(
                     dragState.item,
-                    dragState.sourceSlot,
                     dragState.sourcePosition.x,
                     dragState.sourcePosition.y
                 );
@@ -3834,20 +4742,18 @@
             // Cleanup
             cleanupDrag();
             renderBench();
-            renderGridItems();
+            renderUnifiedGridItems();
             updateStats();
         }
 
         function cleanupDrag() {
-            document.querySelectorAll('.bench-item.dragging').forEach(el => el.classList.remove('dragging'));
-            document.querySelectorAll('.placed-item').forEach(el => el.style.opacity = '1');
-            document.querySelectorAll('.grid-cell').forEach(el => {
+            document.querySelectorAll('.bench-item-vertical.dragging').forEach(el => el.classList.remove('dragging'));
+            document.querySelectorAll('.placed-item-unified').forEach(el => el.style.opacity = '1');
+            document.querySelectorAll('.mech-cell').forEach(el => {
                 el.classList.remove('valid-drop', 'invalid-drop');
             });
-            document.querySelectorAll('.mech-grid-overlay').forEach(el => {
-                el.classList.remove('slot-valid', 'slot-invalid');
-            });
-            document.getElementById('benchContainer').classList.remove('drop-target');
+            const benchPanel = document.getElementById('benchPanel');
+            if (benchPanel) benchPanel.classList.remove('drop-target');
 
             const ghost = document.getElementById('dragGhost');
             ghost.style.display = 'none';
@@ -3867,96 +4773,75 @@
         function getDropTarget(clientX, clientY) {
             if (!dragState.item) return null;
 
-            // Check each grid
-            for (const [slotName, gridEl] of Object.entries(gridElements)) {
-                const rect = gridEl.getBoundingClientRect();
-                // Account for label offset (label is at top: -20px)
-                const labelOffset = 20;
-                const adjustedTop = rect.top + labelOffset;
+            // Check the unified mech grid
+            const gridEl = document.getElementById('unifiedMechGrid');
+            if (!gridEl) return null;
 
-                if (clientX >= rect.left && clientX <= rect.right &&
-                    clientY >= adjustedTop && clientY <= rect.bottom) {
+            const rect = gridEl.getBoundingClientRect();
 
-                    // Calculate grid cell position
-                    // Account for: 2px border + 4px padding = 6px offset
-                    const cellSize = 42;  // 40px + 2px gap
-                    const borderAndPadding = 6;
-                    const localX = clientX - rect.left - borderAndPadding;
-                    const localY = clientY - adjustedTop - borderAndPadding;
+            if (clientX >= rect.left && clientX <= rect.right &&
+                clientY >= rect.top && clientY <= rect.bottom) {
 
-                    const item = dragState.item;
-                    const shape = item.gridShape;
-                    const itemW = shape[0].length;
-                    const itemH = shape.length;
+                // Calculate grid cell position
+                const cellSize = 47;  // 45px + 2px gap
+                const padding = 10;
+                const localX = clientX - rect.left - padding;
+                const localY = clientY - rect.top - padding;
 
-                    const slotDef = MECH_CHASSIS.slots[slotName];
-                    const grid = gridOccupation[slotName];
+                const item = dragState.item;
+                const shape = item.gridShape;
+                const itemW = shape[0].length;
+                const itemH = shape.length;
 
-                    // Check slot constraints first
-                    const validSlot = !item.constraints.validSlots ||
-                                      item.constraints.validSlots.includes(slotName);
+                // Calculate the cell the cursor is over
+                const cursorCellX = Math.floor(localX / cellSize);
+                const cursorCellY = Math.floor(localY / cellSize);
 
-                    // Calculate the cell the cursor is over (not centered)
-                    const cursorCellX = Math.floor(localX / cellSize);
-                    const cursorCellY = Math.floor(localY / cellSize);
+                // Calculate centered position for highlighting (same for valid and invalid)
+                let highlightX = cursorCellX - Math.floor(itemW / 2);
+                let highlightY = cursorCellY - Math.floor(itemH / 2);
+                // Clamp to grid bounds
+                highlightX = Math.max(0, Math.min(highlightX, MECH_CHASSIS.gridCols - itemW));
+                highlightY = Math.max(0, Math.min(highlightY, MECH_CHASSIS.gridRows - itemH));
 
-                    // Find the best position for the item nearest to cursor
-                    const bestPos = findBestPosition(grid, item, cursorCellX, cursorCellY, slotDef);
+                // Check if this position is valid for placement
+                const canPlace = unifiedGridOccupation && unifiedGridOccupation.canPlaceItem(item, highlightX, highlightY);
 
-                    if (bestPos) {
-                        return {
-                            slot: slotName,
-                            gridX: bestPos.x,
-                            gridY: bestPos.y,
-                            valid: validSlot
-                        };
-                    } else {
-                        // No valid position, show where cursor would place it (clamped)
-                        let gridX = cursorCellX - Math.floor(itemW / 2);
-                        let gridY = cursorCellY - Math.floor(itemH / 2);
-                        gridX = Math.max(0, Math.min(gridX, slotDef.cols - itemW));
-                        gridY = Math.max(0, Math.min(gridY, slotDef.rows - itemH));
-
-                        return {
-                            slot: slotName,
-                            gridX: gridX,
-                            gridY: gridY,
-                            valid: false
-                        };
-                    }
-                }
+                return {
+                    gridX: highlightX,
+                    gridY: highlightY,
+                    valid: canPlace
+                };
             }
 
             return null;
         }
 
-        function findBestPosition(grid, item, cursorX, cursorY, slotDef) {
+        function findBestPosition(grid, item, cursorX, cursorY) {
             const itemW = item.gridShape[0].length;
             const itemH = item.gridShape.length;
-
-            // Generate candidate positions: center on cursor, then expand outward
-            const candidates = [];
 
             // Centered position
             const centerX = cursorX - Math.floor(itemW / 2);
             const centerY = cursorY - Math.floor(itemH / 2);
 
             // Search in expanding rings around cursor
-            for (let radius = 0; radius <= Math.max(slotDef.cols, slotDef.rows); radius++) {
+            const maxRadius = Math.max(MECH_CHASSIS.gridCols, MECH_CHASSIS.gridRows);
+            for (let radius = 0; radius <= maxRadius; radius++) {
                 for (let dy = -radius; dy <= radius; dy++) {
                     for (let dx = -radius; dx <= radius; dx++) {
-                        if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                        if (radius > 0 && Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
 
                         const testX = centerX + dx;
                         const testY = centerY + dy;
 
                         // Check bounds
                         if (testX < 0 || testY < 0 ||
-                            testX + itemW > slotDef.cols ||
-                            testY + itemH > slotDef.rows) continue;
+                            testX + itemW > MECH_CHASSIS.gridCols ||
+                            testY + itemH > MECH_CHASSIS.gridRows) continue;
 
                         // Check if can place
-                        if (grid.canPlaceItem(item, testX, testY)) {
+                        if (grid && grid.canPlaceItem(item, testX, testY)) {
                             return { x: testX, y: testY };
                         }
                     }
@@ -3968,19 +4853,18 @@
 
         function updateDropHighlight(dropInfo) {
             // Clear all highlights
-            document.querySelectorAll('.grid-cell').forEach(el => {
+            document.querySelectorAll('.mech-cell').forEach(el => {
                 el.classList.remove('valid-drop', 'invalid-drop');
             });
 
             if (!dropInfo || !dragState.item) return;
 
-            const gridEl = gridElements[dropInfo.slot];
+            const gridEl = document.getElementById('unifiedMechGrid');
             if (!gridEl) return;
 
             const item = dragState.item;
             const shape = item.gridShape;
-            const cells = gridEl.querySelectorAll('.grid-cell');
-            const slotDef = MECH_CHASSIS.slots[dropInfo.slot];
+            const cells = gridEl.querySelectorAll('.mech-cell');
 
             // Highlight cells that would be covered
             for (let dy = 0; dy < shape.length; dy++) {
@@ -3990,11 +4874,11 @@
                         const cellY = dropInfo.gridY + dy;
 
                         // Check bounds before calculating index
-                        if (cellX < 0 || cellX >= slotDef.cols || cellY < 0 || cellY >= slotDef.rows) {
+                        if (cellX < 0 || cellX >= MECH_CHASSIS.gridCols || cellY < 0 || cellY >= MECH_CHASSIS.gridRows) {
                             continue;  // Skip out-of-bounds cells
                         }
 
-                        const cellIdx = cellY * slotDef.cols + cellX;
+                        const cellIdx = cellY * MECH_CHASSIS.gridCols + cellX;
 
                         if (cellIdx >= 0 && cellIdx < cells.length) {
                             cells[cellIdx].classList.add(dropInfo.valid ? 'valid-drop' : 'invalid-drop');
@@ -4004,30 +4888,24 @@
             }
         }
 
-        function placeItemOnGrid(item, slot, gridX, gridY) {
+        function placeItemOnGrid(item, gridX, gridY) {
             const instanceId = item.instanceId;
-            const itemDef = ITEM_DATABASE[item.id || item.itemId];
+            const itemDef = item;
 
             // Add to loadout state
             loadoutState.equipment.push({
                 instanceId: instanceId,
                 itemId: item.id || item.itemId,
-                slot: slot,
+                item: item,  // Store full item data
                 position: { x: gridX, y: gridY },
                 rotation: 0
             });
 
             // Mark grid cells as occupied
-            gridOccupation[slot].placeItem(item, gridX, gridY, instanceId);
+            unifiedGridOccupation.placeItem(item, gridX, gridY, instanceId);
 
             // Handle special placement effects
             if (itemDef && itemDef.special) {
-                // Draw a card when placed (heat sink effect)
-                if (itemDef.special.onPlace === 'drawCard') {
-                    drawSingleCard();
-                    renderBench();
-                }
-
                 // Lock the item so it cannot be moved this round
                 if (itemDef.special.locksOnPlace) {
                     lockedItems.add(instanceId);
@@ -4035,7 +4913,10 @@
             }
         }
 
-        function removeItemFromGrid(instanceId, slot) {
+        function removeItemFromGrid(instanceId) {
+            // Find the equipment entry
+            const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
+
             // Remove from loadout
             const idx = loadoutState.equipment.findIndex(eq => eq.instanceId === instanceId);
             if (idx !== -1) {
@@ -4043,7 +4924,9 @@
             }
 
             // Clear grid cells
-            gridOccupation[slot].removeItem(instanceId);
+            unifiedGridOccupation.removeItem(instanceId);
+
+            return equipment;  // Return for re-adding to bench
         }
 
         // Click to remove placed item
@@ -4056,16 +4939,16 @@
             const equipment = loadoutState.equipment.find(eq => eq.instanceId === instanceId);
             if (!equipment) return;
 
-            const item = { ...ITEM_DATABASE[equipment.itemId], instanceId };
+            const item = equipment.item || { ...ITEM_DATABASE[equipment.itemId], instanceId };
 
             // Remove from grid
-            removeItemFromGrid(instanceId, equipment.slot);
+            removeItemFromGrid(instanceId);
 
             // Add back to bench
-            currentHand.push(item);
+            benchItems.push(item);
 
             renderBench();
-            renderGridItems();
+            renderUnifiedGridItems();
             updateStats();
         }
 
@@ -4073,97 +4956,270 @@
         // UI RENDERING
         // ============================================
         function renderBench() {
-            const bench = document.getElementById('bench');
-            bench.innerHTML = '';
+            const benchScroll = document.getElementById('benchScroll');
+            const benchEmpty = document.getElementById('benchEmpty');
+            if (!benchScroll) return;
 
-            currentHand.forEach(item => {
+            benchScroll.innerHTML = '';
+
+            if (benchItems.length === 0) {
+                if (benchEmpty) benchEmpty.style.display = 'block';
+                return;
+            }
+
+            if (benchEmpty) benchEmpty.style.display = 'none';
+
+            benchItems.forEach(item => {
                 const el = document.createElement('div');
-                el.className = `bench-item ${item.category}`;
+                el.className = `bench-item-vertical ${item.category}`;
                 el.dataset.instanceId = item.instanceId;
 
                 // Get rarity color for generated items
                 const isGenerated = item.isGenerated;
                 const rarityColor = isGenerated ? (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
-                const rarityName = isGenerated ? (item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)) : '';
 
                 // Apply rarity border color
                 if (isGenerated) {
                     el.style.borderColor = rarityColor;
-                    el.style.boxShadow = `0 0 8px ${rarityColor}40`;
                 }
-
-                // Build shape preview HTML
-                const shape = item.gridShape;
-                const w = shape[0].length;
-                const h = shape.length;
-                let shapeHTML = `<div class="shape-preview" style="grid-template-columns: repeat(${w}, 10px);">`;
-                for (let y = 0; y < h; y++) {
-                    for (let x = 0; x < w; x++) {
-                        const filled = shape[y][x] === 1;
-                        const cellStyle = filled && isGenerated ? `background: ${rarityColor};` : '';
-                        shapeHTML += `<div class="shape-cell${filled ? '' : ' empty'}" style="${cellStyle}"></div>`;
-                    }
-                }
-                shapeHTML += '</div>';
-
-                // Build stats HTML for tooltip
-                let statsHTML = '';
-                if (item.stats.weight) statsHTML += `<span>Weight: ${item.stats.weight}</span>`;
-                if (item.stats.energyDraw > 0) statsHTML += `<span>Energy: ${item.stats.energyDraw}</span>`;
-                if (item.stats.energyDraw < 0) statsHTML += `<span>Energy: +${-item.stats.energyDraw}</span>`;
-                if (item.stats.damage) statsHTML += `<span>Damage: ${item.stats.damage}</span>`;
-                if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
-                if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
-                if (item.stats.heatCapacity) statsHTML += `<span>Heat Cap: +${item.stats.heatCapacity}</span>`;
-                if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
-
-                // Build special effects HTML
-                let specialHTML = '';
-                if (item.special) {
-                    if (item.special.onPlace === 'drawCard') specialHTML += '<span>On Place: Draw a card</span>';
-                    if (item.special.locksOnPlace) specialHTML += '<span>Locks after placement</span>';
-                }
-
-                // Build valid slots string
-                const validSlots = item.constraints.validSlots || ['all'];
-                const slotsStr = validSlots.map(s => s.replace(/([A-Z])/g, ' $1').trim()).join(', ');
-
-                // Rarity/level badge for generated items
-                const rarityBadge = isGenerated ? `
-                    <div style="position: absolute; top: -6px; right: -6px; background: ${rarityColor}; color: #000; font-size: 8px; padding: 2px 4px; border-radius: 3px; font-weight: bold;">
-                        L${item.level}
-                    </div>
-                ` : '';
 
                 el.innerHTML = `
-                    ${rarityBadge}
-                    <div class="rotate-btn" title="Rotate">↻</div>
+                    ${buildItemShapePreview(item)}
                     <span class="item-icon">${item.icon}</span>
-                    <span class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</span>
-                    ${shapeHTML}
-                    <div class="bench-tooltip">
-                        <div class="tooltip-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.icon} ${item.name}</div>
-                        ${isGenerated ? `<div style="font-size: 10px; color: ${rarityColor}; margin-bottom: 5px;">${rarityName} - Level ${item.level}</div>` : ''}
-                        <div class="tooltip-stats">${statsHTML}</div>
-                        ${specialHTML ? `<div class="tooltip-special">${specialHTML}</div>` : ''}
-                        <div class="tooltip-slots">Fits: ${slotsStr}</div>
+                    <div class="item-info">
+                        <div class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
+                        ${buildItemStatIcons(item)}
                     </div>
                 `;
 
-                // Add click handler for rotate button
-                const rotateBtn = el.querySelector('.rotate-btn');
-                rotateBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();  // Prevent drag from starting
-                    rotateItemShape(item);
-                });
-                rotateBtn.addEventListener('touchstart', (e) => {
-                    e.stopPropagation();  // Prevent drag from starting on touch
-                    e.preventDefault();
-                    rotateItemShape(item);
-                });
+                // Make draggable
+                el.addEventListener('mousedown', (e) => handleDragStart(e, item, 'bench'));
+                el.addEventListener('touchstart', (e) => handleDragStart(e, item, 'bench'), { passive: false });
 
-                bench.appendChild(el);
+                benchScroll.appendChild(el);
             });
+        }
+
+        // Render the unified mech-shaped grid
+        function renderUnifiedMechGrid() {
+            const container = document.getElementById('unifiedMechGrid');
+            if (!container) return;
+
+            container.innerHTML = '';
+            container.style.gridTemplateColumns = `repeat(${MECH_CHASSIS.gridCols}, 45px)`;
+
+            // Create cells for the mech grid
+            for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
+                for (let x = 0; x < MECH_CHASSIS.gridCols; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'mech-cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+
+                    // Mark invalid cells (not part of mech shape)
+                    if (MECH_CHASSIS.gridShape[y][x] === 0) {
+                        cell.classList.add('invalid');
+                    }
+
+                    container.appendChild(cell);
+                }
+            }
+
+            // Store reference
+            gridElements.unified = container;
+        }
+
+        // Render placed items on the unified grid
+        function renderUnifiedGridItems() {
+            // Remove old placed items
+            document.querySelectorAll('.placed-item-unified').forEach(el => el.remove());
+
+            const container = document.getElementById('unifiedMechGrid');
+            if (!container || !unifiedGridOccupation) return;
+
+            const cellSize = 45;
+            const gap = 2;
+
+            // Update cell states (occupied highlighting)
+            const cells = container.querySelectorAll('.mech-cell');
+            cells.forEach(cell => {
+                const x = parseInt(cell.dataset.x);
+                const y = parseInt(cell.dataset.y);
+                if (unifiedGridOccupation.isValidCell(x, y)) {
+                    cell.classList.toggle('occupied', unifiedGridOccupation.cells[y][x] !== null);
+                }
+            });
+
+            // Render placed items
+            loadoutState.equipment.forEach(eq => {
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
+                if (!item) return;
+
+                const shape = item.gridShape;
+                const w = shape[0].length;
+                const h = shape.length;
+
+                const placedEl = document.createElement('div');
+                placedEl.className = `placed-item-unified ${item.category}`;
+                placedEl.dataset.instanceId = eq.instanceId;
+
+                // Build tooltip HTML
+                const tooltipHtml = buildItemTooltipHtml(item);
+                placedEl.innerHTML = `${item.icon}${tooltipHtml}`;
+
+                // Position based on grid cell
+                placedEl.style.position = 'absolute';
+                placedEl.style.left = `${10 + eq.position.x * (cellSize + gap)}px`;
+                placedEl.style.top = `${10 + eq.position.y * (cellSize + gap)}px`;
+                placedEl.style.width = `${w * cellSize + (w - 1) * gap}px`;
+                placedEl.style.height = `${h * cellSize + (h - 1) * gap}px`;
+
+                // Make draggable (to move or remove)
+                placedEl.addEventListener('mousedown', (e) => handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid'));
+                placedEl.addEventListener('touchstart', (e) => handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid'), { passive: false });
+
+                container.appendChild(placedEl);
+            });
+        }
+
+        // Build compact stat icons row for item cards
+        function buildItemStatIcons(item) {
+            const stats = item.stats || {};
+            const battle = item.battle || {};
+            const shape = item.gridShape || [[1]];
+
+            // Calculate squares used
+            let squares = 0;
+            for (let row of shape) {
+                for (let cell of row) {
+                    if (cell === 1) squares++;
+                }
+            }
+
+            let html = '<div class="item-stat-row">';
+
+            // Damage (with xN for multi-shot)
+            if (stats.damage) {
+                const shotsPerRound = battle.shotsPerRound || 1;
+                if (shotsPerRound > 1) {
+                    html += `<span class="item-stat damage"><span class="item-stat-icon">⚔</span><span class="item-stat-value">${stats.damage}x${shotsPerRound}</span></span>`;
+                } else {
+                    html += `<span class="item-stat damage"><span class="item-stat-icon">⚔</span><span class="item-stat-value">${stats.damage}</span></span>`;
+                }
+            }
+
+            // Armor
+            if (stats.armorBonus) {
+                html += `<span class="item-stat armor"><span class="item-stat-icon">🛡</span><span class="item-stat-value">+${stats.armorBonus}</span></span>`;
+            }
+
+            // Energy (negative = provides, positive = uses)
+            if (stats.energyDraw !== undefined && stats.energyDraw !== 0) {
+                if (stats.energyDraw < 0) {
+                    html += `<span class="item-stat energy"><span class="item-stat-icon">⚡</span><span class="item-stat-value">+${-stats.energyDraw}</span></span>`;
+                } else {
+                    html += `<span class="item-stat energy"><span class="item-stat-icon">⚡</span><span class="item-stat-value">${stats.energyDraw}</span></span>`;
+                }
+            }
+
+            // Weight
+            if (stats.weight) {
+                html += `<span class="item-stat weight"><span class="item-stat-icon">⚖</span><span class="item-stat-value">${stats.weight}</span></span>`;
+            }
+
+            // Squares
+            html += `<span class="item-stat squares"><span class="item-stat-icon">▣</span><span class="item-stat-value">${squares}</span></span>`;
+
+            html += '</div>';
+            return html;
+        }
+
+        // Build shape preview HTML for hover display
+        function buildItemShapePreview(item) {
+            const shape = item.gridShape || [[1]];
+            const rarityColor = (item.isGenerated && COMPONENT_GENERATION) ?
+                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00aa66') : '#00aa66';
+
+            const cols = shape[0].length;
+            let html = `<div class="item-shape-preview">`;
+            html += `<div class="shape-grid" style="grid-template-columns: repeat(${cols}, 10px);">`;
+
+            for (let row of shape) {
+                for (let cell of row) {
+                    if (cell === 1) {
+                        html += `<div class="shape-cell filled" style="background: ${rarityColor};"></div>`;
+                    } else {
+                        html += `<div class="shape-cell empty"></div>`;
+                    }
+                }
+            }
+
+            html += '</div></div>';
+            return html;
+        }
+
+        // Build tooltip HTML for an item
+        function buildItemTooltipHtml(item) {
+            const stats = item.stats || {};
+            const battle = item.battle || {};
+            let statsHtml = '';
+
+            // Show damage with xN if fires multiple times per round
+            if (stats.damage) {
+                const shotsPerRound = battle.shotsPerRound || 1;
+                if (shotsPerRound > 1) {
+                    statsHtml += `<div>⚔️ Damage: ${stats.damage} x${shotsPerRound}</div>`;
+                } else {
+                    statsHtml += `<div>⚔️ Damage: ${stats.damage}</div>`;
+                }
+            }
+            if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
+            if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
+            if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
+            if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
+            if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: -${stats.energyDraw}</div>`;
+            if (stats.weight) statsHtml += `<div>⚖️ Weight: ${stats.weight}</div>`;
+            if (stats.heatCapacity) statsHtml += `<div>🌡️ Heat Cap: +${stats.heatCapacity}</div>`;
+
+            let specialHtml = '';
+            if (item.special) {
+                if (item.special.damageBoost) specialHtml += `+${Math.round((item.special.damageBoost - 1) * 100)}% damage to adjacent weapons<br>`;
+                if (item.special.adjacentArmorBoost) specialHtml += `+${item.special.adjacentArmorBoost} armor to adjacent items<br>`;
+                if (item.special.energyPerAdjacentWeapon) specialHtml += `+${item.special.energyPerAdjacentWeapon} energy per adjacent weapon<br>`;
+            }
+            if (item.description) {
+                specialHtml += item.description;
+            }
+
+            const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
+                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+
+            // Build inline shape preview for tooltip
+            const shape = item.gridShape || [[1]];
+            const cols = shape[0].length;
+            let shapeHtml = `<div style="display: inline-grid; gap: 2px; grid-template-columns: repeat(${cols}, 12px); margin-top: 6px;">`;
+            for (let row of shape) {
+                for (let cell of row) {
+                    if (cell === 1) {
+                        shapeHtml += `<div style="width: 12px; height: 12px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 2px;"></div>`;
+                    } else {
+                        shapeHtml += `<div style="width: 12px; height: 12px;"></div>`;
+                    }
+                }
+            }
+            shapeHtml += '</div>';
+
+            return `
+                <div class="item-tooltip">
+                    <div class="tooltip-name" style="color: ${rarityColor};">${item.name}</div>
+                    <div class="tooltip-stats">${statsHtml}</div>
+                    ${specialHtml ? `<div class="tooltip-special">${specialHtml}</div>` : ''}
+                    <div class="tooltip-shape" style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 6px;">
+                        <span style="font-size: 9px; color: #888;">Shape:</span>
+                        ${shapeHtml}
+                    </div>
+                </div>
+            `;
         }
 
         // ============================================
@@ -4178,26 +5234,47 @@
             // Update header title
             const gameTitle = document.getElementById('gameTitle');
             const goToMissionsBtn = document.getElementById('goToMissionsBtn');
+            const goToShopBtn = document.getElementById('goToShopBtn');
+            const goToBackpackBtn = document.getElementById('goToBackpackBtn');
+
+            // Hide all nav buttons in header by default
+            const headerBtns = [goToMissionsBtn, goToShopBtn, goToBackpackBtn];
 
             if (tabName === 'loadout') {
                 gameTitle.textContent = 'Loadout';
-                if (goToMissionsBtn) goToMissionsBtn.style.display = '';
+                headerBtns.forEach(btn => { if (btn) btn.style.display = ''; });
             } else if (tabName === 'mission') {
                 gameTitle.textContent = 'Missions';
-                if (goToMissionsBtn) goToMissionsBtn.style.display = 'none';
+                headerBtns.forEach(btn => { if (btn) btn.style.display = 'none'; });
+            } else if (tabName === 'shop') {
+                gameTitle.textContent = 'Shop';
+                headerBtns.forEach(btn => { if (btn) btn.style.display = 'none'; });
+            } else if (tabName === 'backpack') {
+                gameTitle.textContent = 'Backpack';
+                headerBtns.forEach(btn => { if (btn) btn.style.display = 'none'; });
             }
 
-            // Update tab content
+            // Update tab content visibility
             const loadoutTab = document.getElementById('loadoutTab');
             const missionTab = document.getElementById('missionTab');
+            const shopTab = document.getElementById('shopTab');
+            const backpackTab = document.getElementById('backpackTab');
 
-            if (tabName === 'loadout') {
+            const allTabs = [loadoutTab, missionTab, shopTab, backpackTab];
+            allTabs.forEach(tab => { if (tab) tab.classList.remove('active'); });
+
+            if (tabName === 'loadout' && loadoutTab) {
                 loadoutTab.classList.add('active');
-                missionTab.classList.remove('active');
-            } else if (tabName === 'mission') {
-                loadoutTab.classList.remove('active');
+                updateHeaderDisplay();
+            } else if (tabName === 'mission' && missionTab) {
                 missionTab.classList.add('active');
                 renderMissionTab();
+            } else if (tabName === 'shop' && shopTab) {
+                shopTab.classList.add('active');
+                renderShop();
+            } else if (tabName === 'backpack' && backpackTab) {
+                backpackTab.classList.add('active');
+                renderBackpack();
             }
         }
 
@@ -4272,6 +5349,7 @@
 
         function renderMissions() {
             const missionList = document.getElementById('missionList');
+            if (!missionList) return;  // Mission list may not exist in new layout
             missionList.innerHTML = '';
 
             for (const mission of Object.values(MISSIONS)) {
@@ -4371,8 +5449,426 @@
             updateStats();  // Re-check battle ready state
         }
 
+        // ============================================
+        // SHOP RENDERING
+        // ============================================
+        function renderShop() {
+            // Update gold display
+            const goldDisplay = document.getElementById('shopGoldDisplay');
+            if (goldDisplay) goldDisplay.textContent = playerResources.gold;
+
+            // Render mechs for sale
+            const mechsContainer = document.getElementById('shopMechsContainer');
+            if (mechsContainer) {
+                mechsContainer.innerHTML = '';
+                if (shopInventory.mechs.length === 0) {
+                    mechsContainer.innerHTML = '<div style="color: #666; font-style: italic;">No mechs available</div>';
+                } else {
+                    shopInventory.mechs.forEach(mechId => {
+                        const mech = MECH_TEMPLATES[mechId];
+                        if (!mech) return;
+                        const rarityColor = COMPONENT_GENERATION.rarityColors[mech.rarity] || '#aaa';
+                        const canAfford = playerResources.gold >= mech.price;
+
+                        const card = document.createElement('div');
+                        card.className = 'shop-mech-card';
+                        card.style.cssText = `
+                            background: rgba(0, 0, 0, 0.5);
+                            border: 2px solid ${rarityColor};
+                            border-radius: 8px;
+                            padding: 15px;
+                            width: 200px;
+                            cursor: ${canAfford ? 'pointer' : 'not-allowed'};
+                            opacity: ${canAfford ? '1' : '0.6'};
+                            transition: all 0.2s;
+                        `;
+                        card.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="font-size: 28px;">${mech.icon}</span>
+                                <span style="color: #ffcc00; font-weight: bold;">${mech.price}g</span>
+                            </div>
+                            <div style="font-size: 14px; color: ${rarityColor}; font-weight: bold;">${mech.name}</div>
+                            <div style="font-size: 10px; color: #888; text-transform: uppercase; margin: 4px 0;">${mech.class} CLASS</div>
+                            <div style="font-size: 11px; color: #aaa; margin-top: 8px;">
+                                <div>❤️ ${mech.baseHP} HP | 🛡️ ${mech.baseArmor} ARM</div>
+                                <div>⚖️ ${mech.tonnage}t | 📦 ${mech.modSpace} slots</div>
+                                <div style="color: #00ff88; margin-top: 5px;">${mech.specialDesc}</div>
+                            </div>
+                        `;
+
+                        if (canAfford) {
+                            card.addEventListener('click', () => handleBuyMech(mechId));
+                            card.addEventListener('mouseenter', () => { card.style.transform = 'scale(1.02)'; });
+                            card.addEventListener('mouseleave', () => { card.style.transform = 'scale(1)'; });
+                        }
+
+                        mechsContainer.appendChild(card);
+                    });
+                }
+            }
+
+            // Render weapons for sale
+            const weaponsContainer = document.getElementById('shopWeaponsContainer');
+            if (weaponsContainer) {
+                weaponsContainer.innerHTML = '';
+                if (shopInventory.weapons.length === 0) {
+                    weaponsContainer.innerHTML = '<div style="color: #666; font-style: italic;">No weapons available</div>';
+                } else {
+                    shopInventory.weapons.forEach((shopItem, index) => {
+                        const item = ITEM_DATABASE[shopItem.itemId];
+                        if (!item) return;
+                        const rarityColor = COMPONENT_GENERATION.rarityColors[item.rarity] || '#aaa';
+                        const canAfford = playerResources.gold >= shopItem.price;
+                        const backpackFull = backpack.items.length >= backpack.slots;
+
+                        const card = document.createElement('div');
+                        card.className = 'shop-weapon-card';
+                        card.style.cssText = `
+                            background: rgba(0, 0, 0, 0.5);
+                            border: 2px solid ${rarityColor};
+                            border-radius: 8px;
+                            padding: 12px;
+                            width: 160px;
+                            cursor: ${canAfford && !backpackFull ? 'pointer' : 'not-allowed'};
+                            opacity: ${canAfford && !backpackFull ? '1' : '0.6'};
+                            position: relative;
+                            transition: all 0.2s;
+                        `;
+
+                        const bargainBadge = shopItem.isBargain ?
+                            `<div style="position: absolute; top: -8px; left: -8px; background: #ff6600; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold;">BARGAIN!</div>` : '';
+
+                        // Build inline shape preview
+                        const shape = item.gridShape || [[1]];
+                        const cols = shape[0].length;
+                        let shapeHtml = `<div style="display: inline-grid; gap: 2px; grid-template-columns: repeat(${cols}, 8px);">`;
+                        for (let row of shape) {
+                            for (let cell of row) {
+                                if (cell === 1) {
+                                    shapeHtml += `<div style="width: 8px; height: 8px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 1px;"></div>`;
+                                } else {
+                                    shapeHtml += `<div style="width: 8px; height: 8px;"></div>`;
+                                }
+                            }
+                        }
+                        shapeHtml += '</div>';
+
+                        card.innerHTML = `
+                            ${bargainBadge}
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                <span style="font-size: 22px;">${item.icon}</span>
+                                <div style="text-align: right;">
+                                    ${shopItem.isBargain ? `<div style="font-size: 9px; color: #666; text-decoration: line-through;">${shopItem.originalPrice}g</div>` : ''}
+                                    <div style="color: #ffcc00; font-weight: bold; font-size: 14px;">${shopItem.price}g</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 11px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
+                            ${buildItemStatIcons(item)}
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <span style="font-size: 9px; color: #666;">${item.rarity.toUpperCase()}</span>
+                                ${shapeHtml}
+                            </div>
+                        `;
+
+                        if (canAfford && !backpackFull) {
+                            card.addEventListener('click', () => handleBuyWeapon(index));
+                            card.addEventListener('mouseenter', () => { card.style.transform = 'scale(1.02)'; });
+                            card.addEventListener('mouseleave', () => { card.style.transform = 'scale(1)'; });
+                        }
+
+                        weaponsContainer.appendChild(card);
+                    });
+                }
+            }
+
+            // Render owned mechs
+            const ownedContainer = document.getElementById('ownedMechsContainer');
+            if (ownedContainer) {
+                ownedContainer.innerHTML = '';
+                ownedMechs.forEach(mechId => {
+                    const mech = MECH_TEMPLATES[mechId];
+                    if (!mech) return;
+                    const isActive = mechId === activeMechId;
+                    const rarityColor = COMPONENT_GENERATION.rarityColors[mech.rarity] || '#aaa';
+
+                    const card = document.createElement('div');
+                    card.className = 'owned-mech-card';
+                    card.style.cssText = `
+                        background: rgba(0, 0, 0, 0.5);
+                        border: 2px solid ${isActive ? '#00ff88' : rarityColor};
+                        border-radius: 8px;
+                        padding: 12px;
+                        width: 150px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        ${isActive ? 'box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);' : ''}
+                    `;
+                    card.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px;">${mech.icon}</div>
+                            <div style="font-size: 12px; color: ${isActive ? '#00ff88' : rarityColor}; font-weight: bold; margin-top: 5px;">${mech.name}</div>
+                            <div style="font-size: 10px; color: #888;">${mech.class}</div>
+                            ${isActive ? '<div style="font-size: 10px; color: #00ff88; margin-top: 5px;">✓ ACTIVE</div>' : '<div style="font-size: 10px; color: #666; margin-top: 5px;">Click to select</div>'}
+                        </div>
+                    `;
+
+                    if (!isActive) {
+                        card.addEventListener('click', () => {
+                            activeMechId = mechId;
+                            renderShop();
+                            updateHeaderDisplay();
+                        });
+                    }
+
+                    ownedContainer.appendChild(card);
+                });
+            }
+
+            // Render player's equipped items (for selling)
+            renderShopInventory();
+        }
+
+        // Render player's inventory in the shop (for selling)
+        function renderShopInventory() {
+            const equippedContainer = document.getElementById('shopEquippedItems');
+            const benchContainer = document.getElementById('shopBenchItems');
+
+            // Render equipped items
+            if (equippedContainer) {
+                equippedContainer.innerHTML = '';
+                if (loadoutState.equipment.length === 0) {
+                    equippedContainer.innerHTML = '<div class="shop-empty-msg">No items equipped</div>';
+                } else {
+                    loadoutState.equipment.forEach(eq => {
+                        const item = eq.item || ITEM_DATABASE[eq.itemId];
+                        if (!item) return;
+                        const sellPrice = calculateSellPrice(item);
+                        const el = createShopSellItem(item, eq.instanceId, sellPrice, 'equipped');
+                        equippedContainer.appendChild(el);
+                    });
+                }
+            }
+
+            // Render bench items
+            if (benchContainer) {
+                benchContainer.innerHTML = '';
+                if (benchItems.length === 0) {
+                    benchContainer.innerHTML = '<div class="shop-empty-msg">No items on bench</div>';
+                } else {
+                    benchItems.forEach(item => {
+                        const sellPrice = calculateSellPrice(item);
+                        const el = createShopSellItem(item, item.instanceId, sellPrice, 'bench');
+                        benchContainer.appendChild(el);
+                    });
+                }
+            }
+        }
+
+        // Create a sellable item element for the shop
+        function createShopSellItem(item, instanceId, sellPrice, source) {
+            const el = document.createElement('div');
+            el.className = `shop-sell-item ${item.category}`;
+            el.dataset.instanceId = instanceId;
+            el.dataset.source = source;
+
+            const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
+                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+
+            el.innerHTML = `
+                ${buildItemShapePreview(item)}
+                <span class="item-icon">${item.icon}</span>
+                <div class="item-info">
+                    <div class="item-name" style="color: ${rarityColor};">${item.name}</div>
+                    ${buildItemStatIcons(item)}
+                    <div class="item-sell-price" style="margin-top: 4px;">💰 Sell: ${sellPrice}g</div>
+                </div>
+            `;
+
+            el.addEventListener('click', () => handleSellItem(instanceId, source, sellPrice, item.name));
+            return el;
+        }
+
+        // Calculate sell price (most items sell for 1g, rare+ sell for more)
+        function calculateSellPrice(item) {
+            // Base sell price by rarity (scaled down economy)
+            const rarityPrices = {
+                common: 1,
+                uncommon: 1,
+                rare: 2,
+                epic: 3,
+                legendary: 5
+            };
+            return rarityPrices[item.rarity] || 1;
+        }
+
+        // Handle selling an item
+        function handleSellItem(instanceId, source, sellPrice, itemName) {
+            if (!confirm(`Sell ${itemName} for ${sellPrice} gold?`)) return;
+
+            if (source === 'equipped') {
+                // Remove from equipment and grid
+                removeItemFromGrid(instanceId);
+            } else if (source === 'bench') {
+                // Remove from bench
+                removeItemFromBench(instanceId);
+            }
+
+            // Add gold
+            playerResources.gold += sellPrice;
+
+            // Re-render everything
+            renderShop();
+            renderBench();
+            renderUnifiedGridItems();
+            updateStats();
+        }
+
+        // ============================================
+        // BACKPACK RENDERING
+        // ============================================
+        function renderBackpack() {
+            const slotsDisplay = document.getElementById('backpackSlotsDisplay');
+            if (slotsDisplay) slotsDisplay.textContent = `${backpack.items.length}/${backpack.slots}`;
+
+            const container = document.getElementById('backpackItemsContainer');
+            const emptyMsg = document.getElementById('backpackEmpty');
+
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (backpack.items.length === 0) {
+                if (emptyMsg) emptyMsg.style.display = 'block';
+                return;
+            }
+
+            if (emptyMsg) emptyMsg.style.display = 'none';
+
+            backpack.items.forEach((itemId, index) => {
+                const item = ITEM_DATABASE[itemId];
+                if (!item) return;
+
+                const rarityColor = COMPONENT_GENERATION.rarityColors[item.rarity] || '#aaa';
+                const basePrice = ECONOMY.weaponPrices[item.rarity || 'common'] || 2;
+                const sellPrice = Math.floor(basePrice * ECONOMY.sellMultiplier * (item.isHighValue ? 1.5 : 1));
+
+                const card = document.createElement('div');
+                card.className = 'backpack-item-card';
+                card.style.cssText = `
+                    background: rgba(0, 0, 0, 0.5);
+                    border: 2px solid ${rarityColor};
+                    border-radius: 8px;
+                    padding: 12px;
+                    width: 160px;
+                    position: relative;
+                `;
+
+                const highValueBadge = item.isHighValue ?
+                    `<div style="position: absolute; top: -8px; left: -8px; background: #ffcc00; color: #000; font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: bold;">💰</div>` : '';
+
+                const statsText = buildComponentStatsHTML(item);
+
+                card.innerHTML = `
+                    ${highValueBadge}
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <span style="font-size: 22px;">${item.icon}</span>
+                        <div style="font-size: 9px; color: ${rarityColor}; text-transform: uppercase;">${item.rarity}</div>
+                    </div>
+                    <div style="font-size: 12px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
+                    <div style="font-size: 10px; color: #aaa; margin-bottom: 8px;">${statsText}</div>
+                    <div style="display: flex; gap: 6px; justify-content: center;">
+                        <button class="equip-btn" style="flex: 1; padding: 6px; background: rgba(0, 255, 136, 0.2); border: 1px solid #00ff88; color: #00ff88; cursor: pointer; border-radius: 4px; font-size: 10px;">Equip</button>
+                        <button class="sell-btn" style="padding: 6px 10px; background: rgba(255, 200, 0, 0.2); border: 1px solid #ffcc00; color: #ffcc00; cursor: pointer; border-radius: 4px; font-size: 10px;">${sellPrice}g</button>
+                    </div>
+                `;
+
+                // Equip button - add to bench (for equipping)
+                const equipBtn = card.querySelector('.equip-btn');
+                equipBtn.addEventListener('click', () => {
+                    // Move from backpack to bench
+                    removeFromBackpack(itemId);
+                    addItemToBench(itemId);
+                    renderBackpack();
+                    renderBench();
+                    updateHeaderDisplay();
+                });
+
+                // Sell button
+                const sellBtn = card.querySelector('.sell-btn');
+                sellBtn.addEventListener('click', () => {
+                    const result = sellItem(itemId);
+                    if (result.success) {
+                        renderBackpack();
+                        updateHeaderDisplay();
+                    }
+                });
+
+                container.appendChild(card);
+            });
+        }
+
+        // ============================================
+        // HEADER DISPLAY UPDATE
+        // ============================================
+        function updateHeaderDisplay() {
+            const roundNum = document.getElementById('roundNum');
+            const goldAmount = document.getElementById('goldAmount');
+            const backpackCount = document.getElementById('backpackCount');
+            const backpackMax = document.getElementById('backpackMax');
+
+            if (roundNum) roundNum.textContent = gameProgression.round;
+            if (goldAmount) goldAmount.textContent = playerResources.gold;
+            if (backpackCount) backpackCount.textContent = backpack.items.length;
+            if (backpackMax) backpackMax.textContent = backpack.slots;
+        }
+
+        // ============================================
+        // SHOP HANDLERS
+        // ============================================
+        function handleBuyMech(mechId) {
+            const result = buyMech(mechId);
+            if (result.success) {
+                renderShop();
+                updateHeaderDisplay();
+            } else {
+                console.log('Failed to buy mech:', result.reason);
+            }
+        }
+
+        function handleBuyWeapon(shopIndex) {
+            const result = buyWeapon(shopIndex);
+            if (result.success) {
+                renderShop();
+                updateHeaderDisplay();
+            } else {
+                console.log('Failed to buy weapon:', result.reason);
+            }
+        }
+
+        function handleRefreshShop() {
+            const result = refreshShop();
+            if (result.success) {
+                renderShop();
+                updateHeaderDisplay();
+            } else {
+                console.log('Failed to refresh shop:', result.reason);
+            }
+        }
+
+        function handleUpgradeBackpack() {
+            const result = upgradeBackpack();
+            if (result.success) {
+                renderBackpack();
+                updateHeaderDisplay();
+            } else {
+                console.log('Failed to upgrade backpack:', result.reason);
+            }
+        }
+
         function renderGridOverlays() {
+            // Legacy function - gridOverlayContainer no longer exists in new layout
             const container = document.getElementById('gridOverlayContainer');
+            if (!container) return;  // Use renderUnifiedMechGrid instead
             container.innerHTML = '';
             gridElements = {};
 
@@ -4422,145 +5918,9 @@
             }
         }
 
-        function renderGridItems() {
-            // Remove old placed items
-            document.querySelectorAll('.placed-item').forEach(el => el.remove());
-
-            // Get responsive cell size
-            let placedCellSize = 36;
-            let cellSpacing = 42;
-            if (window.innerWidth <= 480) {
-                placedCellSize = 24;
-                cellSpacing = 30;
-            } else if (window.innerWidth <= 768) {
-                placedCellSize = 28;
-                cellSpacing = 34;
-            }
-
-            // Update cell states
-            for (const [slotName, gridEl] of Object.entries(gridElements)) {
-                const cells = gridEl.querySelectorAll('.grid-cell');
-                const grid = gridOccupation[slotName];
-                const slotDef = MECH_CHASSIS.slots[slotName];
-
-                cells.forEach((cell, idx) => {
-                    const x = idx % slotDef.cols;
-                    const y = Math.floor(idx / slotDef.cols);
-                    cell.classList.toggle('occupied', grid.isCellOccupied(x, y));
-                });
-            }
-
-            // Render placed items
-            loadoutState.equipment.forEach(eq => {
-                const item = ITEM_DATABASE[eq.itemId];
-                const gridEl = gridElements[eq.slot];
-                if (!gridEl || !item) return;
-
-                const placedEl = document.createElement('div');
-                const isLocked = lockedItems.has(eq.instanceId);
-                placedEl.className = `placed-item ${item.category}${isLocked ? ' locked' : ''}`;
-                placedEl.dataset.instanceId = eq.instanceId;
-
-                // Get rarity color for generated items
-                const isGenerated = item.isGenerated;
-                const rarityColor = isGenerated ? (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : null;
-                const rarityName = isGenerated ? (item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)) : '';
-
-                const shape = item.gridShape;
-                const w = shape[0].length;
-                const h = shape.length;
-
-                placedEl.style.gridTemplateColumns = `repeat(${w}, ${placedCellSize}px)`;
-                placedEl.style.left = (4 + eq.position.x * cellSpacing) + 'px';
-                placedEl.style.top = (4 + eq.position.y * cellSpacing) + 'px';
-
-                // Add grid cells with rarity color
-                for (let dy = 0; dy < h; dy++) {
-                    for (let dx = 0; dx < w; dx++) {
-                        if (shape[dy][dx] === 1) {
-                            const cell = document.createElement('div');
-                            cell.className = 'placed-cell';
-                            if (isGenerated && rarityColor) {
-                                cell.style.borderColor = rarityColor;
-                                cell.style.boxShadow = `inset 0 0 8px ${rarityColor}40`;
-                            }
-                            placedEl.appendChild(cell);
-                        }
-                    }
-                }
-
-                // Add icon overlay
-                const iconOverlay = document.createElement('span');
-                iconOverlay.className = 'item-icon-overlay';
-                iconOverlay.textContent = item.icon;
-                placedEl.appendChild(iconOverlay);
-
-                // Add level badge for generated items
-                if (isGenerated) {
-                    const levelBadge = document.createElement('div');
-                    levelBadge.style.cssText = `
-                        position: absolute;
-                        top: -6px;
-                        right: -6px;
-                        background: ${rarityColor};
-                        color: #000;
-                        font-size: 8px;
-                        padding: 2px 4px;
-                        border-radius: 3px;
-                        font-weight: bold;
-                        z-index: 5;
-                    `;
-                    levelBadge.textContent = `L${item.level}`;
-                    placedEl.appendChild(levelBadge);
-                }
-
-                // Add tooltip with item details
-                const tooltip = document.createElement('div');
-                tooltip.className = 'item-tooltip';
-                let statsHTML = '';
-                if (item.stats.weight) statsHTML += `<span>Weight: ${item.stats.weight}</span>`;
-                if (item.stats.energyDraw > 0) statsHTML += `<span>Energy: ${item.stats.energyDraw}</span>`;
-                if (item.stats.energyDraw < 0) statsHTML += `<span>Energy: +${-item.stats.energyDraw}</span>`;
-                if (item.stats.damage) statsHTML += `<span>Damage: ${item.stats.damage}</span>`;
-                if (item.stats.armorBonus) statsHTML += `<span>Armor: +${item.stats.armorBonus}</span>`;
-                if (item.stats.accuracyBonus) statsHTML += `<span>Accuracy: +${item.stats.accuracyBonus}%</span>`;
-                if (item.stats.energyReduction) statsHTML += `<span>Adjacent Energy: -${item.stats.energyReduction}</span>`;
-                const hintText = isLocked ? 'Locked this round' : 'Click to remove';
-                const rarityInfo = isGenerated ? `<div style="font-size: 10px; color: ${rarityColor}; margin-bottom: 3px;">${rarityName} - Level ${item.level}</div>` : '';
-                tooltip.innerHTML = `
-                    <div class="tooltip-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.icon} ${item.name}</div>
-                    ${rarityInfo}
-                    <div class="tooltip-stats">${statsHTML}</div>
-                    <div class="tooltip-hint">${hintText}</div>
-                `;
-                placedEl.appendChild(tooltip);
-
-                // Click to remove
-                placedEl.addEventListener('click', (e) => {
-                    if (!dragState.isDragging) {
-                        handlePlacedItemClick(eq.instanceId);
-                    }
-                });
-
-                // Touch hold for mobile tooltip
-                let holdTimer = null;
-                placedEl.addEventListener('touchstart', (e) => {
-                    holdTimer = setTimeout(() => {
-                        placedEl.classList.add('show-tooltip');
-                    }, 500);
-                });
-                placedEl.addEventListener('touchend', () => {
-                    clearTimeout(holdTimer);
-                    setTimeout(() => placedEl.classList.remove('show-tooltip'), 1500);
-                });
-
-                gridEl.appendChild(placedEl);
-            });
-        }
-
-        // Check if two items are adjacent (share an edge) in the same slot
+        // Check if two items are adjacent (share an edge) in the unified grid
         function areItemsAdjacent(eq1, eq2) {
-            if (eq1.slot !== eq2.slot) return false;
+            // With unified grid, all items are in the same grid space
 
             const item1 = ITEM_DATABASE[eq1.itemId];
             const item2 = ITEM_DATABASE[eq2.itemId];
@@ -4754,27 +6114,21 @@
             }
         }
 
-        // Update pile count displays
+        // Update pile count displays (no longer used - no deck system)
         function updatePileCounts() {
-            const drawCount = document.getElementById('drawPileCount');
-            const discardCount = document.getElementById('discardPileCount');
-            if (drawCount) drawCount.textContent = drawPile.length;
-            if (discardCount) discardCount.textContent = discardPile.length;
+            // No deck piles to update
         }
 
-        // Show pile viewer modal
+        // Show pile viewer modal (no longer used - no deck system)
         function showPileViewer(pileType) {
-            console.log('[PILE] showPileViewer called with:', pileType);
+            // No deck viewer needed
+            return;
             const viewer = document.getElementById('pileViewer');
-            console.log('[PILE] viewer element:', viewer);
-            if (!viewer) {
-                console.error('[PILE] pileViewer element not found!');
-                return;
-            }
+            if (!viewer) return;
             const title = document.getElementById('pileViewerTitle');
             const cardsContainer = document.getElementById('pileViewerCards');
 
-            const pile = pileType === 'draw' ? drawPile : discardPile;
+            const pile = [];
             console.log('[PILE] pile contents:', pile.length, 'cards');
             title.textContent = pileType === 'draw' ? `Draw Pile (${pile.length} cards)` : `Discard Pile (${pile.length} cards)`;
 
@@ -5198,8 +6552,15 @@
             const battle = component.battle || {};
             let statsLines = [];
 
-            // Format stat values
-            if (stats.damage) statsLines.push(`DMG: ${stats.damage}`);
+            // Format stat values - show damage with xN if fires multiple times
+            if (stats.damage) {
+                const shotsPerRound = battle.shotsPerRound || 1;
+                if (shotsPerRound > 1) {
+                    statsLines.push(`DMG: ${stats.damage} x${shotsPerRound}`);
+                } else {
+                    statsLines.push(`DMG: ${stats.damage}`);
+                }
+            }
             if (stats.armorBonus) statsLines.push(`ARM: +${stats.armorBonus}`);
             if (stats.accuracyBonus) statsLines.push(`ACC: +${stats.accuracyBonus}%`);
             if (stats.weight) statsLines.push(`WT: ${stats.weight}`);
@@ -5207,10 +6568,6 @@
             if (stats.energyDraw < 0) statsLines.push(`EN: +${Math.abs(stats.energyDraw)}`);
             if (stats.energyReduction) statsLines.push(`COOL: -${stats.energyReduction}`);
             if (stats.heatCapacity) statsLines.push(`HEAT: ${stats.heatCapacity}`);
-            if (battle.cooldown && stats.damage) {
-                const dps = (stats.damage / (battle.cooldown / 1000)).toFixed(1);
-                statsLines.push(`DPS: ${dps}`);
-            }
             if (battle.knockback) statsLines.push(`KB: ${battle.knockback}`);
 
             return statsLines.join(' | ');
@@ -5249,8 +6606,25 @@
             // Generate salvage options using the mission's enemy level
             const salvageOptions = generateSalvageOptions(result, missionEnemyLevel);
 
-            // Track selected component
-            let selectedComponent = null;
+            // Get max picks allowed
+            const maxPicks = getSalvagePicks(result);
+
+            // Track selected components (multiple selection support)
+            let selectedComponents = [];
+
+            // Award gold for the round
+            const goldReward = awardRoundGold(result === 'victory');
+
+            // Update game progression
+            if (result === 'victory') {
+                gameProgression.wins++;
+                gameProgression.round++;
+                gameProgression.maxRound = Math.max(gameProgression.maxRound, gameProgression.round);
+            } else {
+                gameProgression.losses++;
+            }
+
+            const isBoss = DIFFICULTY.isBossRound(gameProgression.round - 1);  // Check previous round
 
             // Create salvage overlay
             const overlay = document.createElement('div');
@@ -5262,7 +6636,7 @@
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                justify-content: center;
+                justify-content: flex-start;
                 z-index: 1000;
                 font-family: 'Courier New', monospace;
                 overflow-y: auto;
@@ -5270,52 +6644,66 @@
             `;
 
             const resultColor = result === 'victory' ? '#00ff88' : '#ff4444';
-            const resultText = result === 'victory' ? 'MISSION COMPLETE' : 'MISSION FAILED';
+            const resultText = result === 'victory' ?
+                (isBoss ? 'BOSS DEFEATED!' : 'MISSION COMPLETE') :
+                'MISSION FAILED';
+
+            // Calculate sell prices for each salvage option
+            function getSellPrice(comp) {
+                const basePrice = ECONOMY.weaponPrices[comp.rarity || 'common'] || 2;
+                const bonus = comp.isHighValue ? (1 + comp.resaleBonus) : 1;
+                return Math.floor(basePrice * ECONOMY.sellMultiplier * bonus);
+            }
 
             // Build salvage options HTML
             let salvageHTML = '';
             if (salvageOptions.length > 0) {
                 salvageHTML = `
-                    <div style="margin-top: 25px; width: 100%; max-width: 800px;">
+                    <div style="margin-top: 25px; width: 100%; max-width: 1000px;">
                         <div style="font-size: 16px; color: #00aa66; margin-bottom: 15px; text-align: center; letter-spacing: 2px;">
-                            SALVAGEABLE COMPONENTS (Select 0 or 1):
+                            SALVAGEABLE COMPONENTS <span id="pickCounter">(Select up to ${maxPicks})</span>
                         </div>
-                        <div id="salvageOptionsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                        <div id="salvageOptionsContainer" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
                             ${salvageOptions.map((comp, index) => {
                                 const rarityColor = COMPONENT_GENERATION.rarityColors[comp.rarity] || '#aaa';
                                 const rarityName = comp.rarity.charAt(0).toUpperCase() + comp.rarity.slice(1);
                                 const statsText = buildComponentStatsHTML(comp);
                                 const shapePreview = buildShapePreviewHTML(comp);
+                                const sellPrice = getSellPrice(comp);
+                                const highValueBadge = comp.isHighValue ?
+                                    `<div style="position: absolute; top: -8px; left: -8px; background: #ffcc00; color: #000; font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: bold;">💰 HIGH VALUE</div>` : '';
 
                                 return `
                                     <div class="salvage-option" data-index="${index}" style="
                                         background: rgba(0, 0, 0, 0.5);
                                         border: 2px solid ${rarityColor};
                                         border-radius: 8px;
-                                        padding: 15px;
-                                        width: 220px;
+                                        padding: 12px;
+                                        width: 180px;
                                         cursor: pointer;
                                         transition: all 0.2s;
                                         position: relative;
                                     ">
+                                        ${highValueBadge}
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                            <div style="font-size: 24px;">${comp.icon}</div>
+                                            <div style="font-size: 22px;">${comp.icon}</div>
                                             <div style="text-align: right;">
-                                                <div style="font-size: 10px; color: ${rarityColor}; text-transform: uppercase; letter-spacing: 1px;">${rarityName}</div>
-                                                <div style="font-size: 10px; color: #666;">Lv.${comp.level}</div>
+                                                <div style="font-size: 9px; color: ${rarityColor}; text-transform: uppercase; letter-spacing: 1px;">${rarityName}</div>
+                                                <div style="font-size: 9px; color: #666;">Lv.${comp.level}</div>
                                             </div>
                                         </div>
-                                        <div style="font-size: 14px; color: ${rarityColor}; margin: 8px 0; font-weight: bold; line-height: 1.2;">
+                                        <div style="font-size: 12px; color: ${rarityColor}; margin: 6px 0; font-weight: bold; line-height: 1.2;">
                                             ${comp.name}
                                         </div>
-                                        <div style="font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 5px;">
+                                        <div style="font-size: 9px; color: #888; text-transform: uppercase; margin-bottom: 4px;">
                                             ${comp.type}
                                         </div>
-                                        <div style="font-size: 11px; color: #aaa; line-height: 1.4;">
+                                        <div style="font-size: 10px; color: #aaa; line-height: 1.3;">
                                             ${statsText}
                                         </div>
-                                        <div style="display: flex; justify-content: center; margin-top: 8px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid #333;">
                                             ${shapePreview}
+                                            <div style="font-size: 10px; color: #ffcc00;">Sell: ${sellPrice}g</div>
                                         </div>
                                         <div class="selection-indicator" style="
                                             position: absolute;
@@ -5345,28 +6733,35 @@
             }
 
             overlay.innerHTML = `
-                <div style="font-size: 16px; color: #666; letter-spacing: 4px; margin-bottom: 10px;">SALVAGE REPORT</div>
-                <div style="font-size: 36px; font-weight: bold; color: ${resultColor}; text-shadow: 0 0 20px ${resultColor}; margin-bottom: 20px;">
+                <div style="font-size: 14px; color: #666; letter-spacing: 4px; margin-bottom: 8px;">ROUND ${gameProgression.round - (result === 'victory' ? 1 : 0)} ${isBoss ? '- BOSS' : ''}</div>
+                <div style="font-size: 32px; font-weight: bold; color: ${resultColor}; text-shadow: 0 0 20px ${resultColor}; margin-bottom: 15px;">
                     ${resultText}
                 </div>
-                <div style="background: rgba(0, 0, 0, 0.3); padding: 25px 40px; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 20px; color: #aaa; margin-bottom: 15px;">Rewards Collected:</div>
-                    <div style="display: flex; gap: 40px; justify-content: center;">
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 20px 30px; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 16px; color: #aaa; margin-bottom: 12px;">Rewards Collected:</div>
+                    <div style="display: flex; gap: 25px; justify-content: center; flex-wrap: wrap;">
                         <div style="text-align: center;">
-                            <div style="font-size: 32px; color: #ffcc00;">+${rewards.xp}</div>
-                            <div style="font-size: 12px; color: #888;">EXPERIENCE</div>
+                            <div style="font-size: 28px; color: #ffcc00;">+${goldReward.total}</div>
+                            <div style="font-size: 10px; color: #888;">GOLD</div>
+                            <div style="font-size: 9px; color: #666; margin-top: 2px;">
+                                ${goldReward.base} base ${goldReward.streak > 0 ? `+ ${goldReward.streak} streak` : ''} ${goldReward.interest > 0 ? `+ ${goldReward.interest} interest` : ''}
+                            </div>
                         </div>
                         <div style="text-align: center;">
-                            <div style="font-size: 32px; color: #88aaff;">+${rewards.scrap}</div>
-                            <div style="font-size: 12px; color: #888;">SCRAP</div>
+                            <div style="font-size: 28px; color: #ffcc00;">${playerResources.gold}</div>
+                            <div style="font-size: 10px; color: #888;">TOTAL GOLD</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 28px; color: #88aaff;">+${rewards.xp}</div>
+                            <div style="font-size: 10px; color: #888;">EXPERIENCE</div>
                         </div>
                     </div>
                 </div>
                 ${salvageHTML}
-                <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <div style="display: flex; gap: 15px; margin-top: 25px; margin-bottom: 20px;">
                     <button id="skipSalvageBtn" style="
-                        padding: 12px 30px;
-                        font-size: 14px;
+                        padding: 10px 25px;
+                        font-size: 13px;
                         background: rgba(100, 100, 100, 0.3);
                         border: 2px solid #666;
                         color: #aaa;
@@ -5377,8 +6772,8 @@
                         letter-spacing: 1px;
                     ">Skip Salvage</button>
                     <button id="confirmSalvageBtn" style="
-                        padding: 12px 30px;
-                        font-size: 14px;
+                        padding: 10px 25px;
+                        font-size: 13px;
                         background: rgba(0, 255, 136, 0.2);
                         border: 2px solid #00ff88;
                         color: #00ff88;
@@ -5388,47 +6783,59 @@
                         text-transform: uppercase;
                         letter-spacing: 1px;
                         opacity: 0.5;
-                    " disabled>Take Selected</button>
+                    " disabled>Take Selected (0/${maxPicks})</button>
                 </div>
             `;
 
             document.body.appendChild(overlay);
 
-            // Handle salvage option selection
+            // Update pick counter and button
+            function updatePickUI() {
+                const counter = document.getElementById('pickCounter');
+                const btn = document.getElementById('confirmSalvageBtn');
+                if (counter) {
+                    counter.textContent = `(${selectedComponents.length}/${maxPicks} selected)`;
+                }
+                if (btn) {
+                    btn.textContent = `Take Selected (${selectedComponents.length}/${maxPicks})`;
+                    btn.disabled = selectedComponents.length === 0;
+                    btn.style.opacity = selectedComponents.length > 0 ? '1' : '0.5';
+                }
+            }
+
+            // Handle salvage option selection (multiple)
             const optionElements = overlay.querySelectorAll('.salvage-option');
             optionElements.forEach((el, index) => {
                 el.addEventListener('click', () => {
-                    // Deselect all
-                    optionElements.forEach(opt => {
-                        opt.style.transform = 'scale(1)';
-                        opt.style.boxShadow = 'none';
-                        opt.querySelector('.selection-indicator').style.display = 'none';
-                    });
+                    const comp = salvageOptions[index];
+                    const existingIndex = selectedComponents.indexOf(comp);
 
-                    // Select this one
-                    if (selectedComponent === salvageOptions[index]) {
-                        // Clicking same one deselects
-                        selectedComponent = null;
-                        document.getElementById('confirmSalvageBtn').disabled = true;
-                        document.getElementById('confirmSalvageBtn').style.opacity = '0.5';
-                    } else {
-                        selectedComponent = salvageOptions[index];
+                    if (existingIndex > -1) {
+                        // Deselect
+                        selectedComponents.splice(existingIndex, 1);
+                        el.style.transform = 'scale(1)';
+                        el.style.boxShadow = 'none';
+                        el.querySelector('.selection-indicator').style.display = 'none';
+                    } else if (selectedComponents.length < maxPicks) {
+                        // Select
+                        selectedComponents.push(comp);
                         el.style.transform = 'scale(1.05)';
-                        el.style.boxShadow = `0 0 20px ${COMPONENT_GENERATION.rarityColors[selectedComponent.rarity]}`;
+                        el.style.boxShadow = `0 0 20px ${COMPONENT_GENERATION.rarityColors[comp.rarity]}`;
                         el.querySelector('.selection-indicator').style.display = 'flex';
-                        document.getElementById('confirmSalvageBtn').disabled = false;
-                        document.getElementById('confirmSalvageBtn').style.opacity = '1';
                     }
+                    // If at max picks and clicking unselected, do nothing
+
+                    updatePickUI();
                 });
 
                 // Hover effect
                 el.addEventListener('mouseenter', () => {
-                    if (selectedComponent !== salvageOptions[index]) {
+                    if (!selectedComponents.includes(salvageOptions[index])) {
                         el.style.transform = 'scale(1.02)';
                     }
                 });
                 el.addEventListener('mouseleave', () => {
-                    if (selectedComponent !== salvageOptions[index]) {
+                    if (!selectedComponents.includes(salvageOptions[index])) {
                         el.style.transform = 'scale(1)';
                     }
                 });
@@ -5436,49 +6843,49 @@
 
             // Handle skip button
             document.getElementById('skipSalvageBtn').addEventListener('click', () => {
-                finishSalvage(null, rewards, overlay, result);
+                finishSalvage([], rewards, overlay, result);
             });
 
             // Handle confirm button
             document.getElementById('confirmSalvageBtn').addEventListener('click', () => {
-                if (selectedComponent) {
-                    finishSalvage(selectedComponent, rewards, overlay, result);
-                }
+                finishSalvage(selectedComponents, rewards, overlay, result);
             });
         }
 
         // Complete the salvage process
-        function finishSalvage(selectedComponent, rewards, overlay, result) {
+        function finishSalvage(selectedComponents, rewards, overlay, result) {
             // Apply XP and scrap rewards
             playerResources.xp += rewards.xp;
             playerResources.scrap += rewards.scrap;
 
-            // If a component was selected, register it and add to deck
-            if (selectedComponent) {
+            // Handle array of selected components (or empty array)
+            const components = Array.isArray(selectedComponents) ? selectedComponents : (selectedComponents ? [selectedComponents] : []);
+
+            // Add each selected component to backpack
+            components.forEach(comp => {
                 // Register in ITEM_DATABASE so it can be used in gameplay
-                registerGeneratedComponent(selectedComponent);
+                registerGeneratedComponent(comp);
 
-                // Add to draw pile
-                drawPile.push(selectedComponent.id);
-                shuffleArray(drawPile);
+                // Add to backpack instead of deck
+                const result = addToBackpack(comp.id);
+                if (result.success) {
+                    console.log(`Salvaged: ${comp.name} (${comp.rarity} Lv.${comp.level})`);
+                } else {
+                    console.log(`Failed to salvage ${comp.name}: ${result.reason}`);
+                }
+            });
 
-                console.log(`Salvaged: ${selectedComponent.name} (${selectedComponent.rarity} Lv.${selectedComponent.level})`);
-            }
-
-            // Increase enemy level for progression based on mission difficulty and result
-            const missionRisk = lastBattleMission ? lastBattleMission.risk : 1;
+            // Increase enemy level for progression based on round (using new difficulty system)
             const isVictory = result === 'victory';
+            const round = gameProgression.round;
 
-            if (isVictory) {
-                // Victory: progress faster based on mission difficulty
-                const progressAmount = 0.15 + (missionRisk * 0.1);  // 0.25 for easy, 0.35 for medium, 0.45 for hard
-                currentEnemyLevel = Math.min(10, currentEnemyLevel + progressAmount);
-            } else {
-                // Defeat: minimal progression
-                currentEnemyLevel = Math.min(10, currentEnemyLevel + 0.05);
-            }
+            // Enemy level scales with difficulty multiplier
+            currentEnemyLevel = Math.max(1, DIFFICULTY.getMultiplier(round) * 2);
 
-            console.log(`Enemy level progression: ${currentEnemyLevel.toFixed(2)} (${isVictory ? 'victory' : 'defeat'})`);
+            console.log(`Round ${round}, Difficulty: ${DIFFICULTY.getMultiplier(round).toFixed(2)}, Enemy Level: ${currentEnemyLevel.toFixed(2)}`);
+
+            // Generate new shop inventory for next round
+            generateShopInventory();
 
             // Remove overlay
             overlay.remove();
@@ -5492,26 +6899,18 @@
             // Clear localStorage
             localStorage.removeItem('battleConfig');
 
-            // Discard all cards in hand to discard pile
-            currentHand.forEach(item => {
-                discardCard(item.itemId);
-            });
-            currentHand = [];
-
-            // Discard all equipped items (especially locked ones) to discard pile
+            // Return all equipped items to bench (persistent items)
             loadoutState.equipment.forEach(eq => {
-                discardCard(eq.itemId);
+                const item = eq.item || { ...ITEM_DATABASE[eq.itemId], instanceId: eq.instanceId };
+                benchItems.push(item);
             });
 
             // Clear equipment and grids
             loadoutState.equipment = [];
             initializeGrids();
 
-            // Unlock all locked items (they're now discarded anyway)
+            // Unlock all locked items
             lockedItems.clear();
-
-            // Draw new hand
-            drawHand(5);
 
             // Clear mission selection
             selectedMission = null;
@@ -5529,8 +6928,8 @@
             // Re-render everything
             renderBench();
             renderMissions();
-            renderGridOverlays();
-            renderGridItems();
+            renderUnifiedMechGrid();
+            renderUnifiedGridItems();
             updateStats();
 
             currentPhase = GamePhase.MECHBUILDER;
@@ -5554,15 +6953,14 @@
             createBuilderScene();
             initializeGrids();
 
-            // Initialize deck and draw initial hand
-            initializeDeck();
-            drawHand(5);
+            // Initialize starter items on bench (no deck system)
+            initializeStarterItems();
 
             // Render UI
             renderBench();
             renderMissions();
-            renderGridOverlays();
-            renderGridItems();
+            renderUnifiedMechGrid();
+            renderUnifiedGridItems();
             updateStats();
 
             // Initialize drag and drop
@@ -5573,65 +6971,21 @@
                 switchTab('mission');
             });
 
-            // Pile viewer buttons - using mousedown/touchstart to ensure they fire before document handlers
-            const drawPileEl = document.getElementById('drawPileDisplay');
-            const discardPileEl = document.getElementById('discardPileDisplay');
-            const closeBtn = document.getElementById('pileViewerClose');
-            console.log('[PILE INIT] drawPileEl:', drawPileEl, 'discardPileEl:', discardPileEl, 'closeBtn:', closeBtn);
-
-            if (drawPileEl) {
-                drawPileEl.addEventListener('mousedown', function(e) {
-                    console.log('[PILE] Draw pile mousedown');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showPileViewer('draw');
-                });
-                drawPileEl.addEventListener('touchstart', function(e) {
-                    console.log('[PILE] Draw pile touchstart');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showPileViewer('draw');
-                }, { passive: false });
-            }
-            if (discardPileEl) {
-                discardPileEl.addEventListener('mousedown', function(e) {
-                    console.log('[PILE] Discard pile mousedown');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showPileViewer('discard');
-                });
-                discardPileEl.addEventListener('touchstart', function(e) {
-                    console.log('[PILE] Discard pile touchstart');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    showPileViewer('discard');
-                }, { passive: false });
-            }
-            if (closeBtn) {
-                closeBtn.addEventListener('mousedown', function(e) {
-                    console.log('[PILE] Close button mousedown');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    closePileViewer();
-                });
-                closeBtn.addEventListener('touchstart', function(e) {
-                    console.log('[PILE] Close button touchstart');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    closePileViewer();
-                }, { passive: false });
-            }
-            // Also close pile viewer when clicking outside the cards
-            document.getElementById('pileViewer').addEventListener('mousedown', function(e) {
-                if (e.target === this) {
-                    closePileViewer();
-                }
+            // Shop button
+            document.getElementById('goToShopBtn').addEventListener('click', function() {
+                switchTab('shop');
             });
-            document.getElementById('pileViewer').addEventListener('touchstart', function(e) {
-                if (e.target === this) {
-                    closePileViewer();
-                }
-            }, { passive: false });
+
+            // Backpack button
+            document.getElementById('goToBackpackBtn').addEventListener('click', function() {
+                switchTab('backpack');
+            });
+
+            // Initialize shop inventory
+            generateShopInventory();
+            updateHeaderDisplay();
+
+            // (Deck pile viewers removed - no deck system)
 
             // Main render loop with delta time for battle updates
             let lastFrameTime = performance.now();
@@ -5655,12 +7009,12 @@
             // Handle window resize
             window.addEventListener('resize', () => {
                 engine.resize();
-                // Check mobile layout and re-render grid overlays on resize
+                // Check mobile layout and re-render grid on resize
                 if (currentPhase === GamePhase.MECHBUILDER) {
                     setTimeout(() => {
                         checkMobileLayout();
-                        renderGridOverlays();
-                        renderGridItems();
+                        renderUnifiedMechGrid();
+                        renderUnifiedGridItems();
                     }, 100);
                 }
             });
@@ -5670,8 +7024,8 @@
                 setTimeout(() => {
                     checkMobileLayout();
                     if (currentPhase === GamePhase.MECHBUILDER) {
-                        renderGridOverlays();
-                        renderGridItems();
+                        renderUnifiedMechGrid();
+                        renderUnifiedGridItems();
                     }
                 }, 200);
             });

@@ -337,12 +337,12 @@
             opacity: 1;
         }
 
-        /* Bench item tooltip - positioned to the right */
+        /* Bench item tooltip - positioned below */
         .bench-item-tooltip {
             position: absolute;
-            left: calc(100% + 10px);
-            top: 50%;
-            transform: translateY(-50%);
+            left: 0;
+            right: 0;
+            top: calc(100% + 5px);
             background: rgba(0, 20, 10, 0.95);
             border: 1px solid #00aa66;
             border-radius: 6px;
@@ -351,7 +351,9 @@
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.15s;
-            min-width: 120px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
         }
 
         .bench-item-vertical:hover .bench-item-tooltip {
@@ -359,12 +361,13 @@
         }
 
         .bench-item-tooltip .tooltip-stats {
-            margin-bottom: 8px;
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
         }
 
         .bench-item-tooltip .tooltip-shape {
             display: flex;
-            justify-content: center;
         }
 
         .shape-grid {
@@ -5206,7 +5209,7 @@
             return html;
         }
 
-        // Build bench item tooltip with secondary stats and shape (positioned to the right)
+        // Build bench item tooltip with secondary stats and shape (positioned below)
         function buildBenchItemTooltip(item) {
             const stats = item.stats || {};
             const shape = item.gridShape || [[1]];
@@ -5215,30 +5218,30 @@
 
             let html = '<div class="bench-item-tooltip">';
 
-            // Secondary stats
+            // Secondary stats (horizontal layout)
             html += '<div class="tooltip-stats">';
             if (stats.energyDraw !== undefined && stats.energyDraw !== 0) {
                 if (stats.energyDraw < 0) {
-                    html += `<div style="color: #4488ff;">⚡ +${-stats.energyDraw}</div>`;
+                    html += `<span style="color: #4488ff;">⚡+${-stats.energyDraw}</span>`;
                 } else {
-                    html += `<div style="color: #4488ff;">⚡ ${stats.energyDraw}</div>`;
+                    html += `<span style="color: #4488ff;">⚡${stats.energyDraw}</span>`;
                 }
             }
             if (stats.weight) {
-                html += `<div style="color: #888;">⚖ ${stats.weight}</div>`;
+                html += `<span style="color: #888;">⚖${stats.weight}</span>`;
             }
             html += '</div>';
 
             // Shape preview
             const cols = shape[0].length;
             html += '<div class="tooltip-shape">';
-            html += `<div class="shape-grid" style="grid-template-columns: repeat(${cols}, 12px);">`;
+            html += `<div class="shape-grid" style="grid-template-columns: repeat(${cols}, 10px);">`;
             for (let row of shape) {
                 for (let cell of row) {
                     if (cell === 1) {
-                        html += `<div class="shape-cell filled" style="background: ${rarityColor}; width: 12px; height: 12px;"></div>`;
+                        html += `<div class="shape-cell filled" style="background: ${rarityColor}; width: 10px; height: 10px;"></div>`;
                     } else {
-                        html += `<div class="shape-cell empty" style="width: 12px; height: 12px;"></div>`;
+                        html += `<div class="shape-cell empty" style="width: 10px; height: 10px;"></div>`;
                     }
                 }
             }

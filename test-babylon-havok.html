@@ -2015,7 +2015,7 @@
                 stats: {
                     weight: 4,
                     energyDraw: 1,
-                    damage: 25
+                    damage: 4
                 },
                 constraints: {},
                 // Battle properties
@@ -2040,7 +2040,7 @@
                 stats: {
                     weight: 2,
                     energyDraw: 2,
-                    damage: 18
+                    damage: 3
                 },
                 constraints: {},
                 // Battle properties
@@ -2064,7 +2064,7 @@
                 stats: {
                     weight: 2,
                     energyDraw: 0,
-                    armorBonus: 15
+                    armorBonus: 3
                 },
                 constraints: {}
             },
@@ -2127,11 +2127,11 @@
         const COMPONENT_GENERATION = {
             // Base exchange rates (1 square = X) - scaled for smaller economy (weight limit 6)
             exchangeRates: {
-                damage: 5,           // 1 square = 5 damage
+                damage: 1,           // 1 square = 1 damage
                 weight: -1,          // 1 square = -1 weight (scaled down from -10)
                 energyCost: -0.5,    // 1 square = -0.5 energy cost
                 energyProvided: 1,   // 1 square = 1 energy provided
-                armor: 5,            // 1 square = 5 armor
+                armor: 1,            // 1 square = 1 armor
                 accuracy: 4,         // 1 square = 4% accuracy
                 cooldownReduction: -100,  // 1 square = -100ms cooldown
                 knockback: 5,        // 1 square = 5 knockback
@@ -2142,10 +2142,10 @@
 
             // Resource conversion rates (for trade-offs within same item)
             conversionRates: {
-                energyToDamage: 10,     // 1 energy cost = 10 damage
-                weightToDamage: 5,      // 1 weight = 5 damage (weight is more valuable now)
-                cooldownToDamage: 0.05, // 1ms cooldown = 0.05 damage
-                accuracyToDamage: 1.5,  // 1% accuracy = 1.5 damage
+                energyToDamage: 2,      // 1 energy cost = 2 damage
+                weightToDamage: 1,      // 1 weight = 1 damage (weight is more valuable now)
+                cooldownToDamage: 0.01, // 1ms cooldown = 0.01 damage
+                accuracyToDamage: 0.3,  // 1% accuracy = 0.3 damage
                 armorToWeight: 2        // 1 armor = 2 weight
             },
 
@@ -2205,7 +2205,7 @@
                 baseStats: {
                     weight: 4,
                     energyDraw: 1,
-                    damage: 45
+                    damage: 8
                 },
                 baseBattle: {
                     projectileSpeed: 55,
@@ -2229,7 +2229,7 @@
                 baseStats: {
                     weight: 2,
                     energyDraw: 2,
-                    damage: 35
+                    damage: 6
                 },
                 baseBattle: {
                     isBeam: true,
@@ -2252,7 +2252,7 @@
                 baseStats: {
                     weight: 3,
                     energyDraw: 1,
-                    damage: 55
+                    damage: 9
                 },
                 baseBattle: {
                     projectileSpeed: 30,
@@ -2276,7 +2276,7 @@
                 baseStats: {
                     weight: 1,
                     energyDraw: 1,
-                    damage: 22
+                    damage: 4
                 },
                 baseBattle: {
                     projectileSpeed: 60,
@@ -2302,7 +2302,7 @@
                 baseStats: {
                     weight: 2,
                     energyDraw: 0,
-                    armorBonus: 25
+                    armorBonus: 4
                 },
                 statWeights: { armor: 0.8, weight: 0.2 }
             },
@@ -2317,7 +2317,7 @@
                 baseStats: {
                     weight: 3,
                     energyDraw: 1,
-                    armorBonus: 35
+                    armorBonus: 6
                 },
                 statWeights: { armor: 0.9, weight: 0.1 }
             },
@@ -3940,8 +3940,8 @@
                 tonnage: 35,           // Low weight capacity
                 modSpace: 12,          // Grid cells available
                 growthCapacity: 3,     // Max upgrades
-                baseHP: 80,
-                baseArmor: 5,
+                baseHP: 13,
+                baseArmor: 1,
                 baseSpeed: 1.3,
                 baseAccuracy: 70,
                 specialAbility: 'EVASION',  // 15% dodge chance
@@ -3964,8 +3964,8 @@
                 tonnage: 55,
                 modSpace: 18,
                 growthCapacity: 4,
-                baseHP: 120,
-                baseArmor: 10,
+                baseHP: 20,
+                baseArmor: 2,
                 baseSpeed: 1.0,
                 baseAccuracy: 65,
                 specialAbility: 'FOCUS_FIRE',  // +10% damage to same target
@@ -3988,8 +3988,8 @@
                 tonnage: 80,
                 modSpace: 24,
                 growthCapacity: 5,
-                baseHP: 180,
-                baseArmor: 20,
+                baseHP: 30,
+                baseArmor: 3,
                 baseSpeed: 0.7,
                 baseAccuracy: 55,
                 specialAbility: 'FORTIFY',  // +25% armor when stationary
@@ -4012,8 +4012,8 @@
                 tonnage: 45,
                 modSpace: 16,
                 growthCapacity: 4,
-                baseHP: 100,
-                baseArmor: 8,
+                baseHP: 17,
+                baseArmor: 1,
                 baseSpeed: 1.2,
                 baseAccuracy: 75,
                 specialAbility: 'FIRST_STRIKE',  // Attack first, +20% first attack damage
@@ -4036,8 +4036,8 @@
                 tonnage: 100,
                 modSpace: 30,
                 growthCapacity: 6,
-                baseHP: 250,
-                baseArmor: 30,
+                baseHP: 42,
+                baseArmor: 5,
                 baseSpeed: 0.5,
                 baseAccuracy: 50,
                 specialAbility: 'UNSTOPPABLE',  // Immune to knockback, +50% knockback dealt
@@ -4060,7 +4060,7 @@
                 tonnage: 30,
                 modSpace: 10,
                 growthCapacity: 3,
-                baseHP: 60,
+                baseHP: 10,
                 baseArmor: 0,
                 baseSpeed: 1.5,
                 baseAccuracy: 80,
@@ -4084,8 +4084,8 @@
                 tonnage: 50,
                 modSpace: 14,
                 growthCapacity: 4,
-                baseHP: 90,
-                baseArmor: 5,
+                baseHP: 15,
+                baseArmor: 1,
                 baseSpeed: 1.1,
                 baseAccuracy: 60,
                 specialAbility: 'RAGE',  // +2% damage per 1% HP missing

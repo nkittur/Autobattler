@@ -2167,16 +2167,21 @@
             },
             targeting_computer: {
                 id: 'targeting_computer',
-                name: 'Basic Targeting',
+                name: 'Targeting Link',
                 type: 'SYSTEM',
                 category: 'system',
                 icon: '🎯',
                 gridShape: [[1]],  // 1x1 Single
                 gridDimensions: { w: 1, h: 1 },
                 stats: {
-                    weight: 1,
-                    energyDraw: 1,
-                    accuracyBonus: 8
+                    weight: 0,
+                    energyDraw: 0,
+                    directionalDamageBonus: 1  // +1 damage to weapon in one direction
+                },
+                special: {
+                    adjacentEffect: 'directionalDamage',
+                    effectDirection: 'up',  // Can be rotated
+                    effectValue: 1
                 },
                 constraints: {}
             },
@@ -2434,21 +2439,45 @@
                 statWeights: { energyProvided: 0.9, weight: 0.1 }
             },
 
-            // SYSTEMS - 3+ squares
-            targeting: {
+            // TARGETING SYSTEMS - add damage to adjacent weapons
+            targeting_link: {
                 type: 'SYSTEM',
                 category: 'system',
                 icon: '🎯',
-                namePrefix: ['Advanced', 'Precision', 'Neural', 'Quantum', 'Elite'],
-                nameSuffix: ['Targeting', 'Computer', 'System', 'Interface'],
-                baseShape: [[1, 1], [0, 1]],  // L-shape (3 squares)
+                namePrefix: ['Basic', 'Light', 'Compact', 'Simple'],
+                nameSuffix: ['Link', 'Connector', 'Coupler', 'Interface'],
+                baseShape: [[1]],  // 1x1 (small, cheap)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 1,
-                    energyDraw: 1,
-                    accuracyBonus: 10
+                    weight: 0,
+                    energyDraw: 0,
+                    directionalDamageBonus: 1  // +1 damage in one direction only
                 },
-                statWeights: { accuracy: 1.0 }
+                special: {
+                    adjacentEffect: 'directionalDamage',
+                    effectDirection: 'up',  // Default, can be rotated
+                    effectValue: 1
+                },
+                statWeights: {}  // No scaling, fixed effect
+            },
+            targeting_hub: {
+                type: 'SYSTEM',
+                category: 'system',
+                icon: '🎯',
+                namePrefix: ['Advanced', 'Precision', 'Neural', 'Quantum'],
+                nameSuffix: ['Hub', 'Nexus', 'Core', 'Matrix'],
+                baseShape: [[0, 1, 0], [1, 1, 1]],  // T-shape (4 squares)
+                validSlots: ['torso', 'leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 0,
+                    energyDraw: 1,
+                    adjacentDamageBonus: 1  // +1 damage to ALL adjacent weapons
+                },
+                special: {
+                    adjacentEffect: 'weaponDamage',
+                    effectValue: 1
+                },
+                statWeights: {}  // No scaling, fixed effect
             },
             gyro: {
                 type: 'SYSTEM',
@@ -2927,7 +2956,8 @@
                 reactive_armor: 2,
                 reactor: 0.5,      // Much less common
                 power_cell: 0.5,   // Much less common
-                targeting: 2,
+                targeting_link: 3, // Common - directional damage boost
+                targeting_hub: 1,  // Rarer - omnidirectional damage boost
                 gyro: 2,
                 heat_sink: 2,
                 cooling_system: 2
@@ -4607,9 +4637,15 @@
                 }
             }
 
-            // Update item
+            // Update item shape
             item.gridShape = newShape;
             item.gridDimensions = { w: rows, h: cols };  // Swap dimensions
+
+            // Rotate effect direction if item has directional effects (90 degrees clockwise)
+            if (item.special && item.special.effectDirection) {
+                const dirRotation = { up: 'right', right: 'down', down: 'left', left: 'up' };
+                item.special.effectDirection = dirRotation[item.special.effectDirection] || item.special.effectDirection;
+            }
 
             // Re-render bench to show updated shape
             renderBench();
@@ -5267,6 +5303,14 @@
             // Energy reduction (cooling)
             if (stats.energyReduction) {
                 html += `<span class="item-stat" style="color: #44ddff;"><span class="item-stat-icon">❄️</span><span class="item-stat-value">-${stats.energyReduction}</span></span>`;
+            }
+
+            // Directional damage bonus (targeting links - one direction only)
+            if (stats.directionalDamageBonus) {
+                // Get direction from special property or default to 'up'
+                const dir = item.special?.effectDirection || 'up';
+                const dirArrow = { up: '↑', down: '↓', left: '←', right: '→' }[dir] || '↑';
+                html += `<span class="item-stat" style="color: #ff8844;"><span class="item-stat-icon">🎯</span><span class="item-stat-value">+${stats.directionalDamageBonus}${dirArrow}</span></span>`;
             }
 
             // Accuracy bonus

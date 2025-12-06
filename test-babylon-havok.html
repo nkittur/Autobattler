@@ -337,37 +337,14 @@
             opacity: 1;
         }
 
-        /* Bench item tooltip - positioned below */
-        .bench-item-tooltip {
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: calc(100% + 5px);
-            background: rgba(0, 20, 10, 0.95);
-            border: 1px solid #00aa66;
-            border-radius: 6px;
-            padding: 10px;
-            z-index: 1000;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.15s;
+        /* Bottom row for items (secondary stats + shape) */
+        .item-bottom-row {
             display: flex;
-            gap: 12px;
+            justify-content: space-between;
             align-items: center;
-        }
-
-        .bench-item-vertical:hover .bench-item-tooltip {
-            opacity: 1;
-        }
-
-        .bench-item-tooltip .tooltip-stats {
-            display: flex;
-            gap: 10px;
-            font-size: 12px;
-        }
-
-        .bench-item-tooltip .tooltip-shape {
-            display: flex;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.1);
         }
 
         .shape-grid {
@@ -5037,11 +5014,14 @@
                 }
 
                 el.innerHTML = `
-                    ${buildBenchItemTooltip(item)}
                     <span class="item-icon">${item.icon}</span>
                     <div class="item-info">
                         <div class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
                         ${buildItemStatIcons(item)}
+                        <div class="item-bottom-row">
+                            ${buildItemSecondaryStats(item)}
+                            ${buildInlineShapePreview(item, 8)}
+                        </div>
                     </div>
                 `;
 
@@ -5209,44 +5189,23 @@
             return html;
         }
 
-        // Build bench item tooltip with secondary stats and shape (positioned below)
-        function buildBenchItemTooltip(item) {
-            const stats = item.stats || {};
+        // Build inline shape preview (always visible, not a tooltip)
+        function buildInlineShapePreview(item, cellSize = 8) {
             const shape = item.gridShape || [[1]];
             const rarityColor = (item.isGenerated && COMPONENT_GENERATION) ?
                 (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00aa66') : '#00aa66';
 
-            let html = '<div class="bench-item-tooltip">';
-
-            // Secondary stats (horizontal layout)
-            html += '<div class="tooltip-stats">';
-            if (stats.energyDraw !== undefined && stats.energyDraw !== 0) {
-                if (stats.energyDraw < 0) {
-                    html += `<span style="color: #4488ff;">⚡+${-stats.energyDraw}</span>`;
-                } else {
-                    html += `<span style="color: #4488ff;">⚡${stats.energyDraw}</span>`;
-                }
-            }
-            if (stats.weight) {
-                html += `<span style="color: #888;">⚖${stats.weight}</span>`;
-            }
-            html += '</div>';
-
-            // Shape preview
             const cols = shape[0].length;
-            html += '<div class="tooltip-shape">';
-            html += `<div class="shape-grid" style="grid-template-columns: repeat(${cols}, 10px);">`;
+            let html = `<div style="display: inline-grid; gap: 2px; grid-template-columns: repeat(${cols}, ${cellSize}px);">`;
             for (let row of shape) {
                 for (let cell of row) {
                     if (cell === 1) {
-                        html += `<div class="shape-cell filled" style="background: ${rarityColor}; width: 10px; height: 10px;"></div>`;
+                        html += `<div style="width: ${cellSize}px; height: ${cellSize}px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 1px;"></div>`;
                     } else {
-                        html += `<div class="shape-cell empty" style="width: 10px; height: 10px;"></div>`;
+                        html += `<div style="width: ${cellSize}px; height: ${cellSize}px;"></div>`;
                     }
                 }
             }
-            html += '</div></div>';
-
             html += '</div>';
             return html;
         }
@@ -5631,21 +5590,6 @@
                         const bargainBadge = shopItem.isBargain ?
                             `<div style="position: absolute; top: -8px; left: -8px; background: #ff6600; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold;">BARGAIN!</div>` : '';
 
-                        // Build inline shape preview
-                        const shape = item.gridShape || [[1]];
-                        const cols = shape[0].length;
-                        let shapeHtml = `<div style="display: inline-grid; gap: 2px; grid-template-columns: repeat(${cols}, 8px);">`;
-                        for (let row of shape) {
-                            for (let cell of row) {
-                                if (cell === 1) {
-                                    shapeHtml += `<div style="width: 8px; height: 8px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 1px;"></div>`;
-                                } else {
-                                    shapeHtml += `<div style="width: 8px; height: 8px;"></div>`;
-                                }
-                            }
-                        }
-                        shapeHtml += '</div>';
-
                         card.innerHTML = `
                             ${bargainBadge}
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -5657,9 +5601,9 @@
                             </div>
                             <div style="font-size: 11px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
                             ${buildItemStatIcons(item)}
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <div class="item-bottom-row">
                                 ${buildItemSecondaryStats(item)}
-                                ${shapeHtml}
+                                ${buildInlineShapePreview(item, 8)}
                             </div>
                         `;
 

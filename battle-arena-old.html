@@ -5317,6 +5317,11 @@
                 agg.shape.filterMembershipMask = 4;
                 agg.shape.filterCollideMask = 1 | 2;
 
+                // Disable gravity for missiles and energy bolts (fly straight)
+                if (projectileData.isMissile || projectileData.isEnergyBolt) {
+                    agg.body.setGravityFactor(0);
+                }
+
                 // Set initial velocity
                 const initialSpeed = projectileData.isMissile ? projectileData.currentSpeed :
                                     projectileData.isBallistic ? projectileData.speed :
@@ -5700,13 +5705,20 @@
                         if (p.currentSpeed < p.maxSpeed) {
                             p.currentSpeed += p.acceleration * dt;
                             if (p.currentSpeed > p.maxSpeed) p.currentSpeed = p.maxSpeed;
+                        }
 
-                            // Update velocity with new speed
-                            if (p.aggregate && p.aggregate.body) {
-                                const currentVel = p.aggregate.body.getLinearVelocity();
-                                const newVel = currentVel.normalize().scale(p.currentSpeed);
-                                p.aggregate.body.setLinearVelocity(newVel);
-                            }
+                        // Update velocity to fly straight toward target
+                        if (p.aggregate && p.aggregate.body && p.target && p.target.torso) {
+                            const targetPos = p.target.torso.getAbsolutePosition();
+                            const currentPos = p.mesh.position;
+                            const dirToTarget = targetPos.subtract(currentPos).normalize();
+
+                            // Set velocity directly toward target
+                            p.aggregate.body.setLinearVelocity(dirToTarget.scale(p.currentSpeed));
+
+                            // Update mesh rotation to face target
+                            p.mesh.lookAt(targetPos);
+                            p.mesh.rotation.x += Math.PI / 2;  // Adjust for cylinder orientation
                         }
 
                         // Create smoke trail more frequently

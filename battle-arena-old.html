@@ -1429,49 +1429,49 @@
             scene.miniaturePipeline = pipeline;
 
             // ----- DEPTH OF FIELD (Core tilt-shift effect) -----
-            // Strong blur at edges, sharp focus in the center band
+            // Very strong blur at edges, sharp focus in center - extreme miniature look
             pipeline.depthOfFieldEnabled = true;
-            pipeline.depthOfFieldBlurLevel = BABYLON.DepthOfFieldEffectBlurLevel.Medium;
-            pipeline.depthOfField.focalLength = 150; // Telephoto lens (like macro photography of miniatures)
-            pipeline.depthOfField.fStop = 1.4; // Wide aperture for shallow depth of field
-            pipeline.depthOfField.focusDistance = 32000; // Focus at camera target distance (32m = 32000mm)
+            pipeline.depthOfFieldBlurLevel = BABYLON.DepthOfFieldEffectBlurLevel.High;
+            pipeline.depthOfField.focalLength = 300; // Extreme telephoto (macro lens effect)
+            pipeline.depthOfField.fStop = 0.5; // Very wide aperture for maximum blur
+            pipeline.depthOfField.focusDistance = 32000; // Focus at camera target distance
 
-            // ----- BLOOM (Subtle glow on bright areas) -----
+            // ----- BLOOM (Glow on bright areas) -----
             // Enhances weapon glows and makes lighting feel more "studio-lit"
             pipeline.bloomEnabled = true;
-            pipeline.bloomThreshold = 0.75;
-            pipeline.bloomWeight = 0.25;
-            pipeline.bloomKernel = 64;
-            pipeline.bloomScale = 0.5;
+            pipeline.bloomThreshold = 0.6;
+            pipeline.bloomWeight = 0.4;
+            pipeline.bloomKernel = 100;
+            pipeline.bloomScale = 0.6;
 
             // ----- CHROMATIC ABERRATION (Lens imperfection) -----
-            // Subtle color fringing at edges, like a real camera lens
+            // Color fringing at edges, like a real camera lens
             pipeline.chromaticAberrationEnabled = true;
-            pipeline.chromaticAberration.aberrationAmount = 25;
-            pipeline.chromaticAberration.radialIntensity = 1.2;
+            pipeline.chromaticAberration.aberrationAmount = 50;
+            pipeline.chromaticAberration.radialIntensity = 2.0;
 
             // ----- VIGNETTE (Darkened corners) -----
-            // Draws focus to center, classic camera/miniature photography look
+            // Strong focus to center, classic miniature photography look
             pipeline.imageProcessing.vignetteEnabled = true;
-            pipeline.imageProcessing.vignetteWeight = 1.8;
-            pipeline.imageProcessing.vignetteStretch = 0.3;
+            pipeline.imageProcessing.vignetteWeight = 3.0;
+            pipeline.imageProcessing.vignetteStretch = 0.2;
             pipeline.imageProcessing.vignetteColor = new BABYLON.Color4(0, 0, 0, 0);
-            pipeline.imageProcessing.vignetteCameraFov = 0.6;
+            pipeline.imageProcessing.vignetteCameraFov = 0.5;
 
             // ----- COLOR GRADING (Toy-like vibrant colors) -----
-            // Increased saturation and contrast for painted miniature look
-            pipeline.imageProcessing.contrast = 1.25;
-            pipeline.imageProcessing.exposure = 1.05;
+            // Strong saturation and contrast for painted miniature look
+            pipeline.imageProcessing.contrast = 1.4;
+            pipeline.imageProcessing.exposure = 1.1;
             pipeline.imageProcessingEnabled = true;
 
             // ----- SHARPEN (Crisp details like macro photography) -----
             pipeline.sharpenEnabled = true;
-            pipeline.sharpen.edgeAmount = 0.25;
+            pipeline.sharpen.edgeAmount = 0.4;
             pipeline.sharpen.colorAmount = 1.0;
 
-            // ----- GRAIN (Subtle film grain for photographic feel) -----
+            // ----- GRAIN (Film grain for photographic feel) -----
             pipeline.grainEnabled = true;
-            pipeline.grain.intensity = 4;
+            pipeline.grain.intensity = 8;
             pipeline.grain.animated = true;
 
             // Update DOF focus distance based on camera radius

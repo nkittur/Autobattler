@@ -474,6 +474,21 @@
         .placed-item-unified.system { --item-bg: rgba(170, 68, 255, 0.7); --item-border: #aa44ff; }
         .placed-item-unified.cooling { --item-bg: rgba(68, 221, 255, 0.7); --item-border: #44ddff; }
 
+        /* Blocked rotation flash effect */
+        .placed-item-unified.rotation-blocked {
+            animation: rotationBlocked 0.3s ease-out;
+        }
+        .placed-item-unified.rotation-blocked .item-shape-cell {
+            background: rgba(255, 50, 50, 0.8) !important;
+            border-color: #ff3333 !important;
+        }
+        @keyframes rotationBlocked {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.05) rotate(-3deg); }
+            50% { transform: scale(1.05) rotate(3deg); }
+            75% { transform: scale(1.05) rotate(-2deg); }
+        }
+
         /* Tooltips for placed items in unified grid */
         .placed-item-unified .item-tooltip {
             position: absolute;
@@ -4704,6 +4719,117 @@
             renderBench();
         }
 
+        // Rotate an item that's already placed on the grid
+        function rotateItemOnGrid(instanceId, element) {
+            // Find the equipment entry
+            const eqIdx = loadoutState.equipment.findIndex(eq => eq.instanceId === instanceId);
+            if (eqIdx === -1) return;
+
+            const eq = loadoutState.equipment[eqIdx];
+            const item = eq.item || ITEM_DATABASE[eq.itemId];
+            if (!item) return;
+
+            const currentShape = item.gridShape;
+            const currentPos = eq.position;
+
+            // Calculate what the rotated shape would be
+            const rows = currentShape.length;
+            const cols = currentShape[0].length;
+            const newShape = [];
+            for (let x = 0; x < cols; x++) {
+                newShape[x] = [];
+                for (let y = rows - 1; y >= 0; y--) {
+                    newShape[x][rows - 1 - y] = currentShape[y][x];
+                }
+            }
+
+            // Temporarily clear this item's cells from grid occupation (without removing from loadout)
+            clearGridCells(instanceId);
+
+            // Check if all cells of the new shape are valid and unoccupied
+            const newRows = newShape.length;
+            const newCols = newShape[0].length;
+            let canPlace = true;
+
+            for (let dy = 0; dy < newRows && canPlace; dy++) {
+                for (let dx = 0; dx < newCols && canPlace; dx++) {
+                    if (newShape[dy][dx] === 1) {
+                        const gx = currentPos.x + dx;
+                        const gy = currentPos.y + dy;
+                        // Check bounds
+                        if (gx < 0 || gx >= MECH_CHASSIS.gridCols ||
+                            gy < 0 || gy >= MECH_CHASSIS.gridRows) {
+                            canPlace = false;
+                            break;
+                        }
+                        // Check if cell is valid (part of mech shape)
+                        if (!unifiedGridOccupation.isValidCell(gx, gy)) {
+                            canPlace = false;
+                            break;
+                        }
+                        // Check if cell is occupied by another item
+                        if (unifiedGridOccupation.cells[gy][gx] !== null) {
+                            canPlace = false;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (canPlace) {
+                // Apply the rotation
+                item.gridShape = newShape;
+                item.gridDimensions = { w: rows, h: cols };  // Swap dimensions
+
+                // Rotate effect direction if item has directional effects
+                if (item.special && item.special.effectDirection) {
+                    const dirRotation = { up: 'right', right: 'down', down: 'left', left: 'up' };
+                    item.special.effectDirection = dirRotation[item.special.effectDirection] || item.special.effectDirection;
+                }
+
+                // Re-add item to grid with new shape
+                placeGridCells(item, currentPos.x, currentPos.y, instanceId);
+
+                // Re-render
+                renderUnifiedGridItems();
+                updateStats();
+            } else {
+                // Flash red to indicate blocked rotation
+                if (element) {
+                    element.classList.add('rotation-blocked');
+                    setTimeout(() => {
+                        element.classList.remove('rotation-blocked');
+                    }, 300);
+                }
+
+                // Re-add item to grid with original shape (restore state)
+                placeGridCells(item, currentPos.x, currentPos.y, instanceId);
+            }
+        }
+
+        // Clear grid cells for an item (without removing from loadoutState)
+        function clearGridCells(instanceId) {
+            for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
+                for (let x = 0; x < MECH_CHASSIS.gridCols; x++) {
+                    if (unifiedGridOccupation.cells[y][x] === instanceId) {
+                        unifiedGridOccupation.cells[y][x] = null;
+                    }
+                }
+            }
+        }
+
+        // Place grid cells for an item (without adding to loadoutState)
+        function placeGridCells(item, gridX, gridY, instanceId) {
+            const shape = item.gridShape;
+            for (let dy = 0; dy < shape.length; dy++) {
+                for (let dx = 0; dx < shape[0].length; dx++) {
+                    if (shape[dy][dx] === 1) {
+                        unifiedGridOccupation.cells[gridY + dy][gridX + dx] = instanceId;
+                    }
+                }
+            }
+        }
+
         // ============================================
         // DRAG & DROP SYSTEM
         // ============================================
@@ -5289,6 +5415,33 @@
                 // Build tooltip HTML
                 const tooltipHtml = buildItemTooltipHtml(item);
 
+                // Build direction indicator for directional damage items
+                let directionHtml = '';
+                if (item.stats?.directionalDamageBonus && item.special?.effectDirection) {
+                    const dir = item.special.effectDirection;
+                    const dirArrow = { up: '↑', down: '↓', left: '←', right: '→' }[dir] || '↑';
+                    // Position arrow based on direction
+                    const arrowOffsets = {
+                        up: { left: iconLeft, top: iconTop - 18 },
+                        down: { left: iconLeft, top: iconTop + 18 },
+                        left: { left: iconLeft - 18, top: iconTop },
+                        right: { left: iconLeft + 18, top: iconTop }
+                    };
+                    const offset = arrowOffsets[dir] || arrowOffsets.up;
+                    directionHtml = `<div class="direction-arrow" style="
+                        position: absolute;
+                        left: ${offset.left}px;
+                        top: ${offset.top}px;
+                        transform: translate(-50%, -50%);
+                        font-size: 16px;
+                        font-weight: bold;
+                        color: #ff8844;
+                        text-shadow: 0 0 4px #ff4400;
+                        z-index: 3;
+                        pointer-events: none;
+                    ">${dirArrow}</div>`;
+                }
+
                 placedEl.innerHTML = `
                     ${shapeCellsHtml}
                     <div class="item-icon-overlay" style="
@@ -5300,12 +5453,39 @@
                         z-index: 2;
                         pointer-events: none;
                     ">${item.icon}</div>
+                    ${directionHtml}
                     ${tooltipHtml}
                 `;
 
-                // Make draggable (to move or remove)
-                placedEl.addEventListener('mousedown', (e) => handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid'));
-                placedEl.addEventListener('touchstart', (e) => handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid'), { passive: false });
+                // Click to rotate (if not dragging)
+                let clickStartTime = 0;
+                let clickStartPos = { x: 0, y: 0 };
+                placedEl.addEventListener('mousedown', (e) => {
+                    clickStartTime = Date.now();
+                    clickStartPos = { x: e.clientX, y: e.clientY };
+                    handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid');
+                });
+                placedEl.addEventListener('mouseup', (e) => {
+                    const elapsed = Date.now() - clickStartTime;
+                    const moved = Math.abs(e.clientX - clickStartPos.x) + Math.abs(e.clientY - clickStartPos.y);
+                    // If it was a quick click without much movement, rotate
+                    if (elapsed < 200 && moved < 10) {
+                        rotateItemOnGrid(eq.instanceId, placedEl);
+                    }
+                });
+                placedEl.addEventListener('touchstart', (e) => {
+                    clickStartTime = Date.now();
+                    const touch = e.touches[0];
+                    clickStartPos = { x: touch.clientX, y: touch.clientY };
+                    handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid');
+                }, { passive: false });
+                placedEl.addEventListener('touchend', (e) => {
+                    const elapsed = Date.now() - clickStartTime;
+                    // For touch, we can't easily get end position from touchend, so just check time
+                    if (elapsed < 200 && !dragState.isDragging) {
+                        rotateItemOnGrid(eq.instanceId, placedEl);
+                    }
+                });
 
                 container.appendChild(placedEl);
             });

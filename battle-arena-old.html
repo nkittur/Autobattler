@@ -529,15 +529,16 @@
         // WEAPON MINIGAME SYSTEM
         // ============================================
         const MINIGAME_CONFIG = {
-            triggerChance: 0.50,         // 50% chance to trigger minigame
-            chargeSpeed: 80,             // Percent per second
+            triggerChance: 0.40,         // 40% chance to trigger minigame
+            chargeSpeed: 110,            // Percent per second (faster = harder)
             autoFireDelay: 200,          // ms before auto-fire if not holding
-            // Zone boundaries (as percentages)
+            cooldownMs: 7000,            // 7 seconds between minigames (5-10 range)
+            // Zone boundaries (as percentages) - narrower perfect zone for difficulty
             zones: {
-                low: { min: 0, max: 30, multiplier: 0.5, name: 'WEAK', class: 'weak' },
-                green: { min: 30, max: 78, multiplier: 1.0, name: 'GOOD', class: 'good' },
-                yellow: { min: 78, max: 88, multiplier: 1.25, name: 'PERFECT!', class: 'perfect' },
-                red: { min: 88, max: 100, multiplier: 0, name: 'JAMMED!', class: 'jam' }
+                low: { min: 0, max: 35, multiplier: 0.5, name: 'WEAK', class: 'weak' },
+                green: { min: 35, max: 75, multiplier: 1.0, name: 'GOOD', class: 'good' },
+                yellow: { min: 75, max: 85, multiplier: 1.25, name: 'PERFECT!', class: 'perfect' },
+                red: { min: 85, max: 100, multiplier: 0, name: 'JAMMED!', class: 'jam' }
             },
             // Weapon-specific icons and colors
             weaponVisuals: {
@@ -559,7 +560,8 @@
             target: null,
             startTime: 0,
             animationFrame: null,
-            pendingWeaponFire: null
+            pendingWeaponFire: null,
+            lastMinigameEndTime: 0    // Track when last minigame ended for cooldown
         };
 
         // Get weapon type for visuals
@@ -786,12 +788,13 @@
                     });
                 }
 
-                // Reset state
+                // Reset state and record end time for cooldown
                 minigameState.active = false;
                 minigameState.isCharging = false;
                 minigameState.chargePercent = 0;
                 minigameState.savedMechStates = null;
                 minigameState.wasPhysicsEnabled = false;
+                minigameState.lastMinigameEndTime = performance.now();
 
                 // Actually fire the weapon with the multiplier
                 if (fireData.damageMultiplier > 0) {
@@ -1343,7 +1346,16 @@
                     // Loadout damage is total damage from all equipped weapons
                     playerMech.loadoutDamage = battleConfig.player.stats.damage || 0;
                     playerMech.loadoutWeapons = battleConfig.player.stats.weapons || [];
+                    // New armor stats
+                    playerMech.damageReduction = battleConfig.player.stats.damageReduction || 0;
+                    playerMech.energyShieldMaxHP = battleConfig.player.stats.energyShieldHP || 0;
+                    playerMech.energyShieldHP = playerMech.energyShieldMaxHP;
                     console.log('Player loadout damage:', playerMech.loadoutDamage, 'weapons:', playerMech.loadoutWeapons);
+                    console.log('Player armor stats - DR:', playerMech.damageReduction, 'Shield:', playerMech.energyShieldHP);
+                    // Create energy shield visual if equipped
+                    if (playerMech.energyShieldMaxHP > 0) {
+                        setTimeout(() => createEnergyShield(playerMech), 100);
+                    }
                 }
                 playerMechs = [playerMech];
 
@@ -4443,6 +4455,99 @@
             }
         }
 
+        // Create shimmering energy shield visual around mech
+        function createEnergyShield(mech) {
+            if (!mech.energyShieldMaxHP || mech.energyShieldMaxHP <= 0) return;
+
+            // Create shield sphere around the mech
+            const shield = BABYLON.MeshBuilder.CreateSphere('energyShield', {
+                diameter: 4.5,
+                segments: 16
+            }, scene);
+            shield.position = mech.torso.getAbsolutePosition().clone();
+            shield.parent = mech.torso;
+            shield.position = new BABYLON.Vector3(0, 0.5, 0);  // Offset to center on torso
+
+            // Shield material - translucent blue with shimmer
+            const shieldMat = new BABYLON.StandardMaterial('shieldMat', scene);
+            shieldMat.diffuseColor = new BABYLON.Color3(0.2, 0.6, 1);
+            shieldMat.emissiveColor = new BABYLON.Color3(0.1, 0.4, 0.9);
+            shieldMat.alpha = 0.15;
+            shieldMat.backFaceCulling = false;
+            shieldMat.specularColor = new BABYLON.Color3(0.5, 0.8, 1);
+            shield.material = shieldMat;
+
+            // Store reference on mech
+            mech.shieldMesh = shield;
+            mech.shieldMaterial = shieldMat;
+
+            // Add shimmer animation
+            let shimmerPhase = 0;
+            mech.shieldShimmer = setInterval(() => {
+                if (!mech.shieldMesh || mech.energyShieldHP <= 0) {
+                    clearInterval(mech.shieldShimmer);
+                    if (mech.shieldMesh) {
+                        mech.shieldMesh.dispose();
+                        mech.shieldMesh = null;
+                    }
+                    return;
+                }
+                shimmerPhase += 0.1;
+                const shimmer = 0.1 + 0.05 * Math.sin(shimmerPhase * 3);
+                const healthRatio = mech.energyShieldHP / mech.energyShieldMaxHP;
+                shieldMat.alpha = shimmer * healthRatio;
+                shieldMat.emissiveColor = new BABYLON.Color3(0.1, 0.4 * healthRatio, 0.9 * healthRatio);
+            }, 50);
+        }
+
+        // Flash effect when energy shield absorbs damage
+        function createShieldFlash(mech) {
+            if (!mech.shieldMesh || !mech.shieldMaterial) return;
+
+            // Bright flash
+            const originalAlpha = mech.shieldMaterial.alpha;
+            mech.shieldMaterial.alpha = 0.6;
+            mech.shieldMaterial.emissiveColor = new BABYLON.Color3(0.5, 0.8, 1);
+
+            // Create ripple particles
+            const pos = mech.torso.getAbsolutePosition();
+            for (let i = 0; i < 12; i++) {
+                const particle = BABYLON.MeshBuilder.CreateSphere('shieldParticle', { diameter: 0.15 }, scene);
+                const angle = (i / 12) * Math.PI * 2;
+                particle.position = pos.add(new BABYLON.Vector3(Math.cos(angle) * 2, 0.5, Math.sin(angle) * 2));
+
+                const pMat = new BABYLON.StandardMaterial('shieldParticleMat', scene);
+                pMat.emissiveColor = new BABYLON.Color3(0.3, 0.7, 1);
+                pMat.disableLighting = true;
+                pMat.alpha = 0.8;
+                particle.material = pMat;
+
+                // Expand outward and fade
+                let age = 0;
+                const update = setInterval(() => {
+                    age += 30;
+                    if (age > 400) {
+                        clearInterval(update);
+                        particle.dispose();
+                        return;
+                    }
+                    const t = age / 400;
+                    particle.position.addInPlace(new BABYLON.Vector3(Math.cos(angle) * 0.1, 0, Math.sin(angle) * 0.1));
+                    pMat.alpha = 0.8 * (1 - t);
+                    particle.scaling = new BABYLON.Vector3(1 + t, 1 + t, 1 + t);
+                }, 30);
+            }
+
+            // Fade back
+            setTimeout(() => {
+                if (mech.shieldMaterial) {
+                    mech.shieldMaterial.alpha = originalAlpha;
+                    const healthRatio = mech.energyShieldHP / mech.energyShieldMaxHP;
+                    mech.shieldMaterial.emissiveColor = new BABYLON.Color3(0.1, 0.4 * healthRatio, 0.9 * healthRatio);
+                }
+            }, 200);
+        }
+
         function updateRecoil(mech, dt) {
             if (mech.recoilRecovery <= 0) return;
             mech.recoilRecovery -= dt * 4.5;
@@ -4991,11 +5096,15 @@
 
                 // Check if this is a player mech and should trigger minigame
                 if (from.isPlayer && !minigameState.active) {
-                    // Roll for minigame trigger
-                    if (Math.random() < MINIGAME_CONFIG.triggerChance) {
-                        // Start the minigame instead of firing immediately
-                        if (startWeaponMinigame(from, loadoutWeapon, to)) {
-                            return; // Minigame started, weapon will fire after
+                    // Check cooldown - only trigger if enough time has passed since last minigame
+                    const timeSinceLastMinigame = performance.now() - minigameState.lastMinigameEndTime;
+                    if (timeSinceLastMinigame >= MINIGAME_CONFIG.cooldownMs) {
+                        // Roll for minigame trigger
+                        if (Math.random() < MINIGAME_CONFIG.triggerChance) {
+                            // Start the minigame instead of firing immediately
+                            if (startWeaponMinigame(from, loadoutWeapon, to)) {
+                                return; // Minigame started, weapon will fire after
+                            }
                         }
                     }
                 }
@@ -5111,24 +5220,152 @@
                 }
 
                 const dir = target.subtract(start).normalize();
-                const projSize = weapon.projectileSize || 0.1;  // Default if missing
-                const proj = BABYLON.MeshBuilder.CreateSphere('proj' + Date.now(), { diameter: projSize * 2 }, scene);
-                proj.position = start.clone();
+                const projSize = weapon.projectileSize || 0.1;
 
-                const mat = new BABYLON.StandardMaterial('projMat' + Date.now(), scene);
-                mat.emissiveColor = weapon.color;
-                proj.material = mat;
+                // Determine projectile type based on weapon characteristics
+                const isMissileWeapon = weapon.name && (weapon.name.toLowerCase().includes('missile') || weapon.name.toLowerCase().includes('rocket'));
+                const isBallistic = weapon.projectileSpeed > 40 || (weapon.name && (weapon.name.toLowerCase().includes('railgun') || weapon.name.toLowerCase().includes('cannon') || weapon.name.toLowerCase().includes('gun')));
 
-                const agg = new BABYLON.PhysicsAggregate(proj, BABYLON.PhysicsShapeType.SPHERE,
-                    { mass: 0.8, friction: 0, restitution: 0.1 }, scene);
+                let proj;
+                let projectileData = { weapon, target: to, firedAt: Date.now() };
+
+                if (isMissileWeapon) {
+                    // MISSILE: Long narrow tube with nose cone and engine
+                    // Create parent container for missile parts
+                    proj = new BABYLON.TransformNode('missile' + Date.now(), scene);
+                    proj.position = start.clone();
+
+                    // Main body - long narrow cylinder
+                    const body = BABYLON.MeshBuilder.CreateCylinder('missileBody' + Date.now(), {
+                        height: 0.5, diameter: 0.06, tessellation: 8
+                    }, scene);
+                    body.parent = proj;
+                    const bodyMat = new BABYLON.StandardMaterial('missileBodyMat' + Date.now(), scene);
+                    bodyMat.diffuseColor = new BABYLON.Color3(0.4, 0.4, 0.45);
+                    bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                    body.material = bodyMat;
+
+                    // Nose cone - pointed tip at front
+                    const nose = BABYLON.MeshBuilder.CreateCylinder('missileNose' + Date.now(), {
+                        height: 0.15, diameterTop: 0, diameterBottom: 0.06, tessellation: 8
+                    }, scene);
+                    nose.position.y = 0.325;  // Position at front of body
+                    nose.parent = proj;
+                    const noseMat = new BABYLON.StandardMaterial('missileNoseMat' + Date.now(), scene);
+                    noseMat.diffuseColor = new BABYLON.Color3(0.6, 0.2, 0.1);  // Reddish tip
+                    noseMat.emissiveColor = new BABYLON.Color3(0.2, 0.05, 0);
+                    nose.material = noseMat;
+
+                    // Engine section - darker cylinder at back
+                    const engine = BABYLON.MeshBuilder.CreateCylinder('missileEngine' + Date.now(), {
+                        height: 0.12, diameter: 0.07, tessellation: 8
+                    }, scene);
+                    engine.position.y = -0.31;  // Position at back
+                    engine.parent = proj;
+                    const engineMat = new BABYLON.StandardMaterial('missileEngineMat' + Date.now(), scene);
+                    engineMat.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.18);
+                    engineMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+                    engine.material = engineMat;
+
+                    // Engine glow/exhaust
+                    const engineGlow = BABYLON.MeshBuilder.CreateSphere('engineGlow' + Date.now(), { diameter: 0.08 }, scene);
+                    engineGlow.position.y = -0.38;
+                    engineGlow.parent = proj;
+                    const glowMat = new BABYLON.StandardMaterial('glowMat' + Date.now(), scene);
+                    glowMat.emissiveColor = new BABYLON.Color3(1, 0.5, 0.1);
+                    glowMat.alpha = 0.9;
+                    glowMat.disableLighting = true;
+                    engineGlow.material = glowMat;
+
+                    // Orient missile toward target
+                    proj.lookAt(target);
+                    proj.rotation.x += Math.PI / 2;  // Point forward
+
+                    // Store body mesh for physics (we'll attach aggregate to body)
+                    projectileData.missileBody = body;
+                    projectileData.isMissile = true;
+                    projectileData.currentSpeed = weapon.projectileSpeed * 0.3;  // Start slow
+                    projectileData.maxSpeed = weapon.projectileSpeed * 1.5;  // Accelerate to faster
+                    projectileData.acceleration = weapon.projectileSpeed * 2;  // Acceleration rate
+                    projectileData.direction = dir.clone();
+                    projectileData.lastSmokeTime = Date.now();
+                    projectileData.engineGlow = engineGlow;
+
+                } else if (isBallistic) {
+                    // BALLISTIC: Fast elongated bullet/tracer
+                    proj = BABYLON.MeshBuilder.CreateCylinder('bullet' + Date.now(), {
+                        height: 0.25, diameter: 0.04, tessellation: 6
+                    }, scene);
+                    proj.position = start.clone();
+                    proj.lookAt(target);
+                    proj.rotation.x += Math.PI / 2;
+
+                    const mat = new BABYLON.StandardMaterial('bulletMat' + Date.now(), scene);
+                    mat.emissiveColor = weapon.color;
+                    mat.alpha = 0.95;
+                    proj.material = mat;
+
+                    // Add tracer glow
+                    const tracer = BABYLON.MeshBuilder.CreateCylinder('tracer' + Date.now(), {
+                        height: 0.35, diameter: 0.08, tessellation: 6
+                    }, scene);
+                    tracer.position = new BABYLON.Vector3(0, 0, 0);
+                    tracer.parent = proj;
+                    const tracerMat = new BABYLON.StandardMaterial('tracerMat' + Date.now(), scene);
+                    tracerMat.emissiveColor = weapon.color;
+                    tracerMat.alpha = 0.4;
+                    tracer.material = tracerMat;
+
+                    projectileData.isBallistic = true;
+                    // Ballistic rounds are FAST
+                    projectileData.speed = weapon.projectileSpeed * 2;
+
+                } else {
+                    // DEFAULT: Energy bolt (glowing sphere)
+                    proj = BABYLON.MeshBuilder.CreateSphere('proj' + Date.now(), { diameter: projSize * 2 }, scene);
+                    proj.position = start.clone();
+
+                    const mat = new BABYLON.StandardMaterial('projMat' + Date.now(), scene);
+                    mat.emissiveColor = weapon.color;
+                    mat.alpha = 0.9;
+                    proj.material = mat;
+
+                    // Add outer glow
+                    const glow = BABYLON.MeshBuilder.CreateSphere('glow' + Date.now(), { diameter: projSize * 4 }, scene);
+                    glow.parent = proj;
+                    const glowMat = new BABYLON.StandardMaterial('glowMat' + Date.now(), scene);
+                    glowMat.emissiveColor = weapon.color;
+                    glowMat.alpha = 0.25;
+                    glow.material = glowMat;
+
+                    projectileData.isEnergyBolt = true;
+                }
+
+                // For missiles, attach physics to the body mesh; for others, use proj directly
+                const physicsTarget = projectileData.isMissile ? projectileData.missileBody : proj;
+                // Set restitution to 0 for missiles so they don't bounce
+                const restitution = projectileData.isMissile ? 0 : 0.1;
+                const agg = new BABYLON.PhysicsAggregate(physicsTarget, BABYLON.PhysicsShapeType.SPHERE,
+                    { mass: 0.8, friction: 0, restitution: restitution }, scene);
 
                 // Disable projectile-to-projectile collisions
-                agg.shape.filterMembershipMask = 4;  // Projectile group
-                agg.shape.filterCollideMask = 1 | 2;  // Collide with ground (1) and mechs (2), not projectiles (4)
+                agg.shape.filterMembershipMask = 4;
+                agg.shape.filterCollideMask = 1 | 2;
 
-                agg.body.setLinearVelocity(dir.scale(weapon.projectileSpeed));
+                // Disable gravity for missiles and energy bolts (fly straight)
+                if (projectileData.isMissile || projectileData.isEnergyBolt) {
+                    agg.body.setGravityFactor(0);
+                }
 
-                projectiles.push({ mesh: proj, aggregate: agg, weapon, target: to, firedAt: Date.now() });
+                // Set initial velocity
+                const initialSpeed = projectileData.isMissile ? projectileData.currentSpeed :
+                                    projectileData.isBallistic ? projectileData.speed :
+                                    weapon.projectileSpeed;
+                agg.body.setLinearVelocity(dir.scale(initialSpeed));
+
+                projectileData.mesh = proj;
+                projectileData.aggregate = agg;
+                projectiles.push(projectileData);
                 createMuzzleFlash(start, weapon.color);
                 log(`[PROJ] Projectile created successfully`);
             } catch (e) {
@@ -5172,15 +5409,43 @@
                 }
 
                 log(`[BEAM] Creating tube: dist=${dist.toFixed(2)}`);
+
+                // Create main beam core
                 const beam = BABYLON.MeshBuilder.CreateTube('beam' + Date.now(), {
-                    path: [start, end], radius: 0.1, updatable: false
+                    path: [start, end], radius: 0.08, updatable: false
                 }, scene);
                 const mat = new BABYLON.StandardMaterial('beamMat' + Date.now(), scene);
                 mat.emissiveColor = weapon.color;
-                mat.alpha = 0.85;
+                mat.alpha = 0.95;
+                mat.disableLighting = true;
                 beam.material = mat;
 
-                beams.push({ mesh: beam, material: mat, createdAt: Date.now(), duration: weapon.beamDuration });
+                // Create outer glow tube
+                const beamGlow = BABYLON.MeshBuilder.CreateTube('beamGlow' + Date.now(), {
+                    path: [start, end], radius: 0.2, updatable: false
+                }, scene);
+                const glowMat = new BABYLON.StandardMaterial('beamGlowMat' + Date.now(), scene);
+                glowMat.emissiveColor = weapon.color;
+                glowMat.alpha = 0.25;
+                glowMat.disableLighting = true;
+                beamGlow.material = glowMat;
+
+                // Create even larger outer halo
+                const beamHalo = BABYLON.MeshBuilder.CreateTube('beamHalo' + Date.now(), {
+                    path: [start, end], radius: 0.35, updatable: false
+                }, scene);
+                const haloMat = new BABYLON.StandardMaterial('beamHaloMat' + Date.now(), scene);
+                haloMat.emissiveColor = weapon.color;
+                haloMat.alpha = 0.1;
+                haloMat.disableLighting = true;
+                beamHalo.material = haloMat;
+
+                beams.push({
+                    mesh: beam, material: mat,
+                    glow: beamGlow, glowMat: glowMat,
+                    halo: beamHalo, haloMat: haloMat,
+                    createdAt: Date.now(), duration: weapon.beamDuration
+                });
                 applyDamage(to, weapon, from.isPlayer ? 1 : -1);
                 createImpact(end.clone(), weapon.color);
                 log(`[BEAM] Beam created successfully`);
@@ -5346,7 +5611,33 @@
             if (mech.isDestroyed) return;
             if (mech.mechState === MechState.RECOVERING) return;  // Don't damage during recovery
 
-            mech.currentHP -= weapon.damage;
+            let actualDamage = weapon.damage;
+            const isEnergyWeapon = weapon.isBeam || false;
+            const isBallistic = weapon.isProjectile || weapon.isMissile || false;
+
+            // Energy weapons hit energy shields first
+            if (isEnergyWeapon && mech.energyShieldHP > 0) {
+                const shieldAbsorbed = Math.min(mech.energyShieldHP, actualDamage);
+                mech.energyShieldHP -= shieldAbsorbed;
+                actualDamage -= shieldAbsorbed;
+                if (shieldAbsorbed > 0) {
+                    log(`${mech.name}'s shield absorbs ${shieldAbsorbed} energy damage!`, 'info');
+                    // Create shield flash effect
+                    createShieldFlash(mech);
+                }
+                if (actualDamage <= 0) return;  // All damage absorbed by shield
+            }
+
+            // Ballistic/missile weapons are reduced by damage reduction armor
+            if (isBallistic && mech.damageReduction > 0) {
+                const reduced = Math.min(mech.damageReduction, actualDamage - 1);  // Always deal at least 1 damage
+                actualDamage = Math.max(1, actualDamage - reduced);
+                if (reduced > 0) {
+                    log(`${mech.name}'s armor absorbs ${reduced} damage!`, 'info');
+                }
+            }
+
+            mech.currentHP -= actualDamage;
             if (mech.currentHP < 0) mech.currentHP = 0;
 
             const knockback = weapon.knockback;
@@ -5410,45 +5701,127 @@
             const now = Date.now();
             projectiles = projectiles.filter(p => {
                 try {
-                    if (now - p.firedAt > 3500) { p.mesh.dispose(); return false; }
+                    // Helper to dispose projectile (handles missiles with multiple parts)
+                    const disposeProjectile = () => {
+                        if (p.isMissile && p.missileBody) {
+                            // Dispose the parent TransformNode which disposes all children
+                            if (p.mesh && p.mesh.dispose) p.mesh.dispose();
+                        } else {
+                            p.mesh.dispose();
+                        }
+                    };
+
+                    // Get position - for missiles use body position, for others use mesh position
+                    const getPosition = () => {
+                        if (p.isMissile && p.missileBody) {
+                            return p.missileBody.getAbsolutePosition();
+                        }
+                        return p.mesh.position;
+                    };
+
+                    if (now - p.firedAt > 3500) { disposeProjectile(); return false; }
 
                     // Safety check for target and torso
                     if (!p.target || !p.target.torso) {
                         log(`[WARN] Projectile has invalid target, removing`, 'warn');
-                        p.mesh.dispose();
+                        disposeProjectile();
                         return false;
                     }
 
-                    const dist = BABYLON.Vector3.Distance(p.mesh.position, p.target.torso.getAbsolutePosition());
+                    const projPos = getPosition();
+                    const dist = BABYLON.Vector3.Distance(projPos, p.target.torso.getAbsolutePosition());
                     if (dist < 1.6) {
                         applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1);
                         log(`HIT! ${p.target.name} -${p.weapon.damage} (${p.target.currentHP}/${p.target.maxHP})`, 'warn');
-                        createImpact(p.mesh.position.clone(), p.weapon.color);
-                        p.mesh.dispose();
+                        createImpact(projPos.clone(), p.weapon.color);
+                        disposeProjectile();
                         return false;
                     }
 
                     // Check for ground hit - create dust plume
-                    if (p.mesh.position.y < 0.3) {
-                        const groundPos = p.mesh.position.clone();
+                    if (projPos.y < 0.3) {
+                        const groundPos = projPos.clone();
                         groundPos.y = 0.1;
                         createDustPlume(groundPos);
-                        p.mesh.dispose();
+                        disposeProjectile();
                         return false;
                     }
 
-                    // Out of bounds
-                    if (Math.abs(p.mesh.position.x) > 22 || Math.abs(p.mesh.position.z) > 15) {
-                        p.mesh.dispose();
+                    // Out of bounds - destroy immediately (no bouncing)
+                    if (Math.abs(projPos.x) > 22 || Math.abs(projPos.z) > 15) {
+                        disposeProjectile();
                         return false;
                     }
 
-                    if (p.isMissile && Math.random() < 0.25) createSmoke(p.mesh.position.clone());
+                    // Handle missile acceleration and smoke trails
+                    if (p.isMissile) {
+                        // Accelerate missile
+                        if (p.currentSpeed < p.maxSpeed) {
+                            p.currentSpeed += p.acceleration * dt;
+                            if (p.currentSpeed > p.maxSpeed) p.currentSpeed = p.maxSpeed;
+                        }
+
+                        // Update velocity to fly straight toward target
+                        if (p.aggregate && p.aggregate.body && p.target && p.target.torso && p.missileBody) {
+                            const targetPos = p.target.torso.getAbsolutePosition();
+                            const currentPos = p.missileBody.getAbsolutePosition();
+                            const dirToTarget = targetPos.subtract(currentPos).normalize();
+
+                            // Set velocity directly toward target
+                            p.aggregate.body.setLinearVelocity(dirToTarget.scale(p.currentSpeed));
+
+                            // Sync TransformNode position with physics body
+                            p.mesh.position.copyFrom(currentPos);
+
+                            // Update mesh rotation to face target
+                            p.mesh.lookAt(targetPos);
+                            p.mesh.rotation.x += Math.PI / 2;  // Adjust for cylinder orientation
+                        }
+
+                        // Create smoke trail more frequently
+                        if (now - p.lastSmokeTime > 30) {  // Every 30ms
+                            createMissileSmoke(projPos.clone());
+                            p.lastSmokeTime = now;
+                        }
+
+                        // Flicker engine glow
+                        if (p.engineGlow && p.engineGlow.material) {
+                            const flicker = 0.7 + Math.random() * 0.3;
+                            p.engineGlow.material.emissiveColor = new BABYLON.Color3(1 * flicker, 0.5 * flicker, 0.1 * flicker);
+                        }
+                    }
+
                     return true;
                 } catch (e) {
                     console.error('[PROJECTILE ERROR]', e);
-                    try { p.mesh.dispose(); } catch (e2) {}
+                    try { disposeProjectile(); } catch (e2) {}
                     return false;
+                }
+            });
+        }
+
+        // Create missile smoke trail particle
+        function createMissileSmoke(pos) {
+            const smoke = BABYLON.MeshBuilder.CreateSphere('smoke' + Date.now(), { diameter: 0.15 }, scene);
+            smoke.position = pos;
+
+            const mat = new BABYLON.StandardMaterial('smokeMat' + Date.now(), scene);
+            mat.diffuseColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+            mat.emissiveColor = new BABYLON.Color3(0.3, 0.25, 0.2);
+            mat.alpha = 0.6;
+            smoke.material = mat;
+
+            // Animate smoke: expand and fade
+            let smokeLife = 0;
+            const smokeUpdate = scene.onBeforeRenderObservable.add(() => {
+                smokeLife += scene.getEngine().getDeltaTime() / 1000;
+                const scale = 1 + smokeLife * 3;  // Expand
+                smoke.scaling = new BABYLON.Vector3(scale, scale, scale);
+                mat.alpha = Math.max(0, 0.6 - smokeLife * 1.5);  // Fade
+
+                if (smokeLife > 0.5) {
+                    scene.onBeforeRenderObservable.remove(smokeUpdate);
+                    smoke.dispose();
                 }
             });
         }
@@ -5457,8 +5830,16 @@
             const now = Date.now();
             beams = beams.filter(b => {
                 const age = now - b.createdAt;
-                if (age > b.duration) { b.mesh.dispose(); return false; }
-                b.material.alpha = 0.85 * (1 - age / b.duration);
+                if (age > b.duration) {
+                    b.mesh.dispose();
+                    if (b.glow) b.glow.dispose();
+                    if (b.halo) b.halo.dispose();
+                    return false;
+                }
+                const fadeRatio = 1 - age / b.duration;
+                b.material.alpha = 0.95 * fadeRatio;
+                if (b.glowMat) b.glowMat.alpha = 0.25 * fadeRatio;
+                if (b.haloMat) b.haloMat.alpha = 0.1 * fadeRatio;
                 return true;
             });
         }

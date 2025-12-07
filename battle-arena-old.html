@@ -1412,6 +1412,74 @@
                 configureMechShadows(allMechs, shadowGenerator);
             }
 
+            // ============================================
+            // MINIATURE/TILT-SHIFT EFFECT
+            // Creates the illusion that mechs are tiny tabletop miniatures
+            // ============================================
+
+            // Default Rendering Pipeline for post-processing effects
+            const pipeline = new BABYLON.DefaultRenderingPipeline(
+                "miniaturePipeline",
+                true, // HDR enabled
+                scene,
+                [camera]
+            );
+
+            // Store reference for dynamic focus adjustment
+            scene.miniaturePipeline = pipeline;
+
+            // ----- DEPTH OF FIELD (Core tilt-shift effect) -----
+            // Strong blur at edges, sharp focus in the center band
+            pipeline.depthOfFieldEnabled = true;
+            pipeline.depthOfFieldBlurLevel = BABYLON.DepthOfFieldEffectBlurLevel.Medium;
+            pipeline.depthOfField.focalLength = 150; // Telephoto lens (like macro photography of miniatures)
+            pipeline.depthOfField.fStop = 1.4; // Wide aperture for shallow depth of field
+            pipeline.depthOfField.focusDistance = 32000; // Focus at camera target distance (32m = 32000mm)
+
+            // ----- BLOOM (Subtle glow on bright areas) -----
+            // Enhances weapon glows and makes lighting feel more "studio-lit"
+            pipeline.bloomEnabled = true;
+            pipeline.bloomThreshold = 0.75;
+            pipeline.bloomWeight = 0.25;
+            pipeline.bloomKernel = 64;
+            pipeline.bloomScale = 0.5;
+
+            // ----- CHROMATIC ABERRATION (Lens imperfection) -----
+            // Subtle color fringing at edges, like a real camera lens
+            pipeline.chromaticAberrationEnabled = true;
+            pipeline.chromaticAberration.aberrationAmount = 25;
+            pipeline.chromaticAberration.radialIntensity = 1.2;
+
+            // ----- VIGNETTE (Darkened corners) -----
+            // Draws focus to center, classic camera/miniature photography look
+            pipeline.imageProcessing.vignetteEnabled = true;
+            pipeline.imageProcessing.vignetteWeight = 1.8;
+            pipeline.imageProcessing.vignetteStretch = 0.3;
+            pipeline.imageProcessing.vignetteColor = new BABYLON.Color4(0, 0, 0, 0);
+            pipeline.imageProcessing.vignetteCameraFov = 0.6;
+
+            // ----- COLOR GRADING (Toy-like vibrant colors) -----
+            // Increased saturation and contrast for painted miniature look
+            pipeline.imageProcessing.contrast = 1.25;
+            pipeline.imageProcessing.exposure = 1.05;
+            pipeline.imageProcessingEnabled = true;
+
+            // ----- SHARPEN (Crisp details like macro photography) -----
+            pipeline.sharpenEnabled = true;
+            pipeline.sharpen.edgeAmount = 0.25;
+            pipeline.sharpen.colorAmount = 1.0;
+
+            // ----- GRAIN (Subtle film grain for photographic feel) -----
+            pipeline.grainEnabled = true;
+            pipeline.grain.intensity = 4;
+            pipeline.grain.animated = true;
+
+            // Update DOF focus distance based on camera radius
+            scene.registerBeforeRender(() => {
+                // Convert camera radius (meters) to mm for focusDistance
+                pipeline.depthOfField.focusDistance = camera.radius * 1000;
+            });
+
             return scene;
         }
 

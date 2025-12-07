@@ -2200,6 +2200,46 @@
                 },
                 constraints: {}
             },
+            missile_rack: {
+                id: 'missile_rack',
+                name: 'Light Missile Rack',
+                type: 'WEAPON',
+                category: 'weapon',
+                icon: '🚀',
+                gridShape: [[1, 1, 1]],  // 3x1 Horizontal
+                gridDimensions: { w: 3, h: 1 },
+                stats: {
+                    weight: 2,
+                    energyDraw: 1,
+                    damage: 4
+                },
+                constraints: {},
+                battle: {
+                    projectileSpeed: 25,
+                    projectileSize: 0.15,
+                    knockback: 15,
+                    recoil: 0.12,
+                    shotsPerRound: 1,
+                    color: [1, 0.5, 0.2],  // Orange
+                    isProjectile: true,
+                    isMissile: true
+                }
+            },
+            basic_shield: {
+                id: 'basic_shield',
+                name: 'Light Shield',
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🔵',
+                gridShape: [[1], [1]],  // 1x2 Vertical
+                gridDimensions: { w: 1, h: 2 },
+                stats: {
+                    weight: 1,
+                    energyDraw: 1,
+                    energyShieldHP: 8  // Absorbs 8 HP of energy damage
+                },
+                constraints: {}
+            },
             heat_sink: {
                 id: 'heat_sink',
                 name: 'Basic Heat Sink',
@@ -4154,8 +4194,13 @@
             // Add starter weapons
             const starterWeapon1 = { ...ITEM_DATABASE.railgun_mk1, instanceId: 'start_1' };
             const starterWeapon2 = { ...ITEM_DATABASE.laser_array, instanceId: 'start_2' };
-            const starterReactor = { ...ITEM_DATABASE.reactor_core, instanceId: 'start_3' };
-            benchItems.push(starterWeapon1, starterWeapon2, starterReactor);
+            const starterMissile = { ...ITEM_DATABASE.missile_rack, instanceId: 'start_3' };
+            const starterReactor = { ...ITEM_DATABASE.reactor_core, instanceId: 'start_4' };
+            // Add starter defensive items
+            const starterArmor = { ...ITEM_DATABASE.armor_plate, instanceId: 'start_5' };
+            const starterShield = { ...ITEM_DATABASE.basic_shield, instanceId: 'start_6' };
+            const starterLink = { ...ITEM_DATABASE.targeting_computer, instanceId: 'start_7' };
+            benchItems.push(starterWeapon1, starterWeapon2, starterMissile, starterReactor, starterArmor, starterShield, starterLink);
         }
 
         // Player resources

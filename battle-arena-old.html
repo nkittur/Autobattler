@@ -5230,28 +5230,59 @@
                 let projectileData = { weapon, target: to, firedAt: Date.now() };
 
                 if (isMissileWeapon) {
-                    // MISSILE: Elongated with pointed nose, slower start with acceleration
-                    proj = BABYLON.MeshBuilder.CreateCylinder('missile' + Date.now(), {
-                        height: 0.4, diameterTop: 0, diameterBottom: 0.12, tessellation: 8
-                    }, scene);
+                    // MISSILE: Long narrow tube with nose cone and engine
+                    // Create parent container for missile parts
+                    proj = new BABYLON.TransformNode('missile' + Date.now(), scene);
                     proj.position = start.clone();
+
+                    // Main body - long narrow cylinder
+                    const body = BABYLON.MeshBuilder.CreateCylinder('missileBody' + Date.now(), {
+                        height: 0.5, diameter: 0.06, tessellation: 8
+                    }, scene);
+                    body.parent = proj;
+                    const bodyMat = new BABYLON.StandardMaterial('missileBodyMat' + Date.now(), scene);
+                    bodyMat.diffuseColor = new BABYLON.Color3(0.4, 0.4, 0.45);
+                    bodyMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                    body.material = bodyMat;
+
+                    // Nose cone - pointed tip at front
+                    const nose = BABYLON.MeshBuilder.CreateCylinder('missileNose' + Date.now(), {
+                        height: 0.15, diameterTop: 0, diameterBottom: 0.06, tessellation: 8
+                    }, scene);
+                    nose.position.y = 0.325;  // Position at front of body
+                    nose.parent = proj;
+                    const noseMat = new BABYLON.StandardMaterial('missileNoseMat' + Date.now(), scene);
+                    noseMat.diffuseColor = new BABYLON.Color3(0.6, 0.2, 0.1);  // Reddish tip
+                    noseMat.emissiveColor = new BABYLON.Color3(0.2, 0.05, 0);
+                    nose.material = noseMat;
+
+                    // Engine section - darker cylinder at back
+                    const engine = BABYLON.MeshBuilder.CreateCylinder('missileEngine' + Date.now(), {
+                        height: 0.12, diameter: 0.07, tessellation: 8
+                    }, scene);
+                    engine.position.y = -0.31;  // Position at back
+                    engine.parent = proj;
+                    const engineMat = new BABYLON.StandardMaterial('missileEngineMat' + Date.now(), scene);
+                    engineMat.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.18);
+                    engineMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+                    engine.material = engineMat;
+
+                    // Engine glow/exhaust
+                    const engineGlow = BABYLON.MeshBuilder.CreateSphere('engineGlow' + Date.now(), { diameter: 0.08 }, scene);
+                    engineGlow.position.y = -0.38;
+                    engineGlow.parent = proj;
+                    const glowMat = new BABYLON.StandardMaterial('glowMat' + Date.now(), scene);
+                    glowMat.emissiveColor = new BABYLON.Color3(1, 0.5, 0.1);
+                    glowMat.alpha = 0.9;
+                    glowMat.disableLighting = true;
+                    engineGlow.material = glowMat;
+
+                    // Orient missile toward target
                     proj.lookAt(target);
                     proj.rotation.x += Math.PI / 2;  // Point forward
 
-                    const mat = new BABYLON.StandardMaterial('missileMat' + Date.now(), scene);
-                    mat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.35);
-                    mat.emissiveColor = weapon.color.scale(0.3);
-                    proj.material = mat;
-
-                    // Add engine glow at back
-                    const engineGlow = BABYLON.MeshBuilder.CreateSphere('engineGlow' + Date.now(), { diameter: 0.1 }, scene);
-                    engineGlow.position = new BABYLON.Vector3(0, -0.2, 0);
-                    engineGlow.parent = proj;
-                    const glowMat = new BABYLON.StandardMaterial('glowMat' + Date.now(), scene);
-                    glowMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0.2);
-                    glowMat.alpha = 0.9;
-                    engineGlow.material = glowMat;
-
+                    // Store body mesh for physics (we'll attach aggregate to body)
+                    projectileData.missileBody = body;
                     projectileData.isMissile = true;
                     projectileData.currentSpeed = weapon.projectileSpeed * 0.3;  // Start slow
                     projectileData.maxSpeed = weapon.projectileSpeed * 1.5;  // Accelerate to faster
@@ -5310,8 +5341,12 @@
                     projectileData.isEnergyBolt = true;
                 }
 
-                const agg = new BABYLON.PhysicsAggregate(proj, BABYLON.PhysicsShapeType.SPHERE,
-                    { mass: 0.8, friction: 0, restitution: 0.1 }, scene);
+                // For missiles, attach physics to the body mesh; for others, use proj directly
+                const physicsTarget = projectileData.isMissile ? projectileData.missileBody : proj;
+                // Set restitution to 0 for missiles so they don't bounce
+                const restitution = projectileData.isMissile ? 0 : 0.1;
+                const agg = new BABYLON.PhysicsAggregate(physicsTarget, BABYLON.PhysicsShapeType.SPHERE,
+                    { mass: 0.8, friction: 0, restitution: restitution }, scene);
 
                 // Disable projectile-to-projectile collisions
                 agg.shape.filterMembershipMask = 4;
@@ -5666,36 +5701,55 @@
             const now = Date.now();
             projectiles = projectiles.filter(p => {
                 try {
-                    if (now - p.firedAt > 3500) { p.mesh.dispose(); return false; }
+                    // Helper to dispose projectile (handles missiles with multiple parts)
+                    const disposeProjectile = () => {
+                        if (p.isMissile && p.missileBody) {
+                            // Dispose the parent TransformNode which disposes all children
+                            if (p.mesh && p.mesh.dispose) p.mesh.dispose();
+                        } else {
+                            p.mesh.dispose();
+                        }
+                    };
+
+                    // Get position - for missiles use body position, for others use mesh position
+                    const getPosition = () => {
+                        if (p.isMissile && p.missileBody) {
+                            return p.missileBody.getAbsolutePosition();
+                        }
+                        return p.mesh.position;
+                    };
+
+                    if (now - p.firedAt > 3500) { disposeProjectile(); return false; }
 
                     // Safety check for target and torso
                     if (!p.target || !p.target.torso) {
                         log(`[WARN] Projectile has invalid target, removing`, 'warn');
-                        p.mesh.dispose();
+                        disposeProjectile();
                         return false;
                     }
 
-                    const dist = BABYLON.Vector3.Distance(p.mesh.position, p.target.torso.getAbsolutePosition());
+                    const projPos = getPosition();
+                    const dist = BABYLON.Vector3.Distance(projPos, p.target.torso.getAbsolutePosition());
                     if (dist < 1.6) {
                         applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1);
                         log(`HIT! ${p.target.name} -${p.weapon.damage} (${p.target.currentHP}/${p.target.maxHP})`, 'warn');
-                        createImpact(p.mesh.position.clone(), p.weapon.color);
-                        p.mesh.dispose();
+                        createImpact(projPos.clone(), p.weapon.color);
+                        disposeProjectile();
                         return false;
                     }
 
                     // Check for ground hit - create dust plume
-                    if (p.mesh.position.y < 0.3) {
-                        const groundPos = p.mesh.position.clone();
+                    if (projPos.y < 0.3) {
+                        const groundPos = projPos.clone();
                         groundPos.y = 0.1;
                         createDustPlume(groundPos);
-                        p.mesh.dispose();
+                        disposeProjectile();
                         return false;
                     }
 
-                    // Out of bounds
-                    if (Math.abs(p.mesh.position.x) > 22 || Math.abs(p.mesh.position.z) > 15) {
-                        p.mesh.dispose();
+                    // Out of bounds - destroy immediately (no bouncing)
+                    if (Math.abs(projPos.x) > 22 || Math.abs(projPos.z) > 15) {
+                        disposeProjectile();
                         return false;
                     }
 
@@ -5708,13 +5762,16 @@
                         }
 
                         // Update velocity to fly straight toward target
-                        if (p.aggregate && p.aggregate.body && p.target && p.target.torso) {
+                        if (p.aggregate && p.aggregate.body && p.target && p.target.torso && p.missileBody) {
                             const targetPos = p.target.torso.getAbsolutePosition();
-                            const currentPos = p.mesh.position;
+                            const currentPos = p.missileBody.getAbsolutePosition();
                             const dirToTarget = targetPos.subtract(currentPos).normalize();
 
                             // Set velocity directly toward target
                             p.aggregate.body.setLinearVelocity(dirToTarget.scale(p.currentSpeed));
+
+                            // Sync TransformNode position with physics body
+                            p.mesh.position.copyFrom(currentPos);
 
                             // Update mesh rotation to face target
                             p.mesh.lookAt(targetPos);
@@ -5723,7 +5780,7 @@
 
                         // Create smoke trail more frequently
                         if (now - p.lastSmokeTime > 30) {  // Every 30ms
-                            createMissileSmoke(p.mesh.position.clone());
+                            createMissileSmoke(projPos.clone());
                             p.lastSmokeTime = now;
                         }
 
@@ -5737,7 +5794,7 @@
                     return true;
                 } catch (e) {
                     console.error('[PROJECTILE ERROR]', e);
-                    try { p.mesh.dispose(); } catch (e2) {}
+                    try { disposeProjectile(); } catch (e2) {}
                     return false;
                 }
             });

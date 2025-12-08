@@ -1,0 +1,652 @@
+{
+  "timestamp": "2025-12-08T22:13:05.212Z",
+  "config": {
+    "runsPerAgent": 20,
+    "maxRounds": 10,
+    "verbose": false,
+    "outputFile": null,
+    "agents": [
+      "aggressive",
+      "defensive",
+      "economist",
+      "synergist",
+      "adaptive",
+      "random",
+      "greedy",
+      "balanced"
+    ]
+  },
+  "agentAnalysis": {
+    "aggressive": {
+      "totalRuns": 20,
+      "victories": 1,
+      "losses": 13,
+      "winRate": 0.05,
+      "avgRound": 9.75,
+      "maxRound": 10,
+      "minRound": 5,
+      "avgGold": 5.6,
+      "avgEquipment": 19.8,
+      "itemUsage": {
+        "railgun": 105,
+        "laser": 89,
+        "missile": 90,
+        "machinegun": 36,
+        "hull_armor": 3,
+        "reactor": 10,
+        "targeting_hub": 24,
+        "heavy_hull": 1,
+        "ballistic_plating": 9,
+        "power_cell": 11,
+        "reactive_plating": 3,
+        "gyro": 1,
+        "targeting_link": 11,
+        "energy_shield": 3
+      },
+      "shopDecisions": {
+        "buy": 142,
+        "skip": 53,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 0,
+        "Medium": 44,
+        "Hard": 151
+      },
+      "salvageDecisions": {
+        "pick": 195,
+        "skip": 0
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 0.95,
+        "7": 0.95,
+        "8": 0.95,
+        "9": 0.95,
+        "10": 0.95
+      }
+    },
+    "defensive": {
+      "totalRuns": 20,
+      "victories": 1,
+      "losses": 13,
+      "winRate": 0.05,
+      "avgRound": 8.5,
+      "maxRound": 10,
+      "minRound": 4,
+      "avgGold": 4.6,
+      "avgEquipment": 17.3,
+      "itemUsage": {
+        "railgun": 61,
+        "reactor": 24,
+        "hull_armor": 53,
+        "power_cell": 9,
+        "ballistic_plating": 51,
+        "reactive_plating": 30,
+        "missile": 24,
+        "machinegun": 5,
+        "energy_shield": 43,
+        "heavy_hull": 20,
+        "laser": 20,
+        "targeting_link": 2,
+        "targeting_hub": 4
+      },
+      "shopDecisions": {
+        "buy": 125,
+        "skip": 45,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 25,
+        "Medium": 58,
+        "Hard": 87
+      },
+      "salvageDecisions": {
+        "pick": 169,
+        "skip": 1
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 0.9,
+        "6": 0.8,
+        "7": 0.7,
+        "8": 0.7,
+        "9": 0.7,
+        "10": 0.7
+      }
+    },
+    "economist": {
+      "totalRuns": 20,
+      "victories": 0,
+      "losses": 18,
+      "winRate": 0,
+      "avgRound": 6.5,
+      "maxRound": 10,
+      "minRound": 3,
+      "avgGold": 27.6,
+      "avgEquipment": 8.55,
+      "itemUsage": {
+        "railgun": 52,
+        "machinegun": 8,
+        "reactive_plating": 12,
+        "energy_shield": 6,
+        "heavy_hull": 6,
+        "missile": 33,
+        "reactor": 18,
+        "ballistic_plating": 9,
+        "laser": 16,
+        "power_cell": 4,
+        "hull_armor": 7
+      },
+      "shopDecisions": {
+        "buy": 43,
+        "skip": 87,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 0,
+        "Medium": 26,
+        "Hard": 104
+      },
+      "salvageDecisions": {
+        "pick": 95,
+        "skip": 35
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 0.9,
+        "5": 0.8,
+        "6": 0.65,
+        "7": 0.35,
+        "8": 0.3,
+        "9": 0.3,
+        "10": 0.2
+      }
+    },
+    "synergist": {
+      "totalRuns": 20,
+      "victories": 2,
+      "losses": 9,
+      "winRate": 0.1,
+      "avgRound": 9.65,
+      "maxRound": 10,
+      "minRound": 3,
+      "avgGold": 5.9,
+      "avgEquipment": 19.35,
+      "itemUsage": {
+        "railgun": 103,
+        "laser": 81,
+        "missile": 92,
+        "heavy_hull": 10,
+        "targeting_link": 3,
+        "reactor": 19,
+        "energy_shield": 8,
+        "ballistic_plating": 17,
+        "machinegun": 11,
+        "hull_armor": 8,
+        "reactive_plating": 10,
+        "power_cell": 12,
+        "targeting_hub": 13
+      },
+      "shopDecisions": {
+        "buy": 140,
+        "skip": 53,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 8,
+        "Medium": 24,
+        "Hard": 161
+      },
+      "salvageDecisions": {
+        "pick": 189,
+        "skip": 4
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 0.95,
+        "5": 0.95,
+        "6": 0.95,
+        "7": 0.95,
+        "8": 0.95,
+        "9": 0.95,
+        "10": 0.95
+      }
+    },
+    "adaptive": {
+      "totalRuns": 20,
+      "victories": 12,
+      "losses": 2,
+      "winRate": 0.6,
+      "avgRound": 9.55,
+      "maxRound": 10,
+      "minRound": 5,
+      "avgGold": 7.5,
+      "avgEquipment": 20.05,
+      "itemUsage": {
+        "railgun": 95,
+        "reactive_plating": 24,
+        "laser": 59,
+        "heavy_hull": 15,
+        "missile": 79,
+        "machinegun": 12,
+        "reactor": 38,
+        "ballistic_plating": 25,
+        "power_cell": 17,
+        "targeting_link": 9,
+        "energy_shield": 12,
+        "hull_armor": 12,
+        "targeting_hub": 4
+      },
+      "shopDecisions": {
+        "buy": 154,
+        "skip": 37,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 20,
+        "Medium": 75,
+        "Hard": 96
+      },
+      "salvageDecisions": {
+        "pick": 189,
+        "skip": 2
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 0.95,
+        "7": 0.9,
+        "8": 0.9,
+        "9": 0.9,
+        "10": 0.9
+      }
+    },
+    "random": {
+      "totalRuns": 20,
+      "victories": 4,
+      "losses": 9,
+      "winRate": 0.2,
+      "avgRound": 8.9,
+      "maxRound": 10,
+      "minRound": 5,
+      "avgGold": 28.8,
+      "avgEquipment": 12.8,
+      "itemUsage": {
+        "railgun": 53,
+        "hull_armor": 23,
+        "machinegun": 23,
+        "missile": 33,
+        "laser": 19,
+        "targeting_hub": 5,
+        "targeting_link": 10,
+        "power_cell": 15,
+        "reactor": 15,
+        "ballistic_plating": 21,
+        "heavy_hull": 10,
+        "reactive_plating": 8,
+        "energy_shield": 12,
+        "gyro": 4,
+        "heat_sink": 5
+      },
+      "shopDecisions": {
+        "buy": 101,
+        "skip": 77,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 67,
+        "Medium": 59,
+        "Hard": 52
+      },
+      "salvageDecisions": {
+        "pick": 124,
+        "skip": 54
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 0.9,
+        "7": 0.8,
+        "8": 0.75,
+        "9": 0.75,
+        "10": 0.7
+      }
+    },
+    "greedy": {
+      "totalRuns": 20,
+      "victories": 6,
+      "losses": 12,
+      "winRate": 0.3,
+      "avgRound": 9.3,
+      "maxRound": 10,
+      "minRound": 5,
+      "avgGold": 5.85,
+      "avgEquipment": 18.75,
+      "itemUsage": {
+        "railgun": 105,
+        "missile": 79,
+        "heavy_hull": 11,
+        "reactor": 21,
+        "targeting_hub": 9,
+        "laser": 45,
+        "energy_shield": 16,
+        "machinegun": 17,
+        "hull_armor": 19,
+        "reactive_plating": 25,
+        "targeting_link": 4,
+        "ballistic_plating": 18,
+        "power_cell": 6
+      },
+      "shopDecisions": {
+        "buy": 133,
+        "skip": 53,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 6,
+        "Medium": 36,
+        "Hard": 144
+      },
+      "salvageDecisions": {
+        "pick": 186,
+        "skip": 0
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 0.9,
+        "7": 0.85,
+        "8": 0.85,
+        "9": 0.85,
+        "10": 0.85
+      }
+    },
+    "balanced": {
+      "totalRuns": 20,
+      "victories": 2,
+      "losses": 14,
+      "winRate": 0.1,
+      "avgRound": 8.4,
+      "maxRound": 10,
+      "minRound": 3,
+      "avgGold": 5.55,
+      "avgEquipment": 17.05,
+      "itemUsage": {
+        "railgun": 84,
+        "targeting_hub": 2,
+        "reactor": 18,
+        "laser": 62,
+        "ballistic_plating": 22,
+        "reactive_plating": 24,
+        "missile": 74,
+        "power_cell": 7,
+        "energy_shield": 12,
+        "targeting_link": 6,
+        "machinegun": 6,
+        "hull_armor": 13,
+        "heavy_hull": 10,
+        "gyro": 1
+      },
+      "shopDecisions": {
+        "buy": 121,
+        "skip": 47,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 16,
+        "Medium": 26,
+        "Hard": 126
+      },
+      "salvageDecisions": {
+        "pick": 167,
+        "skip": 1
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 0.95,
+        "5": 0.95,
+        "6": 0.7,
+        "7": 0.7,
+        "8": 0.7,
+        "9": 0.7,
+        "10": 0.7
+      }
+    }
+  },
+  "itemAnalysis": {
+    "railgun": {
+      "timesUsed": 658,
+      "winRate": 0.20212765957446807,
+      "avgRoundReached": 9.341945288753799,
+      "byAgent": {
+        "aggressive": 105,
+        "defensive": 61,
+        "economist": 52,
+        "synergist": 103,
+        "adaptive": 95,
+        "random": 53,
+        "greedy": 105,
+        "balanced": 84
+      }
+    },
+    "laser": {
+      "timesUsed": 391,
+      "winRate": 0.2071611253196931,
+      "avgRoundReached": 9.657289002557544,
+      "byAgent": {
+        "aggressive": 89,
+        "defensive": 20,
+        "economist": 16,
+        "synergist": 81,
+        "adaptive": 59,
+        "random": 19,
+        "greedy": 45,
+        "balanced": 62
+      }
+    },
+    "missile": {
+      "timesUsed": 504,
+      "winRate": 0.20436507936507936,
+      "avgRoundReached": 9.501984126984127,
+      "byAgent": {
+        "aggressive": 90,
+        "defensive": 24,
+        "economist": 33,
+        "synergist": 92,
+        "adaptive": 79,
+        "random": 33,
+        "greedy": 79,
+        "balanced": 74
+      }
+    },
+    "machinegun": {
+      "timesUsed": 118,
+      "winRate": 0.1694915254237288,
+      "avgRoundReached": 9.38135593220339,
+      "byAgent": {
+        "aggressive": 36,
+        "defensive": 5,
+        "economist": 8,
+        "synergist": 11,
+        "adaptive": 12,
+        "random": 23,
+        "greedy": 17,
+        "balanced": 6
+      }
+    },
+    "hull_armor": {
+      "timesUsed": 138,
+      "winRate": 0.2391304347826087,
+      "avgRoundReached": 9.420289855072463,
+      "byAgent": {
+        "aggressive": 3,
+        "defensive": 53,
+        "economist": 7,
+        "synergist": 8,
+        "adaptive": 12,
+        "random": 23,
+        "greedy": 19,
+        "balanced": 13
+      }
+    },
+    "reactor": {
+      "timesUsed": 163,
+      "winRate": 0.2331288343558282,
+      "avgRoundReached": 9.085889570552148,
+      "byAgent": {
+        "aggressive": 10,
+        "defensive": 24,
+        "economist": 18,
+        "synergist": 19,
+        "adaptive": 38,
+        "random": 15,
+        "greedy": 21,
+        "balanced": 18
+      }
+    },
+    "targeting_hub": {
+      "timesUsed": 61,
+      "winRate": 0.26229508196721313,
+      "avgRoundReached": 9.852459016393443,
+      "byAgent": {
+        "aggressive": 24,
+        "defensive": 4,
+        "synergist": 13,
+        "adaptive": 4,
+        "random": 5,
+        "greedy": 9,
+        "balanced": 2
+      }
+    },
+    "heavy_hull": {
+      "timesUsed": 83,
+      "winRate": 0.2289156626506024,
+      "avgRoundReached": 9.542168674698795,
+      "byAgent": {
+        "aggressive": 1,
+        "defensive": 20,
+        "economist": 6,
+        "synergist": 10,
+        "adaptive": 15,
+        "random": 10,
+        "greedy": 11,
+        "balanced": 10
+      }
+    },
+    "ballistic_plating": {
+      "timesUsed": 172,
+      "winRate": 0.16279069767441862,
+      "avgRoundReached": 9.255813953488373,
+      "byAgent": {
+        "aggressive": 9,
+        "defensive": 51,
+        "economist": 9,
+        "synergist": 17,
+        "adaptive": 25,
+        "random": 21,
+        "greedy": 18,
+        "balanced": 22
+      }
+    },
+    "power_cell": {
+      "timesUsed": 81,
+      "winRate": 0.24691358024691357,
+      "avgRoundReached": 9.17283950617284,
+      "byAgent": {
+        "aggressive": 11,
+        "defensive": 9,
+        "economist": 4,
+        "synergist": 12,
+        "adaptive": 17,
+        "random": 15,
+        "greedy": 6,
+        "balanced": 7
+      }
+    },
+    "reactive_plating": {
+      "timesUsed": 136,
+      "winRate": 0.27941176470588236,
+      "avgRoundReached": 9.176470588235293,
+      "byAgent": {
+        "aggressive": 3,
+        "defensive": 30,
+        "economist": 12,
+        "synergist": 10,
+        "adaptive": 24,
+        "random": 8,
+        "greedy": 25,
+        "balanced": 24
+      }
+    },
+    "gyro": {
+      "timesUsed": 6,
+      "winRate": 0.3333333333333333,
+      "avgRoundReached": 10,
+      "byAgent": {
+        "aggressive": 1,
+        "random": 4,
+        "balanced": 1
+      }
+    },
+    "targeting_link": {
+      "timesUsed": 45,
+      "winRate": 0.2222222222222222,
+      "avgRoundReached": 9.355555555555556,
+      "byAgent": {
+        "aggressive": 11,
+        "defensive": 2,
+        "synergist": 3,
+        "adaptive": 9,
+        "random": 10,
+        "greedy": 4,
+        "balanced": 6
+      }
+    },
+    "energy_shield": {
+      "timesUsed": 112,
+      "winRate": 0.16071428571428573,
+      "avgRoundReached": 9.303571428571429,
+      "byAgent": {
+        "aggressive": 3,
+        "defensive": 43,
+        "economist": 6,
+        "synergist": 8,
+        "adaptive": 12,
+        "random": 12,
+        "greedy": 16,
+        "balanced": 12
+      }
+    },
+    "heat_sink": {
+      "timesUsed": 5,
+      "winRate": 0,
+      "avgRoundReached": 8.2,
+      "byAgent": {
+        "random": 5
+      }
+    }
+  }
+}

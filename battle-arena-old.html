@@ -1126,12 +1126,12 @@
                 arenaStyle: 'platform'
             },
             foggy: {
-                skyColor: new BABYLON.Color3(0.4, 0.42, 0.45),
-                fogDensity: 0.06,
-                fogColor: new BABYLON.Color3(0.5, 0.52, 0.55),
+                skyColor: new BABYLON.Color3(0.42, 0.44, 0.48),
+                fogDensity: 0.035,
+                fogColor: new BABYLON.Color3(0.52, 0.54, 0.58),
                 groundTexture: 'rock',
-                groundColor: new BABYLON.Color3(0.35, 0.35, 0.35),
-                horizonColor: new BABYLON.Color3(0.4, 0.4, 0.4),
+                groundColor: new BABYLON.Color3(0.38, 0.38, 0.38),
+                horizonColor: new BABYLON.Color3(0.42, 0.42, 0.42),
                 showMountains: false,
                 showDebris: true,
                 showSkybox: false,
@@ -1474,8 +1474,14 @@
             const groundElevation = bgConfig.groundElevation || 0;
             if (groundElevation > 0) {
                 allMechs.forEach(mech => {
-                    if (mech.pelvis) {
+                    if (mech.pelvis && mech.pelvisAggregate) {
+                        // Update mesh position
                         mech.pelvis.position.y += groundElevation;
+                        // Update physics body transform to match
+                        mech.pelvisAggregate.body.setTargetTransform(
+                            mech.pelvis.position,
+                            mech.pelvis.rotationQuaternion || BABYLON.Quaternion.Identity()
+                        );
                     }
                 });
             }
@@ -1791,23 +1797,23 @@
             // === SAND PATCHES ON ARENA FLOOR ===
             // Flat sand patches scattered across the arena for visual variety
             const sandPatchMat = new BABYLON.StandardMaterial('sandPatchMat', scene);
-            sandPatchMat.diffuseColor = new BABYLON.Color3(0.95, 0.82, 0.55);
+            sandPatchMat.diffuseColor = new BABYLON.Color3(0.88, 0.75, 0.5);
             sandPatchMat.specularColor = new BABYLON.Color3(0, 0, 0);
-            sandPatchMat.alpha = 0.9;
+            sandPatchMat.emissiveColor = new BABYLON.Color3(0, 0, 0);
 
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 12; i++) {
                 const patch = BABYLON.MeshBuilder.CreateDisc('sandPatch' + i, {
-                    radius: 1.5 + Math.random() * 3,
-                    tessellation: 12
+                    radius: 1 + Math.random() * 1.5,
+                    tessellation: 8
                 }, scene);
                 patch.rotation.x = Math.PI / 2;  // Lay flat
                 patch.position = new BABYLON.Vector3(
-                    (Math.random() - 0.5) * 35,
-                    0.02,  // Just above ground
-                    (Math.random() - 0.5) * 18
+                    (Math.random() - 0.5) * 30,
+                    0.03,  // Just above ground
+                    (Math.random() - 0.5) * 15
                 );
                 patch.rotation.z = Math.random() * Math.PI * 2;
-                patch.scaling.x = 0.6 + Math.random() * 0.8;  // Elliptical shapes
+                patch.scaling.x = 0.7 + Math.random() * 0.5;  // Elliptical shapes
                 patch.material = sandPatchMat;
             }
 

@@ -14,7 +14,8 @@ const {
     MECH_TEMPLATES,
     ITEM_TEMPLATES,
     COMPONENT_GENERATION,
-    ITEM_COMBOS
+    ITEM_COMBOS,
+    calculateInterest
 } = require('./game-constants');
 
 const { simulateCombat, simulateMultiCombat, calculateMechStats } = require('./combat-simulator');
@@ -46,8 +47,13 @@ function shuffleArray(array) {
 // ===========================================
 // ENEMY GENERATION
 // ===========================================
-function generateEnemy(level, budgetMult = 1.0, isBoss = false) {
-    const budget = (ENEMY_GENERATION.baseBudget + level * ENEMY_GENERATION.budgetPerLevel) * budgetMult;
+function generateEnemy(level, budgetMult = 1.0, isBoss = false, round = 1, difficulty = 'Easy') {
+    // Apply mission difficulty multiplier and round scaling
+    const difficultyMult = DIFFICULTY.missionDifficultyMult[difficulty] || 1.0;
+    const roundScaling = DIFFICULTY.getRoundScaling(round);
+    const totalMult = budgetMult * difficultyMult * roundScaling;
+
+    const budget = (ENEMY_GENERATION.baseBudget + level * ENEMY_GENERATION.budgetPerLevel) * totalMult;
 
     // Select chassis based on level
     const chassisIndex = Math.min(
@@ -138,10 +144,16 @@ function generateMissions(round, count = 3) {
         const riskBonus = template.risk - 2;
         const enemyLevel = Math.max(1, Math.min(15, baseLevel + riskBonus + (isBoss ? 2 : 0)));
 
-        // Generate enemies for this mission
+        // Generate enemies for this mission (pass round and difficulty for scaling)
         const enemies = [];
         for (let i = 0; i < template.enemyCount; i++) {
-            enemies.push(generateEnemy(enemyLevel, template.baseBudgetMult, isBoss && i === 0));
+            enemies.push(generateEnemy(
+                enemyLevel,
+                template.baseBudgetMult,
+                isBoss && i === 0,
+                round,
+                template.difficulty
+            ));
         }
 
         // Calculate expected reward
@@ -454,9 +466,8 @@ function simulateRun(agent, config = {}) {
         const streakBonus = combatResult.overallVictory
             ? Math.min(state.winStreak, ECONOMY.maxStreak) * ECONOMY.streakBonus
             : 0;
-        const interest = state.gold >= ECONOMY.interestThreshold
-            ? Math.min(Math.floor(state.gold * ECONOMY.interestRate), ECONOMY.interestCap)
-            : 0;
+        // Interest: 1g per 5g saved, max 5g per turn
+        const interest = calculateInterest(state.gold);
         const goldEarned = baseGold + streakBonus + interest;
         state.gold += goldEarned;
 

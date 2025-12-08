@@ -1122,7 +1122,7 @@
                 showMountains: false,
                 showDebris: false,
                 showSkybox: true,
-                groundElevation: 3,
+                groundElevation: 0,
                 arenaStyle: 'platform'
             },
             foggy: {
@@ -1797,7 +1797,7 @@
             // === SAND PATCHES ON ARENA FLOOR ===
             // Flat sand patches scattered across the arena for visual variety
             const sandPatchMat = new BABYLON.StandardMaterial('sandPatchMat', scene);
-            sandPatchMat.diffuseColor = new BABYLON.Color3(0.75, 0.6, 0.35);
+            sandPatchMat.diffuseColor = new BABYLON.Color3(0.5, 0.38, 0.2);
             sandPatchMat.specularColor = new BABYLON.Color3(0, 0, 0);
             sandPatchMat.emissiveColor = new BABYLON.Color3(0, 0, 0);
             sandPatchMat.backFaceCulling = false;

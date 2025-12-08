@@ -1092,6 +1092,70 @@
         // Global texture cache
         let TEXTURES = {};
 
+        // Read background type from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const backgroundType = urlParams.get('bg') || 'grasslands';
+        console.log('Background type:', backgroundType);
+
+        // Background configurations
+        const BACKGROUND_CONFIGS = {
+            grasslands: {
+                skyColor: new BABYLON.Color3(0.5, 0.6, 0.75),
+                fogDensity: 0.003,
+                fogColor: new BABYLON.Color3(0.7, 0.78, 0.85),
+                groundTexture: 'grass',
+                groundColor: new BABYLON.Color3(0.85, 0.9, 0.75),
+                horizonColor: new BABYLON.Color3(0.7, 0.75, 0.6),
+                showMountains: true,
+                showDebris: true,
+                showSkybox: true,
+                groundElevation: 0,
+                arenaStyle: 'natural'
+            },
+            metal_arena: {
+                skyColor: new BABYLON.Color3(0.15, 0.18, 0.25),
+                fogDensity: 0.002,
+                fogColor: new BABYLON.Color3(0.2, 0.22, 0.28),
+                groundTexture: 'metal',
+                groundColor: new BABYLON.Color3(0.5, 0.52, 0.55),
+                horizonColor: new BABYLON.Color3(0.1, 0.12, 0.15),
+                showMountains: false,
+                showDebris: false,
+                showSkybox: true,
+                groundElevation: 3,
+                arenaStyle: 'platform'
+            },
+            foggy: {
+                skyColor: new BABYLON.Color3(0.35, 0.38, 0.42),
+                fogDensity: 0.025,
+                fogColor: new BABYLON.Color3(0.45, 0.48, 0.52),
+                groundTexture: 'rock',
+                groundColor: new BABYLON.Color3(0.4, 0.42, 0.38),
+                horizonColor: new BABYLON.Color3(0.35, 0.38, 0.35),
+                showMountains: false,
+                showDebris: true,
+                showSkybox: false,
+                groundElevation: 0,
+                arenaStyle: 'wasteland'
+            },
+            desert: {
+                skyColor: new BABYLON.Color3(0.85, 0.75, 0.55),
+                fogDensity: 0.004,
+                fogColor: new BABYLON.Color3(0.9, 0.82, 0.65),
+                groundTexture: 'rock',
+                groundColor: new BABYLON.Color3(0.85, 0.7, 0.45),
+                horizonColor: new BABYLON.Color3(0.9, 0.78, 0.55),
+                showMountains: true,
+                showDebris: false,
+                showSkybox: true,
+                groundElevation: 0,
+                arenaStyle: 'dunes'
+            }
+        };
+
+        // Get current background config (default to grasslands)
+        const bgConfig = BACKGROUND_CONFIGS[backgroundType] || BACKGROUND_CONFIGS.grasslands;
+
         async function initEngine() {
             const canvas = document.getElementById('renderCanvas');
             engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
@@ -1238,7 +1302,7 @@
 
         function createScene() {
             const scene = new BABYLON.Scene(engine);
-            scene.clearColor = new BABYLON.Color3(0.5, 0.6, 0.75);  // Sky blue fallback
+            scene.clearColor = bgConfig.skyColor;  // Use background config
 
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
             scene.enablePhysics(new BABYLON.Vector3(0, -18, 0), havokPlugin);
@@ -1270,8 +1334,10 @@
             TEXTURES.rustMetalNormal.vScale = 2;
 
             // Camera - zoomed out to show all mechs
+            // Adjust camera target height based on ground elevation
+            const cameraTargetY = 2 + (bgConfig.groundElevation || 0);
             camera = new BABYLON.ArcRotateCamera('cam', -Math.PI/2, Math.PI/3.5, 32,
-                new BABYLON.Vector3(0, 2, 0), scene);
+                new BABYLON.Vector3(0, cameraTargetY, 0), scene);
             camera.attachControl(document.getElementById('renderCanvas'), true);
             camera.lowerRadiusLimit = 15;
             camera.upperRadiusLimit = 120;
@@ -1310,10 +1376,10 @@
                 log(`[v10.16] Shadows: PCF, frustum=50, ${SHADOW_CONFIG.mapSize}px`);
             }
 
-            // Fog - reduced for clearer miniature look
+            // Fog - uses background config
             scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-            scene.fogDensity = 0.003;
-            scene.fogColor = new BABYLON.Color3(0.7, 0.78, 0.85);
+            scene.fogDensity = bgConfig.fogDensity;
+            scene.fogColor = bgConfig.fogColor;
 
             // Create ground and walls
             createGround(scene, shadowGenerator);
@@ -1403,6 +1469,17 @@
                 ];
             }
             allMechs = [...playerMechs, ...enemyMechs];
+
+            // Adjust mech positions for ground elevation (e.g., metal arena platform)
+            const groundElevation = bgConfig.groundElevation || 0;
+            if (groundElevation > 0) {
+                allMechs.forEach(mech => {
+                    if (mech.pelvis) {
+                        mech.pelvis.position.y += groundElevation;
+                    }
+                });
+            }
+
             allMechs.forEach(mech => {
                 mechCooldowns[mech.name + '_' + (mech.isPlayer ? 'p' : 'e')] = { erlaser: 0, lrm: 0, ac: 0, hatchet: 0 };
             });
@@ -1487,44 +1564,50 @@
         }
 
         function createGround(scene, shadowGen) {
-            // === SKYBOX ===
-            const skybox = BABYLON.MeshBuilder.CreateBox('skyBox', { size: 1000 }, scene);
-            const skyboxMaterial = new BABYLON.StandardMaterial('skyBoxMat', scene);
-            skyboxMaterial.backFaceCulling = false;
-            skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(TEXTURE_URLS.skybox, scene);
-            skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-            skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-            skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-            skybox.material = skyboxMaterial;
-            skybox.receiveShadows = false;
+            // === SKYBOX (conditional based on background config) ===
+            if (bgConfig.showSkybox) {
+                const skybox = BABYLON.MeshBuilder.CreateBox('skyBox', { size: 1000 }, scene);
+                const skyboxMaterial = new BABYLON.StandardMaterial('skyBoxMat', scene);
+                skyboxMaterial.backFaceCulling = false;
+                skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture(TEXTURE_URLS.skybox, scene);
+                skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+                skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+                skybox.material = skyboxMaterial;
+                skybox.receiveShadows = false;
+            }
 
             // ================================================================
-            // === ARENA GROUND - Tiled Texture + Macro Variation ===
-            // ================================================================
-            // Using better grass texture with macro noise overlay to break tiling
-            // Combined with vertex colors for battle zone variation
+            // === ARENA GROUND - Style based on background config ===
             // ================================================================
 
+            const groundElevation = bgConfig.groundElevation || 0;
+
+            // Create main arena ground
             const ground = BABYLON.MeshBuilder.CreateGround('ground', {
                 width: 40, height: 20, subdivisions: 32
             }, scene);
+            ground.position.y = groundElevation;
 
-            // === TILED GRASS + MACRO VARIATION ===
+            // Ground material based on background config
             const mat = new BABYLON.StandardMaterial('groundMat', scene);
-
-            // Tiled grass texture
-            const groundTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
-            groundTex.uScale = 10;
-            groundTex.vScale = 5;
+            const textureUrl = TEXTURE_URLS[bgConfig.groundTexture] || TEXTURE_URLS.grass;
+            const groundTex = new BABYLON.Texture(textureUrl, scene);
+            groundTex.uScale = bgConfig.arenaStyle === 'platform' ? 8 : 10;
+            groundTex.vScale = bgConfig.arenaStyle === 'platform' ? 4 : 5;
             mat.diffuseTexture = groundTex;
-            mat.diffuseColor = new BABYLON.Color3(0.85, 0.9, 0.75);
-            mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.04);
-            mat.specularPower = 16;
+            mat.diffuseColor = bgConfig.groundColor;
+            mat.specularColor = bgConfig.arenaStyle === 'platform'
+                ? new BABYLON.Color3(0.2, 0.2, 0.2)
+                : new BABYLON.Color3(0.05, 0.05, 0.04);
+            mat.specularPower = bgConfig.arenaStyle === 'platform' ? 32 : 16;
 
             ground.material = mat;
 
-            // Vertex colors for battle zone darkening + macro variation
-            applyGroundVertexColors(ground);
+            // Vertex colors for natural environments
+            if (bgConfig.arenaStyle !== 'platform') {
+                applyGroundVertexColors(ground);
+            }
 
             new BABYLON.PhysicsAggregate(ground, BABYLON.PhysicsShapeType.BOX,
                 { mass: 0, friction: 1.0, restitution: 0.05 }, scene);
@@ -1534,9 +1617,21 @@
             }
 
             // ================================================================
-            // === THIN INSTANCE DEBRIS SCATTER ===
+            // === ARENA STYLE SPECIFIC ELEMENTS ===
             // ================================================================
-            createDebrisScatter(scene, shadowGen);
+
+            if (bgConfig.arenaStyle === 'platform') {
+                // Metal arena platform - create elevated stage with supports
+                createMetalArenaPlatform(scene, groundElevation);
+            } else if (bgConfig.arenaStyle === 'dunes') {
+                // Sand dunes environment
+                createSandDunes(scene, shadowGen);
+            }
+
+            // === DEBRIS SCATTER (conditional) ===
+            if (bgConfig.showDebris) {
+                createDebrisScatter(scene, shadowGen);
+            }
 
             // ================================================================
             // === EXTENDED HORIZON GROUND ===
@@ -1544,47 +1639,246 @@
             const horizonGround = BABYLON.MeshBuilder.CreateGround('horizonGround', {
                 width: 800, height: 800, subdivisions: 8
             }, scene);
-            horizonGround.position.y = -0.1;
+            horizonGround.position.y = bgConfig.arenaStyle === 'platform' ? -0.1 : groundElevation - 0.1;
 
             const horizonMat = new BABYLON.StandardMaterial('horizonMat', scene);
-            const horizonTex = new BABYLON.Texture(TEXTURE_URLS.grass, scene);
+            const horizonTexUrl = TEXTURE_URLS[bgConfig.groundTexture] || TEXTURE_URLS.grass;
+            const horizonTex = new BABYLON.Texture(horizonTexUrl, scene);
             horizonTex.uScale = 100;
             horizonTex.vScale = 100;
             horizonMat.diffuseTexture = horizonTex;
-            horizonMat.diffuseColor = new BABYLON.Color3(0.7, 0.75, 0.6);
+            horizonMat.diffuseColor = bgConfig.horizonColor;
             horizonMat.specularColor = new BABYLON.Color3(0, 0, 0);
             horizonMat.fogEnabled = true;
 
             horizonGround.material = horizonMat;
             horizonGround.receiveShadows = false;
 
-            // Vertex colors for horizon
-            applyGroundVertexColors(horizonGround, true);
-
-            // === DISTANT MOUNTAINS ===
-            createMountains(scene);
-
-            // === ARENA ROCKS (larger, decorative) ===
-            const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
-            rockMat.diffuseTexture = TEXTURES.rock;
-            rockMat.bumpTexture = TEXTURES.rockNormal;
-            rockMat.bumpTexture.level = 1.0;
-            rockMat.diffuseColor = new BABYLON.Color3(0.6, 0.55, 0.5);
-            rockMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-
-            for (let i = 0; i < 6; i++) {
-                const rock = BABYLON.MeshBuilder.CreateBox('rock' + i, {
-                    width: 0.6 + Math.random() * 0.8,
-                    height: 0.2 + Math.random() * 0.4,
-                    depth: 0.6 + Math.random() * 0.8
-                }, scene);
-                rock.position = new BABYLON.Vector3((Math.random() - 0.5) * 25, 0.15, (Math.random() - 0.5) * 10);
-                rock.rotation.y = Math.random() * Math.PI;
-                rock.material = rockMat;
-                new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+            // Vertex colors for natural horizons
+            if (bgConfig.arenaStyle !== 'platform') {
+                applyGroundVertexColors(horizonGround, true);
             }
 
-            log('[GROUND] New grass texture + vertex colors');
+            // === DISTANT MOUNTAINS (conditional) ===
+            if (bgConfig.showMountains) {
+                if (bgConfig.arenaStyle === 'dunes') {
+                    createDesertMountains(scene);
+                } else {
+                    createMountains(scene);
+                }
+            }
+
+            // === ARENA ROCKS (for natural environments) ===
+            if (bgConfig.arenaStyle === 'natural' || bgConfig.arenaStyle === 'wasteland') {
+                const rockMat = new BABYLON.StandardMaterial('rockMat', scene);
+                rockMat.diffuseTexture = TEXTURES.rock;
+                rockMat.bumpTexture = TEXTURES.rockNormal;
+                rockMat.bumpTexture.level = 1.0;
+                rockMat.diffuseColor = new BABYLON.Color3(0.6, 0.55, 0.5);
+                rockMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+
+                for (let i = 0; i < 6; i++) {
+                    const rock = BABYLON.MeshBuilder.CreateBox('rock' + i, {
+                        width: 0.6 + Math.random() * 0.8,
+                        height: 0.2 + Math.random() * 0.4,
+                        depth: 0.6 + Math.random() * 0.8
+                    }, scene);
+                    rock.position = new BABYLON.Vector3(
+                        (Math.random() - 0.5) * 25,
+                        groundElevation + 0.15,
+                        (Math.random() - 0.5) * 10
+                    );
+                    rock.rotation.y = Math.random() * Math.PI;
+                    rock.material = rockMat;
+                    new BABYLON.PhysicsAggregate(rock, BABYLON.PhysicsShapeType.BOX, { mass: 0 }, scene);
+                }
+            }
+
+            log('[GROUND] Background: ' + backgroundType);
+        }
+
+        // ================================================================
+        // === METAL ARENA PLATFORM ===
+        // ================================================================
+        // Creates an elevated metal combat platform with industrial supports
+        function createMetalArenaPlatform(scene, elevation) {
+            const platformMat = new BABYLON.StandardMaterial('platformMat', scene);
+            platformMat.diffuseColor = new BABYLON.Color3(0.3, 0.32, 0.35);
+            platformMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+            platformMat.specularPower = 64;
+
+            // Platform edge rim
+            const rimHeight = 0.3;
+            const rimWidth = 0.5;
+
+            // Create platform edges
+            const edges = [
+                { pos: [0, elevation - rimHeight/2, -10], size: [40, rimHeight, rimWidth] },
+                { pos: [0, elevation - rimHeight/2, 10], size: [40, rimHeight, rimWidth] },
+                { pos: [-20, elevation - rimHeight/2, 0], size: [rimWidth, rimHeight, 20] },
+                { pos: [20, elevation - rimHeight/2, 0], size: [rimWidth, rimHeight, 20] }
+            ];
+
+            edges.forEach((edge, i) => {
+                const edgeMesh = BABYLON.MeshBuilder.CreateBox('platformEdge' + i, {
+                    width: edge.size[0], height: edge.size[1], depth: edge.size[2]
+                }, scene);
+                edgeMesh.position = new BABYLON.Vector3(...edge.pos);
+                edgeMesh.material = platformMat;
+            });
+
+            // Support pillars
+            const pillarMat = new BABYLON.StandardMaterial('pillarMat', scene);
+            pillarMat.diffuseColor = new BABYLON.Color3(0.25, 0.25, 0.28);
+            pillarMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+
+            const pillarPositions = [
+                [-18, -8], [-18, 8], [18, -8], [18, 8],
+                [-10, -8], [-10, 8], [10, -8], [10, 8],
+                [0, -8], [0, 8]
+            ];
+
+            pillarPositions.forEach((pos, i) => {
+                const pillar = BABYLON.MeshBuilder.CreateCylinder('pillar' + i, {
+                    diameter: 1.2,
+                    height: elevation,
+                    tessellation: 8
+                }, scene);
+                pillar.position = new BABYLON.Vector3(pos[0], elevation / 2, pos[1]);
+                pillar.material = pillarMat;
+            });
+
+            // Diagonal support beams
+            const beamMat = new BABYLON.StandardMaterial('beamMat', scene);
+            beamMat.diffuseColor = new BABYLON.Color3(0.35, 0.35, 0.38);
+
+            // Add some cross-beams for industrial look
+            for (let i = 0; i < 4; i++) {
+                const beam = BABYLON.MeshBuilder.CreateBox('beam' + i, {
+                    width: 0.3, height: 0.3, depth: 8
+                }, scene);
+                const xPos = (i < 2 ? -14 : 14);
+                const zPos = (i % 2 === 0 ? -4 : 4);
+                beam.position = new BABYLON.Vector3(xPos, 1, zPos);
+                beam.rotation.y = Math.PI / 6 * (i % 2 === 0 ? 1 : -1);
+                beam.material = beamMat;
+            }
+
+            log('[PLATFORM] Metal arena created at elevation ' + elevation);
+        }
+
+        // ================================================================
+        // === SAND DUNES ===
+        // ================================================================
+        // Creates rolling sand dunes around the arena
+        function createSandDunes(scene, shadowGen) {
+            const sandMat = new BABYLON.StandardMaterial('sandMat', scene);
+            sandMat.diffuseColor = new BABYLON.Color3(0.9, 0.75, 0.5);
+            sandMat.specularColor = new BABYLON.Color3(0.1, 0.08, 0.05);
+            sandMat.specularPower = 8;
+
+            // Create dunes around the arena
+            const duneConfigs = [
+                { x: -25, z: -5, scaleX: 12, scaleY: 3, scaleZ: 8, rotY: 0.2 },
+                { x: -28, z: 6, scaleX: 10, scaleY: 2.5, scaleZ: 7, rotY: -0.3 },
+                { x: 25, z: -3, scaleX: 11, scaleY: 2.8, scaleZ: 9, rotY: 0.4 },
+                { x: 28, z: 7, scaleX: 9, scaleY: 2.2, scaleZ: 6, rotY: -0.1 },
+                { x: 0, z: -15, scaleX: 20, scaleY: 2, scaleZ: 6, rotY: 0.1 },
+                { x: -10, z: 14, scaleX: 14, scaleY: 2.5, scaleZ: 7, rotY: -0.2 },
+                { x: 12, z: 15, scaleX: 12, scaleY: 2, scaleZ: 5, rotY: 0.3 }
+            ];
+
+            duneConfigs.forEach((config, i) => {
+                // Use hemisphere for smooth dune shape
+                const dune = BABYLON.MeshBuilder.CreateSphere('dune' + i, {
+                    diameter: 1,
+                    segments: 16
+                }, scene);
+                dune.scaling = new BABYLON.Vector3(config.scaleX, config.scaleY, config.scaleZ);
+                dune.position = new BABYLON.Vector3(config.x, config.scaleY * 0.3, config.z);
+                dune.rotation.y = config.rotY;
+                dune.material = sandMat;
+
+                if (shadowGen) {
+                    dune.receiveShadows = true;
+                }
+            });
+
+            // Add some small rocks/debris in sand
+            const rockMat = new BABYLON.StandardMaterial('desertRockMat', scene);
+            rockMat.diffuseColor = new BABYLON.Color3(0.5, 0.45, 0.35);
+            rockMat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
+
+            for (let i = 0; i < 8; i++) {
+                const rock = BABYLON.MeshBuilder.CreateBox('desertRock' + i, {
+                    width: 0.4 + Math.random() * 0.5,
+                    height: 0.15 + Math.random() * 0.2,
+                    depth: 0.4 + Math.random() * 0.5
+                }, scene);
+                rock.position = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 30,
+                    0.1,
+                    (Math.random() - 0.5) * 15
+                );
+                rock.rotation.y = Math.random() * Math.PI;
+                rock.material = rockMat;
+            }
+
+            log('[DUNES] Sand dunes created');
+        }
+
+        // ================================================================
+        // === DESERT MOUNTAINS ===
+        // ================================================================
+        // Creates mesa-style desert mountains
+        function createDesertMountains(scene) {
+            const mesaMat = new BABYLON.StandardMaterial('mesaMat', scene);
+            mesaMat.diffuseColor = new BABYLON.Color3(0.6, 0.45, 0.3);
+            mesaMat.specularColor = new BABYLON.Color3(0, 0, 0);
+            mesaMat.fogEnabled = true;
+
+            // Create mesa/butte style formations
+            const mesaConfigs = [
+                { angle: 0, distance: 150, width: 40, height: 35 },
+                { angle: Math.PI * 0.3, distance: 180, width: 50, height: 45 },
+                { angle: Math.PI * 0.7, distance: 160, width: 35, height: 30 },
+                { angle: Math.PI, distance: 140, width: 45, height: 40 },
+                { angle: -Math.PI * 0.3, distance: 170, width: 38, height: 32 },
+                { angle: -Math.PI * 0.7, distance: 155, width: 42, height: 38 }
+            ];
+
+            mesaConfigs.forEach((config, i) => {
+                const x = Math.sin(config.angle) * config.distance;
+                const z = Math.cos(config.angle) * config.distance;
+
+                // Main mesa body (flat-topped)
+                const mesa = BABYLON.MeshBuilder.CreateCylinder('mesa' + i, {
+                    diameterTop: config.width * 0.7,
+                    diameterBottom: config.width,
+                    height: config.height,
+                    tessellation: 6
+                }, scene);
+                mesa.position = new BABYLON.Vector3(x, config.height / 2 - 5, z);
+                mesa.material = mesaMat;
+
+                // Add some variation with secondary formations
+                if (Math.random() > 0.4) {
+                    const spire = BABYLON.MeshBuilder.CreateCylinder('spire' + i, {
+                        diameterTop: 0,
+                        diameterBottom: config.width * 0.3,
+                        height: config.height * 0.6,
+                        tessellation: 5
+                    }, scene);
+                    spire.position = new BABYLON.Vector3(
+                        x + (Math.random() - 0.5) * config.width * 0.5,
+                        config.height * 0.3,
+                        z + (Math.random() - 0.5) * config.width * 0.5
+                    );
+                    spire.material = mesaMat;
+                }
+            });
+
+            log('[MOUNTAINS] Desert mesas created');
         }
 
         // ================================================================
@@ -2025,11 +2319,15 @@
 
         function createWalls(scene) {
             // Invisible walls - physics only, no rendering
+            // Adjust wall height based on ground elevation
+            const groundElevation = bgConfig.groundElevation || 0;
+            const wallCenterY = 5 + groundElevation;
+
             const walls = [
-                { p: [-20, 5, 0], s: [1, 10, 20] },
-                { p: [20, 5, 0], s: [1, 10, 20] },
-                { p: [0, 5, 10], s: [40, 10, 1] },
-                { p: [0, 5, -10], s: [40, 10, 1] }
+                { p: [-20, wallCenterY, 0], s: [1, 10, 20] },
+                { p: [20, wallCenterY, 0], s: [1, 10, 20] },
+                { p: [0, wallCenterY, 10], s: [40, 10, 1] },
+                { p: [0, wallCenterY, -10], s: [40, 10, 1] }
             ];
             walls.forEach((w, i) => {
                 const wall = BABYLON.MeshBuilder.CreateBox('wall' + i, { width: w.s[0], height: w.s[1], depth: w.s[2] }, scene);

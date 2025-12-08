@@ -1614,6 +1614,63 @@
             margin-bottom: 3px;
         }
 
+        /* Background Selector */
+        .background-selector {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .background-selector-title {
+            font-size: 14px;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .background-options {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .background-option {
+            padding: 10px 16px;
+            background: rgba(0, 255, 136, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .background-option:hover {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: #00ff88;
+        }
+
+        .background-option.selected {
+            background: rgba(0, 255, 136, 0.25);
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .background-option-name {
+            font-size: 12px;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 4px;
+        }
+
+        .background-option-desc {
+            font-size: 10px;
+            color: #888;
+        }
+
         /* ============================================
            MOBILE RESPONSIVE STYLES
            ============================================ */
@@ -1889,6 +1946,14 @@
                     </div>
                     <div class="mission-grid" id="missionTabList">
                         <!-- Missions populated by JS -->
+                    </div>
+
+                    <!-- Background Selector -->
+                    <div class="background-selector">
+                        <div class="background-selector-title">Arena Environment</div>
+                        <div class="background-options" id="backgroundOptions">
+                            <!-- Populated by JS -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3538,6 +3603,15 @@
 
         let selectedMission = null;
         let lastBattleMission = null;  // Track mission info for salvage generation
+
+        // Background options for battle arena
+        const BACKGROUND_OPTIONS = [
+            { id: 'grasslands', name: 'Grasslands', description: 'Open fields with distant mountains' },
+            { id: 'metal_arena', name: 'Metal Arena', description: 'Elevated metal combat platform' },
+            { id: 'foggy', name: 'Foggy Wasteland', description: 'Dense fog obscures the battlefield' },
+            { id: 'desert', name: 'Sand Dunes', description: 'Harsh desert environment' }
+        ];
+        let selectedBackground = 'grasslands';
 
         // ============================================
         // PHYSICS BATTLE SYSTEM
@@ -5881,6 +5955,30 @@
             if (continueBtn) {
                 continueBtn.disabled = !selectedMission || loadoutState.equipment.length === 0;
             }
+
+            // Render background options
+            renderBackgroundOptions();
+        }
+
+        function renderBackgroundOptions() {
+            const container = document.getElementById('backgroundOptions');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            BACKGROUND_OPTIONS.forEach(bg => {
+                const option = document.createElement('div');
+                option.className = `background-option${selectedBackground === bg.id ? ' selected' : ''}`;
+                option.innerHTML = `
+                    <div class="background-option-name">${bg.name}</div>
+                    <div class="background-option-desc">${bg.description}</div>
+                `;
+                option.addEventListener('click', () => {
+                    selectedBackground = bg.id;
+                    renderBackgroundOptions();
+                });
+                container.appendChild(option);
+            });
         }
 
         function renderMissions() {
@@ -7049,8 +7147,8 @@
             // Show and load the battle iframe with the original physics simulation
             const battleFrame = document.getElementById('battleFrame');
             battleFrame.style.display = 'block';
-            // Add cache-busting parameter to prevent browser caching
-            battleFrame.src = 'battle-arena-old.html?t=' + Date.now();
+            // Add cache-busting parameter and background parameter
+            battleFrame.src = `battle-arena-old.html?t=${Date.now()}&bg=${selectedBackground}`;
 
             currentPhase = GamePhase.BATTLE;
         }

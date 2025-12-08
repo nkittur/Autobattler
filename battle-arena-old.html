@@ -1285,15 +1285,15 @@
             // v10.14: FULL SCENE WITH MECH SHADOWS
             // ============================================
 
-            // Ambient light
+            // Ambient light - bright for miniature photography look
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
-            hemi.intensity = 0.5;
-            hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            hemi.intensity = 0.9;
+            hemi.groundColor = new BABYLON.Color3(0.4, 0.4, 0.45);
 
-            // DirectionalLight for shadows - positioned to cover entire arena
+            // DirectionalLight for shadows - bright like studio lighting
             const sunLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), scene);
             sunLight.position = new BABYLON.Vector3(0, 30, 0);  // Centered above arena
-            sunLight.intensity = 1.5;
+            sunLight.intensity = 2.2;
 
             // Expand shadow frustum to cover all mechs
             sunLight.shadowMinZ = 1;
@@ -1310,10 +1310,10 @@
                 log(`[v10.16] Shadows: PCF, frustum=50, ${SHADOW_CONFIG.mapSize}px`);
             }
 
-            // Fog
+            // Fog - reduced for clearer miniature look
             scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-            scene.fogDensity = 0.006;
-            scene.fogColor = new BABYLON.Color3(0.55, 0.65, 0.75);
+            scene.fogDensity = 0.003;
+            scene.fogColor = new BABYLON.Color3(0.7, 0.78, 0.85);
 
             // Create ground and walls
             createGround(scene, shadowGenerator);
@@ -1411,6 +1411,77 @@
             if (shadowGenerator) {
                 configureMechShadows(allMechs, shadowGenerator);
             }
+
+            // ============================================
+            // MINIATURE/TILT-SHIFT EFFECT
+            // Creates the illusion that mechs are tiny tabletop miniatures
+            // ============================================
+
+            // Default Rendering Pipeline for post-processing effects
+            const pipeline = new BABYLON.DefaultRenderingPipeline(
+                "miniaturePipeline",
+                true, // HDR enabled
+                scene,
+                [camera]
+            );
+
+            // Store reference for dynamic focus adjustment
+            scene.miniaturePipeline = pipeline;
+
+            // ----- FXAA (Fast anti-aliasing) -----
+            pipeline.fxaaEnabled = true;
+
+            // ----- DEPTH OF FIELD (Core tilt-shift effect) -----
+            // Very strong blur at edges, sharp focus in center - extreme miniature look
+            pipeline.depthOfFieldEnabled = true;
+            pipeline.depthOfFieldBlurLevel = BABYLON.DepthOfFieldEffectBlurLevel.High;
+            pipeline.depthOfField.focalLength = 300; // Extreme telephoto (macro lens effect)
+            pipeline.depthOfField.fStop = 0.5; // Very wide aperture for maximum blur
+            pipeline.depthOfField.focusDistance = 32000; // Focus at camera target distance
+
+            // ----- BLOOM (Glow on bright areas) -----
+            // Strong bloom for that hyperreal studio-lit miniature look
+            pipeline.bloomEnabled = true;
+            pipeline.bloomThreshold = 0.5;
+            pipeline.bloomWeight = 0.5;
+            pipeline.bloomKernel = 100;
+            pipeline.bloomScale = 0.7;
+
+            // ----- CHROMATIC ABERRATION (Lens imperfection) -----
+            // Color fringing at edges, like a real camera lens
+            pipeline.chromaticAberrationEnabled = true;
+            pipeline.chromaticAberration.aberrationAmount = 50;
+            pipeline.chromaticAberration.radialIntensity = 2.0;
+
+            // ----- VIGNETTE (Subtle darkened corners) -----
+            // Lighter vignette to keep scene bright
+            pipeline.imageProcessing.vignetteEnabled = true;
+            pipeline.imageProcessing.vignetteWeight = 1.2;
+            pipeline.imageProcessing.vignetteStretch = 0.4;
+            pipeline.imageProcessing.vignetteColor = new BABYLON.Color4(0, 0, 0, 0);
+            pipeline.imageProcessing.vignetteCameraFov = 0.6;
+
+            // ----- COLOR GRADING (Hyperreal vibrant miniature colors) -----
+            // High exposure and contrast for bright, punchy toy-like look
+            pipeline.imageProcessing.contrast = 1.5;
+            pipeline.imageProcessing.exposure = 1.6;
+            pipeline.imageProcessingEnabled = true;
+
+            // ----- SHARPEN (Crisp details like macro photography) -----
+            pipeline.sharpenEnabled = true;
+            pipeline.sharpen.edgeAmount = 0.4;
+            pipeline.sharpen.colorAmount = 1.0;
+
+            // ----- GRAIN (Subtle film grain for photographic feel) -----
+            pipeline.grainEnabled = true;
+            pipeline.grain.intensity = 5;
+            pipeline.grain.animated = true;
+
+            // Update DOF focus distance based on camera radius
+            scene.registerBeforeRender(() => {
+                // Convert camera radius (meters) to mm for focusDistance
+                pipeline.depthOfField.focusDistance = camera.radius * 1000;
+            });
 
             return scene;
         }

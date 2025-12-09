@@ -308,6 +308,50 @@ const LEVEL_SCALING = {
     reactor: {
         energyPerLevel: 0.25,     // +25% energy per level
         efficiencyAtLevel: [4, 8] // Reduces heat at these levels
+    },
+
+    // Power sources: energy scales with level
+    micro_reactor: {
+        energyPerLevel: 0.20      // +20% energy per level
+    },
+    auxiliary_power: {
+        energyPerLevel: 0.25      // +25% energy per level
+    },
+    plasma_core: {
+        energyPerLevel: 0.30,     // +30% energy per level (high tier)
+        heatCapacityPerLevel: 0.15
+    },
+    solar_array: {
+        energyRegenPerLevel: 0.20 // +20% energy regen per level
+    },
+    power_coupling: {
+        reactorBonusPerLevel: 0.05 // +5% reactor bonus per level
+    },
+    quantum_capacitor: {
+        energyPerLevel: 0.25,
+        efficiencyPerLevel: 0.02  // +2% efficiency per level
+    },
+
+    // Structures: tonnage scales with level
+    structure: {
+        tonnagePerLevel: 0.20,    // +20% tonnage bonus per level
+        hpPerLevel: 0.10          // +10% HP bonus per level
+    },
+    frame_reinforcement: {
+        tonnagePerLevel: 0.25     // +25% tonnage per level
+    },
+    load_bearing_frame: {
+        tonnagePerLevel: 0.30     // +30% tonnage per level (heavy duty)
+    },
+    exoskeleton_frame: {
+        tonnagePerLevel: 0.25,
+        damageReductionPerLevel: 0.15
+    },
+    modular_bay: {
+        modSpaceAtLevel: [5, 10]  // +1 mod space at these levels
+    },
+    compact_chassis: {
+        weightReductionPerLevel: 0.02 // +2% weight reduction per level
     }
 };
 
@@ -765,6 +809,104 @@ const ITEM_TEMPLATES = {
         category: 'system',
         synergyTags: ['repair', 'sustain', 'tech'],
         baseStats: { weight: 1, energyDraw: 1, hpRegen: 2 }  // Regen 2 HP per round
+    },
+
+    // ===========================================
+    // ADDITIONAL POWER SOURCES (Energy for Space)
+    // ===========================================
+    micro_reactor: {
+        type: 'REACTOR',
+        category: 'reactor',
+        synergyTags: ['power', 'energy', 'light', 'compact'],
+        baseStats: { weight: 0, energyDraw: -1, heatCapacity: 5 }  // Tiny but provides some energy
+    },
+    auxiliary_power: {
+        type: 'REACTOR',
+        category: 'reactor',
+        synergyTags: ['power', 'energy', 'standard'],
+        baseStats: { weight: 1, energyDraw: -2, heatCapacity: 8 }  // Backup power unit
+    },
+    plasma_core: {
+        type: 'REACTOR',
+        category: 'reactor',
+        synergyTags: ['power', 'energy', 'heavy', 'plasma'],
+        baseStats: { weight: 4, energyDraw: -7, heatCapacity: 25 }  // High power, heavy
+    },
+    solar_array: {
+        type: 'REACTOR',
+        category: 'reactor',
+        synergyTags: ['power', 'energy', 'light', 'sustain'],
+        baseStats: { weight: 1, energyDraw: -1, energyRegen: 1 }  // Slow but steady energy
+    },
+    power_coupling: {
+        type: 'REACTOR',
+        category: 'reactor',
+        synergyTags: ['power', 'energy', 'tech', 'synergy'],
+        baseStats: { weight: 1, energyDraw: 0, reactorBonus: 0.25 }  // +25% energy from other reactors
+    },
+    emergency_cell: {
+        type: 'REACTOR',
+        category: 'reactor',
+        synergyTags: ['power', 'energy', 'light', 'burst'],
+        baseStats: { weight: 0, energyDraw: 0, emergencyEnergy: 5 }  // One-time 5 energy when critical
+    },
+    quantum_capacitor: {
+        type: 'REACTOR',
+        category: 'reactor',
+        synergyTags: ['power', 'energy', 'tech', 'exotic'],
+        baseStats: { weight: 2, energyDraw: -4, energyEfficiency: 0.15 }  // -15% energy cost on weapons
+    },
+
+    // ===========================================
+    // STRUCTURAL UPGRADES (Weight Capacity for Space)
+    // ===========================================
+    frame_reinforcement: {
+        type: 'STRUCTURE',
+        category: 'structure',
+        synergyTags: ['structure', 'weight', 'standard'],
+        baseStats: { weight: 1, energyDraw: 0, tonnageBonus: 5 }  // +5 weight capacity
+    },
+    load_bearing_frame: {
+        type: 'STRUCTURE',
+        category: 'structure',
+        synergyTags: ['structure', 'weight', 'heavy'],
+        baseStats: { weight: 2, energyDraw: 0, tonnageBonus: 10 }  // +10 weight capacity
+    },
+    carbon_fiber_skeleton: {
+        type: 'STRUCTURE',
+        category: 'structure',
+        synergyTags: ['structure', 'weight', 'light', 'tech'],
+        baseStats: { weight: 0, energyDraw: 0, tonnageBonus: 3 }  // Lightweight +3 capacity
+    },
+    exoskeleton_frame: {
+        type: 'STRUCTURE',
+        category: 'structure',
+        synergyTags: ['structure', 'weight', 'heavy', 'armor'],
+        baseStats: { weight: 3, energyDraw: 0, tonnageBonus: 15, damageReduction: 1 }  // +15 capacity, slight armor
+    },
+    modular_bay: {
+        type: 'STRUCTURE',
+        category: 'structure',
+        synergyTags: ['structure', 'slots', 'tech'],
+        baseStats: { weight: 1, energyDraw: 0, modSpaceBonus: 2 }  // +2 mod slots
+    },
+    compact_chassis: {
+        type: 'STRUCTURE',
+        category: 'structure',
+        synergyTags: ['structure', 'efficiency', 'light'],
+        baseStats: { weight: 0, energyDraw: 0, weightReduction: 0.10 }  // -10% weight on all items
+    },
+    structural_supports: {
+        type: 'STRUCTURE',
+        category: 'structure',
+        synergyTags: ['structure', 'weight', 'armor', 'heavy'],
+        baseStats: { weight: 2, energyDraw: 0, tonnageBonus: 8, hpBonus: 5 }  // +8 capacity, +5 HP
+    },
+    lightweight_alloy: {
+        type: 'STRUCTURE',
+        category: 'structure',
+        synergyTags: ['structure', 'weight', 'light'],
+        baseStats: { weight: 0, energyDraw: 0, tonnageBonus: 4, speedBonus: 0.1 }  // +4 capacity, slight speed
     }
 };
 
@@ -914,6 +1056,78 @@ const ITEM_COMBOS = {
         requiredTags: ['sustained', 'sustained', 'sustained'],
         bonus: '+3 Shots/Round, +10% Accuracy',
         effect: { type: 'mixed', shots: 3, accuracy: 0.10 }
+    },
+
+    // === Power Synergies ===
+    power_grid: {
+        name: 'Power Grid',
+        requiredTags: ['power', 'power', 'power'],
+        bonus: '+50% Energy Capacity, -2 Heat',
+        effect: { type: 'mixed', energyCapacity: 0.50, heat: -2 }
+    },
+    overcharged: {
+        name: 'Overcharged Systems',
+        requiredTags: ['power', 'synergy'],
+        bonus: '+30% Reactor Output',
+        effect: { type: 'energy_boost', amount: 0.30 }
+    },
+    efficient_core: {
+        name: 'Efficient Core',
+        requiredTags: ['power', 'compact'],
+        bonus: '-20% Weight, +1 Energy',
+        effect: { type: 'mixed', weight: -0.20, energy: 1 }
+    },
+    plasma_overdrive: {
+        name: 'Plasma Overdrive',
+        requiredTags: ['plasma', 'energy'],
+        bonus: '+35% Energy Damage',
+        effect: { type: 'damage_boost', damageType: 'energy', amount: 0.35 }
+    },
+
+    // === Structure Synergies ===
+    reinforced_chassis: {
+        name: 'Reinforced Chassis',
+        requiredTags: ['structure', 'structure'],
+        bonus: '+10 Tonnage, +10% HP',
+        effect: { type: 'mixed', tonnage: 10, hp: 0.10 }
+    },
+    heavy_lifter: {
+        name: 'Heavy Lifter',
+        requiredTags: ['structure', 'weight', 'heavy'],
+        bonus: '+20 Tonnage',
+        effect: { type: 'tonnage_boost', amount: 20 }
+    },
+    lightweight_build: {
+        name: 'Lightweight Build',
+        requiredTags: ['structure', 'light', 'efficiency'],
+        bonus: '-25% All Item Weight, +10% Speed',
+        effect: { type: 'mixed', weightReduction: 0.25, speed: 0.10 }
+    },
+    armored_frame: {
+        name: 'Armored Frame',
+        requiredTags: ['structure', 'armor'],
+        bonus: '+15% HP, +1 Damage Reduction',
+        effect: { type: 'mixed', hp: 0.15, damageReduction: 1 }
+    },
+    modular_design: {
+        name: 'Modular Design',
+        requiredTags: ['structure', 'slots'],
+        bonus: '+3 Mod Space',
+        effect: { type: 'modspace_boost', amount: 3 }
+    },
+
+    // === Power + Structure Synergies ===
+    heavy_duty_rig: {
+        name: 'Heavy Duty Rig',
+        requiredTags: ['power', 'structure', 'heavy'],
+        bonus: '+15 Tonnage, +2 Energy, +10% HP',
+        effect: { type: 'mixed', tonnage: 15, energy: 2, hp: 0.10 }
+    },
+    compact_design: {
+        name: 'Compact Design',
+        requiredTags: ['compact', 'light', 'structure'],
+        bonus: '-30% Weight, +5 Tonnage',
+        effect: { type: 'mixed', weightReduction: 0.30, tonnage: 5 }
     }
 };
 

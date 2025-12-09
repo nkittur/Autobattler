@@ -1846,6 +1846,21 @@
     </style>
 </head>
 <body>
+    <!-- Global floating tooltip for item details -->
+    <div id="itemTooltip" style="
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        background: rgba(0, 10, 5, 0.95);
+        border: 2px solid #00ff88;
+        border-radius: 8px;
+        padding: 12px;
+        max-width: 280px;
+        font-size: 11px;
+        color: #00ff88;
+        pointer-events: none;
+        box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+    "></div>
     <div id="gameContainer">
         <canvas id="renderCanvas"></canvas>
 
@@ -5501,6 +5516,7 @@
                     <div class="item-info">
                         <div class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
                         ${buildItemStatIcons(item)}
+                        ${buildSynergyTags(item)}
                         <div class="item-bottom-row">
                             ${buildItemSecondaryStats(item)}
                             ${buildInlineShapePreview(item, 8)}
@@ -5514,6 +5530,11 @@
                     e.stopPropagation();
                     rotateItemShape(item);
                 });
+
+                // Add hover tooltip
+                el.addEventListener('mouseenter', (e) => showItemTooltip(item, e));
+                el.addEventListener('mousemove', moveItemTooltip);
+                el.addEventListener('mouseleave', hideItemTooltip);
 
                 // Make draggable
                 el.addEventListener('mousedown', (e) => handleDragStart(e, item, 'bench'));
@@ -5979,6 +6000,74 @@
         }
 
         // ============================================
+        // GLOBAL TOOLTIP SYSTEM
+        // ============================================
+        function showItemTooltip(item, event) {
+            const tooltip = document.getElementById('itemTooltip');
+            if (!tooltip || !item) return;
+
+            tooltip.innerHTML = buildItemTooltipHtml(item);
+            tooltip.style.display = 'block';
+
+            // Position near cursor
+            const x = event.clientX + 15;
+            const y = event.clientY + 15;
+
+            // Keep on screen
+            const rect = tooltip.getBoundingClientRect();
+            const maxX = window.innerWidth - 300;
+            const maxY = window.innerHeight - 200;
+
+            tooltip.style.left = Math.min(x, maxX) + 'px';
+            tooltip.style.top = Math.min(y, maxY) + 'px';
+        }
+
+        function hideItemTooltip() {
+            const tooltip = document.getElementById('itemTooltip');
+            if (tooltip) tooltip.style.display = 'none';
+        }
+
+        function moveItemTooltip(event) {
+            const tooltip = document.getElementById('itemTooltip');
+            if (!tooltip || tooltip.style.display === 'none') return;
+
+            const x = event.clientX + 15;
+            const y = event.clientY + 15;
+            const maxX = window.innerWidth - 300;
+            const maxY = window.innerHeight - 200;
+
+            tooltip.style.left = Math.min(x, maxX) + 'px';
+            tooltip.style.top = Math.min(y, maxY) + 'px';
+        }
+
+        // Build synergy tags HTML for compact display
+        function buildSynergyTags(item) {
+            if (!item.synergies || item.synergies.length === 0) return '';
+
+            const tagColors = {
+                'multi-hit': '#ff8844',
+                'multi-hit-synergy': '#ffcc00',
+                'kinetic': '#888',
+                'energy': '#4488ff',
+                'explosive': '#ff4444',
+                'precision': '#44ff88',
+                'alpha-strike': '#ff44ff',
+                'amplifier': '#ffcc00',
+                'shredder': '#ff6600',
+                'knockback': '#aa88ff',
+                'sustained': '#88ff88'
+            };
+
+            let html = '<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 4px;">';
+            item.synergies.forEach(tag => {
+                const color = tagColors[tag] || '#666';
+                html += `<span style="background: ${color}33; color: ${color}; padding: 1px 3px; border-radius: 2px; font-size: 8px; border: 1px solid ${color};">${tag}</span>`;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        // ============================================
         // TAB SWITCHING & MOBILE LAYOUT
         // ============================================
         let currentTab = 'loadout';
@@ -6346,16 +6435,26 @@
                             </div>
                             <div style="font-size: 11px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
                             ${buildItemStatIcons(item)}
+                            ${buildSynergyTags(item)}
                             <div class="item-bottom-row">
                                 ${buildItemSecondaryStats(item)}
                                 ${buildInlineShapePreview(item, 8)}
                             </div>
                         `;
 
+                        // Add hover tooltip
+                        card.addEventListener('mouseenter', (e) => {
+                            showItemTooltip(item, e);
+                            if (canAfford) card.style.transform = 'scale(1.02)';
+                        });
+                        card.addEventListener('mousemove', moveItemTooltip);
+                        card.addEventListener('mouseleave', () => {
+                            hideItemTooltip();
+                            card.style.transform = 'scale(1)';
+                        });
+
                         if (canAfford) {
                             card.addEventListener('click', () => handleBuyWeapon(index));
-                            card.addEventListener('mouseenter', () => { card.style.transform = 'scale(1.02)'; });
-                            card.addEventListener('mouseleave', () => { card.style.transform = 'scale(1)'; });
                         }
 
                         weaponsContainer.appendChild(card);
@@ -7619,6 +7718,7 @@
                                             ${comp.name}
                                         </div>
                                         ${buildItemStatIcons(comp)}
+                                        ${buildSynergyTags(comp)}
                                         <div class="item-bottom-row" style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
                                             ${buildItemSecondaryStats(comp)}
                                             ${buildInlineShapePreview(comp, 8)}
@@ -7749,13 +7849,16 @@
                     updatePickUI();
                 });
 
-                // Hover effect
-                el.addEventListener('mouseenter', () => {
+                // Hover effect with tooltip
+                el.addEventListener('mouseenter', (e) => {
+                    showItemTooltip(salvageOptions[index], e);
                     if (!selectedComponents.includes(salvageOptions[index])) {
                         el.style.transform = 'scale(1.02)';
                     }
                 });
+                el.addEventListener('mousemove', moveItemTooltip);
                 el.addEventListener('mouseleave', () => {
+                    hideItemTooltip();
                     if (!selectedComponents.includes(salvageOptions[index])) {
                         el.style.transform = 'scale(1)';
                     }

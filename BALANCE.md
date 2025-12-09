@@ -106,32 +106,29 @@ Formula: **1 shot per 2 cells**, damage 1 per shot
 
 ## Armor
 
-| Item | Cells | Weight | Energy | Effect | Effect/cell | Notes |
-|------|-------|--------|--------|--------|-------------|-------|
-| **Ballistic Plating** | 4 | 2 | 0 | 1 DR | 0.25 | vs ballistic/missile |
-| **Reactive Plating** | 4 | 3 | 0 | 2 DR | 0.5 | Better DR, heavier |
-| **Hull Armor** | 3 | 2 | 0 | 8 HP | 2.67 | Raw HP boost |
-| **Heavy Hull** | 6 | 4 | 0 | 15 HP | 2.5 | More HP, very heavy |
-| **Energy Shield** | 4 | 1 | 1 | 10 Shield | 2.5 | vs energy weapons |
+**Exchange Rates:**
+- 1 square = 1 DR
+- 1 square = 5 HP
+- Total Cost = Cells + Weight + Energy×2
 
-### ⚠️ BALANCE ISSUES: Armor
+| Item | Cells | Weight | Energy | Cost | Effect | Value | Efficiency | Notes |
+|------|-------|--------|--------|------|--------|-------|------------|-------|
+| **Ballistic Plating** | 3 | 0 | 0 | 3 | 2 DR | 2 | 67% | L-shape, vs ballistic |
+| **Reactive Plating** | 3 | 0 | 1 | 5 | 3 DR | 3 | 60% | L-shape, best DR |
+| **Hull Armor** | 3 | 1 | 0 | 4 | 20 HP | 4 | **100%** | Raw HP boost |
+| **Heavy Hull** | 4 | 2 | 0 | 6 | 30 HP | 6 | **100%** | Best HP item |
+| **Energy Shield** | 4 | 1 | 1 | 7 | 10 Shield | 2 | 29% | vs energy weapons |
 
-**Problem 1: DR vs HP unclear exchange rate**
-- Is 1 DR = 1 damage blocked? (Yes, per hit)
-- Against multi-hit weapons, 1 DR blocks 3-8 damage per round!
-- This makes DR extremely valuable vs multi-hit meta
+### ✓ BALANCED: HP Items
 
-**Problem 2: DR scaling**
-- Ballistic Plating: 4 cells, weight 2 → should get ~2 DR (only gets 1)
-- Reactive Plating: 4 cells, weight 3 → should get ~1 DR (gets 2) - OVERPOWERED?
+Hull Armor and Heavy Hull are now exactly 100% efficient using the 5 HP = 1 square exchange rate.
 
-**Problem 3: HP items seem efficient**
-- Hull Armor: 3 cells for 8 HP = 2.67 HP/cell
-- But what's the exchange rate for HP? Not defined.
+### Design Note: DR Items
 
-**Recommendation:** Define HP exchange rate. Suggest: 1 square = 3-4 HP
-- Hull Armor (3 cells): Expected 9-12 HP, has 8 → slightly under
-- Heavy Hull (6 cells): Expected 18-24 HP, has 15 → under
+DR items are intentionally 60-67% efficient by raw numbers because:
+- 1 DR blocks 1 damage PER HIT
+- Against 8-shot Chain Gun: 2 DR blocks 16 damage per round!
+- This creates a counter-meta: DR counters multi-hit builds
 
 ---
 
@@ -165,29 +162,33 @@ Exchange rate: 1 square = 1 energy provided
 
 ## Systems
 
-| Item | Cells | Weight | Energy | Effect | Notes |
-|------|-------|--------|--------|--------|-------|
-| **Targeting Link** | 2 | 0 | 0 | +1 dmg (1 dir) | Directional only |
-| **Targeting Hub** | 5 | 0 | 1 | +2 dmg (all adj) | Plus shape |
-| **Gyro** | 4 | 1 | 1 | +8% accuracy | |
-| **Weapon Amplifier** | 4 | 2 | 1 | +1 dmg (adj) | All adjacent |
-| **Armor Linkage** | 4 | 1 | 1 | +1 armor (adj) | |
+**Exchange Rates:**
+- +1 damage (1 direction) = 1 square
+- +1 damage (all directions) = 2 squares
+- Total Cost = Cells + Weight + Energy×2
 
-### ⚠️ BALANCE ISSUES: Systems
+| Item | Cells | Weight | Energy | Cost | Effect | Value | Efficiency | Notes |
+|------|-------|--------|--------|------|--------|-------|------------|-------|
+| **Targeting Link** | 2 | 0 | 0 | 2 | +1 dmg (1 dir) | 1 | 50% | Directional only |
+| **Targeting Hub** | 5 | 1 | 1 | 8 | +2 dmg (all) | 4 | 50% | Plus shape |
+| **Weapon Amplifier** | 3 | 1 | 1 | 6 | +1 dmg (all) | 2 | 33% | Vertical bar |
+| **Gyro** | 4 | 1 | 1 | 7 | +8% accuracy | 2 | 29% | |
+| **Armor Linkage** | 4 | 1 | 1 | 7 | +1 armor (adj) | 2 | 29% | |
 
-**Problem 1: Targeting Link is too efficient**
-- 2 cells, 0 cost, +1 damage = essentially free
-- With multi-hit weapon: +8 damage from Chain Gun adjacency
-- Compare to Weapon Amplifier: 4 cells, cost 4, +1 damage = 4x the price!
+### Design Note: Targeting Systems
 
-**Problem 2: Weapon Amplifier is overcosted**
-- 4 cells + weight 2 + energy 1 = massive investment
-- Only provides +1 damage to adjacent
-- Targeting Link does the same for 2 cells and 0 cost
+Targeting systems have intentionally low raw efficiency (33-50%) because:
+- Their value is MULTIPLICATIVE with multi-hit weapons
+- Targeting Hub + Chain Gun (8 shots): +2×8 = +16 effective damage
+- Raw efficiency doesn't capture synergy value
 
-**Recommendation:**
-- Targeting Link: Add weight or energy cost, or reduce to +0.5 damage
-- Weapon Amplifier: Reduce weight to 0-1, or increase bonus to +2
+| Synergy Example | Base DPR | With Target Hub | Effective Value |
+|-----------------|----------|-----------------|-----------------|
+| Chain Gun (8 shots) | 8 | 8 + 16 = 24 | +16 from +2 bonus |
+| Pulse Laser (5 shots) | 10 | 10 + 10 = 20 | +10 from +2 bonus |
+| Railgun (1 shot) | 5 | 5 + 2 = 7 | +2 from +2 bonus |
+
+The low base efficiency is the "cost" of synergy potential.
 
 ---
 
@@ -308,6 +309,44 @@ This makes legendary items 4-5x stronger than common level 1 items.
 - Increased average item sizes from ~3 to ~4 cells
 - Goal: Make inventory management more challenging (fit 5-6 items instead of 7-8)
 
+### 2024-12-09: Armor & Systems Rebalance
+
+**HP Items (now 100% efficient):**
+1. **Hull Armor**
+   - Weight: 2 → 1
+   - HP: 8 → 20 (5 HP per square)
+   - *Rationale:* Match 5 HP = 1 square exchange rate
+
+2. **Heavy Hull**
+   - Cells: 6 → 4 (2x2 shape)
+   - Weight: 4 → 2
+   - HP: 15 → 30
+   - *Rationale:* More compact, exactly 100% efficient
+
+**DR Items (intentionally 60-67% efficient vs multi-hit counter):**
+3. **Ballistic Plating**
+   - Cells: 4 → 3 (L-shape)
+   - Weight: 2 → 0
+   - DR: 1 → 2
+   - *Rationale:* DR counters multi-hit, raw efficiency misleading
+
+4. **Reactive Plating**
+   - Cells: 4 → 3 (L-shape)
+   - Weight: 3 → 0
+   - Energy: 0 → 1
+   - DR: 2 → 3
+   - *Rationale:* Best DR item, costs energy for balance
+
+**Targeting Systems (synergy items, low base efficiency by design):**
+5. **Weapon Amplifier**
+   - Cells: 4 → 3 (1x3 vertical)
+   - Weight: 2 → 1
+   - *Rationale:* 33% base efficiency but multiplicative with multi-hit
+
+6. **Targeting Hub**
+   - Weight: 0 → 1
+   - *Rationale:* 50% base efficiency, +16 effective vs Chain Gun
+
 ---
 
 ## Future Balance Directions
@@ -316,14 +355,19 @@ This makes legendary items 4-5x stronger than common level 1 items.
 - Machinegun, Chain Gun, Pulse Laser are 200% efficient
 - Options: Reduce damage, increase cost, or accept as intentional
 
-### Priority 2: Clarify HP Exchange Rate
-- Currently undefined how HP translates to budget
-- Suggested: 1 square = 3-4 HP
+### ~~Priority 2: Clarify HP Exchange Rate~~ ✓ DONE
+- Defined: 1 square = 5 HP
+- Hull Armor and Heavy Hull now 100% efficient
 
-### Priority 3: System Cost Parity
-- Targeting Link (2 cells, 0 cost) vs Weapon Amplifier (4 cells, 4 cost)
-- Both give +1 damage but at vastly different prices
+### ~~Priority 3: System Cost Parity~~ ✓ DONE
+- Weapon Amplifier reduced from cost 8 to cost 6
+- Targeting Hub increased from cost 7 to cost 8
+- Both now have low base efficiency but high synergy value
 
-### Priority 4: Review Level/Rarity Stacking
+### Priority 2: Review Level/Rarity Stacking
 - Combined scaling may be too extreme at high levels
 - Consider caps or diminishing returns
+
+### Priority 3: Energy Shield Rebalance
+- Currently 29% efficient (10 shield for cost 7)
+- Needs review: Is shield fundamentally different from HP?

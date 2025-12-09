@@ -2686,28 +2686,28 @@
                 icon: '🛡️',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Reinforced', 'Composite'],
                 nameSuffix: ['Plating', 'Armor', 'Carapace', 'Shell'],
-                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
+                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 2,
+                    weight: 0,
                     energyDraw: 0,
-                    damageReduction: 1  // -1 damage from each ballistic/missile hit
+                    damageReduction: 2  // -2 damage from each ballistic/missile hit
                 },
                 statWeights: { damageReduction: 1.0 }
             },
-            // Reactive Armor - better damage reduction, L-shape
+            // Reactive Armor - better damage reduction, energy-powered
             reactive_plating: {
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '💥',
                 namePrefix: ['Reactive', 'Ablative', 'Hardened', 'Explosive'],
                 nameSuffix: ['Plates', 'Panels', 'Coating', 'Layer'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 square (4 squares)
+                baseShape: [[1, 1], [1, 0]],  // L-shape (3 squares)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 3,
-                    energyDraw: 0,
-                    damageReduction: 2  // -2 damage from each ballistic/missile hit
+                    weight: 0,
+                    energyDraw: 1,
+                    damageReduction: 3  // -3 damage from each ballistic/missile hit
                 },
                 statWeights: { damageReduction: 1.0 }
             },
@@ -2721,25 +2721,25 @@
                 baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 2,
+                    weight: 1,
                     energyDraw: 0,
-                    hpBonus: 8  // +8 HP at level 1
+                    hpBonus: 20  // 4 cost × 5 HP = 20 HP
                 },
                 statWeights: { hpBonus: 1.0 }
             },
-            // Heavy Hull - more HP, bigger shape
+            // Heavy Hull - more HP, compact shape
             heavy_hull: {
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '💪',
                 namePrefix: ['Heavy', 'Massive', 'Fortified', 'Titan'],
                 nameSuffix: ['Hull', 'Bulkhead', 'Plating', 'Chassis'],
-                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 (6 squares)
+                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 4,
+                    weight: 2,
                     energyDraw: 0,
-                    hpBonus: 15  // +15 HP at level 1
+                    hpBonus: 30  // 6 cost × 5 HP = 30 HP
                 },
                 statWeights: { hpBonus: 1.0 }
             },
@@ -2825,7 +2825,7 @@
                 baseShape: [[0, 1, 0], [1, 1, 1], [0, 1, 0]],  // Plus shape (5 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 0,
+                    weight: 1,
                     energyDraw: 1,
                     adjacentDamageBonus: 2  // +2 damage to ALL adjacent weapons (buffed!)
                 },
@@ -2900,10 +2900,10 @@
                 icon: '⚡',
                 namePrefix: ['Tactical', 'Combat', 'Strike', 'War'],
                 nameSuffix: ['Amplifier', 'Booster', 'Enhancer', 'Module'],
-                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
+                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 2,
+                    weight: 1,
                     energyDraw: 1,
                     adjacentDamageBonus: 1  // +1 damage to adjacent weapons
                 },

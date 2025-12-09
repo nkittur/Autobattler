@@ -2212,7 +2212,7 @@
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '⚡',
-                gridShape: [[1, 0], [1, 1]],  // L-shape (3 spaces)
+                gridShape: [[1, 1], [1, 1]],  // 2x2 Square (4 spaces)
                 gridDimensions: { w: 2, h: 2 },
                 stats: {
                     weight: 2,
@@ -2236,8 +2236,8 @@
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '🛡️',
-                gridShape: [[1, 1]],  // 2x1 Horizontal (smaller)
-                gridDimensions: { w: 2, h: 1 },
+                gridShape: [[1, 1, 1]],  // 3x1 Horizontal
+                gridDimensions: { w: 3, h: 1 },
                 stats: {
                     weight: 2,
                     energyDraw: 0,
@@ -2251,8 +2251,8 @@
                 type: 'REACTOR',
                 category: 'reactor',
                 icon: '⚛️',
-                gridShape: [[1]],  // 1x1 Single (smaller)
-                gridDimensions: { w: 1, h: 1 },
+                gridShape: [[1, 1]],  // 2x1 Horizontal
+                gridDimensions: { w: 2, h: 1 },
                 stats: {
                     weight: 1,
                     energyDraw: -4,  // Provides 4 energy
@@ -2266,8 +2266,8 @@
                 type: 'SYSTEM',
                 category: 'system',
                 icon: '🎯',
-                gridShape: [[1]],  // 1x1 Single
-                gridDimensions: { w: 1, h: 1 },
+                gridShape: [[1], [1]],  // 1x2 Vertical
+                gridDimensions: { w: 1, h: 2 },
                 stats: {
                     weight: 0,
                     energyDraw: 0,
@@ -2286,8 +2286,8 @@
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🚀',
-                gridShape: [[1, 1, 1]],  // 3x1 Horizontal
-                gridDimensions: { w: 3, h: 1 },
+                gridShape: [[1, 1, 1, 1]],  // 4x1 Horizontal
+                gridDimensions: { w: 4, h: 1 },
                 stats: {
                     weight: 2,
                     energyDraw: 1,
@@ -2311,8 +2311,8 @@
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '🔵',
-                gridShape: [[1], [1]],  // 1x2 Vertical
-                gridDimensions: { w: 1, h: 2 },
+                gridShape: [[1], [1], [1]],  // 1x3 Vertical
+                gridDimensions: { w: 1, h: 3 },
                 stats: {
                     weight: 1,
                     energyDraw: 1,
@@ -2326,8 +2326,8 @@
                 type: 'COOLING',
                 category: 'cooling',
                 icon: '❄️',
-                gridShape: [[1]],  // 1x1 Single
-                gridDimensions: { w: 1, h: 1 },
+                gridShape: [[1], [1]],  // 1x2 Vertical
+                gridDimensions: { w: 1, h: 2 },
                 stats: {
                     weight: 1,
                     energyDraw: 0,
@@ -2491,15 +2491,16 @@
 
         // Base item templates - define the "class" of item with typical shape/stats
         // Scaled for smaller economy: weight limit 6, energy ~6, small grid
+        // Item sizes average 4-5 squares to make inventory management challenging
         const ITEM_TEMPLATES = {
-            // WEAPONS - base stats ~25% better than starters (damage 4-5), shapes 3+ squares
+            // WEAPONS - base stats ~25% better than starters (damage 4-5), shapes 4+ squares
             railgun: {
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔫',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Precision', 'Rapid'],
                 nameSuffix: ['Railgun', 'Cannon', 'Driver', 'Accelerator'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
                     weight: 3,
@@ -2525,7 +2526,7 @@
                 icon: '⚡',
                 namePrefix: ['ER', 'Pulse', 'Focused', 'Burst', 'Heavy'],
                 nameSuffix: ['Laser', 'Beam', 'Array', 'Emitter'],
-                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
+                baseShape: [[1, 1], [1, 1]],  // 2x2 Square (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 2,
@@ -2550,7 +2551,7 @@
                 icon: '🚀',
                 namePrefix: ['Light', 'Cluster', 'Heavy', 'Guided', 'Swarm'],
                 nameSuffix: ['Missile', 'Rocket', 'Launcher', 'Pod'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 3,
@@ -2576,7 +2577,7 @@
                 icon: '🔥',
                 namePrefix: ['Rapid', 'Twin', 'Auto', 'Rotary', 'Ultra'],
                 nameSuffix: ['Cannon', 'Gun', 'Repeater', 'Vulcan'],
-                baseShape: [[1, 1]],  // 2x1 (2 squares - compact rapid fire)
+                baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,
@@ -2604,7 +2605,7 @@
                 icon: '⛓️',
                 namePrefix: ['Rotary', 'Gatling', 'Spinning', 'Chain'],
                 nameSuffix: ['Gun', 'Cannon', 'Minigun', 'Shredder'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal
+                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['leftArm', 'rightArm', 'torso'],
                 baseStats: {
                     weight: 2,
@@ -2630,7 +2631,7 @@
                 icon: '💫',
                 namePrefix: ['Pulse', 'Rapid', 'Burst', 'Strobe'],
                 nameSuffix: ['Laser', 'Emitter', 'Array', 'Projector'],
-                baseShape: [[1], [1]],  // 1x2 vertical (compact)
+                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
                 validSlots: ['leftArm', 'rightArm', 'torso'],
                 baseStats: {
                     weight: 1,
@@ -2655,7 +2656,7 @@
                 icon: '🐝',
                 namePrefix: ['Swarm', 'Cluster', 'Micro', 'Hive'],
                 nameSuffix: ['Missiles', 'Rockets', 'Pods', 'Volley'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 (takes space but powerful)
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 (6 squares - large weapon platform)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 3,
@@ -2685,7 +2686,7 @@
                 icon: '🛡️',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Reinforced', 'Composite'],
                 nameSuffix: ['Plating', 'Armor', 'Carapace', 'Shell'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 2,
@@ -2701,7 +2702,7 @@
                 icon: '💥',
                 namePrefix: ['Reactive', 'Ablative', 'Hardened', 'Explosive'],
                 nameSuffix: ['Plates', 'Panels', 'Coating', 'Layer'],
-                baseShape: [[1, 1], [1, 0]],  // L-shape (3 squares)
+                baseShape: [[1, 1], [1, 1]],  // 2x2 square (4 squares)
                 validSlots: ['torso'],
                 baseStats: {
                     weight: 3,
@@ -2717,7 +2718,7 @@
                 icon: '❤️',
                 namePrefix: ['Reinforced', 'Thick', 'Dense', 'Layered'],
                 nameSuffix: ['Hull', 'Frame', 'Structure', 'Bulkhead'],
-                baseShape: [[1, 1]],  // 2x1 (2 squares - compact)
+                baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 2,
@@ -2733,7 +2734,7 @@
                 icon: '💪',
                 namePrefix: ['Heavy', 'Massive', 'Fortified', 'Titan'],
                 nameSuffix: ['Hull', 'Bulkhead', 'Plating', 'Chassis'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares)
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 (6 squares)
                 validSlots: ['torso'],
                 baseStats: {
                     weight: 4,
@@ -2749,7 +2750,7 @@
                 icon: '🔵',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Hardened'],
                 nameSuffix: ['Shield', 'Barrier', 'Screen', 'Ward'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,
@@ -2766,7 +2767,7 @@
                 icon: '⚛️',
                 namePrefix: ['Compact', 'Standard', 'High-Output', 'Fusion', 'Plasma'],
                 nameSuffix: ['Reactor', 'Core', 'Generator', 'Cell'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['torso'],
                 baseStats: {
                     weight: 2,
@@ -2781,7 +2782,7 @@
                 icon: '🔋',
                 namePrefix: ['Emergency', 'Backup', 'Auxiliary', 'Compact'],
                 nameSuffix: ['Cell', 'Battery', 'Pack', 'Unit'],
-                baseShape: [[1, 1]],  // 2x1 (2 squares - smaller reactor option)
+                baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2799,7 +2800,7 @@
                 icon: '🎯',
                 namePrefix: ['Basic', 'Light', 'Compact', 'Simple'],
                 nameSuffix: ['Link', 'Connector', 'Coupler', 'Interface'],
-                baseShape: [[1]],  // 1x1 (small, cheap)
+                baseShape: [[1], [1]],  // 1x2 vertical
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 0,
@@ -2821,7 +2822,7 @@
                 icon: '🎯',
                 namePrefix: ['Advanced', 'Precision', 'Neural', 'Quantum'],
                 nameSuffix: ['Hub', 'Nexus', 'Core', 'Matrix'],
-                baseShape: [[0, 1, 0], [1, 1, 1]],  // T-shape (4 squares)
+                baseShape: [[0, 1, 0], [1, 1, 1], [0, 1, 0]],  // Plus shape (5 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 0,
@@ -2842,7 +2843,7 @@
                 icon: '🔄',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Stabilized'],
                 nameSuffix: ['Gyro', 'Stabilizer', 'Balance Unit'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2859,7 +2860,7 @@
                 icon: '❄️',
                 namePrefix: ['Double', 'Enhanced', 'Cryo', 'Advanced'],
                 nameSuffix: ['Heat Sink', 'Cooler', 'Radiator', 'Vent'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2878,7 +2879,7 @@
                 icon: '🌡️',
                 namePrefix: ['Advanced', 'Integrated', 'Active', 'Elite'],
                 nameSuffix: ['Cooling', 'System', 'Module', 'Array'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares - larger = more efficient)
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 (6 squares - larger = more efficient)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 2,
@@ -2899,7 +2900,7 @@
                 icon: '⚡',
                 namePrefix: ['Tactical', 'Combat', 'Strike', 'War'],
                 nameSuffix: ['Amplifier', 'Booster', 'Enhancer', 'Module'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 2,
@@ -2920,7 +2921,7 @@
                 icon: '🔗',
                 namePrefix: ['Reactive', 'Adaptive', 'Linked', 'Network'],
                 nameSuffix: ['Linkage', 'Matrix', 'Network', 'Grid'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['torso'],
                 baseStats: {
                     weight: 1,
@@ -2939,7 +2940,7 @@
                 icon: '⚡',
                 namePrefix: ['Flux', 'Charged', 'Power', 'Energy'],
                 nameSuffix: ['Capacitor', 'Bank', 'Store', 'Reserve'],
-                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
+                baseShape: [[1, 1], [1, 1]],  // 2x2 square (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,

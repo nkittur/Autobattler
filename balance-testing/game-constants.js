@@ -4,6 +4,22 @@
  */
 
 // ===========================================
+// ITEM SIZE BALANCE
+// ===========================================
+// Mech grid: 7x7 with 25 valid cells (humanoid shape)
+//
+// Average item sizes (designed to make fitting items challenging):
+// - Starter items: 2-5 cells (average ~3.4 cells)
+// - Weapons: 3-6 cells (average ~4 cells)
+// - Armor: 3-6 cells (average ~4.3 cells)
+// - Reactors: 3-4 cells (average ~3.7 cells)
+// - Systems: 2-5 cells (average ~3.5 cells)
+// - Cooling: 4-6 cells (average ~5 cells)
+//
+// With 25 usable grid cells and items averaging 4 cells,
+// players can fit ~5-6 items max, forcing hard choices.
+
+// ===========================================
 // ECONOMY SYSTEM
 // ===========================================
 const ECONOMY = {

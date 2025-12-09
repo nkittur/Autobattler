@@ -20,6 +20,23 @@
 // players can fit ~5-6 items max, forcing hard choices.
 
 // ===========================================
+// WEAPON BALANCE (Exchange Rates)
+// ===========================================
+// Core rates: 1 weight = 1 damage, 1 energy = 2 damage, 1 square = 5 knockback
+//
+// Single-shot weapons (balanced for damage = weight + energy×2):
+// | Weapon   | Cells | Shape | Weight | Energy | Cost | Damage | Knockback | Role                    |
+// |----------|-------|-------|--------|--------|------|--------|-----------|-------------------------|
+// | Railgun  | 4     | 1x4   | 2      | 1      | 4    | 5      | 25        | High KB, precision      |
+// | Laser    | 3     | L     | 2      | 2      | 6    | 5      | 5         | Compact, energy-hungry  |
+// | Missile  | 5     | L     | 3      | 1      | 5    | 6      | 10        | High damage, bulky      |
+//
+// Design philosophy:
+// - Railgun: Long shape, light weight, HIGH knockback (25) - the impact specialist
+// - Laser: Compact L-shape, energy-hungry, LOW knockback (5) - precision beam
+// - Missile: Bulky L-shape, high damage, moderate KB (10) - raw firepower
+
+// ===========================================
 // ECONOMY SYSTEM
 // ===========================================
 const ECONOMY = {

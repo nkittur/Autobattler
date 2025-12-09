@@ -2239,7 +2239,7 @@
                 gridShape: [[1, 1, 1]],  // 3x1 Horizontal
                 gridDimensions: { w: 3, h: 1 },
                 stats: {
-                    weight: 2,
+                    weight: 1,  // Light armor - easy to fit
                     energyDraw: 0,
                     damageReduction: 1  // -1 damage from ballistic/missile
                 },
@@ -2503,9 +2503,9 @@
                 baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 3,
+                    weight: 2,  // Light but long - high knockback specialist
                     energyDraw: 1,
-                    damage: 5
+                    damage: 5  // Balanced: cost 4 (2+1×2), +1 from shape bonus, high KB (25) is key advantage
                 },
                 baseBattle: {
                     projectileSpeed: 55,
@@ -2526,17 +2526,17 @@
                 icon: '⚡',
                 namePrefix: ['ER', 'Pulse', 'Focused', 'Burst', 'Heavy'],
                 nameSuffix: ['Laser', 'Beam', 'Array', 'Emitter'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 Square (4 squares)
+                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares) - compact energy weapon
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 2,
                     energyDraw: 2,
-                    damage: 4
+                    damage: 5  // Balanced: cost 6 (2+2×2), smaller size compensates
                 },
                 baseBattle: {
                     isBeam: true,
                     beamDuration: 200,
-                    knockback: 8,
+                    knockback: 5,  // Low knockback - precision weapon, not impact
                     recoil: 0.15,
                     shotsPerRound: 1,
                     color: [0.2, 1, 0.3]
@@ -2551,17 +2551,17 @@
                 icon: '🚀',
                 namePrefix: ['Light', 'Cluster', 'Heavy', 'Guided', 'Swarm'],
                 nameSuffix: ['Missile', 'Rocket', 'Launcher', 'Pod'],
-                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
+                baseShape: [[1, 1, 1, 1], [0, 0, 0, 1]],  // L-shape (5 squares) - bulky launcher
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 3,
                     energyDraw: 1,
-                    damage: 5
+                    damage: 6  // Balanced: cost 5 (3+1×2), larger size = more damage
                 },
                 baseBattle: {
                     projectileSpeed: 30,
                     projectileSize: 0.2,
-                    knockback: 30,
+                    knockback: 10,  // Moderate KB - railgun is the knockback king
                     recoil: 0.2,
                     shotsPerRound: 1,
                     color: [1, 0.4, 0.2],

@@ -25,16 +25,21 @@
 // Core rates: 1 weight = 1 damage, 1 energy = 2 damage, 1 square = 5 knockback
 //
 // Single-shot weapons (balanced for damage = weight + energy×2):
-// | Weapon   | Cells | Shape | Weight | Energy | Cost | Damage | Knockback | Role                    |
-// |----------|-------|-------|--------|--------|------|--------|-----------|-------------------------|
-// | Railgun  | 4     | 1x4   | 2      | 1      | 4    | 5      | 25        | High KB, precision      |
-// | Laser    | 3     | L     | 2      | 2      | 6    | 5      | 5         | Compact, energy-hungry  |
-// | Missile  | 5     | L     | 3      | 1      | 5    | 6      | 10        | High damage, bulky      |
+// | Weapon   | Cells | Shape | Weight | Energy | Cost | Damage | DPR/cell | Knockback | Role                |
+// |----------|-------|-------|--------|--------|------|--------|----------|-----------|---------------------|
+// | Railgun  | 4     | 1x4   | 2      | 1      | 4    | 5×1=5  | 1.25     | 25        | High KB, precision  |
+// | Laser    | 2     | 2x1   | 1      | 2      | 5    | 4×1=4  | 2.0      | 5         | Compact, efficient  |
+//
+// Multi-hit missiles (1 shot per 2 cells, synergy weapons):
+// | Weapon   | Cells | Shape | Weight | Energy | Cost | Damage | DPR/cell | With +2 bonus |
+// |----------|-------|-------|--------|--------|------|--------|----------|---------------|
+// | Missile  | 4     | 2x2   | 1      | 0      | 1    | 1×2=2  | 0.5      | 3×2=6 (1.5)   |
+// | Swarm    | 6     | 2x3   | 1      | 0      | 1    | 1×3=3  | 0.5      | 3×3=9 (1.5)   |
 //
 // Design philosophy:
-// - Railgun: Long shape, light weight, HIGH knockback (25) - the impact specialist
-// - Laser: Compact L-shape, energy-hungry, LOW knockback (5) - precision beam
-// - Missile: Bulky L-shape, high damage, moderate KB (10) - raw firepower
+// - Railgun: Long shape, light weight, HIGH knockback (25) - impact specialist
+// - Laser: Most compact (2 cells), energy-hungry, best DPR/cell - space efficient
+// - Missiles: Cheap to equip (w=1, e=0), weak alone, TRIPLE damage with +2 bonus
 
 // ===========================================
 // ECONOMY SYSTEM

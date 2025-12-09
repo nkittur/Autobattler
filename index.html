@@ -2526,12 +2526,12 @@
                 icon: '⚡',
                 namePrefix: ['ER', 'Pulse', 'Focused', 'Burst', 'Heavy'],
                 nameSuffix: ['Laser', 'Beam', 'Array', 'Emitter'],
-                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares) - compact energy weapon
+                baseShape: [[1, 1]],  // 2x1 (2 squares) - very compact energy weapon
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 2,
+                    weight: 1,
                     energyDraw: 2,
-                    damage: 5  // Balanced: cost 6 (2+2×2), smaller size compensates
+                    damage: 4  // Balanced: cost 5 (1+2×2), compact size is the advantage
                 },
                 baseBattle: {
                     isBeam: true,
@@ -2551,25 +2551,25 @@
                 icon: '🚀',
                 namePrefix: ['Light', 'Cluster', 'Heavy', 'Guided', 'Swarm'],
                 nameSuffix: ['Missile', 'Rocket', 'Launcher', 'Pod'],
-                baseShape: [[1, 1, 1, 1], [0, 0, 0, 1]],  // L-shape (5 squares) - bulky launcher
+                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares) - 1 shot per 2 cells
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 3,
-                    energyDraw: 1,
-                    damage: 6  // Balanced: cost 5 (3+1×2), larger size = more damage
+                    weight: 1,
+                    energyDraw: 0,
+                    damage: 1  // Low per-shot, but multi-hit synergy weapon
                 },
                 baseBattle: {
                     projectileSpeed: 30,
                     projectileSize: 0.2,
                     knockback: 10,  // Moderate KB - railgun is the knockback king
                     recoil: 0.2,
-                    shotsPerRound: 1,
+                    shotsPerRound: 2,  // 1 shot per 2 cells = 2 shots
                     color: [1, 0.4, 0.2],
                     isProjectile: true
                 },
                 statWeights: { damage: 0.6, knockback: 0.4 },
-                synergies: ['explosive', 'knockback', 'alpha-strike'],
-                synergyDescription: 'Heavy impact damage. Excellent with knockback synergies.'
+                synergies: ['explosive', 'multi-hit', 'synergy-payoff'],
+                synergyDescription: 'SYNERGY: 1×2=2 base. +2 flat damage = 3×2=6 (3x multiplier!)'
             },
             machinegun: {
                 type: 'WEAPON',
@@ -2656,26 +2656,26 @@
                 icon: '🐝',
                 namePrefix: ['Swarm', 'Cluster', 'Micro', 'Hive'],
                 nameSuffix: ['Missiles', 'Rockets', 'Pods', 'Volley'],
-                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 (6 squares - large weapon platform)
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 2x3 (6 squares) - 1 shot per 2 cells
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 3,
-                    energyDraw: 1,
-                    damage: 3  // Moderate per missile
+                    weight: 1,
+                    energyDraw: 0,
+                    damage: 1  // Low per-shot, multi-hit synergy weapon
                 },
                 baseBattle: {
                     projectileSpeed: 25,
                     projectileSize: 0.12,
                     knockback: 10,
                     recoil: 0.08,
-                    shotsPerRound: 4,  // 4 missiles per volley
+                    shotsPerRound: 3,  // 1 shot per 2 cells = 3 shots
                     color: [1, 0.5, 0.2],
                     isProjectile: true,
                     isMissile: true
                 },
                 statWeights: { damage: 0.6, knockback: 0.4 },
-                synergies: ['explosive', 'multi-hit', 'area'],
-                synergyDescription: 'SYNERGY: 3x4=12 base. Each flat damage bonus applies 4 times!'
+                synergies: ['explosive', 'multi-hit', 'synergy-payoff'],
+                synergyDescription: 'SYNERGY: 1×3=3 base. +2 flat damage = 3×3=9 (3x multiplier!)'
             },
 
             // ARMOR - Three types: damage reduction, HP boost, and energy shield

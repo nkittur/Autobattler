@@ -644,6 +644,80 @@ This file is kept for reference and comparison.
             }
         }
 
+        /* Tooltip Styles */
+        .item-tooltip {
+            position: fixed;
+            z-index: 10000;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 12px;
+            max-width: 280px;
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .item-tooltip.visible {
+            opacity: 1;
+        }
+        .item-tooltip h4 {
+            margin: 0 0 8px 0;
+            color: #00ff88;
+            font-size: 14px;
+        }
+        .item-tooltip .tooltip-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+        .item-tooltip .tooltip-stats span {
+            color: #aaa;
+        }
+        .item-tooltip .synergy-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .synergy-tag {
+            background: rgba(0, 200, 255, 0.2);
+            border: 1px solid #00c8ff;
+            color: #00c8ff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+        .item-tooltip .potential-synergies {
+            border-top: 1px solid #333;
+            padding-top: 8px;
+            font-size: 10px;
+        }
+        .item-tooltip .potential-synergies .synergy-hint {
+            color: #ffa500;
+            margin: 4px 0;
+        }
+        .item-tooltip .ability-desc {
+            color: #00ff88;
+            font-size: 10px;
+            margin-top: 6px;
+            padding: 4px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 3px;
+        }
+
+        /* Synergy tag display on cards */
+        .card-synergies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin-top: 8px;
+            justify-content: center;
+        }
+
         /* Physics Canvas Styles */
         #physics-canvas {
             width: 100%;
@@ -697,6 +771,9 @@ This file is kept for reference and comparison.
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
 </head>
 <body>
+    <!-- Item Tooltip -->
+    <div id="item-tooltip" class="item-tooltip"></div>
+
     <div style="background: #ff8800; color: #000; padding: 10px; text-align: center; font-weight: bold; margin-bottom: 10px;">
         📁 OLD APP - Development moved to: <a href="index.html" style="color: #0000ff; text-decoration: underline;">index.html</a> (Physics Test)
     </div>
@@ -1199,46 +1276,175 @@ This file is kept for reference and comparison.
             }
         };
 
-        // Component Templates (with rarity system)
+        // Component Templates (with rarity and synergy tags)
         const COMPONENT_TEMPLATES = [
             // ENERGY WEAPONS
-            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['CRITICAL_STRIKE'], rarity: 'UNCOMMON' },
-            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['BURN'], rarity: 'UNCOMMON' },
-            { name: 'Ion Beam', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 22, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['ARMOR_PIERCING'], rarity: 'UNCOMMON' },
+            { name: 'Laser Cannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 25, armor: 0, tier: 2, damageType: DAMAGE_TYPES.ENERGY, abilities: ['CRITICAL_STRIKE'], rarity: 'UNCOMMON', synergies: ['energy', 'precision'] },
+            { name: 'Plasma Rifle', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 30, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['BURN'], rarity: 'UNCOMMON', synergies: ['energy', 'heat'] },
+            { name: 'Ion Beam', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 22, armor: 0, tier: 3, damageType: DAMAGE_TYPES.ENERGY, abilities: ['ARMOR_PIERCING'], rarity: 'UNCOMMON', synergies: ['energy', 'piercing'] },
 
             // KINETIC WEAPONS
-            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: -10, tier: 4, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'], rarity: 'RARE' },
-            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [], rarity: 'COMMON' },
-            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: -5, tier: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'], rarity: 'UNCOMMON' },
+            { name: 'Rail Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 40, armor: -10, tier: 4, damageType: DAMAGE_TYPES.KINETIC, abilities: ['ARMOR_PIERCING'], rarity: 'RARE', synergies: ['kinetic', 'piercing', 'heavy'] },
+            { name: 'Machine Gun', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_ARM, damage: 15, armor: 0, tier: 1, damageType: DAMAGE_TYPES.KINETIC, abilities: [], rarity: 'COMMON', synergies: ['kinetic', 'sustained'] },
+            { name: 'Autocannon', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_ARM, damage: 28, armor: -5, tier: 3, damageType: DAMAGE_TYPES.KINETIC, abilities: ['BLEED'], rarity: 'UNCOMMON', synergies: ['kinetic', 'heavy'] },
 
             // EXPLOSIVE WEAPONS
-            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: -3, tier: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'], rarity: 'UNCOMMON' },
-            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: -8, tier: 4, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'], rarity: 'RARE' },
-            { name: 'Grenade Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 30, armor: 0, tier: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: [], rarity: 'COMMON' },
+            { name: 'Missile Pod', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 35, armor: -3, tier: 3, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['BURN'], rarity: 'UNCOMMON', synergies: ['explosive', 'heat', 'tracking'] },
+            { name: 'Rocket Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.RIGHT_SHOULDER, damage: 45, armor: -8, tier: 4, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: ['EXECUTIONER'], rarity: 'RARE', synergies: ['explosive', 'heavy', 'burst'] },
+            { name: 'Grenade Launcher', type: COMPONENT_TYPES.WEAPON, slot: SLOT_TYPES.LEFT_SHOULDER, damage: 30, armor: 0, tier: 2, damageType: DAMAGE_TYPES.EXPLOSIVE, abilities: [], rarity: 'COMMON', synergies: ['explosive', 'aoe'] },
 
             // ARMOR
-            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON' },
-            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON' },
-            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'], rarity: 'RARE' },
-            { name: 'Reactive Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'], rarity: 'UNCOMMON' },
+            { name: 'Light Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 10, tier: 1, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON', synergies: ['defense', 'light'] },
+            { name: 'Heavy Plating', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 20, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON', synergies: ['defense', 'heavy'] },
+            { name: 'Composite Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 35, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'], rarity: 'RARE', synergies: ['defense', 'tech', 'heavy'] },
+            { name: 'Reactive Armor', type: COMPONENT_TYPES.ARMOR, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REACTIVE'], rarity: 'UNCOMMON', synergies: ['defense', 'reactive'] },
 
             // SYSTEMS - Head
-            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['CRITICAL_STRIKE'], rarity: 'UNCOMMON' },
-            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EXECUTIONER'], rarity: 'RARE' },
+            { name: 'Targeting System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 10, armor: 5, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: ['CRITICAL_STRIKE'], rarity: 'UNCOMMON', synergies: ['precision', 'tech'] },
+            { name: 'Advanced Sensors', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 15, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EXECUTIONER'], rarity: 'RARE', synergies: ['precision', 'tech', 'tracking'] },
 
             // SYSTEMS - Legs
-            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON' },
-            { name: 'Overdrive Boosters', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 8, armor: -5, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'UNCOMMON' },
-            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'UNCOMMON' },
+            { name: 'Boost System', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 5, armor: 0, tier: 2, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'COMMON', synergies: ['mobility', 'light'] },
+            { name: 'Overdrive Boosters', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 8, armor: -5, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'UNCOMMON', synergies: ['mobility', 'burst'] },
+            { name: 'Heavy Servos', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.LEGS, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: [], rarity: 'UNCOMMON', synergies: ['defense', 'heavy', 'stability'] },
 
             // SYSTEMS - Special
-            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'], rarity: 'RARE' },
-            { name: 'Repair Nanobots', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REGENERATION'], rarity: 'RARE' },
-            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EFFICIENT'], rarity: 'RARE' },
-            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: -10, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'], rarity: 'EPIC' },
-            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: -15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'], rarity: 'RARE' },
-            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: -20, tier: 5, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'], rarity: 'EPIC' }
+            { name: 'Shield Generator', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 25, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['SHIELD_GEN'], rarity: 'RARE', synergies: ['defense', 'energy', 'tech'] },
+            { name: 'Repair Nanobots', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 0, armor: 15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['REGENERATION'], rarity: 'RARE', synergies: ['sustain', 'tech'] },
+            { name: 'Power Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 10, armor: 10, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['EFFICIENT'], rarity: 'RARE', synergies: ['energy', 'power'] },
+            { name: 'Vampiric Core', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 15, armor: -10, tier: 4, damageType: DAMAGE_TYPES.NONE, abilities: ['VAMPIRIC'], rarity: 'EPIC', synergies: ['sustain', 'offense'] },
+            { name: 'Berserker Chip', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.HEAD, damage: 20, armor: -15, tier: 3, damageType: DAMAGE_TYPES.NONE, abilities: ['BERSERKER'], rarity: 'RARE', synergies: ['offense', 'burst'] },
+            { name: 'Overcharge Module', type: COMPONENT_TYPES.SYSTEM, slot: SLOT_TYPES.TORSO, damage: 25, armor: -20, tier: 5, damageType: DAMAGE_TYPES.NONE, abilities: ['OVERCHARGE'], rarity: 'EPIC', synergies: ['energy', 'burst', 'offense'] }
         ];
+
+        // Synergy Combinations - matching tags activate bonuses
+        const SYNERGY_COMBOS = {
+            energy_array: { name: 'Energy Array', required: ['energy', 'energy'], bonus: '+15% Energy Damage', effect: { damage: 0.15, type: 'energy' } },
+            kinetic_barrage: { name: 'Kinetic Barrage', required: ['kinetic', 'kinetic'], bonus: '+15% Kinetic Damage', effect: { damage: 0.15, type: 'kinetic' } },
+            explosive_ordnance: { name: 'Explosive Ordnance', required: ['explosive', 'explosive'], bonus: '+15% Explosive Damage', effect: { damage: 0.15, type: 'explosive' } },
+            precision_strike: { name: 'Precision Strike', required: ['precision', 'precision'], bonus: '+20% Crit Chance', effect: { crit: 0.20 } },
+            heavy_hitter: { name: 'Heavy Hitter', required: ['heavy', 'heavy'], bonus: '+25% Damage', effect: { damage: 0.25 } },
+            fortified: { name: 'Fortified', required: ['defense', 'defense'], bonus: '+20% Armor', effect: { armor: 0.20 } },
+            tech_suite: { name: 'Tech Suite', required: ['tech', 'tech'], bonus: '+10% All Stats', effect: { all: 0.10 } },
+            burn_synergy: { name: 'Inferno', required: ['heat', 'heat'], bonus: 'Double Burn Damage', effect: { burn: 2.0 } },
+            tracker: { name: 'Target Lock', required: ['tracking', 'precision'], bonus: '+30% Accuracy', effect: { accuracy: 0.30 } },
+            glass_cannon: { name: 'Glass Cannon', required: ['offense', 'offense', 'burst'], bonus: '+40% Damage, -15% Armor', effect: { damage: 0.40, armor: -0.15 } },
+            tank: { name: 'Walking Tank', required: ['defense', 'heavy', 'stability'], bonus: '+30% Armor, +10% HP', effect: { armor: 0.30, hp: 0.10 } },
+            sustain_master: { name: 'Sustain Master', required: ['sustain', 'defense'], bonus: '+50% Healing', effect: { healing: 0.50 } }
+        };
+
+        // ============================================================================
+        // TOOLTIP SYSTEM
+        // ============================================================================
+
+        function showItemTooltip(event, comp) {
+            const tooltip = document.getElementById('item-tooltip');
+            if (!tooltip || !comp) return;
+
+            const damageTypeIcon = comp.damageType === DAMAGE_TYPES.ENERGY ? '⚛️' :
+                                   comp.damageType === DAMAGE_TYPES.KINETIC ? '🎯' :
+                                   comp.damageType === DAMAGE_TYPES.EXPLOSIVE ? '💣' : '';
+            const damageTypeName = comp.damageType || 'None';
+
+            // Build synergy tags HTML
+            const synergies = comp.synergies || [];
+            const synergyTagsHTML = synergies.map(tag =>
+                `<span class="synergy-tag">${tag}</span>`
+            ).join('');
+
+            // Find potential synergies this item could activate
+            const potentialSynergies = [];
+            for (const [key, combo] of Object.entries(SYNERGY_COMBOS)) {
+                const hasMatchingTag = combo.required.some(req => synergies.includes(req));
+                if (hasMatchingTag) {
+                    const neededTags = combo.required.filter(req => !synergies.includes(req) ||
+                        combo.required.filter(r => r === req).length > synergies.filter(s => s === req).length);
+                    if (neededTags.length > 0 && neededTags.length <= 2) {
+                        potentialSynergies.push({
+                            name: combo.name,
+                            bonus: combo.bonus,
+                            needed: neededTags
+                        });
+                    }
+                }
+            }
+
+            const potentialHTML = potentialSynergies.length > 0 ? `
+                <div class="potential-synergies">
+                    <strong style="color: #ffa500;">Potential Synergies:</strong>
+                    ${potentialSynergies.slice(0, 3).map(ps => `
+                        <div class="synergy-hint">
+                            ${ps.name}: ${ps.bonus}<br>
+                            <span style="color: #888;">Need: ${ps.needed.join(', ')}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            // Build ability descriptions
+            const abilities = comp.abilities || [];
+            const abilityHTML = abilities.map(abilityKey => {
+                const ability = ABILITIES[abilityKey];
+                return ability ? `
+                    <div class="ability-desc">
+                        <strong>✨ ${ability.name}</strong>: ${ability.desc}
+                    </div>
+                ` : '';
+            }).join('');
+
+            tooltip.innerHTML = `
+                <h4>${damageTypeIcon} ${comp.name}</h4>
+                <div class="tooltip-stats">
+                    <span>⚔️ Damage: ${comp.damage}</span>
+                    <span>🛡️ Armor: ${comp.armor}</span>
+                    <span>📍 Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <span>🎯 Type: ${damageTypeName}</span>
+                    <span>⭐ Tier: ${comp.tier}</span>
+                    <span>💎 Rarity: ${comp.rarity}</span>
+                </div>
+                ${synergies.length > 0 ? `
+                    <div class="synergy-tags">
+                        ${synergyTagsHTML}
+                    </div>
+                ` : ''}
+                ${abilityHTML}
+                ${potentialHTML}
+            `;
+
+            // Position tooltip
+            const rect = event.target.getBoundingClientRect();
+            let left = rect.right + 10;
+            let top = rect.top;
+
+            // Keep tooltip on screen
+            if (left + 280 > window.innerWidth) {
+                left = rect.left - 290;
+            }
+            if (top + 200 > window.innerHeight) {
+                top = window.innerHeight - 210;
+            }
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.classList.add('visible');
+        }
+
+        function hideItemTooltip() {
+            const tooltip = document.getElementById('item-tooltip');
+            if (tooltip) {
+                tooltip.classList.remove('visible');
+            }
+        }
+
+        // Generate synergy tags HTML for cards
+        function getSynergyTagsHTML(synergies) {
+            if (!synergies || synergies.length === 0) return '';
+            return `
+                <div class="card-synergies">
+                    ${synergies.map(tag => `<span class="synergy-tag">${tag}</span>`).join('')}
+                </div>
+            `;
+        }
 
         // ============================================================================
         // GAME STATE
@@ -1370,6 +1576,7 @@ This file is kept for reference and comparison.
                 tier: tier,
                 damageType: template.damageType || DAMAGE_TYPES.NONE,
                 abilities: template.abilities ? [...template.abilities] : [],
+                synergies: template.synergies ? [...template.synergies] : [],
                 rarity: rarityKey,
                 id: Math.random().toString(36).substr(2, 9),
                 seenInSlots: [] // Track which slots this item has been shown in
@@ -3817,7 +4024,7 @@ This file is kept for reference and comparison.
                 return;
             }
 
-            inventoryGrid.innerHTML = game.inventory.map(comp => {
+            inventoryGrid.innerHTML = game.inventory.map((comp, index) => {
                 const damageTypeIcon = comp.damageType === DAMAGE_TYPES.ENERGY ? '⚛️' :
                                        comp.damageType === DAMAGE_TYPES.KINETIC ? '🎯' :
                                        comp.damageType === DAMAGE_TYPES.EXPLOSIVE ? '💣' : '';
@@ -3836,8 +4043,14 @@ This file is kept for reference and comparison.
                 const rarityData = RARITY[comp.rarity] || RARITY.COMMON;
                 const rarityBadge = `<span style="background: ${rarityData.color}; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 5px;">${rarityData.name.toUpperCase()}</span>`;
 
+                // Synergy tags
+                const synergyTagsHTML = getSynergyTagsHTML(comp.synergies);
+
                 return `
-                    <div class="inventory-item" style="border-left: 3px solid ${rarityData.color};">
+                    <div class="inventory-item"
+                         onmouseenter="showItemTooltip(event, game.inventory[${index}])"
+                         onmouseleave="hideItemTooltip()"
+                         style="border-left: 3px solid ${rarityData.color};">
                         <div class="component-name" style="font-size: 14px; color: ${rarityData.color};">
                             ${damageTypeIcon} ${comp.name}
                             ${rarityBadge}
@@ -3850,6 +4063,7 @@ This file is kept for reference and comparison.
                         <div style="font-size: 10px; color: #888; margin-top: 5px;">
                             Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
                         </div>
+                        ${synergyTagsHTML}
                         ${abilityText}
                     </div>
                 `;
@@ -4269,8 +4483,14 @@ This file is kept for reference and comparison.
                 const rarityData = RARITY[comp.rarity] || RARITY.COMMON;
                 const rarityBadge = `<span style="background: ${rarityData.color}; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 5px;">${rarityData.name.toUpperCase()}</span>`;
 
+                // Synergy tags
+                const synergyTagsHTML = getSynergyTagsHTML(comp.synergies);
+
                 return `
-                    <div class="salvage-card" onclick="selectSalvage(${index})" style="border: 2px solid ${rarityData.color}; box-shadow: 0 0 10px ${rarityData.color}50;">
+                    <div class="salvage-card" onclick="selectSalvage(${index})"
+                         onmouseenter="showItemTooltip(event, window.currentSalvageOptions[${index}])"
+                         onmouseleave="hideItemTooltip()"
+                         style="border: 2px solid ${rarityData.color}; box-shadow: 0 0 10px ${rarityData.color}50;">
                         <div class="component-name" style="color: ${rarityData.color};">
                             ${damageTypeIcon} ${comp.name}
                             ${rarityBadge}
@@ -4284,6 +4504,7 @@ This file is kept for reference and comparison.
                                 📍 Slot: ${comp.slot.replace(/([A-Z])/g, ' $1').trim()}
                             </div>
                         </div>
+                        ${synergyTagsHTML}
                         ${abilityText}
                     </div>
                 `;

@@ -2421,7 +2421,9 @@
                     color: [1, 0.9, 0.3],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.6, knockback: 0.2, projectileSpeed: 0.2 }
+                statWeights: { damage: 0.6, knockback: 0.2, projectileSpeed: 0.2 },
+                synergies: ['kinetic', 'precision', 'alpha-strike'],
+                synergyDescription: 'High single-shot damage. Best with crit/alpha strike builds.'
             },
             laser: {
                 type: 'WEAPON',
@@ -2444,7 +2446,9 @@
                     shotsPerRound: 1,
                     color: [0.2, 1, 0.3]
                 },
-                statWeights: { damage: 0.8, knockback: 0.2 }
+                statWeights: { damage: 0.8, knockback: 0.2 },
+                synergies: ['energy', 'precision'],
+                synergyDescription: 'Energy weapon with instant hit. Pairs well with energy synergies.'
             },
             missile: {
                 type: 'WEAPON',
@@ -2468,7 +2472,9 @@
                     color: [1, 0.4, 0.2],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.6, knockback: 0.4 }
+                statWeights: { damage: 0.6, knockback: 0.4 },
+                synergies: ['explosive', 'knockback', 'alpha-strike'],
+                synergyDescription: 'Heavy impact damage. Excellent with knockback synergies.'
             },
             machinegun: {
                 type: 'WEAPON',
@@ -2492,7 +2498,89 @@
                     color: [1, 1, 0.5],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.7, projectileSpeed: 0.3 }
+                statWeights: { damage: 0.7, projectileSpeed: 0.3 },
+                synergies: ['kinetic', 'multi-hit', 'sustained']
+            },
+
+            // MULTI-HIT WEAPONS - Low damage per shot, many shots = flat damage bonuses multiply!
+            // Example: Chain Gun does 1x8=8 damage. With +2 flat damage bonus: 3x8=24 damage (3x multiplier!)
+            chain_gun: {
+                type: 'WEAPON',
+                category: 'weapon',
+                icon: '⛓️',
+                namePrefix: ['Rotary', 'Gatling', 'Spinning', 'Chain'],
+                nameSuffix: ['Gun', 'Cannon', 'Minigun', 'Shredder'],
+                baseShape: [[1, 1, 1]],  // 3x1 horizontal
+                validSlots: ['leftArm', 'rightArm', 'torso'],
+                baseStats: {
+                    weight: 2,
+                    energyDraw: 1,
+                    damage: 1  // Very low per shot
+                },
+                baseBattle: {
+                    projectileSpeed: 65,
+                    projectileSize: 0.06,
+                    knockback: 2,
+                    recoil: 0.03,
+                    shotsPerRound: 8,  // But MANY shots!
+                    color: [1, 0.8, 0.3],
+                    isProjectile: true
+                },
+                statWeights: { damage: 0.5, projectileSpeed: 0.3 },
+                synergies: ['kinetic', 'multi-hit', 'shredder'],
+                synergyDescription: 'SYNERGY: +1 flat damage = +8 total! Perfect with Targeting Hub.'
+            },
+            pulse_laser: {
+                type: 'WEAPON',
+                category: 'weapon',
+                icon: '💫',
+                namePrefix: ['Pulse', 'Rapid', 'Burst', 'Strobe'],
+                nameSuffix: ['Laser', 'Emitter', 'Array', 'Projector'],
+                baseShape: [[1], [1]],  // 1x2 vertical (compact)
+                validSlots: ['leftArm', 'rightArm', 'torso'],
+                baseStats: {
+                    weight: 1,
+                    energyDraw: 2,
+                    damage: 2  // Low per pulse
+                },
+                baseBattle: {
+                    isBeam: true,
+                    beamDuration: 80,  // Quick pulses
+                    knockback: 3,
+                    recoil: 0.02,
+                    shotsPerRound: 5,  // 5 pulses per round
+                    color: [0.5, 1, 0.5]
+                },
+                statWeights: { damage: 0.8, knockback: 0.2 },
+                synergies: ['energy', 'multi-hit', 'precision'],
+                synergyDescription: 'SYNERGY: 2x5=10 base. +2 flat damage = 4x5=20 (2x multiplier!)'
+            },
+            swarm_missiles: {
+                type: 'WEAPON',
+                category: 'weapon',
+                icon: '🐝',
+                namePrefix: ['Swarm', 'Cluster', 'Micro', 'Hive'],
+                nameSuffix: ['Missiles', 'Rockets', 'Pods', 'Volley'],
+                baseShape: [[1, 1], [1, 1]],  // 2x2 (takes space but powerful)
+                validSlots: ['torso', 'leftArm', 'rightArm'],
+                baseStats: {
+                    weight: 3,
+                    energyDraw: 1,
+                    damage: 3  // Moderate per missile
+                },
+                baseBattle: {
+                    projectileSpeed: 25,
+                    projectileSize: 0.12,
+                    knockback: 10,
+                    recoil: 0.08,
+                    shotsPerRound: 4,  // 4 missiles per volley
+                    color: [1, 0.5, 0.2],
+                    isProjectile: true,
+                    isMissile: true
+                },
+                statWeights: { damage: 0.6, knockback: 0.4 },
+                synergies: ['explosive', 'multi-hit', 'area'],
+                synergyDescription: 'SYNERGY: 3x4=12 base. Each flat damage bonus applies 4 times!'
             },
 
             // ARMOR - Three types: damage reduction, HP boost, and energy shield
@@ -2610,6 +2698,7 @@
             },
 
             // TARGETING SYSTEMS - add damage to adjacent weapons
+            // KEY SYNERGY: These provide FLAT damage bonuses that MULTIPLY with multi-hit weapons!
             targeting_link: {
                 type: 'SYSTEM',
                 category: 'system',
@@ -2628,7 +2717,9 @@
                     effectDirection: 'up',  // Default, can be rotated
                     effectValue: 1
                 },
-                statWeights: {}  // No scaling, fixed effect
+                statWeights: {},  // No scaling, fixed effect
+                synergies: ['precision', 'multi-hit-synergy'],
+                synergyDescription: 'MULTIPLIER! +1 dmg to adjacent weapon. Chain Gun: 1x8→2x8=+8 damage!'
             },
             targeting_hub: {
                 type: 'SYSTEM',
@@ -2641,13 +2732,15 @@
                 baseStats: {
                     weight: 0,
                     energyDraw: 1,
-                    adjacentDamageBonus: 1  // +1 damage to ALL adjacent weapons
+                    adjacentDamageBonus: 2  // +2 damage to ALL adjacent weapons (buffed!)
                 },
                 special: {
                     adjacentEffect: 'weaponDamage',
-                    effectValue: 1
+                    effectValue: 2
                 },
-                statWeights: {}  // No scaling, fixed effect
+                statWeights: {},  // No scaling, fixed effect
+                synergies: ['precision', 'multi-hit-synergy', 'amplifier'],
+                synergyDescription: 'MULTIPLIER! +2 dmg to ALL adjacent weapons. Chain Gun: 1x8→3x8=+16 dmg!'
             },
             gyro: {
                 type: 'SYSTEM',
@@ -2705,6 +2798,7 @@
             },
 
             // SYNERGY EQUIPMENT - affects adjacent items
+            // Weapon Amplifier - STACKS with targeting systems for massive multipliers!
             weapon_amplifier: {
                 type: 'SYSTEM',
                 category: 'system',
@@ -2722,7 +2816,9 @@
                     adjacentEffect: 'weaponDamage',
                     effectValue: 1
                 },
-                statWeights: { weight: 0.5 }
+                statWeights: { weight: 0.5 },
+                synergies: ['amplifier', 'multi-hit-synergy'],
+                synergyDescription: 'STACKS! +1 dmg to adjacent weapons. Stack with Targeting Hub for +3!'
             },
             armor_linkage: {
                 type: 'SYSTEM',
@@ -3070,6 +3166,14 @@
             // Add special properties if they exist
             if (template.special) {
                 generatedItem.special = { ...template.special };
+            }
+
+            // Add synergy properties - IMPORTANT for the multiplicative damage system!
+            if (template.synergies) {
+                generatedItem.synergies = [...template.synergies];
+            }
+            if (template.synergyDescription) {
+                generatedItem.synergyDescription = template.synergyDescription;
             }
 
             return generatedItem;
@@ -5769,22 +5873,39 @@
             const battle = item.battle || {};
             let statsHtml = '';
 
-            // Show damage with xN if fires multiple times per round
+            // Show damage with xN if fires multiple times per round - HIGHLIGHT MULTI-HIT!
             if (stats.damage) {
                 const shotsPerRound = battle.shotsPerRound || 1;
                 if (shotsPerRound > 1) {
-                    statsHtml += `<div>💥 Damage: ${stats.damage} x${shotsPerRound}</div>`;
+                    const totalDmg = stats.damage * shotsPerRound;
+                    // Calculate what damage would be with a +2 flat bonus to show synergy potential
+                    const withBonus = (stats.damage + 2) * shotsPerRound;
+                    statsHtml += `<div style="color: #ff8844; font-weight: bold;">💥 ${stats.damage} × ${shotsPerRound} = ${totalDmg} dmg/round</div>`;
+                    statsHtml += `<div style="color: #ffcc00; font-size: 10px;">↳ With +2 bonus: ${stats.damage + 2} × ${shotsPerRound} = ${withBonus} (+${withBonus - totalDmg}!)</div>`;
                 } else {
                     statsHtml += `<div>💥 Damage: ${stats.damage}</div>`;
                 }
             }
             if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
             if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
+            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction}</div>`;
             if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
+            if (stats.energyShieldHP) statsHtml += `<div>🔵 Energy Shield: ${stats.energyShieldHP} HP</div>`;
             if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
             if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: -${stats.energyDraw}</div>`;
             if (stats.weight) statsHtml += `<div>⚖️ Weight: ${stats.weight}</div>`;
             if (stats.heatCapacity) statsHtml += `<div>🌡️ Heat Cap: +${stats.heatCapacity}</div>`;
+
+            // Show adjacency bonus effects - KEY SYNERGY INFO
+            if (stats.adjacentDamageBonus) {
+                statsHtml += `<div style="color: #ff8844;">🎯 +${stats.adjacentDamageBonus} dmg to adjacent weapons</div>`;
+                statsHtml += `<div style="color: #ffcc00; font-size: 10px;">↳ MULTIPLIER: Chain Gun gets +${stats.adjacentDamageBonus * 8} total!</div>`;
+            }
+            if (stats.directionalDamageBonus) {
+                const dir = item.special?.effectDirection || 'up';
+                const arrow = {up: '↑', down: '↓', left: '←', right: '→'}[dir];
+                statsHtml += `<div style="color: #ff8844;">🎯 +${stats.directionalDamageBonus} dmg ${arrow} direction</div>`;
+            }
 
             let specialHtml = '';
             if (item.special) {
@@ -5794,6 +5915,34 @@
             }
             if (item.description) {
                 specialHtml += item.description;
+            }
+
+            // Show synergy tags
+            let synergyHtml = '';
+            if (item.synergies && item.synergies.length > 0) {
+                const tagColors = {
+                    'multi-hit': '#ff8844',
+                    'multi-hit-synergy': '#ffcc00',
+                    'kinetic': '#888',
+                    'energy': '#4488ff',
+                    'explosive': '#ff4444',
+                    'precision': '#44ff88',
+                    'alpha-strike': '#ff44ff',
+                    'amplifier': '#ffcc00',
+                    'shredder': '#ff6600'
+                };
+                synergyHtml = '<div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px;">';
+                item.synergies.forEach(tag => {
+                    const color = tagColors[tag] || '#666';
+                    synergyHtml += `<span style="background: ${color}33; color: ${color}; padding: 1px 4px; border-radius: 3px; font-size: 9px; border: 1px solid ${color};">${tag}</span>`;
+                });
+                synergyHtml += '</div>';
+            }
+
+            // Show synergy description
+            let synergyDescHtml = '';
+            if (item.synergyDescription) {
+                synergyDescHtml = `<div style="margin-top: 4px; color: #ffcc00; font-size: 10px; font-style: italic; border-left: 2px solid #ffcc00; padding-left: 6px;">${item.synergyDescription}</div>`;
             }
 
             const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
@@ -5819,6 +5968,8 @@
                     <div class="tooltip-name" style="color: ${rarityColor};">${item.name}</div>
                     <div class="tooltip-stats">${statsHtml}</div>
                     ${specialHtml ? `<div class="tooltip-special">${specialHtml}</div>` : ''}
+                    ${synergyHtml}
+                    ${synergyDescHtml}
                     <div class="tooltip-shape" style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 6px;">
                         <span style="font-size: 9px; color: #888;">Shape:</span>
                         ${shapeHtml}
@@ -7013,6 +7164,121 @@
         // ============================================
         // PLAYER STATS CALCULATION
         // ============================================
+
+        // Calculate adjacency damage bonuses for weapons
+        // This is the KEY SYNERGY system - flat damage bonuses MULTIPLY with multi-hit weapons!
+        function calculateAdjacencyBonuses() {
+            const bonusMap = {};  // instanceId -> bonus damage
+
+            if (!unifiedGridOccupation || !unifiedGridOccupation.cells) return bonusMap;
+
+            // First, collect all items with adjacency effects and their positions
+            const bonusSources = [];  // Items that provide adjacency bonuses
+            const weaponPositions = {};  // instanceId -> Set of {x, y} positions
+
+            loadoutState.equipment.forEach(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                if (!item || !eq.position) return;
+
+                // Collect positions occupied by this item
+                const positions = new Set();
+                const shape = item.gridShape;
+                if (shape) {
+                    for (let dy = 0; dy < shape.length; dy++) {
+                        for (let dx = 0; dx < shape[0].length; dx++) {
+                            if (shape[dy][dx] === 1) {
+                                positions.add(`${eq.position.x + dx},${eq.position.y + dy}`);
+                            }
+                        }
+                    }
+                }
+
+                if (item.type === 'WEAPON') {
+                    weaponPositions[eq.instanceId] = positions;
+                    bonusMap[eq.instanceId] = 0;
+                }
+
+                // Check if this item provides adjacency bonuses
+                if (item.stats?.adjacentDamageBonus) {
+                    bonusSources.push({
+                        eq,
+                        item,
+                        positions,
+                        bonus: item.stats.adjacentDamageBonus,
+                        isDirectional: false
+                    });
+                }
+                if (item.stats?.directionalDamageBonus && item.special?.effectDirection) {
+                    bonusSources.push({
+                        eq,
+                        item,
+                        positions,
+                        bonus: item.stats.directionalDamageBonus,
+                        isDirectional: true,
+                        direction: item.special.effectDirection
+                    });
+                }
+            });
+
+            // For each bonus source, find adjacent weapons and apply bonuses
+            bonusSources.forEach(source => {
+                if (source.isDirectional) {
+                    // Directional bonus - only applies in one direction
+                    const dirOffsets = {
+                        up: [{dx: 0, dy: -1}],
+                        down: [{dx: 0, dy: 1}],
+                        left: [{dx: -1, dy: 0}],
+                        right: [{dx: 1, dy: 0}]
+                    };
+                    const offsets = dirOffsets[source.direction] || dirOffsets.up;
+
+                    // Check cells in the specified direction from each cell of this item
+                    source.positions.forEach(posStr => {
+                        const [x, y] = posStr.split(',').map(Number);
+                        offsets.forEach(({dx, dy}) => {
+                            const adjX = x + dx;
+                            const adjY = y + dy;
+                            if (adjX >= 0 && adjX < MECH_CHASSIS.gridCols &&
+                                adjY >= 0 && adjY < MECH_CHASSIS.gridRows) {
+                                const adjInstanceId = unifiedGridOccupation.cells[adjY]?.[adjX];
+                                if (adjInstanceId && bonusMap.hasOwnProperty(adjInstanceId)) {
+                                    bonusMap[adjInstanceId] += source.bonus;
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    // Omni-directional bonus - applies to all adjacent cells
+                    const offsets = [
+                        {dx: 0, dy: -1}, {dx: 0, dy: 1},
+                        {dx: -1, dy: 0}, {dx: 1, dy: 0}
+                    ];
+
+                    // Track which weapons already got bonus from this source (avoid double-counting)
+                    const bonusedWeapons = new Set();
+
+                    source.positions.forEach(posStr => {
+                        const [x, y] = posStr.split(',').map(Number);
+                        offsets.forEach(({dx, dy}) => {
+                            const adjX = x + dx;
+                            const adjY = y + dy;
+                            if (adjX >= 0 && adjX < MECH_CHASSIS.gridCols &&
+                                adjY >= 0 && adjY < MECH_CHASSIS.gridRows) {
+                                const adjInstanceId = unifiedGridOccupation.cells[adjY]?.[adjX];
+                                if (adjInstanceId && bonusMap.hasOwnProperty(adjInstanceId) &&
+                                    !bonusedWeapons.has(adjInstanceId)) {
+                                    bonusMap[adjInstanceId] += source.bonus;
+                                    bonusedWeapons.add(adjInstanceId);
+                                }
+                            }
+                        });
+                    });
+                }
+            });
+
+            return bonusMap;
+        }
+
         function calculatePlayerStats() {
             let totalDamage = 0;
             let totalArmor = 0;
@@ -7021,6 +7287,9 @@
             let damageReduction = 0;
             let energyShieldHP = 0;
             let weapons = [];
+
+            // Calculate adjacency bonuses FIRST
+            const adjacencyBonuses = calculateAdjacencyBonuses();
 
             loadoutState.equipment.forEach(eq => {
                 const item = ITEM_DATABASE[eq.itemId];
@@ -7032,14 +7301,30 @@
                     damageReduction += item.stats.damageReduction || 0;
                     energyShieldHP += item.stats.energyShieldHP || 0;
                     if (item.type === 'WEAPON') {
+                        // Get adjacency bonus for this weapon
+                        const adjBonus = adjacencyBonuses[eq.instanceId] || 0;
+                        const baseDamage = item.stats.damage || 0;
+                        const totalWeaponDamage = baseDamage + adjBonus;
+
                         // Pass full weapon info for battle simulation
                         weapons.push({
                             itemId: eq.itemId,
+                            instanceId: eq.instanceId,
                             slot: eq.slot,
                             name: item.name,
-                            damage: item.stats.damage || 0,
-                            battle: item.battle || {}
+                            damage: totalWeaponDamage,  // Base + adjacency bonus!
+                            baseDamage: baseDamage,
+                            adjacencyBonus: adjBonus,
+                            battle: item.battle || {},
+                            synergies: item.synergies || [],
+                            synergyDescription: item.synergyDescription || ''
                         });
+
+                        // Log synergy activation
+                        if (adjBonus > 0) {
+                            const shots = item.battle?.shotsPerRound || 1;
+                            console.log(`🎯 SYNERGY! ${item.name}: ${baseDamage}+${adjBonus}=${totalWeaponDamage} damage x${shots} shots = ${totalWeaponDamage * shots} total (was ${baseDamage * shots})`);
+                        }
                     }
                 }
             });

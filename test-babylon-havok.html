@@ -3490,15 +3490,14 @@
         };
 
         // Mission templates (base structure, enemies generated dynamically)
-        // NOTE: budgetPerEnemy is the budget multiplier PER ENEMY, not total!
-        // This ensures difficulty scales correctly: Easy < Medium < Hard
+        // baseBudgetMult is TOTAL budget for the mission, divided among all enemies
         const MISSION_TEMPLATES = {
             patrol: {
                 id: 'patrol',
                 name: 'Border Patrol',
                 difficulty: 'Easy',
                 risk: 1,
-                budgetPerEnemy: 0.5,    // Each enemy gets 50% of base budget
+                baseBudgetMult: 0.6,    // 60% of standard budget (1 enemy)
                 enemyCount: 1,
                 description: 'Light recon mission. Expect minimal resistance.',
                 rewardMult: 1.0
@@ -3508,9 +3507,9 @@
                 name: 'Skirmish Zone',
                 difficulty: 'Easy',
                 risk: 1,
-                budgetPerEnemy: 0.45,   // Slightly weaker per enemy, but 2 of them
+                baseBudgetMult: 0.8,    // 80% total budget, split among 2 enemies
                 enemyCount: 2,
-                description: 'Light engagement. Multiple weak hostiles detected.',
+                description: 'Light engagement. Two weak hostiles detected.',
                 rewardMult: 1.2
             },
             convoy: {
@@ -3518,7 +3517,7 @@
                 name: 'Convoy Assault',
                 difficulty: 'Medium',
                 risk: 2,
-                budgetPerEnemy: 0.8,    // Each enemy gets 80% of base budget
+                baseBudgetMult: 1.0,    // 100% budget (1 enemy)
                 enemyCount: 1,
                 description: 'Intercept enemy supply convoy. Medium resistance expected.',
                 rewardMult: 1.5
@@ -3528,7 +3527,7 @@
                 name: 'Ambush Site',
                 difficulty: 'Medium',
                 risk: 2,
-                budgetPerEnemy: 0.7,    // 70% budget each, 2 enemies
+                baseBudgetMult: 1.4,    // 140% total budget, split among 2 enemies
                 enemyCount: 2,
                 description: 'Clear hostile ambush. Two medium threats detected.',
                 rewardMult: 1.8
@@ -3538,7 +3537,7 @@
                 name: 'Fortress Breach',
                 difficulty: 'Hard',
                 risk: 3,
-                budgetPerEnemy: 1.2,    // Each enemy gets 120% of base budget
+                baseBudgetMult: 1.5,    // 150% budget (1 strong enemy)
                 enemyCount: 1,
                 description: 'Assault heavily defended position. Prepare for heavy combat.',
                 rewardMult: 2.5
@@ -3548,9 +3547,9 @@
                 name: 'Active Warzone',
                 difficulty: 'Hard',
                 risk: 3,
-                budgetPerEnemy: 0.9,    // 90% budget each, 3 enemies
+                baseBudgetMult: 2.1,    // 210% total budget, split among 3 enemies
                 enemyCount: 3,
-                description: 'Enter active combat zone. Multiple hostiles incoming.',
+                description: 'Enter active combat zone. Three hostiles incoming.',
                 rewardMult: 3.0
             }
         };
@@ -3665,17 +3664,17 @@
             const enemies = [];
             const enemyLevel = getEnemyLevel(missionTemplate.risk);
 
-            // Calculate base budget (before mission multiplier)
-            const baseBudget = ENEMY_GENERATION.baseBudget + ENEMY_GENERATION.budgetPerLevel * enemyLevel;
+            // Calculate total budget for this mission
+            const totalBudget = (ENEMY_GENERATION.baseBudget + ENEMY_GENERATION.budgetPerLevel * enemyLevel)
+                              * missionTemplate.baseBudgetMult;
 
-            // budgetPerEnemy is the multiplier for EACH enemy (not divided!)
-            // This ensures difficulty scales correctly: Easy < Medium < Hard
-            const perEnemyBudget = baseBudget * missionTemplate.budgetPerEnemy;
+            // Divide budget among enemies (with slight variance)
+            const budgetPerEnemy = totalBudget / missionTemplate.enemyCount;
 
             for (let i = 0; i < missionTemplate.enemyCount; i++) {
                 // Add variance to individual enemy budget (+/- 15%)
                 const variance = 0.85 + Math.random() * 0.3;
-                const enemyBudget = perEnemyBudget * variance;
+                const enemyBudget = budgetPerEnemy * variance;
 
                 // Slight level variance for multi-enemy missions
                 const levelVariance = missionTemplate.enemyCount > 1 ? Math.floor(Math.random() * 2) - 1 : 0;
@@ -6275,13 +6274,14 @@
                     card.classList.add('selected');
                 }
 
-                const enemy = mission.enemyMechs[0];
-                let equipmentHTML = '';
-                enemy.equipment.forEach(eq => {
-                    const item = ITEM_DATABASE[eq.itemId];
-                    if (item) {
-                        equipmentHTML += `<div>${item.icon} ${item.name}</div>`;
-                    }
+                const enemyCount = mission.enemyMechs.length;
+                const totalHP = mission.enemyMechs.reduce((sum, e) => sum + e.maxHealth, 0);
+                const totalDMG = mission.enemyMechs.reduce((sum, e) => sum + e.stats.damage, 0);
+
+                // Build enemy list HTML
+                let enemiesHTML = '';
+                mission.enemyMechs.forEach((enemy, i) => {
+                    enemiesHTML += `<div style="margin: 2px 0;">⚠️ ${enemy.name} - HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>`;
                 });
 
                 // Build salvage rarity rates display for mobile
@@ -6306,8 +6306,11 @@
                             <span>⭐ ${mission.reward.xp} XP</span>
                         </div>
                         <div class="mission-enemy">
-                            <div class="mission-enemy-name">⚠️ ${enemy.name}</div>
-                            <div>HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>
+                            <div style="font-weight: bold; color: #ff6644; margin-bottom: 4px;">
+                                ${enemyCount > 1 ? `👥 ${enemyCount} ENEMIES` : '👤 1 ENEMY'}
+                                ${enemyCount > 1 ? ` (Total: HP ${totalHP} | DMG ${totalDMG})` : ''}
+                            </div>
+                            ${enemiesHTML}
                         </div>
                         <div class="mission-salvage" style="margin-top: 6px; font-size: 9px; color: #888;">
                             📦 ${salvageRatesHTML}
@@ -7631,7 +7634,6 @@
 
             const mission = MISSIONS[selectedMission];
             const playerStats = calculatePlayerStats();
-            const enemy = mission.enemyMechs[0];
 
             // Save mission info for salvage generation
             lastBattleMission = {
@@ -7639,8 +7641,11 @@
                 averageLevel: mission.averageLevel || Math.round(mission.enemyMechs.reduce((sum, e) => sum + e.level, 0) / mission.enemyMechs.length)
             };
 
-            // Build enemy weapons from their equipment using ITEM_DATABASE
-            const enemyWeapons = buildWeaponsFromEquipment(enemy.equipment);
+            // Build ALL enemies with their weapons from ITEM_DATABASE
+            const enemies = mission.enemyMechs.map(enemy => ({
+                ...enemy,
+                weapons: buildWeaponsFromEquipment(enemy.equipment)
+            }));
 
             // Build battle config for the original physics simulation
             const battleConfig = {
@@ -7650,11 +7655,10 @@
                     stats: playerStats
                 },
                 mission: mission,
-                enemy: {
-                    ...enemy,
-                    // Override stats with calculated values from ITEM_DATABASE
-                    weapons: enemyWeapons
-                },
+                // Pass ALL enemies for multi-enemy battles
+                enemies: enemies,
+                // Also pass first enemy as 'enemy' for backwards compatibility
+                enemy: enemies[0],
                 // Pass ITEM_DATABASE for future use (special properties, etc.)
                 itemDatabase: ITEM_DATABASE
             };

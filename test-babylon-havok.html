@@ -3490,13 +3490,15 @@
         };
 
         // Mission templates (base structure, enemies generated dynamically)
+        // NOTE: budgetPerEnemy is the budget multiplier PER ENEMY, not total!
+        // This ensures difficulty scales correctly: Easy < Medium < Hard
         const MISSION_TEMPLATES = {
             patrol: {
                 id: 'patrol',
                 name: 'Border Patrol',
                 difficulty: 'Easy',
                 risk: 1,
-                baseBudgetMult: 0.6,    // 60% of standard budget
+                budgetPerEnemy: 0.5,    // Each enemy gets 50% of base budget
                 enemyCount: 1,
                 description: 'Light recon mission. Expect minimal resistance.',
                 rewardMult: 1.0
@@ -3506,8 +3508,8 @@
                 name: 'Skirmish Zone',
                 difficulty: 'Easy',
                 risk: 1,
-                baseBudgetMult: 0.5,    // Lower budget per enemy
-                enemyCount: 2,          // But 2 enemies
+                budgetPerEnemy: 0.45,   // Slightly weaker per enemy, but 2 of them
+                enemyCount: 2,
                 description: 'Light engagement. Multiple weak hostiles detected.',
                 rewardMult: 1.2
             },
@@ -3516,7 +3518,7 @@
                 name: 'Convoy Assault',
                 difficulty: 'Medium',
                 risk: 2,
-                baseBudgetMult: 1.0,
+                budgetPerEnemy: 0.8,    // Each enemy gets 80% of base budget
                 enemyCount: 1,
                 description: 'Intercept enemy supply convoy. Medium resistance expected.',
                 rewardMult: 1.5
@@ -3526,7 +3528,7 @@
                 name: 'Ambush Site',
                 difficulty: 'Medium',
                 risk: 2,
-                baseBudgetMult: 0.7,
+                budgetPerEnemy: 0.7,    // 70% budget each, 2 enemies
                 enemyCount: 2,
                 description: 'Clear hostile ambush. Two medium threats detected.',
                 rewardMult: 1.8
@@ -3536,7 +3538,7 @@
                 name: 'Fortress Breach',
                 difficulty: 'Hard',
                 risk: 3,
-                baseBudgetMult: 1.5,
+                budgetPerEnemy: 1.2,    // Each enemy gets 120% of base budget
                 enemyCount: 1,
                 description: 'Assault heavily defended position. Prepare for heavy combat.',
                 rewardMult: 2.5
@@ -3546,7 +3548,7 @@
                 name: 'Active Warzone',
                 difficulty: 'Hard',
                 risk: 3,
-                baseBudgetMult: 0.9,
+                budgetPerEnemy: 0.9,    // 90% budget each, 3 enemies
                 enemyCount: 3,
                 description: 'Enter active combat zone. Multiple hostiles incoming.',
                 rewardMult: 3.0
@@ -3663,17 +3665,17 @@
             const enemies = [];
             const enemyLevel = getEnemyLevel(missionTemplate.risk);
 
-            // Calculate total budget
-            const totalBudget = (ENEMY_GENERATION.baseBudget + ENEMY_GENERATION.budgetPerLevel * enemyLevel)
-                              * missionTemplate.baseBudgetMult;
+            // Calculate base budget (before mission multiplier)
+            const baseBudget = ENEMY_GENERATION.baseBudget + ENEMY_GENERATION.budgetPerLevel * enemyLevel;
 
-            // Divide budget among enemies (with slight variance)
-            const budgetPerEnemy = totalBudget / missionTemplate.enemyCount;
+            // budgetPerEnemy is the multiplier for EACH enemy (not divided!)
+            // This ensures difficulty scales correctly: Easy < Medium < Hard
+            const perEnemyBudget = baseBudget * missionTemplate.budgetPerEnemy;
 
             for (let i = 0; i < missionTemplate.enemyCount; i++) {
                 // Add variance to individual enemy budget (+/- 15%)
                 const variance = 0.85 + Math.random() * 0.3;
-                const enemyBudget = budgetPerEnemy * variance;
+                const enemyBudget = perEnemyBudget * variance;
 
                 // Slight level variance for multi-enemy missions
                 const levelVariance = missionTemplate.enemyCount > 1 ? Math.floor(Math.random() * 2) - 1 : 0;
@@ -6258,7 +6260,13 @@
 
             missionTabList.innerHTML = '';
 
-            for (const mission of Object.values(MISSIONS)) {
+            // Sort missions by difficulty: Easy < Medium < Hard
+            const difficultyOrder = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+            const sortedMissions = Object.values(MISSIONS).sort((a, b) =>
+                difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]
+            );
+
+            for (const mission of sortedMissions) {
                 const card = document.createElement('div');
                 card.className = `mission-card ${mission.difficulty.toLowerCase()}`;
                 card.dataset.missionId = mission.id;
@@ -6350,7 +6358,13 @@
             if (!missionList) return;  // Mission list may not exist in new layout
             missionList.innerHTML = '';
 
-            for (const mission of Object.values(MISSIONS)) {
+            // Sort missions by difficulty: Easy < Medium < Hard
+            const difficultyOrder = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+            const sortedMissions = Object.values(MISSIONS).sort((a, b) =>
+                difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]
+            );
+
+            for (const mission of sortedMissions) {
                 const card = document.createElement('div');
                 card.className = `mission-card ${mission.difficulty.toLowerCase()}`;
                 card.dataset.missionId = mission.id;

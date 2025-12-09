@@ -5594,6 +5594,9 @@
                 }
             });
 
+            // Calculate adjacency bonuses for visual display
+            const adjacencyBonuses = calculateAdjacencyBonuses();
+
             // Render placed items
             loadoutState.equipment.forEach(eq => {
                 const item = eq.item || ITEM_DATABASE[eq.itemId];
@@ -5602,6 +5605,9 @@
                 const shape = item.gridShape;
                 const w = shape[0].length;
                 const h = shape.length;
+
+                // Get adjacency bonus for this item (if it's a weapon)
+                const adjBonus = adjacencyBonuses[eq.instanceId] || 0;
 
                 // Create a container for the item that spans the bounding box
                 const placedEl = document.createElement('div');
@@ -5617,6 +5623,11 @@
                 placedEl.style.background = 'transparent';
                 placedEl.style.border = 'none';
 
+                // Add glow effect if receiving adjacency bonus
+                if (adjBonus > 0) {
+                    placedEl.style.filter = 'drop-shadow(0 0 6px #ffcc00)';
+                }
+
                 // Build the shape cells
                 let shapeCellsHtml = '';
                 for (let dy = 0; dy < h; dy++) {
@@ -5624,6 +5635,8 @@
                         if (shape[dy][dx] === 1) {
                             const cellLeft = dx * (cellSize + gap);
                             const cellTop = dy * (cellSize + gap);
+                            // Add golden border if receiving bonus
+                            const bonusBorder = adjBonus > 0 ? 'box-shadow: 0 0 8px #ffcc00, inset 0 0 4px rgba(255,204,0,0.3);' : '';
                             shapeCellsHtml += `<div class="item-shape-cell" style="
                                 position: absolute;
                                 left: ${cellLeft}px;
@@ -5634,6 +5647,7 @@
                                 border: 2px solid var(--item-border);
                                 border-radius: 4px;
                                 box-sizing: border-box;
+                                ${bonusBorder}
                             "></div>`;
                         }
                     }
@@ -5656,8 +5670,8 @@
                 const iconLeft = centerX * (cellSize + gap) + cellSize / 2;
                 const iconTop = centerY * (cellSize + gap) + cellSize / 2;
 
-                // Build tooltip HTML
-                const tooltipHtml = buildItemTooltipHtml(item);
+                // Build tooltip HTML with adjacency bonus info
+                const tooltipHtml = buildItemTooltipHtmlWithBonus(item, adjBonus);
 
                 // Build direction indicator for directional damage items
                 let directionHtml = '';
@@ -5686,6 +5700,24 @@
                     ">${dirArrow}</div>`;
                 }
 
+                // Show bonus indicator badge
+                let bonusBadgeHtml = '';
+                if (adjBonus > 0) {
+                    bonusBadgeHtml = `<div style="
+                        position: absolute;
+                        top: -8px;
+                        right: -8px;
+                        background: #ffcc00;
+                        color: #000;
+                        font-size: 10px;
+                        font-weight: bold;
+                        padding: 2px 4px;
+                        border-radius: 4px;
+                        z-index: 25;
+                        pointer-events: none;
+                    ">+${adjBonus}</div>`;
+                }
+
                 placedEl.innerHTML = `
                     ${shapeCellsHtml}
                     <div class="item-icon-overlay" style="
@@ -5698,6 +5730,7 @@
                         pointer-events: none;
                     ">${item.icon}</div>
                     ${directionHtml}
+                    ${bonusBadgeHtml}
                     ${tooltipHtml}
                 `;
 
@@ -5995,6 +6028,97 @@
                         <span style="font-size: 9px; color: #888;">Shape:</span>
                         ${shapeHtml}
                     </div>
+                </div>
+            `;
+        }
+
+        // Build tooltip HTML with adjacency bonus displayed
+        function buildItemTooltipHtmlWithBonus(item, adjBonus = 0) {
+            const stats = item.stats || {};
+            const battle = item.battle || {};
+            let statsHtml = '';
+
+            // Show damage with adjacency bonus if applicable
+            if (stats.damage) {
+                const shotsPerRound = battle.shotsPerRound || 1;
+                const baseDamage = stats.damage;
+                const totalDamage = baseDamage + adjBonus;
+
+                if (shotsPerRound > 1) {
+                    const baseTotalDmg = baseDamage * shotsPerRound;
+                    const boostedTotalDmg = totalDamage * shotsPerRound;
+
+                    if (adjBonus > 0) {
+                        // Show boosted damage prominently
+                        statsHtml += `<div style="color: #ffcc00; font-weight: bold; font-size: 12px;">💥 ${baseDamage}+${adjBonus} × ${shotsPerRound} = ${boostedTotalDmg} dmg</div>`;
+                        statsHtml += `<div style="color: #888; font-size: 10px; text-decoration: line-through;">Base: ${baseDamage} × ${shotsPerRound} = ${baseTotalDmg}</div>`;
+                        statsHtml += `<div style="color: #00ff88; font-size: 10px;">🎯 SYNERGY ACTIVE: +${adjBonus * shotsPerRound} total damage!</div>`;
+                    } else {
+                        // Show potential synergy
+                        const withBonus = (baseDamage + 2) * shotsPerRound;
+                        statsHtml += `<div style="color: #ff8844; font-weight: bold;">💥 ${baseDamage} × ${shotsPerRound} = ${baseTotalDmg} dmg/round</div>`;
+                        statsHtml += `<div style="color: #666; font-size: 10px;">↳ With +2 bonus: ${baseDamage + 2} × ${shotsPerRound} = ${withBonus} (+${withBonus - baseTotalDmg}!)</div>`;
+                    }
+                } else {
+                    if (adjBonus > 0) {
+                        statsHtml += `<div style="color: #ffcc00; font-weight: bold;">💥 ${baseDamage}+${adjBonus} = ${totalDamage} damage</div>`;
+                        statsHtml += `<div style="color: #00ff88; font-size: 10px;">🎯 SYNERGY ACTIVE!</div>`;
+                    } else {
+                        statsHtml += `<div>💥 Damage: ${baseDamage}</div>`;
+                    }
+                }
+            }
+
+            if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
+            if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
+            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction}</div>`;
+            if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
+            if (stats.energyShieldHP) statsHtml += `<div>🔵 Energy Shield: ${stats.energyShieldHP} HP</div>`;
+            if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
+            if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: -${stats.energyDraw}</div>`;
+            if (stats.weight) statsHtml += `<div>⚖️ Weight: ${stats.weight}</div>`;
+            if (stats.heatCapacity) statsHtml += `<div>🌡️ Heat Cap: +${stats.heatCapacity}</div>`;
+
+            // Show adjacency bonus effects
+            if (stats.adjacentDamageBonus) {
+                statsHtml += `<div style="color: #ff8844;">🎯 +${stats.adjacentDamageBonus} dmg to adjacent weapons</div>`;
+            }
+            if (stats.directionalDamageBonus) {
+                const dir = item.special?.effectDirection || 'up';
+                const arrow = {up: '↑', down: '↓', left: '←', right: '→'}[dir];
+                statsHtml += `<div style="color: #ff8844;">🎯 +${stats.directionalDamageBonus} dmg ${arrow} direction</div>`;
+            }
+
+            // Show synergy tags
+            let synergyHtml = '';
+            if (item.synergies && item.synergies.length > 0) {
+                const tagColors = {
+                    'multi-hit': '#ff8844',
+                    'multi-hit-synergy': '#ffcc00',
+                    'kinetic': '#888',
+                    'energy': '#4488ff',
+                    'explosive': '#ff4444',
+                    'precision': '#44ff88',
+                    'alpha-strike': '#ff44ff',
+                    'amplifier': '#ffcc00',
+                    'shredder': '#ff6600'
+                };
+                synergyHtml = '<div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px;">';
+                item.synergies.forEach(tag => {
+                    const color = tagColors[tag] || '#666';
+                    synergyHtml += `<span style="background: ${color}33; color: ${color}; padding: 1px 4px; border-radius: 3px; font-size: 9px; border: 1px solid ${color};">${tag}</span>`;
+                });
+                synergyHtml += '</div>';
+            }
+
+            const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
+                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+
+            return `
+                <div class="item-tooltip">
+                    <div class="tooltip-name" style="color: ${rarityColor};">${item.name}${adjBonus > 0 ? ' <span style="color: #ffcc00;">★</span>' : ''}</div>
+                    <div class="tooltip-stats">${statsHtml}</div>
+                    ${synergyHtml}
                 </div>
             `;
         }

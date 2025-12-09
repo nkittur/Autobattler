@@ -1,0 +1,864 @@
+{
+  "timestamp": "2025-12-09T00:08:02.302Z",
+  "config": {
+    "runsPerAgent": 5,
+    "maxRounds": 10,
+    "verbose": false,
+    "outputFile": null,
+    "agents": [
+      "aggressive",
+      "defensive",
+      "economist",
+      "synergist",
+      "adaptive",
+      "random",
+      "greedy",
+      "balanced"
+    ]
+  },
+  "agentAnalysis": {
+    "aggressive": {
+      "totalRuns": 5,
+      "victories": 0,
+      "losses": 5,
+      "winRate": 0,
+      "avgRound": 5.4,
+      "maxRound": 7,
+      "minRound": 5,
+      "avgGold": 4.4,
+      "avgEquipment": 10.8,
+      "itemUsage": {
+        "railgun": 16,
+        "heavy_laser": 3,
+        "missile": 7,
+        "heavy_missile": 1,
+        "reactive_plating": 2,
+        "laser": 9,
+        "targeting_link": 2,
+        "plasma_cannon": 2,
+        "reactor": 1,
+        "autocannon": 1,
+        "quantum_capacitor": 1,
+        "ballistic_plating": 1,
+        "energy_shield": 2,
+        "rocket_pod": 1,
+        "fusion_core": 1,
+        "machinegun": 2,
+        "plasma_core": 1,
+        "capacitor_bank": 1
+      },
+      "shopDecisions": {
+        "buy": 17,
+        "skip": 10,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 0,
+        "Medium": 3,
+        "Hard": 24
+      },
+      "salvageDecisions": {
+        "pick": 27,
+        "skip": 0
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 0.2,
+        "7": 0.2,
+        "8": 0,
+        "9": 0,
+        "10": 0
+      }
+    },
+    "defensive": {
+      "totalRuns": 5,
+      "victories": 0,
+      "losses": 5,
+      "winRate": 0,
+      "avgRound": 5.8,
+      "maxRound": 8,
+      "minRound": 5,
+      "avgGold": 4.2,
+      "avgEquipment": 11.2,
+      "itemUsage": {
+        "railgun": 13,
+        "fusion_core": 2,
+        "energy_shield": 4,
+        "heavy_shield": 2,
+        "laser": 3,
+        "hull_armor": 7,
+        "reactor": 4,
+        "missile": 3,
+        "exoskeleton_frame": 1,
+        "ballistic_plating": 8,
+        "heavy_laser": 2,
+        "auxiliary_power": 1,
+        "heavy_hull": 1,
+        "power_cell": 2,
+        "reactive_plating": 1,
+        "machinegun": 1,
+        "reinforced_frame": 1
+      },
+      "shopDecisions": {
+        "buy": 18,
+        "skip": 11,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 2,
+        "Medium": 15,
+        "Hard": 12
+      },
+      "salvageDecisions": {
+        "pick": 28,
+        "skip": 1
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 0.4,
+        "7": 0.2,
+        "8": 0.2,
+        "9": 0,
+        "10": 0
+      }
+    },
+    "economist": {
+      "totalRuns": 5,
+      "victories": 0,
+      "losses": 5,
+      "winRate": 0,
+      "avgRound": 3.6,
+      "maxRound": 6,
+      "minRound": 3,
+      "avgGold": 5.4,
+      "avgEquipment": 6.4,
+      "itemUsage": {
+        "railgun": 10,
+        "quantum_capacitor": 2,
+        "ballistic_plating": 3,
+        "heavy_shield": 2,
+        "reactor": 2,
+        "machinegun": 2,
+        "heavy_hull": 1,
+        "power_cell": 3,
+        "reactive_plating": 1,
+        "plasma_core": 1,
+        "plasma_cannon": 1,
+        "fusion_core": 1,
+        "missile": 2,
+        "laser": 1
+      },
+      "shopDecisions": {
+        "buy": 11,
+        "skip": 7,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 0,
+        "Medium": 2,
+        "Hard": 16
+      },
+      "salvageDecisions": {
+        "pick": 15,
+        "skip": 3
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 0.2,
+        "5": 0.2,
+        "6": 0.2,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 0
+      }
+    },
+    "synergist": {
+      "totalRuns": 5,
+      "victories": 0,
+      "losses": 5,
+      "winRate": 0,
+      "avgRound": 7.4,
+      "maxRound": 10,
+      "minRound": 3,
+      "avgGold": 3.8,
+      "avgEquipment": 14.8,
+      "itemUsage": {
+        "railgun": 19,
+        "plasma_cannon": 2,
+        "missile": 10,
+        "reactive_plating": 2,
+        "laser": 15,
+        "hull_armor": 4,
+        "hardened_shield": 1,
+        "autocannon": 1,
+        "rocket_pod": 1,
+        "heavy_laser": 1,
+        "reactor": 2,
+        "heavy_missile": 3,
+        "plasma_core": 2,
+        "quantum_capacitor": 2,
+        "ballistic_plating": 2,
+        "heavy_shield": 1,
+        "gauss_rifle": 1,
+        "machinegun": 3,
+        "reinforced_frame": 1,
+        "energy_shield": 1
+      },
+      "shopDecisions": {
+        "buy": 27,
+        "skip": 10,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 1,
+        "Medium": 4,
+        "Hard": 32
+      },
+      "salvageDecisions": {
+        "pick": 36,
+        "skip": 1
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 0.8,
+        "5": 0.8,
+        "6": 0.8,
+        "7": 0.6,
+        "8": 0.6,
+        "9": 0.4,
+        "10": 0.4
+      }
+    },
+    "adaptive": {
+      "totalRuns": 5,
+      "victories": 4,
+      "losses": 1,
+      "winRate": 0.8,
+      "avgRound": 9.8,
+      "maxRound": 10,
+      "minRound": 9,
+      "avgGold": 13.4,
+      "avgEquipment": 19.6,
+      "itemUsage": {
+        "railgun": 17,
+        "gauss_rifle": 2,
+        "machinegun": 5,
+        "capacitor_bank": 1,
+        "reactive_plating": 2,
+        "laser": 16,
+        "fusion_core": 3,
+        "missile": 12,
+        "heavy_missile": 4,
+        "hull_armor": 3,
+        "heavy_laser": 3,
+        "composite_armor": 1,
+        "energy_shield": 4,
+        "plasma_core": 5,
+        "quantum_capacitor": 2,
+        "ballistic_plating": 2,
+        "auxiliary_power": 1,
+        "solar_array": 1,
+        "targeting_link": 2,
+        "plasma_cannon": 2,
+        "hardened_shield": 3,
+        "heavy_hull": 2,
+        "power_cell": 1,
+        "reactor": 2,
+        "reinforced_frame": 2
+      },
+      "shopDecisions": {
+        "buy": 37,
+        "skip": 12,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 9,
+        "Medium": 29,
+        "Hard": 11
+      },
+      "salvageDecisions": {
+        "pick": 47,
+        "skip": 2
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 0.8
+      }
+    },
+    "random": {
+      "totalRuns": 5,
+      "victories": 0,
+      "losses": 5,
+      "winRate": 0,
+      "avgRound": 6.4,
+      "maxRound": 9,
+      "minRound": 4,
+      "avgGold": 29.4,
+      "avgEquipment": 8.6,
+      "itemUsage": {
+        "railgun": 10,
+        "power_cell": 1,
+        "modular_bay": 1,
+        "laser": 3,
+        "power_coupling": 1,
+        "machinegun": 7,
+        "energy_shield": 4,
+        "ballistic_plating": 4,
+        "hull_armor": 2,
+        "targeting_link": 1,
+        "missile": 2,
+        "reactor": 1,
+        "emergency_cell": 1,
+        "quantum_capacitor": 2,
+        "gauss_rifle": 1,
+        "capacitor_bank": 1,
+        "pulse_laser": 1
+      },
+      "shopDecisions": {
+        "buy": 11,
+        "skip": 21,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 7,
+        "Medium": 13,
+        "Hard": 12
+      },
+      "salvageDecisions": {
+        "pick": 24,
+        "skip": 8
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 0.8,
+        "6": 0.4,
+        "7": 0.4,
+        "8": 0.4,
+        "9": 0.4,
+        "10": 0
+      }
+    },
+    "greedy": {
+      "totalRuns": 5,
+      "victories": 0,
+      "losses": 5,
+      "winRate": 0,
+      "avgRound": 5,
+      "maxRound": 8,
+      "minRound": 3,
+      "avgGold": 2.8,
+      "avgEquipment": 10.2,
+      "itemUsage": {
+        "railgun": 13,
+        "gauss_rifle": 2,
+        "hull_armor": 1,
+        "auxiliary_power": 3,
+        "machinegun": 4,
+        "reactor": 2,
+        "rocket_pod": 1,
+        "missile": 7,
+        "plasma_cannon": 2,
+        "laser": 6,
+        "hardened_shield": 1,
+        "heavy_missile": 3,
+        "heavy_hull": 1,
+        "quantum_capacitor": 1,
+        "reactive_plating": 1,
+        "ballistic_plating": 1,
+        "fusion_core": 1,
+        "energy_shield": 1
+      },
+      "shopDecisions": {
+        "buy": 19,
+        "skip": 6,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 0,
+        "Medium": 6,
+        "Hard": 19
+      },
+      "salvageDecisions": {
+        "pick": 25,
+        "skip": 0
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 0.6,
+        "5": 0.6,
+        "6": 0.4,
+        "7": 0.2,
+        "8": 0.2,
+        "9": 0,
+        "10": 0
+      }
+    },
+    "balanced": {
+      "totalRuns": 5,
+      "victories": 0,
+      "losses": 5,
+      "winRate": 0,
+      "avgRound": 6.6,
+      "maxRound": 10,
+      "minRound": 3,
+      "avgGold": 4.6,
+      "avgEquipment": 13.2,
+      "itemUsage": {
+        "railgun": 20,
+        "heavy_missile": 3,
+        "power_cell": 4,
+        "reactor": 6,
+        "fusion_core": 1,
+        "hull_armor": 2,
+        "hardened_shield": 1,
+        "energy_shield": 5,
+        "laser": 7,
+        "reactive_plating": 1,
+        "auxiliary_power": 1,
+        "heavy_laser": 4,
+        "plasma_core": 1,
+        "heavy_hull": 1,
+        "missile": 4,
+        "targeting_link": 1,
+        "exoskeleton_frame": 1,
+        "heavy_shield": 1,
+        "reinforced_frame": 1,
+        "gauss_rifle": 1
+      },
+      "shopDecisions": {
+        "buy": 22,
+        "skip": 11,
+        "refresh": 0
+      },
+      "missionDecisions": {
+        "Easy": 0,
+        "Medium": 7,
+        "Hard": 26
+      },
+      "salvageDecisions": {
+        "pick": 33,
+        "skip": 0
+      },
+      "survivalByRound": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 0.8,
+        "5": 0.8,
+        "6": 0.4,
+        "7": 0.4,
+        "8": 0.4,
+        "9": 0.4,
+        "10": 0.4
+      }
+    }
+  },
+  "itemAnalysis": {
+    "railgun": {
+      "timesUsed": 118,
+      "winRate": 0.11864406779661017,
+      "avgRoundReached": 7.033898305084746,
+      "byAgent": {
+        "aggressive": 16,
+        "defensive": 13,
+        "economist": 10,
+        "synergist": 19,
+        "adaptive": 17,
+        "random": 10,
+        "greedy": 13,
+        "balanced": 20
+      }
+    },
+    "heavy_laser": {
+      "timesUsed": 13,
+      "winRate": 0.15384615384615385,
+      "avgRoundReached": 7.769230769230769,
+      "byAgent": {
+        "aggressive": 3,
+        "defensive": 2,
+        "synergist": 1,
+        "adaptive": 3,
+        "balanced": 4
+      }
+    },
+    "missile": {
+      "timesUsed": 47,
+      "winRate": 0.19148936170212766,
+      "avgRoundReached": 7.404255319148936,
+      "byAgent": {
+        "aggressive": 7,
+        "defensive": 3,
+        "economist": 2,
+        "synergist": 10,
+        "adaptive": 12,
+        "random": 2,
+        "greedy": 7,
+        "balanced": 4
+      }
+    },
+    "heavy_missile": {
+      "timesUsed": 14,
+      "winRate": 0.21428571428571427,
+      "avgRoundReached": 7.714285714285714,
+      "byAgent": {
+        "aggressive": 1,
+        "synergist": 3,
+        "adaptive": 4,
+        "greedy": 3,
+        "balanced": 3
+      }
+    },
+    "reactive_plating": {
+      "timesUsed": 10,
+      "winRate": 0.2,
+      "avgRoundReached": 7.6,
+      "byAgent": {
+        "aggressive": 2,
+        "defensive": 1,
+        "economist": 1,
+        "synergist": 2,
+        "adaptive": 2,
+        "greedy": 1,
+        "balanced": 1
+      }
+    },
+    "laser": {
+      "timesUsed": 60,
+      "winRate": 0.21666666666666667,
+      "avgRoundReached": 8.033333333333333,
+      "byAgent": {
+        "aggressive": 9,
+        "defensive": 3,
+        "economist": 1,
+        "synergist": 15,
+        "adaptive": 16,
+        "random": 3,
+        "greedy": 6,
+        "balanced": 7
+      }
+    },
+    "targeting_link": {
+      "timesUsed": 6,
+      "winRate": 0.3333333333333333,
+      "avgRoundReached": 8.166666666666666,
+      "byAgent": {
+        "aggressive": 2,
+        "adaptive": 2,
+        "random": 1,
+        "balanced": 1
+      }
+    },
+    "plasma_cannon": {
+      "timesUsed": 9,
+      "winRate": 0.2222222222222222,
+      "avgRoundReached": 8,
+      "byAgent": {
+        "aggressive": 2,
+        "economist": 1,
+        "synergist": 2,
+        "adaptive": 2,
+        "greedy": 2
+      }
+    },
+    "reactor": {
+      "timesUsed": 20,
+      "winRate": 0.1,
+      "avgRoundReached": 5.6,
+      "byAgent": {
+        "aggressive": 1,
+        "defensive": 4,
+        "economist": 2,
+        "synergist": 2,
+        "adaptive": 2,
+        "random": 1,
+        "greedy": 2,
+        "balanced": 6
+      }
+    },
+    "autocannon": {
+      "timesUsed": 2,
+      "winRate": 0,
+      "avgRoundReached": 8.5,
+      "byAgent": {
+        "aggressive": 1,
+        "synergist": 1
+      }
+    },
+    "quantum_capacitor": {
+      "timesUsed": 10,
+      "winRate": 0.1,
+      "avgRoundReached": 6.7,
+      "byAgent": {
+        "aggressive": 1,
+        "economist": 2,
+        "synergist": 2,
+        "adaptive": 2,
+        "random": 2,
+        "greedy": 1
+      }
+    },
+    "ballistic_plating": {
+      "timesUsed": 21,
+      "winRate": 0.047619047619047616,
+      "avgRoundReached": 6.904761904761905,
+      "byAgent": {
+        "aggressive": 1,
+        "defensive": 8,
+        "economist": 3,
+        "synergist": 2,
+        "adaptive": 2,
+        "random": 4,
+        "greedy": 1
+      }
+    },
+    "energy_shield": {
+      "timesUsed": 21,
+      "winRate": 0.14285714285714285,
+      "avgRoundReached": 7.904761904761905,
+      "byAgent": {
+        "aggressive": 2,
+        "defensive": 4,
+        "synergist": 1,
+        "adaptive": 4,
+        "random": 4,
+        "greedy": 1,
+        "balanced": 5
+      }
+    },
+    "rocket_pod": {
+      "timesUsed": 3,
+      "winRate": 0,
+      "avgRoundReached": 7.666666666666667,
+      "byAgent": {
+        "aggressive": 1,
+        "synergist": 1,
+        "greedy": 1
+      }
+    },
+    "fusion_core": {
+      "timesUsed": 9,
+      "winRate": 0.2222222222222222,
+      "avgRoundReached": 7,
+      "byAgent": {
+        "aggressive": 1,
+        "defensive": 2,
+        "economist": 1,
+        "adaptive": 3,
+        "greedy": 1,
+        "balanced": 1
+      }
+    },
+    "machinegun": {
+      "timesUsed": 24,
+      "winRate": 0.20833333333333334,
+      "avgRoundReached": 6.833333333333333,
+      "byAgent": {
+        "aggressive": 2,
+        "defensive": 1,
+        "economist": 2,
+        "synergist": 3,
+        "adaptive": 5,
+        "random": 7,
+        "greedy": 4
+      }
+    },
+    "plasma_core": {
+      "timesUsed": 10,
+      "winRate": 0.4,
+      "avgRoundReached": 8.4,
+      "byAgent": {
+        "aggressive": 1,
+        "economist": 1,
+        "synergist": 2,
+        "adaptive": 5,
+        "balanced": 1
+      }
+    },
+    "capacitor_bank": {
+      "timesUsed": 3,
+      "winRate": 0.3333333333333333,
+      "avgRoundReached": 8,
+      "byAgent": {
+        "aggressive": 1,
+        "adaptive": 1,
+        "random": 1
+      }
+    },
+    "heavy_shield": {
+      "timesUsed": 6,
+      "winRate": 0,
+      "avgRoundReached": 5,
+      "byAgent": {
+        "defensive": 2,
+        "economist": 2,
+        "synergist": 1,
+        "balanced": 1
+      }
+    },
+    "hull_armor": {
+      "timesUsed": 19,
+      "winRate": 0.15789473684210525,
+      "avgRoundReached": 7.421052631578948,
+      "byAgent": {
+        "defensive": 7,
+        "synergist": 4,
+        "adaptive": 3,
+        "random": 2,
+        "greedy": 1,
+        "balanced": 2
+      }
+    },
+    "exoskeleton_frame": {
+      "timesUsed": 2,
+      "winRate": 0,
+      "avgRoundReached": 8,
+      "byAgent": {
+        "defensive": 1,
+        "balanced": 1
+      }
+    },
+    "auxiliary_power": {
+      "timesUsed": 6,
+      "winRate": 0.16666666666666666,
+      "avgRoundReached": 7.5,
+      "byAgent": {
+        "defensive": 1,
+        "adaptive": 1,
+        "greedy": 3,
+        "balanced": 1
+      }
+    },
+    "heavy_hull": {
+      "timesUsed": 6,
+      "winRate": 0.3333333333333333,
+      "avgRoundReached": 7.666666666666667,
+      "byAgent": {
+        "defensive": 1,
+        "economist": 1,
+        "adaptive": 2,
+        "greedy": 1,
+        "balanced": 1
+      }
+    },
+    "power_cell": {
+      "timesUsed": 11,
+      "winRate": 0.09090909090909091,
+      "avgRoundReached": 6.090909090909091,
+      "byAgent": {
+        "defensive": 2,
+        "economist": 3,
+        "adaptive": 1,
+        "random": 1,
+        "balanced": 4
+      }
+    },
+    "reinforced_frame": {
+      "timesUsed": 5,
+      "winRate": 0.4,
+      "avgRoundReached": 8,
+      "byAgent": {
+        "defensive": 1,
+        "synergist": 1,
+        "adaptive": 2,
+        "balanced": 1
+      }
+    },
+    "hardened_shield": {
+      "timesUsed": 6,
+      "winRate": 0.5,
+      "avgRoundReached": 9.666666666666666,
+      "byAgent": {
+        "synergist": 1,
+        "adaptive": 3,
+        "greedy": 1,
+        "balanced": 1
+      }
+    },
+    "gauss_rifle": {
+      "timesUsed": 7,
+      "winRate": 0.2857142857142857,
+      "avgRoundReached": 7,
+      "byAgent": {
+        "synergist": 1,
+        "adaptive": 2,
+        "random": 1,
+        "greedy": 2,
+        "balanced": 1
+      }
+    },
+    "composite_armor": {
+      "timesUsed": 1,
+      "winRate": 0,
+      "avgRoundReached": 9,
+      "byAgent": {
+        "adaptive": 1
+      }
+    },
+    "solar_array": {
+      "timesUsed": 1,
+      "winRate": 1,
+      "avgRoundReached": 10,
+      "byAgent": {
+        "adaptive": 1
+      }
+    },
+    "modular_bay": {
+      "timesUsed": 1,
+      "winRate": 0,
+      "avgRoundReached": 5,
+      "byAgent": {
+        "random": 1
+      }
+    },
+    "power_coupling": {
+      "timesUsed": 1,
+      "winRate": 0,
+      "avgRoundReached": 5,
+      "byAgent": {
+        "random": 1
+      }
+    },
+    "emergency_cell": {
+      "timesUsed": 1,
+      "winRate": 0,
+      "avgRoundReached": 9,
+      "byAgent": {
+        "random": 1
+      }
+    },
+    "pulse_laser": {
+      "timesUsed": 1,
+      "winRate": 0,
+      "avgRoundReached": 9,
+      "byAgent": {
+        "random": 1
+      }
+    }
+  }
+}

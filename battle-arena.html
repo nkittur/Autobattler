@@ -1425,33 +1425,60 @@
                 }
                 playerMechs = [playerMech];
 
-                // Create enemy mech based on mission difficulty
+                // Create enemy mechs - support multiple enemies!
                 const enemyRisk = battleConfig.mission?.risk || 1;
-                let enemyMech;
-                if (enemyRisk >= 3) {
-                    enemyMech = createDireWolfMech(scene, 7, 0, false);
-                } else if (enemyRisk >= 2) {
-                    enemyMech = createMadCatMech(scene, 7, 0, false);
-                } else {
-                    enemyMech = createCommandoMech(scene, 7, 0, false);
-                }
-                // Apply enemy stats from config
-                if (battleConfig.enemy) {
-                    if (battleConfig.enemy.maxHealth) {
-                        enemyMech.maxHP = battleConfig.enemy.maxHealth;
-                        enemyMech.currentHP = enemyMech.maxHP;
+                const enemiesConfig = battleConfig.enemies || [battleConfig.enemy];
+                enemyMechs = [];
+
+                // Spawn positions for multiple enemies (spread out on right side)
+                const enemyPositions = [
+                    { x: 7, z: 0 },
+                    { x: 10, z: 4 },
+                    { x: 10, z: -4 },
+                    { x: 13, z: 2 },
+                    { x: 13, z: -2 }
+                ];
+
+                enemiesConfig.forEach((enemyData, index) => {
+                    const pos = enemyPositions[index] || { x: 7 + index * 3, z: (index % 2 === 0 ? 1 : -1) * (index + 1) };
+
+                    // Choose mech type based on risk level
+                    let enemyMech;
+                    if (enemyRisk >= 3) {
+                        enemyMech = createDireWolfMech(scene, pos.x, pos.z, false);
+                    } else if (enemyRisk >= 2) {
+                        enemyMech = createMadCatMech(scene, pos.x, pos.z, false);
+                    } else {
+                        enemyMech = createCommandoMech(scene, pos.x, pos.z, false);
                     }
-                    // Use weapons from ITEM_DATABASE (passed via battleConfig)
-                    enemyMech.loadoutWeapons = battleConfig.enemy.weapons || [];
-                    console.log('Enemy weapons from ITEM_DATABASE:', enemyMech.loadoutWeapons);
-                }
-                enemyMechs = [enemyMech];
+
+                    // Apply enemy stats from config
+                    if (enemyData) {
+                        if (enemyData.maxHealth) {
+                            enemyMech.maxHP = enemyData.maxHealth;
+                            enemyMech.currentHP = enemyMech.maxHP;
+                        }
+                        // Use weapons from ITEM_DATABASE
+                        enemyMech.loadoutWeapons = enemyData.weapons || [];
+                        // Store enemy name for UI
+                        enemyMech.displayName = enemyData.name || `Enemy ${index + 1}`;
+                        console.log(`Enemy ${index + 1} (${enemyMech.displayName}) weapons:`, enemyMech.loadoutWeapons);
+                    }
+
+                    enemyMechs.push(enemyMech);
+                });
+
+                console.log(`Spawned ${enemyMechs.length} enemies for this mission`);
 
                 // Update UI with mission info
                 setTimeout(() => {
                     const missionName = battleConfig.mission?.name || 'Battle';
                     document.querySelector('.mech-info.player strong').textContent = battleConfig.player?.name || 'PLAYER';
-                    document.querySelector('.mech-info.enemy strong').textContent = battleConfig.enemy?.name || 'ENEMY';
+                    // Show enemy count if multiple
+                    const enemyLabel = enemyMechs.length > 1
+                        ? `${enemiesConfig[0]?.name || 'ENEMIES'} (×${enemyMechs.length})`
+                        : (enemiesConfig[0]?.name || 'ENEMY');
+                    document.querySelector('.mech-info.enemy strong').textContent = enemyLabel;
                 }, 100);
             } else {
                 // Default: full battle with multiple mechs
@@ -6608,7 +6635,7 @@
                 window.parent.postMessage({ type: 'battleEnd' }, '*');
             } else {
                 // Navigate back to the loadout screen (standalone mode)
-                window.location.href = 'test-babylon-havok.html';
+                window.location.href = 'index.html';
             }
         }
 
@@ -6933,7 +6960,7 @@
                 } else {
                     // Standalone mode
                     localStorage.setItem('battleRewards', JSON.stringify(rewards));
-                    window.location.href = 'test-babylon-havok.html';
+                    window.location.href = 'index.html';
                 }
             });
         }

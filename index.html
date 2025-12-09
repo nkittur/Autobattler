@@ -2407,7 +2407,86 @@
             levelBudgetBonus: 0.5,
 
             // Budget variance within same level/rarity (percentage)
-            budgetVariance: 0.15   // +/- 15% variance
+            budgetVariance: 0.15,   // +/- 15% variance
+
+            // ============================================
+            // SPECIAL EFFECT BUDGET SYSTEM
+            // ============================================
+            // This system ensures higher rarity items have better special effects.
+            // Edit these values to balance special abilities across rarities.
+            //
+            // HOW IT WORKS:
+            // 1. Each rarity gets a "bonus budget" for special effects
+            // 2. The bonus budget is spent on improvements based on exchange rates
+            // 3. Items can improve: damage bonuses, directions, efficiency (weight/energy)
+            //
+            // EXAMPLE - Targeting Link (base: +1 damage in 1 direction):
+            //   Common (0 bonus):    +1 damage, 1 direction
+            //   Uncommon (+1.5):     +1 damage, 2 directions OR +2 damage, 1 direction
+            //   Rare (+3):           +2 damage, 2 directions OR +3 damage, 1 direction
+            //   Epic (+5):           +2 damage, all 4 directions OR +4 damage, 2 directions
+            //   Legendary (+8):      +3 damage, all 4 directions
+            // ============================================
+
+            // Bonus budget for special effects by rarity (separate from stat budget)
+            rarityBonusBudget: {
+                common: 0,        // No bonus - base effect only
+                uncommon: 1.5,    // Small improvement
+                rare: 3,          // Significant improvement
+                epic: 5,          // Major improvement
+                legendary: 8      // Maximum improvement
+            },
+
+            // Exchange rates for special effects (budget cost to add 1 unit)
+            // LOWER = cheaper to add, HIGHER = more expensive
+            specialEffectRates: {
+                // === ADJACENCY DAMAGE BONUSES ===
+                adjacentDamageBonus: 2.0,      // Cost to add +1 damage to ALL adjacent weapons
+                directionalDamageBonus: 1.0,   // Cost to add +1 damage in ONE direction
+
+                // === DIRECTION COVERAGE ===
+                // Base items affect 1 direction (up). Additional directions cost budget.
+                additionalDirection: 1.5,      // Cost per additional direction (up to 4 total)
+
+                // === EFFICIENCY IMPROVEMENTS ===
+                weightReduction: 1.0,          // Cost to reduce weight by 1
+                energyReduction: 1.0,          // Cost to reduce energy cost by 1
+
+                // === SHAPE IMPROVEMENTS ===
+                // Making items smaller is very valuable, so it's expensive
+                sizeReduction: 4.0,            // Cost to remove 1 grid square (very expensive)
+
+                // === OTHER SPECIAL EFFECTS ===
+                bonusShotsPerRound: 2.5,       // Cost to add +1 shot per round (multi-hit weapons)
+                critChanceBonus: 1.5,          // Cost to add +5% crit chance
+                lifestealBonus: 2.0,           // Cost to add +5% lifesteal
+                armorPenetration: 1.5          // Cost to add +1 armor penetration
+            },
+
+            // Special effect caps (maximum values regardless of budget)
+            specialEffectCaps: {
+                adjacentDamageBonus: 5,        // Max +5 damage to all adjacent
+                directionalDamageBonus: 4,     // Max +4 damage per direction
+                totalDirections: 4,            // Max 4 directions (up, down, left, right)
+                bonusShotsPerRound: 4,         // Max +4 extra shots
+                weightReduction: 3,            // Can't reduce weight below 0
+                energyReduction: 3             // Can't reduce energy below 0
+            },
+
+            // Priority order for spending bonus budget on special effects
+            // Items will try to spend budget in this order based on their type
+            specialEffectPriorities: {
+                // For targeting systems: prioritize damage and directions
+                targeting: ['directionalDamageBonus', 'adjacentDamageBonus', 'additionalDirection', 'energyReduction'],
+                // For weapons: prioritize shots and damage
+                weapon: ['bonusShotsPerRound', 'critChanceBonus', 'armorPenetration', 'weightReduction'],
+                // For armor: prioritize efficiency
+                armor: ['weightReduction', 'energyReduction'],
+                // For reactors: prioritize energy output
+                reactor: ['energyReduction', 'weightReduction'],
+                // Default priority
+                default: ['weightReduction', 'energyReduction']
+            }
         };
 
         // Base item templates - define the "class" of item with typical shape/stats
@@ -3117,6 +3196,139 @@
                     case 'energyReduction':
                         stats.energyReduction = (stats.energyReduction || 0) + Math.round(budgetForStat * exchangeRates.energyReduction);
                         break;
+                }
+            }
+
+            // ============================================
+            // APPLY SPECIAL EFFECT BUDGET SCALING
+            // ============================================
+            // Higher rarity items get bonus budget to improve special effects
+            const bonusBudget = COMPONENT_GENERATION.rarityBonusBudget[rarity] || 0;
+            const specialRates = COMPONENT_GENERATION.specialEffectRates;
+            const specialCaps = COMPONENT_GENERATION.specialEffectCaps;
+
+            if (bonusBudget > 0) {
+                let remainingBudget = bonusBudget;
+
+                // Determine priority based on item type
+                let priorityKey = 'default';
+                if (template.type === 'SYSTEM' && (stats.directionalDamageBonus || stats.adjacentDamageBonus)) {
+                    priorityKey = 'targeting';
+                } else if (template.type === 'WEAPON') {
+                    priorityKey = 'weapon';
+                } else if (template.type === 'ARMOR') {
+                    priorityKey = 'armor';
+                } else if (template.type === 'REACTOR') {
+                    priorityKey = 'reactor';
+                }
+                const priorities = COMPONENT_GENERATION.specialEffectPriorities[priorityKey];
+
+                // Track applied bonuses for description
+                let appliedBonuses = [];
+
+                // Spend budget according to priority
+                for (const effectType of priorities) {
+                    if (remainingBudget <= 0) break;
+
+                    const cost = specialRates[effectType];
+                    if (!cost) continue;
+
+                    // Calculate how many units we can afford
+                    const unitsAffordable = Math.floor(remainingBudget / cost);
+                    if (unitsAffordable <= 0) continue;
+
+                    switch (effectType) {
+                        case 'directionalDamageBonus':
+                            if (stats.directionalDamageBonus !== undefined) {
+                                const maxAdd = specialCaps.directionalDamageBonus - stats.directionalDamageBonus;
+                                const toAdd = Math.min(unitsAffordable, maxAdd);
+                                if (toAdd > 0) {
+                                    stats.directionalDamageBonus += toAdd;
+                                    remainingBudget -= toAdd * cost;
+                                    appliedBonuses.push(`+${toAdd} directional dmg`);
+                                }
+                            }
+                            break;
+
+                        case 'adjacentDamageBonus':
+                            if (stats.adjacentDamageBonus !== undefined) {
+                                const maxAdd = specialCaps.adjacentDamageBonus - stats.adjacentDamageBonus;
+                                const toAdd = Math.min(unitsAffordable, maxAdd);
+                                if (toAdd > 0) {
+                                    stats.adjacentDamageBonus += toAdd;
+                                    remainingBudget -= toAdd * cost;
+                                    appliedBonuses.push(`+${toAdd} adjacent dmg`);
+                                }
+                            }
+                            break;
+
+                        case 'additionalDirection':
+                            // Add extra directions to directional damage items
+                            if (stats.directionalDamageBonus !== undefined && template.special?.effectDirection) {
+                                const currentDirs = stats.effectDirections ? stats.effectDirections.length : 1;
+                                const maxAdd = specialCaps.totalDirections - currentDirs;
+                                const toAdd = Math.min(unitsAffordable, maxAdd);
+                                if (toAdd > 0) {
+                                    // Initialize directions array if not present
+                                    if (!stats.effectDirections) {
+                                        stats.effectDirections = [template.special.effectDirection];
+                                    }
+                                    const allDirs = ['up', 'down', 'left', 'right'];
+                                    for (let i = 0; i < toAdd && stats.effectDirections.length < 4; i++) {
+                                        const available = allDirs.filter(d => !stats.effectDirections.includes(d));
+                                        if (available.length > 0) {
+                                            stats.effectDirections.push(available[Math.floor(Math.random() * available.length)]);
+                                            remainingBudget -= cost;
+                                        }
+                                    }
+                                    if (stats.effectDirections.length > 1) {
+                                        appliedBonuses.push(`${stats.effectDirections.length} directions`);
+                                    }
+                                }
+                            }
+                            break;
+
+                        case 'weightReduction':
+                            if (stats.weight > 0) {
+                                const maxReduce = Math.min(stats.weight - 0, specialCaps.weightReduction);
+                                const toReduce = Math.min(unitsAffordable, maxReduce);
+                                if (toReduce > 0) {
+                                    stats.weight -= toReduce;
+                                    remainingBudget -= toReduce * cost;
+                                    appliedBonuses.push(`-${toReduce} weight`);
+                                }
+                            }
+                            break;
+
+                        case 'energyReduction':
+                            if (stats.energyDraw > 0) {
+                                const maxReduce = Math.min(stats.energyDraw, specialCaps.energyReduction);
+                                const toReduce = Math.min(unitsAffordable, maxReduce);
+                                if (toReduce > 0) {
+                                    stats.energyDraw -= toReduce;
+                                    remainingBudget -= toReduce * cost;
+                                    appliedBonuses.push(`-${toReduce} energy`);
+                                }
+                            }
+                            break;
+
+                        case 'bonusShotsPerRound':
+                            if (battle && battle.shotsPerRound) {
+                                const maxAdd = specialCaps.bonusShotsPerRound;
+                                const toAdd = Math.min(unitsAffordable, maxAdd);
+                                if (toAdd > 0) {
+                                    battle.shotsPerRound += toAdd;
+                                    remainingBudget -= toAdd * cost;
+                                    appliedBonuses.push(`+${toAdd} shots`);
+                                }
+                            }
+                            break;
+                    }
+                }
+
+                // Store applied bonuses for tooltip display
+                if (appliedBonuses.length > 0) {
+                    stats.rarityBonuses = appliedBonuses;
                 }
             }
 
@@ -5957,9 +6169,23 @@
                 statsHtml += `<div style="color: #ffcc00; font-size: 10px;">↳ MULTIPLIER: Chain Gun gets +${stats.adjacentDamageBonus * 8} total!</div>`;
             }
             if (stats.directionalDamageBonus) {
-                const dir = item.special?.effectDirection || 'up';
-                const arrow = {up: '↑', down: '↓', left: '←', right: '→'}[dir];
-                statsHtml += `<div style="color: #ff8844;">🎯 +${stats.directionalDamageBonus} dmg ${arrow} direction</div>`;
+                // Check for multiple directions (rarity bonus)
+                const directions = stats.effectDirections || [item.special?.effectDirection || 'up'];
+                const arrows = directions.map(d => ({up: '↑', down: '↓', left: '←', right: '→'}[d])).join('');
+                const dirCount = directions.length;
+                if (dirCount > 1) {
+                    statsHtml += `<div style="color: #ff8844;">🎯 +${stats.directionalDamageBonus} dmg in ${dirCount} directions ${arrows}</div>`;
+                } else {
+                    statsHtml += `<div style="color: #ff8844;">🎯 +${stats.directionalDamageBonus} dmg ${arrows} direction</div>`;
+                }
+            }
+
+            // Show rarity bonuses if any
+            if (stats.rarityBonuses && stats.rarityBonuses.length > 0) {
+                const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
+                    (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
+                statsHtml += `<div style="color: ${rarityColor}; font-size: 10px; margin-top: 4px; border-top: 1px solid ${rarityColor}33; padding-top: 4px;">`;
+                statsHtml += `✨ Rarity bonus: ${stats.rarityBonuses.join(', ')}</div>`;
             }
 
             let specialHtml = '';

@@ -71,36 +71,29 @@ Formula: **1 shot per 2 cells**, damage 1 per shot
 
 ### Multi-Hit Ballistic/Energy Weapons
 
-| Weapon | Cells | Weight | Energy | Cost | Shots | DPR | DPR/cell | With +2 |
-|--------|-------|--------|--------|------|-------|-----|----------|---------|
-| **Machinegun** | 3 | 1 | 1 | 3 | 3 | 2×3=6 | 2.0 | 4×3=12 |
-| **Chain Gun** | 4 | 2 | 1 | 4 | 8 | 1×8=8 | 2.0 | 3×8=24 |
-| **Pulse Laser** | 3 | 1 | 2 | 5 | 5 | 2×5=10 | 3.33 | 4×5=20 |
+| Weapon | Cells | Weight | Energy | Cost | Shots | DPR | With +2 | Notes |
+|--------|-------|--------|--------|------|-------|-----|---------|-------|
+| **Machinegun** | 3 | 1 | 0 | 4 | 2 | 1×2=2 | 3×2=6 | Cheap entry multi-hit |
+| **Minigun** | 4 | 2 | 1 | 8 | 8 | 1×8=8 | 3×8=24 | Max synergy potential |
+| **Pulse Laser** | 3 | 1 | 2 | 8 | 5 | 1×5=5 | 3×5=15 | Energy multi-hit |
 
-### ⚠️ BALANCE ISSUES: Multi-Hit Weapons
+### ✓ BALANCED: Multi-Hit Weapons
 
-**Problem:** These weapons get ~2x their budget in DPR because shots aren't costed properly.
+**Design:** Multi-hit weapons have FIXED damage (no level/rarity scaling) because:
+- Flat damage bonuses multiply with shot count
+- Damage scaling would make them exponentially OP at higher levels
+- Their value comes from synergy, not raw stats
 
-| Weapon | Budget Cost | Expected DPR | Actual DPR | Efficiency |
-|--------|-------------|--------------|------------|------------|
-| Machinegun | 3 | 3 | 6 | **200%** |
-| Chain Gun | 4 | 4 | 8 | **200%** |
-| Pulse Laser | 5 | 5 | 10 | **200%** |
+| Weapon | Cost | Base DPR | Efficiency | With Target Hub (+2) |
+|--------|------|----------|------------|----------------------|
+| Machinegun | 4 | 2 | 50% | 6 (150%) |
+| Minigun | 8 | 8 | 100% | 24 (300%) |
+| Pulse Laser | 8 | 5 | 63% | 15 (188%) |
 
-**Comparison to Balanced Weapons:**
-- Railgun: Cost 4, DPR 5 = 125% (has KB bonus)
-- Laser: Cost 5, DPR 4 = 80% (has size bonus)
-- Missile: Cost 1, DPR 2 = 200% (but terrible DPR/cell)
-
-**Potential Fixes:**
-1. Reduce per-shot damage to make total DPR match cost
-2. Increase weight/energy cost proportional to shot count
-3. Accept imbalance as intentional (multi-hit is the "strong" archetype)
-
-**Recommendation:** Either:
-- Machinegun: damage 2→1, or add 1 energy cost
-- Chain Gun: damage 1→0.5 (if fractional allowed), or weight 2→3
-- Pulse Laser: damage 2→1, shots 5→5 (DPR 5, matches cost)
+**Intended play pattern:**
+- Multi-hit weapons are weak alone
+- Pair with Targeting Hub/Amplifier for massive damage multiplication
+- DR armor hard-counters multi-hit (2 DR = -16 damage vs Minigun!)
 
 ---
 
@@ -347,13 +340,39 @@ This makes legendary items 4-5x stronger than common level 1 items.
    - Weight: 0 → 1
    - *Rationale:* 50% base efficiency, +16 effective vs Chain Gun
 
+### 2024-12-10: Multi-Hit Weapon Rebalance & System Unification
+
+**Multi-Hit Weapons (fixed damage, no scaling):**
+1. **Machinegun**
+   - Energy: 1 → 0
+   - Damage: 2 → 1
+   - Shots: 3 → 2
+   - *Rationale:* Cheap multi-hit entry point, 50% base efficiency
+
+2. **Chain Gun → Minigun** (renamed)
+   - Removed damage scaling (was gaining +2 dmg at higher levels!)
+   - Now fixed at 1×8 = 8 DPR
+   - *Rationale:* Synergy weapon, value comes from flat bonuses
+
+3. **Pulse Laser**
+   - Damage: 2 → 1
+   - Removed damage scaling
+   - Now fixed at 1×5 = 5 DPR
+   - *Rationale:* Energy-based synergy weapon
+
+**System Unification:**
+- Removed separate ITEM_DATABASE for starter items
+- All items now use ITEM_TEMPLATES via generateComponent()
+- Starter items are level 0 (weaker than shop level 1)
+- Enemy items also generated from templates
+
 ---
 
 ## Future Balance Directions
 
-### Priority 1: Fix Multi-Hit Weapons
-- Machinegun, Chain Gun, Pulse Laser are 200% efficient
-- Options: Reduce damage, increase cost, or accept as intentional
+### ~~Priority 1: Fix Multi-Hit Weapons~~ ✓ DONE
+- Fixed damage scaling on multi-hit weapons
+- Now properly balanced as synergy weapons
 
 ### ~~Priority 2: Clarify HP Exchange Rate~~ ✓ DONE
 - Defined: 1 square = 2.5 HP
@@ -364,10 +383,10 @@ This makes legendary items 4-5x stronger than common level 1 items.
 - Targeting Hub increased from cost 7 to cost 8
 - Both now have low base efficiency but high synergy value
 
-### Priority 2: Review Level/Rarity Stacking
+### Priority 1: Review Level/Rarity Stacking
 - Combined scaling may be too extreme at high levels
 - Consider caps or diminishing returns
 
-### Priority 3: Energy Shield Rebalance
-- Currently 29% efficient (10 shield for cost 7)
+### Priority 2: Energy Shield Rebalance
+- Currently 57% efficient (10 shield for cost 7)
 - Needs review: Is shield fundamentally different from HP?

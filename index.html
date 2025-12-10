@@ -2179,167 +2179,19 @@
             slots: {}
         };
 
-        // Item Definitions (The Deck)
-        const ITEM_DATABASE = {
-            railgun_mk1: {
-                id: 'railgun_mk1',
-                name: 'Training Railgun',
-                type: 'WEAPON',
-                category: 'weapon',
-                icon: '🔫',
-                gridShape: [[1], [1], [1], [1], [1]],  // 1x5 Vertical line
-                gridDimensions: { w: 1, h: 5 },
-                stats: {
-                    weight: 4,
-                    energyDraw: 1,
-                    damage: 4
-                },
-                constraints: {},
-                // Battle properties
-                battle: {
-                    projectileSpeed: 40,
-                    projectileSize: 0.12,
-                    knockback: 20,
-                    recoil: 0.1,
-                    shotsPerRound: 1,  // Fires once per 3-second round
-                    color: [1, 0.9, 0.3],  // Yellow-orange
-                    isProjectile: true
-                }
-            },
-            laser_array: {
-                id: 'laser_array',
-                name: 'Medium Laser',
-                type: 'WEAPON',
-                category: 'weapon',
-                icon: '⚡',
-                gridShape: [[1, 1], [1, 1]],  // 2x2 Square (4 spaces)
-                gridDimensions: { w: 2, h: 2 },
-                stats: {
-                    weight: 2,
-                    energyDraw: 2,
-                    damage: 3
-                },
-                constraints: {},
-                // Battle properties
-                battle: {
-                    isBeam: true,
-                    beamDuration: 150,
-                    knockback: 5,
-                    recoil: 0.15,
-                    shotsPerRound: 1,  // Fires once per 3-second round
-                    color: [0.2, 1, 0.3]  // Green
-                }
-            },
-            armor_plate: {
-                id: 'armor_plate',
-                name: 'Basic Plating',
-                type: 'ARMOR',
-                category: 'armor',
-                icon: '🛡️',
-                gridShape: [[1, 1, 1]],  // 3x1 Horizontal
-                gridDimensions: { w: 3, h: 1 },
-                stats: {
-                    weight: 1,  // Light armor - easy to fit
-                    energyDraw: 0,
-                    damageReduction: 1  // -1 damage from ballistic/missile
-                },
-                constraints: {}
-            },
-            reactor_core: {
-                id: 'reactor_core',
-                name: 'Basic Reactor',
-                type: 'REACTOR',
-                category: 'reactor',
-                icon: '⚛️',
-                gridShape: [[1, 1]],  // 2x1 Horizontal
-                gridDimensions: { w: 2, h: 1 },
-                stats: {
-                    weight: 1,
-                    energyDraw: -4,  // Provides 4 energy
-                    heatCapacity: 15
-                },
-                constraints: {}
-            },
-            targeting_computer: {
-                id: 'targeting_computer',
-                name: 'Targeting Link',
-                type: 'SYSTEM',
-                category: 'system',
-                icon: '🎯',
-                gridShape: [[1], [1]],  // 1x2 Vertical
-                gridDimensions: { w: 1, h: 2 },
-                stats: {
-                    weight: 0,
-                    energyDraw: 0,
-                    directionalDamageBonus: 1  // +1 damage to weapon in one direction
-                },
-                special: {
-                    adjacentEffect: 'directionalDamage',
-                    effectDirection: 'up',  // Can be rotated
-                    effectValue: 1
-                },
-                constraints: {}
-            },
-            missile_rack: {
-                id: 'missile_rack',
-                name: 'Light Missile Rack',
-                type: 'WEAPON',
-                category: 'weapon',
-                icon: '🚀',
-                gridShape: [[1, 1, 1, 1]],  // 4x1 Horizontal
-                gridDimensions: { w: 4, h: 1 },
-                stats: {
-                    weight: 2,
-                    energyDraw: 1,
-                    damage: 4
-                },
-                constraints: {},
-                battle: {
-                    projectileSpeed: 25,
-                    projectileSize: 0.15,
-                    knockback: 15,
-                    recoil: 0.12,
-                    shotsPerRound: 1,
-                    color: [1, 0.5, 0.2],  // Orange
-                    isProjectile: true,
-                    isMissile: true
-                }
-            },
-            basic_shield: {
-                id: 'basic_shield',
-                name: 'Light Shield',
-                type: 'ARMOR',
-                category: 'armor',
-                icon: '🔵',
-                gridShape: [[1], [1], [1]],  // 1x3 Vertical
-                gridDimensions: { w: 1, h: 3 },
-                stats: {
-                    weight: 1,
-                    energyDraw: 1,
-                    energyShieldHP: 8  // Absorbs 8 HP of energy damage
-                },
-                constraints: {}
-            },
-            heat_sink: {
-                id: 'heat_sink',
-                name: 'Basic Heat Sink',
-                type: 'COOLING',
-                category: 'cooling',
-                icon: '❄️',
-                gridShape: [[1], [1]],  // 1x2 Vertical
-                gridDimensions: { w: 1, h: 2 },
-                stats: {
-                    weight: 1,
-                    energyDraw: 0,
-                    energyReduction: 1  // Reduces energy cost of adjacent items
-                },
-                constraints: {},
-                special: {
-                    onPlace: 'drawCard',      // Draw a card when placed
-                    locksOnPlace: true        // Cannot be moved after placement this round
-                }
-            }
-        };
+        // Item Database - populated at runtime by generated items
+        // All items (starter and generated) use ITEM_TEMPLATES
+        const ITEM_DATABASE = {};
+
+        // Starter item configuration - generates level 0 items (weaker than shop items)
+        const STARTER_ITEMS = [
+            { template: 'railgun', name: 'Training Railgun', id: 'start_railgun' },
+            { template: 'laser', name: 'Training Laser', id: 'start_laser' },
+            { template: 'missile', name: 'Training Missiles', id: 'start_missile' },
+            { template: 'power_cell', name: 'Basic Reactor', id: 'start_reactor' },
+            { template: 'ballistic_plating', name: 'Basic Plating', id: 'start_armor' },
+            { template: 'targeting_link', name: 'Basic Targeting', id: 'start_targeting' }
+        ];
 
         // ============================================
         // COMPONENT GENERATION SYSTEM
@@ -2575,53 +2427,53 @@
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔥',
-                namePrefix: ['Rapid', 'Twin', 'Auto', 'Rotary', 'Ultra'],
-                nameSuffix: ['Cannon', 'Gun', 'Repeater', 'Vulcan'],
+                namePrefix: ['Rapid', 'Twin', 'Auto', 'Light'],
+                nameSuffix: ['Cannon', 'Gun', 'Repeater', 'MG'],
                 baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,
-                    energyDraw: 1,
-                    damage: 2
+                    energyDraw: 0,
+                    damage: 1  // Fixed - no scaling for multi-hit
                 },
                 baseBattle: {
                     projectileSpeed: 60,
                     projectileSize: 0.08,
-                    knockback: 5,
+                    knockback: 3,
                     recoil: 0.05,
-                    shotsPerRound: 3,
+                    shotsPerRound: 2,  // 2 shots × 1 dmg = 2 DPR
                     color: [1, 1, 0.5],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.7, projectileSpeed: 0.3 },
+                statWeights: { projectileSpeed: 0.5 },  // No damage scaling!
                 synergies: ['kinetic', 'multi-hit', 'sustained']
             },
 
             // MULTI-HIT WEAPONS - Low damage per shot, many shots = flat damage bonuses multiply!
             // Example: Chain Gun does 1x8=8 damage. With +2 flat damage bonus: 3x8=24 damage (3x multiplier!)
-            chain_gun: {
+            minigun: {
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '⛓️',
-                namePrefix: ['Rotary', 'Gatling', 'Spinning', 'Chain'],
+                namePrefix: ['Rotary', 'Gatling', 'Spinning', 'Mini'],
                 nameSuffix: ['Gun', 'Cannon', 'Minigun', 'Shredder'],
                 baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['leftArm', 'rightArm', 'torso'],
                 baseStats: {
                     weight: 2,
                     energyDraw: 1,
-                    damage: 1  // Very low per shot
+                    damage: 1  // Fixed - no scaling for multi-hit
                 },
                 baseBattle: {
                     projectileSpeed: 65,
                     projectileSize: 0.06,
                     knockback: 2,
                     recoil: 0.03,
-                    shotsPerRound: 8,  // But MANY shots!
+                    shotsPerRound: 8,  // 8 shots × 1 dmg = 8 DPR
                     color: [1, 0.8, 0.3],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.5, projectileSpeed: 0.3 },
+                statWeights: { projectileSpeed: 0.5 },  // No damage scaling!
                 synergies: ['kinetic', 'multi-hit', 'shredder'],
                 synergyDescription: 'SYNERGY: +1 flat damage = +8 total! Perfect with Targeting Hub.'
             },
@@ -2636,19 +2488,19 @@
                 baseStats: {
                     weight: 1,
                     energyDraw: 2,
-                    damage: 2  // Low per pulse
+                    damage: 1  // Fixed - no scaling for multi-hit
                 },
                 baseBattle: {
                     isBeam: true,
                     beamDuration: 80,  // Quick pulses
                     knockback: 3,
                     recoil: 0.02,
-                    shotsPerRound: 5,  // 5 pulses per round
+                    shotsPerRound: 5,  // 5 shots × 1 dmg = 5 DPR
                     color: [0.5, 1, 0.5]
                 },
-                statWeights: { damage: 0.8, knockback: 0.2 },
+                statWeights: { knockback: 0.5 },  // No damage scaling!
                 synergies: ['energy', 'multi-hit', 'precision'],
-                synergyDescription: 'SYNERGY: 2x5=10 base. +2 flat damage = 4x5=20 (2x multiplier!)'
+                synergyDescription: 'SYNERGY: 1x5=5 base. +2 flat damage = 3x5=15 (3x multiplier!)'
             },
             swarm_missiles: {
                 type: 'WEAPON',
@@ -3453,16 +3305,18 @@
                 railgun: 3,
                 laser: 3,
                 missile: 3,
-                machinegun: 3,
+                machinegun: 2,          // 1×2 = 2 DPR, cheap multi-hit
+                minigun: 1,             // 1×8 = 8 DPR, rare synergy weapon
+                pulse_laser: 1,         // 1×5 = 5 DPR, rare energy multi-hit
                 ballistic_plating: 2,   // Damage reduction armor
                 reactive_plating: 1,    // Better damage reduction, rarer
                 hull_armor: 2,          // HP boost armor
                 heavy_hull: 1,          // More HP, rarer
                 energy_shield: 1.5,     // Energy weapon defense
-                reactor: 0.5,      // Much less common
-                power_cell: 0.5,   // Much less common
-                targeting_link: 3, // Common - directional damage boost
-                targeting_hub: 1,  // Rarer - omnidirectional damage boost
+                reactor: 0.5,           // Much less common
+                power_cell: 0.5,        // Much less common
+                targeting_link: 3,      // Common - directional damage boost
+                targeting_hub: 1,       // Rarer - omnidirectional damage boost
                 gyro: 2,
                 heat_sink: 2,
                 cooling_system: 2
@@ -3820,35 +3674,51 @@
             // Determine weapon count
             const weaponCount = Math.max(1, Math.min(3, Math.floor(weaponBudget / ENEMY_GENERATION.rates.weaponBudget) + 1));
 
-            // Generate equipment
+            // Generate equipment using templates
             const equipment = [];
             const weaponSlots = ['rightArm', 'leftArm', 'torso'];
-            const weaponTypes = ['railgun_mk1', 'laser_array'];
+            const weaponTemplates = ['railgun', 'laser', 'missile'];
 
             for (let i = 0; i < weaponCount && i < weaponSlots.length; i++) {
-                equipment.push({
-                    itemId: weaponTypes[i % weaponTypes.length],
-                    slot: weaponSlots[i],
-                    position: { x: 0, y: 0 }
-                });
+                const template = weaponTemplates[i % weaponTemplates.length];
+                const weapon = generateComponent(template, level, 'common', { variantChance: 0 });
+                if (weapon) {
+                    weapon.id = `enemy_${template}_${Date.now()}_${i}`;
+                    registerGeneratedComponent(weapon);
+                    equipment.push({
+                        itemId: weapon.id,
+                        slot: weaponSlots[i],
+                        position: { x: 0, y: 0 }
+                    });
+                }
             }
 
             // Add armor if high enough level
             if (level >= 2 && baseArmor > 20) {
-                equipment.push({
-                    itemId: 'armor_plate',
-                    slot: 'torso',
-                    position: { x: 0, y: 0 }
-                });
+                const armor = generateComponent('ballistic_plating', level, 'common', { variantChance: 0 });
+                if (armor) {
+                    armor.id = `enemy_armor_${Date.now()}`;
+                    registerGeneratedComponent(armor);
+                    equipment.push({
+                        itemId: armor.id,
+                        slot: 'torso',
+                        position: { x: 0, y: 0 }
+                    });
+                }
             }
 
             // Add reactor for energy
             if (weaponCount >= 2) {
-                equipment.push({
-                    itemId: 'reactor_core',
-                    slot: 'torso',
-                    position: { x: 2, y: 0 }
-                });
+                const reactor = generateComponent('power_cell', level, 'common', { variantChance: 0 });
+                if (reactor) {
+                    reactor.id = `enemy_reactor_${Date.now()}`;
+                    registerGeneratedComponent(reactor);
+                    equipment.push({
+                        itemId: reactor.id,
+                        slot: 'torso',
+                        position: { x: 2, y: 0 }
+                    });
+                }
             }
 
             // Generate name
@@ -4595,19 +4465,26 @@
         // Persistent bench items (no deck system - items stay on bench or mech)
         let benchItems = [];  // Array of item objects on the bench
 
-        // Initialize with starter items
+        // Initialize with starter items (level 0, weaker than shop items)
         function initializeStarterItems() {
             benchItems = [];
-            // Add starter weapons
-            const starterWeapon1 = { ...ITEM_DATABASE.railgun_mk1, instanceId: 'start_1' };
-            const starterWeapon2 = { ...ITEM_DATABASE.laser_array, instanceId: 'start_2' };
-            const starterMissile = { ...ITEM_DATABASE.missile_rack, instanceId: 'start_3' };
-            const starterReactor = { ...ITEM_DATABASE.reactor_core, instanceId: 'start_4' };
-            // Add starter defensive items
-            const starterArmor = { ...ITEM_DATABASE.armor_plate, instanceId: 'start_5' };
-            const starterShield = { ...ITEM_DATABASE.basic_shield, instanceId: 'start_6' };
-            const starterLink = { ...ITEM_DATABASE.targeting_computer, instanceId: 'start_7' };
-            benchItems.push(starterWeapon1, starterWeapon2, starterMissile, starterReactor, starterArmor, starterShield, starterLink);
+
+            // Generate starter items from templates at level 0 (weaker than level 1)
+            STARTER_ITEMS.forEach((config, index) => {
+                // Generate with level 0, common rarity, no variance
+                const item = generateComponent(config.template, 0, 'common', { variantChance: 0 });
+                if (item) {
+                    // Override name with starter name
+                    item.name = config.name;
+                    item.id = config.id;
+                    item.instanceId = `start_${index + 1}`;
+                    item.isStarter = true;  // Mark as starter item
+
+                    // Register in database and add to bench
+                    registerGeneratedComponent(item);
+                    benchItems.push(item);
+                }
+            });
         }
 
         // Player resources

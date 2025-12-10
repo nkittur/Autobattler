@@ -351,6 +351,50 @@ Exchange rate: 1 square = 0.3 energy reduction
 
 ---
 
+## Minimum Level System
+
+### Overview
+Items have a **minimum level** at which they can appear in shops/salvage. This prevents overpowered items from showing up too early.
+
+### Budget Balance Formula
+Each template's budget balance is calculated at prototype (level 1):
+
+```
+Budget Earned = Cells + Weight + Energy×2
+Budget Spent  = Damage×Shots + MultiHitBonus + DR + HP×0.4 + Knockback×0.2 + ...
+Net Balance   = Earned - Spent
+```
+
+**Multi-hit Synergy Bonus:** `0.5 × (shots - 1)`
+- Represents the multiplicative value of flat damage bonuses with multi-hit
+- 2 shots: +0.5 budget, 5 shots: +2 budget, 8 shots: +3.5 budget
+
+### Minimum Level Calculation
+```
+If netBalance >= 0: minLevel = 1 (balanced or underpowered)
+If netBalance < 0:  minLevel = ceil(-netBalance) + 1
+```
+
+### Example Calculations
+
+| Item | Earned | Spent | Net | MinLevel |
+|------|--------|-------|-----|----------|
+| Laser (2c, 1w, 2e) | 2+1+4=7 | 4 dmg = 4 | +3 | 1 |
+| Machinegun (3c, 1w, 0e) | 3+1+0=4 | 2 dmg + 0.5 multi = 2.5 | +1.5 | 1 |
+| Minigun (4c, 2w, 1e) | 4+2+2=8 | 8 dmg + 3.5 multi = 11.5 | -3.5 | 5 |
+| Pulse Laser (3c, 1w, 2e) | 3+1+4=8 | 5 dmg + 2 multi = 7 | +1 | 1 |
+
+### Design Rationale
+- **Minigun** (1×8 shots) is intentionally restricted to level 5+ because:
+  - Its 8 shots have massive synergy potential with flat damage bonuses
+  - +2 damage from Targeting Hub = +16 total damage (24 DPR!)
+  - Must be a late-game reward, not an early drop
+- **Machinegun** (1×2 shots) is available at level 1:
+  - Entry-level multi-hit weapon for learning synergies
+  - Much lower synergy ceiling (only +2 extra damage from +2 bonus)
+
+---
+
 ## Change History
 
 ### 2024-12-09: Weapon Rebalance

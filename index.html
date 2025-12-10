@@ -8332,6 +8332,186 @@
             console.log('MechBuilder initialized!');
         }
 
+        // ============================================
+        // TEST FUNCTIONS (call from browser console)
+        // ============================================
+        function testComponentGeneration() {
+            console.log('=== COMPONENT GENERATION TESTS ===\n');
+            let passed = 0;
+            let failed = 0;
+
+            function assert(condition, testName, details = '') {
+                if (condition) {
+                    console.log(`✓ ${testName}`);
+                    passed++;
+                } else {
+                    console.error(`✗ ${testName}`, details);
+                    failed++;
+                }
+            }
+
+            // Test 1: Level 1 Common should have prototype stats
+            console.log('\n--- Test 1: Level 1 Common = Prototype Stats ---');
+            const laser1 = generateComponent('laser', 1, 'common');
+            assert(laser1.stats.damage === 4, 'Laser L1 damage = 4 (prototype)', `Got: ${laser1.stats.damage}`);
+            assert(laser1.stats.energyDraw === 2, 'Laser L1 energy = 2 (prototype)', `Got: ${laser1.stats.energyDraw}`);
+            assert(laser1.stats.weight === 1, 'Laser L1 weight = 1 (prototype)', `Got: ${laser1.stats.weight}`);
+            assert(laser1.budgetInfo.levelBudget === 0, 'Level budget = 0 at L1', `Got: ${laser1.budgetInfo.levelBudget}`);
+            assert(laser1.budgetInfo.rarityBudget === 0, 'Rarity budget = 0 for common', `Got: ${laser1.budgetInfo.rarityBudget}`);
+            assert(laser1.modifier === null, 'No modifier on common item', `Got: ${laser1.modifier}`);
+
+            // Test 2: Level 5 should have +4 budget
+            console.log('\n--- Test 2: Level 5 Common = +4 Budget ---');
+            const laser5 = generateComponent('laser', 5, 'common');
+            assert(laser5.budgetInfo.levelBudget === 4, 'Level budget = 4 at L5', `Got: ${laser5.budgetInfo.levelBudget}`);
+            assert(laser5.stats.damage >= 4, 'Laser L5 damage >= 4', `Got: ${laser5.stats.damage}`);
+            // Damage should increase (most of budget goes to damage since it's 50% of prototype spend)
+            assert(laser5.stats.damage > laser1.stats.damage, 'Laser L5 damage > L1 damage', `L5: ${laser5.stats.damage}, L1: ${laser1.stats.damage}`);
+
+            // Test 3: Multi-hit weapons should NOT scale damage
+            console.log('\n--- Test 3: Multi-Hit Weapons = Fixed Damage ---');
+            const minigun1 = generateComponent('minigun', 1, 'common');
+            const minigun10 = generateComponent('minigun', 10, 'common');
+            assert(minigun1.stats.damage === 1, 'Minigun L1 damage = 1 (fixed)', `Got: ${minigun1.stats.damage}`);
+            assert(minigun10.stats.damage === 1, 'Minigun L10 damage = 1 (still fixed!)', `Got: ${minigun10.stats.damage}`);
+            assert(minigun1.battle.shotsPerRound === 8, 'Minigun shots = 8', `Got: ${minigun1.battle.shotsPerRound}`);
+
+            const pulseLaser1 = generateComponent('pulse_laser', 1, 'common');
+            const pulseLaser10 = generateComponent('pulse_laser', 10, 'common');
+            assert(pulseLaser1.stats.damage === 1, 'Pulse Laser L1 damage = 1 (fixed)', `Got: ${pulseLaser1.stats.damage}`);
+            assert(pulseLaser10.stats.damage === 1, 'Pulse Laser L10 damage = 1 (still fixed!)', `Got: ${pulseLaser10.stats.damage}`);
+
+            // Test 4: Rarity budget scales with level range
+            console.log('\n--- Test 4: Rarity Budget Scaling ---');
+            const rareLv3 = generateComponent('laser', 3, 'rare');
+            const rareLv8 = generateComponent('laser', 8, 'rare');
+            const rareLv12 = generateComponent('laser', 12, 'rare');
+            assert(rareLv3.budgetInfo.rarityBudget === 2, 'Rare L3: rarity budget = 2 (tier 2 × 1)', `Got: ${rareLv3.budgetInfo.rarityBudget}`);
+            assert(rareLv8.budgetInfo.rarityBudget === 4, 'Rare L8: rarity budget = 4 (tier 2 × 2)', `Got: ${rareLv8.budgetInfo.rarityBudget}`);
+            assert(rareLv12.budgetInfo.rarityBudget === 6, 'Rare L12: rarity budget = 6 (tier 2 × 3)', `Got: ${rareLv12.budgetInfo.rarityBudget}`);
+
+            const legendaryLv5 = generateComponent('laser', 5, 'legendary');
+            const legendaryLv10 = generateComponent('laser', 10, 'legendary');
+            assert(legendaryLv5.budgetInfo.rarityBudget === 4, 'Legendary L5: rarity budget = 4 (tier 4 × 1)', `Got: ${legendaryLv5.budgetInfo.rarityBudget}`);
+            assert(legendaryLv10.budgetInfo.rarityBudget === 8, 'Legendary L10: rarity budget = 8 (tier 4 × 2)', `Got: ${legendaryLv10.budgetInfo.rarityBudget}`);
+
+            // Test 5: Weight/energy reduction max -1
+            console.log('\n--- Test 5: Weight/Energy Reduction Capped at -1 ---');
+            // Generate many items to check that reductions never exceed -1
+            let maxWeightReduction = 0;
+            let maxEnergyReduction = 0;
+            for (let i = 0; i < 100; i++) {
+                const item = generateComponent('laser', 10, 'legendary');
+                maxWeightReduction = Math.max(maxWeightReduction, item.budgetInfo.weightReduced);
+                maxEnergyReduction = Math.max(maxEnergyReduction, item.budgetInfo.energyReduced);
+            }
+            assert(maxWeightReduction <= 1, 'Weight reduction never exceeds 1', `Max seen: ${maxWeightReduction}`);
+            assert(maxEnergyReduction <= 1, 'Energy reduction never exceeds 1', `Max seen: ${maxEnergyReduction}`);
+
+            // Test 6: Only uncommon+ gets modifiers
+            console.log('\n--- Test 6: Modifiers Only on Uncommon+ ---');
+            let commonModCount = 0;
+            let uncommonModCount = 0;
+            for (let i = 0; i < 100; i++) {
+                const common = generateComponent('laser', 15, 'common');
+                const uncommon = generateComponent('laser', 15, 'uncommon');
+                if (common.modifier) commonModCount++;
+                if (uncommon.modifier) uncommonModCount++;
+            }
+            assert(commonModCount === 0, 'Common items never get modifiers', `Got ${commonModCount} modifiers in 100 items`);
+            assert(uncommonModCount > 0, 'Uncommon items can get modifiers', `Got ${uncommonModCount} modifiers in 100 items`);
+
+            // Test 7: Higher rarity = access to higher cost modifiers
+            console.log('\n--- Test 7: Modifier Budget by Rarity ---');
+            let uncommonMaxCost = 0;
+            let rareMaxCost = 0;
+            let epicMaxCost = 0;
+            for (let i = 0; i < 200; i++) {
+                const uncommon = generateComponent('laser', 15, 'uncommon');
+                const rare = generateComponent('laser', 15, 'rare');
+                const epic = generateComponent('laser', 15, 'epic');
+                if (uncommon.modifier) {
+                    const cost = Object.keys(COMPONENT_GENERATION.modifiers).find(c =>
+                        COMPONENT_GENERATION.modifiers[c].some(m => m.id === uncommon.modifier.id)
+                    );
+                    uncommonMaxCost = Math.max(uncommonMaxCost, parseInt(cost) || 0);
+                }
+                if (rare.modifier) {
+                    const cost = Object.keys(COMPONENT_GENERATION.modifiers).find(c =>
+                        COMPONENT_GENERATION.modifiers[c].some(m => m.id === rare.modifier.id)
+                    );
+                    rareMaxCost = Math.max(rareMaxCost, parseInt(cost) || 0);
+                }
+                if (epic.modifier) {
+                    const cost = Object.keys(COMPONENT_GENERATION.modifiers).find(c =>
+                        COMPONENT_GENERATION.modifiers[c].some(m => m.id === epic.modifier.id)
+                    );
+                    epicMaxCost = Math.max(epicMaxCost, parseInt(cost) || 0);
+                }
+            }
+            assert(uncommonMaxCost <= 1, 'Uncommon max modifier cost = 1', `Got: ${uncommonMaxCost}`);
+            assert(rareMaxCost <= 2, 'Rare max modifier cost = 2', `Got: ${rareMaxCost}`);
+            assert(epicMaxCost <= 3, 'Epic max modifier cost = 3', `Got: ${epicMaxCost}`);
+
+            // Test 8: Armor HP scaling
+            console.log('\n--- Test 8: Armor HP Scaling ---');
+            const hull1 = generateComponent('hull_armor', 1, 'common');
+            const hull5 = generateComponent('hull_armor', 5, 'common');
+            assert(hull1.stats.hpBonus === 10, 'Hull Armor L1 HP = 10 (prototype)', `Got: ${hull1.stats.hpBonus}`);
+            assert(hull5.stats.hpBonus > hull1.stats.hpBonus, 'Hull Armor L5 HP > L1 HP', `L5: ${hull5.stats.hpBonus}, L1: ${hull1.stats.hpBonus}`);
+
+            // Summary
+            console.log('\n=== TEST SUMMARY ===');
+            console.log(`Passed: ${passed}`);
+            console.log(`Failed: ${failed}`);
+            console.log(`Total: ${passed + failed}`);
+
+            return { passed, failed };
+        }
+
+        // Quick item generation diagnostic
+        function showItemStats(templateType, level = 1, rarity = 'common') {
+            const item = generateComponent(templateType, level, rarity);
+            console.log(`\n=== ${item.name} (${templateType} L${level} ${rarity}) ===`);
+            console.log('Stats:', item.stats);
+            console.log('Battle:', item.battle || 'N/A');
+            console.log('Budget Info:', item.budgetInfo);
+            if (item.modifier) {
+                console.log('Modifier:', item.modifier.name, '-', item.modifier.description);
+            }
+            return item;
+        }
+
+        // Generate comparison table
+        function compareItemLevels(templateType, levels = [1, 5, 10], rarities = ['common', 'rare', 'legendary']) {
+            console.log(`\n=== ${templateType} Level/Rarity Comparison ===`);
+            const results = [];
+            for (const rarity of rarities) {
+                for (const level of levels) {
+                    const item = generateComponent(templateType, level, rarity);
+                    results.push({
+                        level,
+                        rarity,
+                        damage: item.stats.damage || '-',
+                        energy: item.stats.energyDraw || '-',
+                        weight: item.stats.weight || '-',
+                        hp: item.stats.hpBonus || '-',
+                        dr: item.stats.damageReduction || '-',
+                        levelBudget: item.budgetInfo.levelBudget,
+                        rarityBudget: item.budgetInfo.rarityBudget,
+                        modifier: item.modifier ? item.modifier.name : '-'
+                    });
+                }
+            }
+            console.table(results);
+            return results;
+        }
+
+        // Expose test functions globally
+        window.testComponentGeneration = testComponentGeneration;
+        window.showItemStats = showItemStats;
+        window.compareItemLevels = compareItemLevels;
+
         // Start the game
         initEngine();
     </script>

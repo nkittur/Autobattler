@@ -108,20 +108,20 @@ Formula: **1 shot per 2 cells**, damage 1 per shot
 
 **Exchange Rates:**
 - 1 square = 1 DR
-- 1 square = 5 HP
+- 1 square = 2.5 HP
 - Total Cost = Cells + Weight + Energy×2
 
 | Item | Cells | Weight | Energy | Cost | Effect | Value | Efficiency | Notes |
 |------|-------|--------|--------|------|--------|-------|------------|-------|
 | **Ballistic Plating** | 3 | 0 | 0 | 3 | 2 DR | 2 | 67% | L-shape, vs ballistic |
 | **Reactive Plating** | 3 | 0 | 1 | 5 | 3 DR | 3 | 60% | L-shape, best DR |
-| **Hull Armor** | 3 | 1 | 0 | 4 | 20 HP | 4 | **100%** | Raw HP boost |
-| **Heavy Hull** | 4 | 2 | 0 | 6 | 30 HP | 6 | **100%** | Best HP item |
-| **Energy Shield** | 4 | 1 | 1 | 7 | 10 Shield | 2 | 29% | vs energy weapons |
+| **Hull Armor** | 3 | 1 | 0 | 4 | 10 HP | 4 | **100%** | Raw HP boost |
+| **Heavy Hull** | 4 | 2 | 0 | 6 | 15 HP | 6 | **100%** | Best HP item |
+| **Energy Shield** | 4 | 1 | 1 | 7 | 10 Shield | 4 | 57% | vs energy weapons |
 
 ### ✓ BALANCED: HP Items
 
-Hull Armor and Heavy Hull are now exactly 100% efficient using the 5 HP = 1 square exchange rate.
+Hull Armor and Heavy Hull are exactly 100% efficient using the 2.5 HP = 1 square exchange rate.
 
 ### Design Note: DR Items
 
@@ -311,16 +311,16 @@ This makes legendary items 4-5x stronger than common level 1 items.
 
 ### 2024-12-09: Armor & Systems Rebalance
 
-**HP Items (now 100% efficient):**
+**HP Items (now 100% efficient at 2.5 HP = 1 square):**
 1. **Hull Armor**
    - Weight: 2 → 1
-   - HP: 8 → 20 (5 HP per square)
-   - *Rationale:* Match 5 HP = 1 square exchange rate
+   - HP: 8 → 10 (2.5 HP per square)
+   - *Rationale:* Match 2.5 HP = 1 square exchange rate
 
 2. **Heavy Hull**
    - Cells: 6 → 4 (2x2 shape)
    - Weight: 4 → 2
-   - HP: 15 → 30
+   - HP: 15 → 15 (unchanged)
    - *Rationale:* More compact, exactly 100% efficient
 
 **DR Items (intentionally 60-67% efficient vs multi-hit counter):**
@@ -356,7 +356,7 @@ This makes legendary items 4-5x stronger than common level 1 items.
 - Options: Reduce damage, increase cost, or accept as intentional
 
 ### ~~Priority 2: Clarify HP Exchange Rate~~ ✓ DONE
-- Defined: 1 square = 5 HP
+- Defined: 1 square = 2.5 HP
 - Hull Armor and Heavy Hull now 100% efficient
 
 ### ~~Priority 3: System Cost Parity~~ ✓ DONE

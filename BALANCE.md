@@ -207,56 +207,147 @@ Exchange rate: 1 square = 0.3 energy reduction
 
 ---
 
+## Budget System v2 (Current)
+
+### Core Principles
+1. **Level 1 = Prototype**: Each item template defines prototype stats at level 1 that should balance
+2. **Additive Scaling**: Higher levels add flat budget, not multipliers
+3. **Proportional Allocation**: Extra budget is distributed proportionally to prototype stats
+4. **No Damage Scaling on Multi-Hit**: Weapons with shotsPerRound > 1 don't scale damage
+
+### Master Budget Exchange Rates
+
+| Stat | Budget Cost | Notes |
+|------|-------------|-------|
+| Cell (in shape) | +1 | Earned |
+| Weight | +1 | Earned (compensation) |
+| Damage | -1 | Spent |
+| Energy Cost | -2 | Spent (1 energy = 2 budget) |
+| Damage Reduction | -1 | Spent |
+| HP Bonus | -0.4 | Spent (1 budget = 2.5 HP) |
+| Energy Provided | -1 | Spent (for reactors) |
+| Knockback | -0.2 | Spent (1 budget = 5 KB, doesn't scale!) |
+| +1 Dmg (1 direction) | -1 | Spent |
+| +1 Dmg (all adjacent) | -3 | Spent |
+| Energy Reduction | -1 | Spent |
+
+**Budget Formula:** Budget Earned - Budget Spent ≈ 0 at prototype
+
+---
+
 ## Level Scaling
 
-| Level | Budget Bonus | Cumulative |
-|-------|--------------|------------|
-| 1 | +0 | Base |
-| 2 | +0.5 | +0.5 |
-| 5 | +0.5 | +2.0 |
-| 10 | +0.5 | +4.5 |
+| Level | Level Budget | Notes |
+|-------|--------------|-------|
+| 1 | 0 | Prototype stats |
+| 2 | 1 | +1 budget |
+| 5 | 4 | +4 budget |
+| 10 | 9 | +9 budget |
 
-**At level 10:** A 4-cell item effectively has 8.5 budget (212% of base)
+**Allocation Rules:**
+- Budget distributed proportionally based on prototype stat costs
+- Weight can decrease by max 1 (30% chance per upgrade)
+- Energy can decrease by max 1 (30% chance per upgrade)
+- Multi-hit weapons (shotsPerRound > 1) do NOT gain damage
+- Knockback does NOT scale
 
-### ⚠️ BALANCE CONCERN
-
-Level scaling may be too aggressive. At high levels, items become significantly stronger than their size suggests.
+**Example:** Level 5 Laser (prototype: 4 damage, 2 energy)
+- Prototype spend: 4 dmg × 1 + 2 energy × 2 = 8 budget on stats
+- Level budget: 4
+- 50% of prototype spend is damage → +2 damage
+- 50% is energy → no bonus (energy only decreases, max -1)
+- Result: 6 damage, 1 energy (if reduction rolled)
 
 ---
 
 ## Rarity Scaling
 
-### Stat Budget Multipliers
-| Rarity | Multiplier | 4-cell effective |
-|--------|------------|------------------|
-| Common | 1.0× | 4.0 |
-| Uncommon | 1.15× | 4.6 |
-| Rare | 1.35× | 5.4 |
-| Epic | 1.6× | 6.4 |
-| Legendary | 2.0× | 8.0 |
+### Fixed Budget Per Tier (Not Multipliers!)
 
-### Special Effect Bonus Budget
-| Rarity | Bonus | Example (Targeting Link) |
-|--------|-------|--------------------------|
-| Common | +0 | +1 dmg, 1 direction |
-| Uncommon | +1.5 | +1 dmg, 2 directions |
-| Rare | +3 | +2 dmg, 2 directions |
-| Epic | +5 | +2 dmg, 4 directions |
-| Legendary | +8 | +3 dmg, 4 directions |
+| Level Range | Budget per Tier |
+|-------------|-----------------|
+| 1-5 | +1 per tier |
+| 6-10 | +2 per tier |
+| 11+ | +3 per tier |
 
-### ⚠️ BALANCE CONCERN: Legendary Items
+| Rarity | Tier | Budget (Lv1-5) | Budget (Lv6-10) | Budget (Lv11+) |
+|--------|------|----------------|-----------------|----------------|
+| Common | 0 | +0 | +0 | +0 |
+| Uncommon | 1 | +1 | +2 | +3 |
+| Rare | 2 | +2 | +4 | +6 |
+| Epic | 3 | +3 | +6 | +9 |
+| Legendary | 4 | +4 | +8 | +12 |
 
-**Combined scaling is extreme:**
-- Level 10 Legendary 4-cell item:
-- Base: 4 cells
-- Level bonus: +4.5
-- Rarity multiplier: ×2.0
-- = (4 + 4.5) × 2.0 = **17 effective budget**
-- Plus +8 special effect budget
+**Example:** Level 8 Epic Laser
+- Level budget: 7 (level - 1)
+- Rarity budget: 6 (tier 3 × 2 for level 6-10)
+- Total extra budget: 13
+- Distributed proportionally to scalable stats
 
-This makes legendary items 4-5x stronger than common level 1 items.
+### Power Comparison (vs old system)
 
-**Recommendation:** Consider multiplicative vs additive scaling. Current system may cause power spikes.
+| Level | Rarity | Old System | New System | Change |
+|-------|--------|------------|------------|--------|
+| 5 | Common | Base × 1.0 + 2 | Base + 4 | Linear |
+| 5 | Legendary | Base × 2.0 + 2 | Base + 8 | Reduced spike |
+| 10 | Common | Base × 1.0 + 4.5 | Base + 9 | Linear |
+| 10 | Legendary | Base × 2.0 + 4.5 | Base + 17 | Much more controlled |
+
+---
+
+## Modifier System
+
+### Overview
+- **Uncommon+ items only** can have modifiers
+- Higher levels = higher chance of getting a modifier
+- Modifiers have budget costs (1-3) deducted from item budget
+- Higher rarity allows higher-cost modifiers
+
+### Modifier Chance by Level
+
+| Level | Modifier Chance |
+|-------|-----------------|
+| 1 | 10% |
+| 3 | 20% |
+| 5 | 30% |
+| 7 | 50% |
+| 10 | 70% |
+| 15+ | 90% |
+
+### Max Modifier Budget by Rarity
+
+| Rarity | Max Modifier Cost |
+|--------|-------------------|
+| Common | (no modifiers) |
+| Uncommon | 1 |
+| Rare | 2 |
+| Epic | 3 |
+| Legendary | 3 |
+
+### Available Modifiers
+
+**Cost 1 (Minor):**
+| Modifier | Effect | Valid Types |
+|----------|--------|-------------|
+| First Strike | First shot deals 2× damage | WEAPON |
+| Lightweight | -1 weight | ALL |
+| Efficient | -1 energy cost | WEAPON |
+| Reinforced | +2 HP | ARMOR |
+| Overclocked | +1 energy provided | REACTOR |
+
+**Cost 2 (Moderate):**
+| Modifier | Effect | Valid Types |
+|----------|--------|-------------|
+| Devastating | First shot deals 2.5× damage | WEAPON |
+| Reactor-Fed | +1 damage per adjacent reactor | WEAPON |
+| Fortified | +1 DR | ARMOR |
+
+**Cost 3 (Powerful):**
+| Modifier | Effect | Valid Types |
+|----------|--------|-------------|
+| Alpha Strike | First shot deals 3× damage | WEAPON |
+| Weapon-Linked | +1 damage per adjacent weapon | WEAPON |
+| Synergy Field | +1 damage to all adjacent weapons | SYSTEM |
 
 ---
 
@@ -366,6 +457,30 @@ This makes legendary items 4-5x stronger than common level 1 items.
 - Starter items are level 0 (weaker than shop level 1)
 - Enemy items also generated from templates
 
+### 2024-12-10: Budget System v2 & Modifier System
+
+**New Budget System (replaces old multiplier system):**
+- Level 1 = prototype stats (templates define base balance)
+- Level N adds (N-1) flat budget, allocated proportionally
+- Rarity adds fixed budget per tier (not multipliers!)
+- Level 1-5: +1 per tier, Level 6-10: +2 per tier, Level 11+: +3 per tier
+
+**Key Changes:**
+1. **No more multiplicative rarity scaling** - prevents exponential power spikes
+2. **Proportional stat allocation** - budget goes to stats item already has
+3. **Weight/Energy cap** - max -1 reduction from prototype (30% chance)
+4. **Multi-hit damage lock** - weapons with shotsPerRound > 1 don't gain damage
+5. **Knockback doesn't scale** - stays at prototype value
+
+**New Modifier System:**
+- Uncommon+ items only can have modifiers
+- Modifiers cost 1-3 budget
+- Higher levels = higher modifier chance (10% at L1, 90% at L15)
+- Higher rarity = access to higher-cost modifiers
+- Examples: First Strike (2× first shot), Reactor-Fed (+1 dmg per reactor)
+
+*Rationale:* The old multiplicative system caused Level 10 Legendary items to be 4-5× stronger than Level 1 Common. New additive system keeps progression meaningful but controlled.
+
 ---
 
 ## Future Balance Directions
@@ -383,10 +498,19 @@ This makes legendary items 4-5x stronger than common level 1 items.
 - Targeting Hub increased from cost 7 to cost 8
 - Both now have low base efficiency but high synergy value
 
-### Priority 1: Review Level/Rarity Stacking
-- Combined scaling may be too extreme at high levels
-- Consider caps or diminishing returns
+### ~~Priority 4: Review Level/Rarity Stacking~~ ✓ DONE
+- Replaced multiplicative system with additive Budget System v2
+- Power progression now linear and predictable
 
-### Priority 2: Energy Shield Rebalance
+### Priority 1: Energy Shield Rebalance
 - Currently 57% efficient (10 shield for cost 7)
 - Needs review: Is shield fundamentally different from HP?
+
+### Priority 2: Modifier Combat Implementation
+- First Strike/Devastating/Alpha Strike effects need combat resolution code
+- Reactor-Fed/Weapon-Linked need adjacency detection
+- Synergy Field needs to apply damage bonus to nearby weapons
+
+### Priority 3: Template Prototype Audit
+- Verify all ITEM_TEMPLATES balance at Level 1
+- Check: Budget Earned (cells + weight) ≈ Budget Spent (stats)

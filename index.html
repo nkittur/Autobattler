@@ -2984,49 +2984,83 @@
             return `gen_${templateType}_${rarity}_l${level}_${generatedItemCounter}_${Date.now()}`;
         }
 
-        // Calculate budget for a shape based on area and shape bonuses
-        function calculateShapeBudget(shape) {
-            let area = 0;
-            let maxLength = shape.length;
-            let maxWidth = shape[0] ? shape[0].length : 0;
-
-            // Count actual squares in shape
+        // Count cells in a shape
+        function countShapeCells(shape) {
+            let cells = 0;
             for (let row of shape) {
                 for (let cell of row) {
-                    if (cell === 1) area++;
+                    if (cell === 1) cells++;
                 }
             }
+            return cells;
+        }
 
-            // Calculate length bonus
-            let lengthBonus = 0;
-            const maxDim = Math.max(maxLength, maxWidth);
-            for (let len in COMPONENT_GENERATION.lengthBonuses) {
-                if (maxDim >= parseInt(len)) {
-                    lengthBonus = COMPONENT_GENERATION.lengthBonuses[len];
-                }
+        // Calculate rarity budget bonus based on level and rarity tier
+        function calculateRarityBudget(level, rarity) {
+            const tier = COMPONENT_GENERATION.rarityTiers[rarity] || 0;
+            if (tier === 0) return 0;  // Common gets no bonus
+
+            let budgetPerTier;
+            if (level <= 5) {
+                budgetPerTier = COMPONENT_GENERATION.rarityBudgetPerTier.low;
+            } else if (level <= 10) {
+                budgetPerTier = COMPONENT_GENERATION.rarityBudgetPerTier.mid;
+            } else {
+                budgetPerTier = COMPONENT_GENERATION.rarityBudgetPerTier.high;
             }
 
-            // Calculate aspect ratio bonus
-            let aspectBonus = 0;
-            const minDim = Math.min(maxLength, maxWidth);
-            if (minDim > 0) {
-                const aspectRatio = Math.floor(maxDim / minDim);
-                for (let ratio in COMPONENT_GENERATION.aspectBonuses) {
-                    if (aspectRatio >= parseInt(ratio)) {
-                        aspectBonus = COMPONENT_GENERATION.aspectBonuses[ratio];
+            return tier * budgetPerTier;
+        }
+
+        // Get modifier chance based on level
+        function getModifierChance(level) {
+            const chances = COMPONENT_GENERATION.modifierChanceByLevel;
+            let chance = 0;
+            for (const [lvl, chanceVal] of Object.entries(chances)) {
+                if (level >= parseInt(lvl)) {
+                    chance = chanceVal;
+                }
+            }
+            return chance;
+        }
+
+        // Select a random modifier for an item
+        function selectModifier(itemType, maxBudget) {
+            const allModifiers = COMPONENT_GENERATION.modifiers;
+            const validModifiers = [];
+
+            // Collect all valid modifiers up to maxBudget
+            for (let cost = 1; cost <= maxBudget; cost++) {
+                const modsAtCost = allModifiers[cost] || [];
+                for (const mod of modsAtCost) {
+                    if (mod.appliesTo.includes(itemType)) {
+                        validModifiers.push({ ...mod, cost });
                     }
                 }
             }
 
-            return {
-                area,
-                lengthBonus,
-                aspectBonus,
-                total: area + lengthBonus + aspectBonus
-            };
+            if (validModifiers.length === 0) return null;
+
+            // Weight towards higher cost modifiers slightly
+            const weighted = [];
+            for (const mod of validModifiers) {
+                const weight = mod.cost;  // Higher cost = more weight
+                for (let i = 0; i < weight; i++) {
+                    weighted.push(mod);
+                }
+            }
+
+            return weighted[Math.floor(Math.random() * weighted.length)];
         }
 
         // Generate a random component based on template, level, and rarity
+        // NEW BUDGET SYSTEM:
+        //   - Level 1 = prototype stats (from template.baseStats)
+        //   - Each level adds +1 budget, allocated proportionally to prototype
+        //   - Rarity adds fixed budget based on level range
+        //   - Weight/energy can only decrease by 1 from prototype
+        //   - Knockback and shotsPerRound don't scale
+        //   - Modifiers only for uncommon+ items
         function generateComponent(templateType, level = 1, rarity = 'common', options = {}) {
             const template = ITEM_TEMPLATES[templateType];
             if (!template) {
@@ -3037,230 +3071,157 @@
             // Clone base shape
             let shape = template.baseShape.map(row => [...row]);
 
-            // Apply random variant (30% chance)
+            // Variants disabled in new budget system
             let appliedVariants = [];
-            const variantChance = options.variantChance !== undefined ? options.variantChance : 0.3;
 
-            if (Math.random() < variantChance) {
-                const variantKeys = Object.keys(ITEM_VARIANTS);
-                const variantKey = variantKeys[Math.floor(Math.random() * variantKeys.length)];
-                const variant = ITEM_VARIANTS[variantKey];
-
-                if (variant.shapeModifier) {
-                    shape = variant.shapeModifier(shape);
-                }
-                appliedVariants.push(variantKey);
-            }
-
-            // Calculate budget from shape
-            const shapeBudget = calculateShapeBudget(shape);
-
-            // Calculate total budget with rarity and level multipliers
-            const rarityMult = COMPONENT_GENERATION.rarityMultipliers[rarity] || 1.0;
-            const levelBonus = (level - 1) * COMPONENT_GENERATION.levelBudgetBonus;
-
-            // Apply variance (+/- budgetVariance%)
-            const variance = 1 + (Math.random() * 2 - 1) * COMPONENT_GENERATION.budgetVariance;
-
-            let totalBudget = (shapeBudget.total + levelBonus) * rarityMult * variance;
-
-            // Subtract variant costs
-            for (let variantKey of appliedVariants) {
-                const variant = ITEM_VARIANTS[variantKey];
-                totalBudget += variant.budgetCost || 0;
-            }
-
-            // Clone base stats
+            // Clone prototype stats (level 1 base)
             let stats = { ...template.baseStats };
             let battle = template.baseBattle ? { ...template.baseBattle } : null;
 
-            // Apply stat variants
-            for (let variantKey of appliedVariants) {
-                const variant = ITEM_VARIANTS[variantKey];
-                if (variant.statModifier) {
-                    stats = variant.statModifier(stats);
-                }
-                if (variant.battleModifier && battle) {
-                    battle = variant.battleModifier(battle);
-                }
-            }
-
-            // Distribute remaining budget based on stat weights
-            const statWeights = template.statWeights || {};
-            const exchangeRates = COMPONENT_GENERATION.exchangeRates;
-
-            // Allocate budget to different stats based on weights
-            const budgetToSpend = Math.max(0, totalBudget - shapeBudget.area);  // Budget above base area
-
-            for (let stat in statWeights) {
-                const weight = statWeights[stat];
-                const budgetForStat = budgetToSpend * weight;
-
-                switch(stat) {
-                    case 'damage':
-                        stats.damage = (stats.damage || 0) + Math.round(budgetForStat * exchangeRates.damage);
-                        break;
-                    case 'armor':
-                        stats.armorBonus = (stats.armorBonus || 0) + Math.round(budgetForStat * exchangeRates.armor);
-                        break;
-                    case 'accuracy':
-                        stats.accuracyBonus = (stats.accuracyBonus || 0) + Math.round(budgetForStat * exchangeRates.accuracy);
-                        break;
-                    case 'energyProvided':
-                        stats.energyDraw = (stats.energyDraw || 0) - Math.round(budgetForStat * exchangeRates.energyProvided);
-                        break;
-                    case 'weight':
-                        stats.weight = Math.max(1, (stats.weight || 0) - Math.round(budgetForStat * Math.abs(exchangeRates.weight) * 0.3));
-                        break;
-                    case 'knockback':
-                        if (battle) {
-                            battle.knockback = (battle.knockback || 0) + Math.round(budgetForStat * exchangeRates.knockback);
-                        }
-                        break;
-                    case 'projectileSpeed':
-                        if (battle) {
-                            battle.projectileSpeed = (battle.projectileSpeed || 0) + Math.round(budgetForStat * exchangeRates.projectileSpeed);
-                        }
-                        break;
-                    case 'heatCapacity':
-                        stats.heatCapacity = (stats.heatCapacity || 0) + Math.round(budgetForStat * exchangeRates.heatCapacity);
-                        break;
-                    case 'energyReduction':
-                        stats.energyReduction = (stats.energyReduction || 0) + Math.round(budgetForStat * exchangeRates.energyReduction);
-                        break;
-                }
-            }
+            // Calculate cells for budget info
+            const cells = countShapeCells(shape);
 
             // ============================================
-            // APPLY SPECIAL EFFECT BUDGET SCALING
+            // BUDGET CALCULATION (v2 System)
             // ============================================
-            // Higher rarity items get bonus budget to improve special effects
-            const bonusBudget = COMPONENT_GENERATION.rarityBonusBudget[rarity] || 0;
-            const specialRates = COMPONENT_GENERATION.specialEffectRates;
-            const specialCaps = COMPONENT_GENERATION.specialEffectCaps;
+            // Level budget: +1 per level above 1
+            const levelBudget = Math.max(0, level - 1);
 
-            if (bonusBudget > 0) {
-                let remainingBudget = bonusBudget;
+            // Rarity budget: fixed amount based on level range and tier
+            const rarityBudget = calculateRarityBudget(level, rarity);
 
-                // Determine priority based on item type
-                let priorityKey = 'default';
-                if (template.type === 'SYSTEM' && (stats.directionalDamageBonus || stats.adjacentDamageBonus)) {
-                    priorityKey = 'targeting';
-                } else if (template.type === 'WEAPON') {
-                    priorityKey = 'weapon';
-                } else if (template.type === 'ARMOR') {
-                    priorityKey = 'armor';
-                } else if (template.type === 'REACTOR') {
-                    priorityKey = 'reactor';
+            // Total extra budget to allocate
+            const totalBudget = levelBudget + rarityBudget;
+
+            // ============================================
+            // PROPORTIONAL STAT ALLOCATION
+            // ============================================
+            // Calculate prototype "spend" to determine proportions
+            const rates = COMPONENT_GENERATION.budgetRates;
+            const prototypeSpend = {};
+            let totalPrototypeSpend = 0;
+
+            // Calculate how much budget each stat "costs" in the prototype
+            if (stats.damage > 0) {
+                prototypeSpend.damage = stats.damage * rates.damage;
+                totalPrototypeSpend += prototypeSpend.damage;
+            }
+            if (stats.damageReduction > 0) {
+                prototypeSpend.damageReduction = stats.damageReduction * rates.damageReduction;
+                totalPrototypeSpend += prototypeSpend.damageReduction;
+            }
+            if (stats.hpBonus > 0) {
+                prototypeSpend.hpBonus = stats.hpBonus * rates.hp;
+                totalPrototypeSpend += prototypeSpend.hpBonus;
+            }
+            if (stats.energyDraw < 0) {  // Negative = provides energy
+                prototypeSpend.energyProvided = Math.abs(stats.energyDraw) * rates.energyProvided;
+                totalPrototypeSpend += prototypeSpend.energyProvided;
+            }
+            if (stats.directionalDamageBonus > 0) {
+                prototypeSpend.directionalDamageBonus = stats.directionalDamageBonus * rates.targetingDamage1Dir;
+                totalPrototypeSpend += prototypeSpend.directionalDamageBonus;
+            }
+            if (stats.adjacentDamageBonus > 0) {
+                prototypeSpend.adjacentDamageBonus = stats.adjacentDamageBonus * rates.targetingDamageAllDir;
+                totalPrototypeSpend += prototypeSpend.adjacentDamageBonus;
+            }
+            if (stats.energyReduction > 0) {
+                prototypeSpend.energyReduction = stats.energyReduction * rates.energyReduction;
+                totalPrototypeSpend += prototypeSpend.energyReduction;
+            }
+
+            // Track reductions applied (max 1 each)
+            let weightReduced = 0;
+            let energyReduced = 0;
+
+            // Allocate budget proportionally
+            if (totalBudget > 0 && totalPrototypeSpend > 0) {
+                let remainingBudget = totalBudget;
+
+                // First, try to reduce weight/energy (max 1 each, costs 1 budget each)
+                // 30% chance to apply reduction if item has high weight/energy
+                if (remainingBudget > 0 && stats.weight > 1 && Math.random() < 0.3) {
+                    stats.weight -= 1;
+                    weightReduced = 1;
+                    remainingBudget -= 1;
                 }
-                const priorities = COMPONENT_GENERATION.specialEffectPriorities[priorityKey];
+                if (remainingBudget > 0 && stats.energyDraw > 0 && Math.random() < 0.3) {
+                    stats.energyDraw -= 1;
+                    energyReduced = 1;
+                    remainingBudget -= 1;
+                }
 
-                // Track applied bonuses for description
-                let appliedBonuses = [];
-
-                // Spend budget according to priority
-                for (const effectType of priorities) {
+                // Allocate remaining budget to scalable stats proportionally
+                for (const [stat, spendAmount] of Object.entries(prototypeSpend)) {
                     if (remainingBudget <= 0) break;
 
-                    const cost = specialRates[effectType];
-                    if (!cost) continue;
+                    const proportion = spendAmount / totalPrototypeSpend;
+                    const budgetForStat = Math.floor(remainingBudget * proportion);
+                    if (budgetForStat <= 0) continue;
 
-                    // Calculate how many units we can afford
-                    const unitsAffordable = Math.floor(remainingBudget / cost);
-                    if (unitsAffordable <= 0) continue;
-
-                    switch (effectType) {
+                    switch (stat) {
+                        case 'damage':
+                            // Don't scale damage for multi-hit weapons (shotsPerRound > 1)
+                            if (!battle || battle.shotsPerRound <= 1) {
+                                const damageIncrease = Math.floor(budgetForStat / rates.damage);
+                                stats.damage += damageIncrease;
+                            }
+                            break;
+                        case 'damageReduction':
+                            const drIncrease = Math.floor(budgetForStat / rates.damageReduction);
+                            stats.damageReduction += drIncrease;
+                            break;
+                        case 'hpBonus':
+                            const hpIncrease = Math.floor(budgetForStat / rates.hp);
+                            stats.hpBonus += hpIncrease;
+                            break;
+                        case 'energyProvided':
+                            const energyIncrease = Math.floor(budgetForStat / rates.energyProvided);
+                            stats.energyDraw -= energyIncrease;  // More negative = more energy
+                            break;
                         case 'directionalDamageBonus':
-                            if (stats.directionalDamageBonus !== undefined) {
-                                const maxAdd = specialCaps.directionalDamageBonus - stats.directionalDamageBonus;
-                                const toAdd = Math.min(unitsAffordable, maxAdd);
-                                if (toAdd > 0) {
-                                    stats.directionalDamageBonus += toAdd;
-                                    remainingBudget -= toAdd * cost;
-                                    appliedBonuses.push(`+${toAdd} directional dmg`);
-                                }
-                            }
+                            const dir1Increase = Math.floor(budgetForStat / rates.targetingDamage1Dir);
+                            stats.directionalDamageBonus += dir1Increase;
                             break;
-
                         case 'adjacentDamageBonus':
-                            if (stats.adjacentDamageBonus !== undefined) {
-                                const maxAdd = specialCaps.adjacentDamageBonus - stats.adjacentDamageBonus;
-                                const toAdd = Math.min(unitsAffordable, maxAdd);
-                                if (toAdd > 0) {
-                                    stats.adjacentDamageBonus += toAdd;
-                                    remainingBudget -= toAdd * cost;
-                                    appliedBonuses.push(`+${toAdd} adjacent dmg`);
-                                }
-                            }
+                            const adjIncrease = Math.floor(budgetForStat / rates.targetingDamageAllDir);
+                            stats.adjacentDamageBonus += adjIncrease;
                             break;
-
-                        case 'additionalDirection':
-                            // Add extra directions to directional damage items
-                            if (stats.directionalDamageBonus !== undefined && template.special?.effectDirection) {
-                                const currentDirs = stats.effectDirections ? stats.effectDirections.length : 1;
-                                const maxAdd = specialCaps.totalDirections - currentDirs;
-                                const toAdd = Math.min(unitsAffordable, maxAdd);
-                                if (toAdd > 0) {
-                                    // Initialize directions array if not present
-                                    if (!stats.effectDirections) {
-                                        stats.effectDirections = [template.special.effectDirection];
-                                    }
-                                    const allDirs = ['up', 'down', 'left', 'right'];
-                                    for (let i = 0; i < toAdd && stats.effectDirections.length < 4; i++) {
-                                        const available = allDirs.filter(d => !stats.effectDirections.includes(d));
-                                        if (available.length > 0) {
-                                            stats.effectDirections.push(available[Math.floor(Math.random() * available.length)]);
-                                            remainingBudget -= cost;
-                                        }
-                                    }
-                                    if (stats.effectDirections.length > 1) {
-                                        appliedBonuses.push(`${stats.effectDirections.length} directions`);
-                                    }
-                                }
-                            }
-                            break;
-
-                        case 'weightReduction':
-                            if (stats.weight > 0) {
-                                const maxReduce = Math.min(stats.weight - 0, specialCaps.weightReduction);
-                                const toReduce = Math.min(unitsAffordable, maxReduce);
-                                if (toReduce > 0) {
-                                    stats.weight -= toReduce;
-                                    remainingBudget -= toReduce * cost;
-                                    appliedBonuses.push(`-${toReduce} weight`);
-                                }
-                            }
-                            break;
-
                         case 'energyReduction':
-                            if (stats.energyDraw > 0) {
-                                const maxReduce = Math.min(stats.energyDraw, specialCaps.energyReduction);
-                                const toReduce = Math.min(unitsAffordable, maxReduce);
-                                if (toReduce > 0) {
-                                    stats.energyDraw -= toReduce;
-                                    remainingBudget -= toReduce * cost;
-                                    appliedBonuses.push(`-${toReduce} energy`);
-                                }
-                            }
-                            break;
-
-                        case 'bonusShotsPerRound':
-                            if (battle && battle.shotsPerRound) {
-                                const maxAdd = specialCaps.bonusShotsPerRound;
-                                const toAdd = Math.min(unitsAffordable, maxAdd);
-                                if (toAdd > 0) {
-                                    battle.shotsPerRound += toAdd;
-                                    remainingBudget -= toAdd * cost;
-                                    appliedBonuses.push(`+${toAdd} shots`);
-                                }
-                            }
+                            const reductionIncrease = Math.floor(budgetForStat / rates.energyReduction);
+                            stats.energyReduction += reductionIncrease;
                             break;
                     }
                 }
+            }
 
-                // Store applied bonuses for tooltip display
-                if (appliedBonuses.length > 0) {
-                    stats.rarityBonuses = appliedBonuses;
+            // ============================================
+            // MODIFIER SYSTEM (uncommon+ only)
+            // ============================================
+            let appliedModifier = null;
+
+            if (rarity !== 'common') {
+                const modifierChance = getModifierChance(level);
+                if (Math.random() < modifierChance) {
+                    const maxModBudget = COMPONENT_GENERATION.maxModifierBudget[rarity] || 1;
+                    appliedModifier = selectModifier(template.type, maxModBudget);
+
+                    if (appliedModifier) {
+                        // Apply modifier effects to stats
+                        const effect = appliedModifier.effect;
+                        if (effect.weightBonus) stats.weight = Math.max(0, stats.weight + effect.weightBonus);
+                        if (effect.energyBonus) stats.energyDraw = Math.max(0, stats.energyDraw + effect.energyBonus);
+                        if (effect.drBonus) stats.damageReduction = (stats.damageReduction || 0) + effect.drBonus;
+                        if (effect.hpBonus) stats.hpBonus = (stats.hpBonus || 0) + effect.hpBonus;
+                        if (effect.energyProvidedBonus) stats.energyDraw = (stats.energyDraw || 0) - effect.energyProvidedBonus;
+                        if (effect.adjacentDamageBonus) stats.adjacentDamageBonus = (stats.adjacentDamageBonus || 0) + effect.adjacentDamageBonus;
+
+                        // Store battle-related modifier effects for combat resolution
+                        if (effect.firstShotMultiplier || effect.damagePerReactor || effect.damagePerWeapon) {
+                            stats.modifier = appliedModifier;
+                        }
+                    }
                 }
             }
 
@@ -3269,12 +3230,9 @@
             const suffix = template.nameSuffix[Math.floor(Math.random() * template.nameSuffix.length)];
             let name = `${prefix} ${suffix}`;
 
-            // Add variant names
-            for (let variantKey of appliedVariants) {
-                const variant = ITEM_VARIANTS[variantKey];
-                if (!name.includes(variant.name)) {
-                    name = `${variant.name} ${name}`;
-                }
+            // Add modifier name if present
+            if (appliedModifier) {
+                name = `${appliedModifier.name} ${name}`;
             }
 
             // Add level indicator for higher levels
@@ -3310,11 +3268,17 @@
                 isGenerated: true,
                 templateType,
                 appliedVariants,
+                // Budget info for debugging/tooltips
                 budgetInfo: {
-                    shapeBudget: shapeBudget.total,
+                    cells,
+                    levelBudget,
+                    rarityBudget,
                     totalBudget,
-                    variance: variance
-                }
+                    weightReduced,
+                    energyReduced
+                },
+                // Modifier info if present
+                modifier: appliedModifier
             };
 
             // Add battle properties if weapon

@@ -2995,6 +2995,99 @@
             return cells;
         }
 
+        // ============================================
+        // BUDGET BALANCE & MINIMUM LEVEL CALCULATION
+        // ============================================
+        // Calculate the budget balance for a template at prototype (level 1)
+        // Positive = underpowered, Negative = overpowered (needs higher level)
+        function calculateTemplateBudgetBalance(template) {
+            const rates = COMPONENT_GENERATION.budgetRates;
+            const stats = template.baseStats;
+            const battle = template.baseBattle || {};
+            const cells = countShapeCells(template.baseShape);
+
+            // Budget EARNED (cost to player = justifies item power)
+            let budgetEarned = 0;
+            budgetEarned += cells * rates.cell;
+            budgetEarned += (stats.weight || 0) * rates.weight;
+            budgetEarned += (stats.energyDraw || 0) * rates.energyCost;
+
+            // Budget SPENT (item's value)
+            let budgetSpent = 0;
+
+            // Damage value
+            const shots = battle.shotsPerRound || 1;
+            const baseDamage = stats.damage || 0;
+            budgetSpent += baseDamage * shots * rates.damage;
+
+            // Multi-hit synergy bonus: 50% of (shots - 1)
+            // Represents the multiplicative value of flat damage bonuses
+            if (shots > 1) {
+                const multiHitBonus = 0.5 * (shots - 1);
+                budgetSpent += multiHitBonus;
+            }
+
+            // Defensive stats
+            budgetSpent += (stats.damageReduction || 0) * rates.damageReduction;
+            budgetSpent += (stats.hpBonus || 0) * rates.hp;
+
+            // Energy provided (reactors) - negative energyDraw = provides energy
+            if (stats.energyDraw < 0) {
+                budgetSpent += Math.abs(stats.energyDraw) * rates.energyProvided;
+            }
+
+            // Knockback (doesn't scale, but still has value)
+            budgetSpent += (battle.knockback || 0) * rates.knockback;
+
+            // Targeting bonuses
+            budgetSpent += (stats.directionalDamageBonus || 0) * rates.targetingDamage1Dir;
+            budgetSpent += (stats.adjacentDamageBonus || 0) * rates.targetingDamageAllDir;
+
+            // Energy reduction for cooling items
+            budgetSpent += (stats.energyReduction || 0) * rates.energyReduction;
+
+            // Heat capacity bonus
+            budgetSpent += (stats.heatCapacity || 0) * rates.heatCapacity;
+
+            return {
+                budgetEarned,
+                budgetSpent,
+                netBalance: budgetEarned - budgetSpent,  // Positive = underpowered
+                cells,
+                shots
+            };
+        }
+
+        // Calculate the minimum level an item should appear at
+        // Based on how "over budget" it is at prototype
+        function getTemplateMinLevel(template) {
+            const balance = calculateTemplateBudgetBalance(template);
+
+            // If netBalance >= 0, item is balanced or underpowered at level 1
+            if (balance.netBalance >= 0) {
+                return 1;
+            }
+
+            // If netBalance < 0, item is overpowered and needs level budget to compensate
+            // Level N gives (N-1) budget, so minLevel = ceil(-netBalance) + 1
+            const deficit = -balance.netBalance;
+            return Math.ceil(deficit) + 1;
+        }
+
+        // Cache of minimum levels for all templates
+        let TEMPLATE_MIN_LEVELS = null;
+
+        function getMinLevelCache() {
+            if (TEMPLATE_MIN_LEVELS === null) {
+                TEMPLATE_MIN_LEVELS = {};
+                for (const [key, template] of Object.entries(ITEM_TEMPLATES)) {
+                    TEMPLATE_MIN_LEVELS[key] = getTemplateMinLevel(template);
+                }
+                console.log('Template minimum levels:', TEMPLATE_MIN_LEVELS);
+            }
+            return TEMPLATE_MIN_LEVELS;
+        }
+
         // Calculate rarity budget bonus based on level and rarity tier
         function calculateRarityBudget(level, rarity) {
             const tier = COMPONENT_GENERATION.rarityTiers[rarity] || 0;
@@ -3365,12 +3458,29 @@
                 cooling_system: 2
             };
 
-            // Build weighted template list
+            // Build weighted template list, filtered by minimum level
+            const minLevels = getMinLevelCache();
             const weightedTemplates = [];
             for (const [key, weight] of Object.entries(templateWeights)) {
                 if (ITEM_TEMPLATES[key]) {
-                    for (let w = 0; w < weight * 2; w++) {
-                        weightedTemplates.push(key);
+                    // Only include templates whose minLevel <= current enemy level
+                    const templateMinLevel = minLevels[key] || 1;
+                    if (templateMinLevel <= enemyLevel) {
+                        for (let w = 0; w < weight * 2; w++) {
+                            weightedTemplates.push(key);
+                        }
+                    }
+                }
+            }
+
+            // Fallback: if no templates available at this level, use basic templates
+            if (weightedTemplates.length === 0) {
+                console.warn(`No templates available for level ${enemyLevel}, using fallback`);
+                for (const [key, weight] of Object.entries(templateWeights)) {
+                    if (ITEM_TEMPLATES[key] && (minLevels[key] || 1) <= 3) {
+                        for (let w = 0; w < weight * 2; w++) {
+                            weightedTemplates.push(key);
+                        }
                     }
                 }
             }
@@ -3720,10 +3830,29 @@
             // Generate equipment using templates
             const equipment = [];
             const weaponSlots = ['rightArm', 'leftArm', 'torso'];
-            const weaponTemplates = ['railgun', 'laser', 'missile'];
+
+            // Weapon templates with their weights - filtered by minLevel
+            const minLevels = getMinLevelCache();
+            const allWeaponTemplates = [
+                { key: 'railgun', weight: 3 },
+                { key: 'laser', weight: 3 },
+                { key: 'missile', weight: 2 },
+                { key: 'machinegun', weight: 2 },
+                { key: 'minigun', weight: 1 },
+                { key: 'pulse_laser', weight: 1 }
+            ];
+
+            // Filter to templates available at this level
+            const availableWeapons = allWeaponTemplates.filter(w => (minLevels[w.key] || 1) <= level);
+            const weightedWeapons = [];
+            for (const w of availableWeapons) {
+                for (let j = 0; j < w.weight; j++) {
+                    weightedWeapons.push(w.key);
+                }
+            }
 
             for (let i = 0; i < weaponCount && i < weaponSlots.length; i++) {
-                const template = weaponTemplates[i % weaponTemplates.length];
+                const template = weightedWeapons[Math.floor(Math.random() * weightedWeapons.length)] || 'railgun';
                 const weapon = generateComponent(template, level, 'common', { variantChance: 0 });
                 if (weapon) {
                     weapon.id = `enemy_${template}_${Date.now()}_${i}`;
@@ -8460,6 +8589,42 @@
             assert(hull1.stats.hpBonus === 10, 'Hull Armor L1 HP = 10 (prototype)', `Got: ${hull1.stats.hpBonus}`);
             assert(hull5.stats.hpBonus > hull1.stats.hpBonus, 'Hull Armor L5 HP > L1 HP', `L5: ${hull5.stats.hpBonus}, L1: ${hull1.stats.hpBonus}`);
 
+            // Test 9: Minimum Level System
+            console.log('\n--- Test 9: Minimum Level Calculation ---');
+            const minLevels = getMinLevelCache();
+
+            // Minigun: 4 cells + 2 weight + 2 energy = 8 earned
+            //          8 damage (1×8) + 3.5 multi-hit = 11.5 spent
+            //          Net: 8 - 11.5 = -3.5, minLevel = ceil(3.5) + 1 = 5
+            const minigunMinLevel = minLevels['minigun'];
+            assert(minigunMinLevel >= 4, 'Minigun minLevel >= 4 (overpowered at L1)', `Got: ${minigunMinLevel}`);
+
+            // Laser: 2 cells + 1 weight + 4 energy = 7 earned
+            //        4 damage = 4 spent
+            //        Net: 7 - 4 = +3, minLevel = 1 (underpowered)
+            const laserMinLevel = minLevels['laser'];
+            assert(laserMinLevel === 1, 'Laser minLevel = 1 (balanced/underpowered)', `Got: ${laserMinLevel}`);
+
+            // Machinegun: 3 cells + 1 weight + 0 energy = 4 earned
+            //             2 damage (1×2) + 0.5 multi-hit = 2.5 spent
+            //             Net: 4 - 2.5 = +1.5, minLevel = 1
+            const machinegunMinLevel = minLevels['machinegun'];
+            assert(machinegunMinLevel === 1, 'Machinegun minLevel = 1 (underpowered)', `Got: ${machinegunMinLevel}`);
+
+            // Test 10: Budget Balance Sanity Check
+            console.log('\n--- Test 10: Budget Balance Values ---');
+            const templates = ['railgun', 'laser', 'missile', 'machinegun', 'minigun', 'pulse_laser',
+                              'ballistic_plating', 'hull_armor', 'reactor', 'targeting_hub'];
+            for (const key of templates) {
+                if (ITEM_TEMPLATES[key]) {
+                    const balance = calculateTemplateBudgetBalance(ITEM_TEMPLATES[key]);
+                    const minLevel = minLevels[key];
+                    console.log(`  ${key}: earned=${balance.budgetEarned.toFixed(1)}, spent=${balance.budgetSpent.toFixed(1)}, net=${balance.netBalance.toFixed(1)}, minLevel=${minLevel}`);
+                }
+            }
+            // Just verify the function runs without error
+            assert(Object.keys(minLevels).length > 0, 'MinLevel cache populated', `Keys: ${Object.keys(minLevels).length}`);
+
             // Summary
             console.log('\n=== TEST SUMMARY ===');
             console.log(`Passed: ${passed}`);
@@ -8507,10 +8672,47 @@
             return results;
         }
 
+        // Show budget balance for all templates
+        function showAllTemplateBudgets() {
+            console.log('\n=== TEMPLATE BUDGET BALANCE REPORT ===');
+            const results = [];
+            const minLevels = getMinLevelCache();
+
+            for (const [key, template] of Object.entries(ITEM_TEMPLATES)) {
+                const balance = calculateTemplateBudgetBalance(template);
+                results.push({
+                    template: key,
+                    type: template.type,
+                    cells: balance.cells,
+                    shots: balance.shots,
+                    earned: balance.budgetEarned.toFixed(1),
+                    spent: balance.budgetSpent.toFixed(1),
+                    net: balance.netBalance.toFixed(1),
+                    minLevel: minLevels[key]
+                });
+            }
+
+            // Sort by minLevel descending (most restricted first)
+            results.sort((a, b) => b.minLevel - a.minLevel);
+            console.table(results);
+
+            // Summary
+            const overpowered = results.filter(r => r.minLevel > 1);
+            console.log(`\nOverpowered templates (need higher level):`);
+            for (const r of overpowered) {
+                console.log(`  ${r.template}: minLevel ${r.minLevel} (net ${r.net})`);
+            }
+
+            return results;
+        }
+
         // Expose test functions globally
         window.testComponentGeneration = testComponentGeneration;
         window.showItemStats = showItemStats;
         window.compareItemLevels = compareItemLevels;
+        window.showAllTemplateBudgets = showAllTemplateBudgets;
+        window.getMinLevelCache = getMinLevelCache;
+        window.calculateTemplateBudgetBalance = calculateTemplateBudgetBalance;
 
         // Start the game
         initEngine();

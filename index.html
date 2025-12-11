@@ -4322,19 +4322,21 @@
             const toPos = target.pelvis.getAbsolutePosition();
             const direction = toPos.subtract(fromPos).normalize();
 
+            // Pick which arm fires this burst (alternate between bursts, not within burst)
+            const firingArm = mech.lastFiredArm === 'left' ? mech.rightArm : mech.leftArm;
+
             // Fire all shots in a rapid burst with staggered timing
             for (let shotIndex = 0; shotIndex < shotsPerRound; shotIndex++) {
-                // Delay between shots in burst (faster for more shots)
-                const shotDelay = shotIndex * (200 / shotsPerRound);
+                // Delay between shots in burst (spread over ~400ms max for visual clarity)
+                const burstDuration = Math.min(500, 60 * shotsPerRound);
+                const shotDelay = shotIndex * (burstDuration / shotsPerRound);
 
                 setTimeout(() => {
                     // Check if battle is still ongoing
                     if (!battleScene || mech.isDestroyed || target.isDestroyed) return;
 
-                    // Alternate arms for each shot
-                    const useLeftArm = (shotIndex % 2 === 0) ? (mech.lastFiredArm === 'right') : (mech.lastFiredArm === 'left');
-                    const arm = useLeftArm ? mech.leftArm : mech.rightArm;
-                    const armPos = arm.getAbsolutePosition();
+                    // All shots in burst come from the same weapon/arm
+                    const armPos = firingArm.getAbsolutePosition();
 
                     // Recalculate direction for moving targets
                     const currentTargetPos = target.pelvis.getAbsolutePosition();

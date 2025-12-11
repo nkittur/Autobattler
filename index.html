@@ -4309,75 +4309,108 @@
         // Fire a weapon from loadout
         function fireLoadoutWeapon(mech, weaponData, target) {
             const now = performance.now();
-            // Calculate cooldown from shotsPerRound (3 second round)
-            const shotsPerRound = weaponData.battle.shotsPerRound || 1;
-            const cooldown = 3000 / shotsPerRound;
+            // Cooldown is per-burst (full 3 seconds), not per-shot
+            const cooldown = 3000;
             if (now - weaponData.lastFired < cooldown) {
                 return; // Still on cooldown
             }
             weaponData.lastFired = now;
 
             const battle = weaponData.battle;
+            const shotsPerRound = battle.shotsPerRound || 1;
             const fromPos = mech.pelvis.getAbsolutePosition();
             const toPos = target.pelvis.getAbsolutePosition();
             const direction = toPos.subtract(fromPos).normalize();
 
-            // Fire from alternating arms
-            const arm = mech.lastFiredArm === 'left' ? mech.rightArm : mech.leftArm;
-            mech.lastFiredArm = mech.lastFiredArm === 'left' ? 'right' : 'left';
-            const armPos = arm.getAbsolutePosition();
+            // Fire all shots in a rapid burst with staggered timing
+            for (let shotIndex = 0; shotIndex < shotsPerRound; shotIndex++) {
+                // Delay between shots in burst (faster for more shots)
+                const shotDelay = shotIndex * (200 / shotsPerRound);
 
-            if (battle.isBeam) {
-                // Create beam
-                const beamLength = BABYLON.Vector3.Distance(armPos, toPos);
-                const beam = BABYLON.MeshBuilder.CreateCylinder('beam_' + Date.now(), {
-                    diameter: 0.15,
-                    height: beamLength
-                }, battleScene);
+                setTimeout(() => {
+                    // Check if battle is still ongoing
+                    if (!battleScene || mech.isDestroyed || target.isDestroyed) return;
 
-                const midpoint = armPos.add(toPos).scale(0.5);
-                beam.position = midpoint;
-                beam.lookAt(toPos);
-                beam.rotation.x += Math.PI / 2;
+                    // Alternate arms for each shot
+                    const useLeftArm = (shotIndex % 2 === 0) ? (mech.lastFiredArm === 'right') : (mech.lastFiredArm === 'left');
+                    const arm = useLeftArm ? mech.leftArm : mech.rightArm;
+                    const armPos = arm.getAbsolutePosition();
 
-                const beamMat = new BABYLON.StandardMaterial('beamMat', battleScene);
-                beamMat.emissiveColor = new BABYLON.Color3(battle.color[0], battle.color[1], battle.color[2]);
-                beamMat.alpha = 0.8;
-                beam.material = beamMat;
+                    // Recalculate direction for moving targets
+                    const currentTargetPos = target.pelvis.getAbsolutePosition();
+                    const currentDirection = currentTargetPos.subtract(armPos).normalize();
 
-                beams.push({
-                    mesh: beam,
-                    damage: weaponData.damage,
-                    knockback: battle.knockback,
-                    target: target,
-                    startTime: now,
-                    duration: battle.beamDuration,
-                    applied: false
-                });
-            } else {
-                // Create projectile
-                const projectile = BABYLON.MeshBuilder.CreateSphere('proj_' + Date.now(), {
-                    diameter: battle.projectileSize * 2
-                }, battleScene);
-                projectile.position = armPos.clone();
+                    // Add slight spread for visual variety (especially for high shot counts)
+                    const spread = shotsPerRound > 1 ? 0.05 : 0;
+                    const spreadDir = currentDirection.clone();
+                    spreadDir.x += (Math.random() - 0.5) * spread;
+                    spreadDir.z += (Math.random() - 0.5) * spread;
+                    spreadDir.normalize();
 
-                const projMat = new BABYLON.StandardMaterial('projMat', battleScene);
-                projMat.emissiveColor = new BABYLON.Color3(battle.color[0], battle.color[1], battle.color[2]);
-                projectile.material = projMat;
+                    if (battle.isBeam) {
+                        // Create beam pulse
+                        const beamLength = BABYLON.Vector3.Distance(armPos, currentTargetPos);
+                        const beam = BABYLON.MeshBuilder.CreateCylinder('beam_' + Date.now() + '_' + shotIndex, {
+                            diameter: 0.12 + (Math.random() * 0.06),  // Slight size variation
+                            height: beamLength
+                        }, battleScene);
 
-                projectiles.push({
-                    mesh: projectile,
-                    velocity: direction.scale(battle.projectileSpeed),
-                    damage: weaponData.damage,
-                    knockback: battle.knockback,
-                    target: target,
-                    startTime: now
-                });
+                        const midpoint = armPos.add(currentTargetPos).scale(0.5);
+                        beam.position = midpoint;
+                        beam.lookAt(currentTargetPos);
+                        beam.rotation.x += Math.PI / 2;
+
+                        const beamMat = new BABYLON.StandardMaterial('beamMat_' + shotIndex, battleScene);
+                        // Slight color variation per pulse
+                        const colorVar = 0.9 + Math.random() * 0.1;
+                        beamMat.emissiveColor = new BABYLON.Color3(
+                            battle.color[0] * colorVar,
+                            battle.color[1] * colorVar,
+                            battle.color[2] * colorVar
+                        );
+                        beamMat.alpha = 0.7 + Math.random() * 0.3;
+                        beam.material = beamMat;
+
+                        beams.push({
+                            mesh: beam,
+                            damage: weaponData.damage,  // Each shot does weapon's damage
+                            knockback: battle.knockback / shotsPerRound,  // Split knockback
+                            target: target,
+                            startTime: performance.now(),
+                            duration: battle.beamDuration || 100,
+                            applied: false
+                        });
+                    } else {
+                        // Create projectile
+                        const projectile = BABYLON.MeshBuilder.CreateSphere('proj_' + Date.now() + '_' + shotIndex, {
+                            diameter: battle.projectileSize * 2
+                        }, battleScene);
+                        projectile.position = armPos.clone();
+
+                        const projMat = new BABYLON.StandardMaterial('projMat_' + shotIndex, battleScene);
+                        projMat.emissiveColor = new BABYLON.Color3(battle.color[0], battle.color[1], battle.color[2]);
+                        projectile.material = projMat;
+
+                        projectiles.push({
+                            mesh: projectile,
+                            velocity: spreadDir.scale(battle.projectileSpeed),
+                            damage: weaponData.damage,  // Each projectile does weapon's damage
+                            knockback: battle.knockback / shotsPerRound,  // Split knockback
+                            target: target,
+                            startTime: performance.now()
+                        });
+                    }
+
+                    // Small recoil per shot
+                    const recoilImpulse = currentDirection.scale(-battle.knockback * 0.05);
+                    if (mech.pelvisBody) {
+                        mech.pelvisBody.applyImpulse(recoilImpulse, fromPos);
+                    }
+                }, shotDelay);
             }
 
-            // Apply recoil
-            const recoilImpulse = direction.scale(-battle.knockback * 0.2);
-            mech.pelvisBody.applyImpulse(recoilImpulse, fromPos);
+            // Update last fired arm after burst
+            mech.lastFiredArm = mech.lastFiredArm === 'left' ? 'right' : 'left';
         }
 
         // Update projectiles

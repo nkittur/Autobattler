@@ -8018,9 +8018,9 @@
             const relY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
 
             // Convert to target angles (yaw and pitch)
-            // Horizontal: left = positive yaw, right = negative yaw
-            pilotingState.targetYaw = -relX * pilotingState.maxYaw;
-            // Vertical: up = positive pitch, down = negative pitch
+            // Horizontal: mouse right = torso turns right (positive yaw)
+            pilotingState.targetYaw = relX * pilotingState.maxYaw;
+            // Vertical: mouse up = look up (positive pitch)
             pilotingState.targetPitch = -relY * pilotingState.maxPitch;
         }
 
@@ -8106,7 +8106,7 @@
             const relY = ((touchY - rect.top) / rect.height - 0.5) * 2;
 
             // Convert to target angles
-            pilotingState.targetYaw = -relX * pilotingState.maxYaw;
+            pilotingState.targetYaw = relX * pilotingState.maxYaw;
             pilotingState.targetPitch = -relY * pilotingState.maxPitch;
         }
 

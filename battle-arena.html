@@ -8793,7 +8793,7 @@
                 owner: from,
                 weapon: weapon,
                 targetPosition: targetPos,
-                spawnTime: performance.now(),
+                firedAt: Date.now(),  // Use Date.now() to match updateProjectiles timeout check
                 timeout: 3500
             });
         }

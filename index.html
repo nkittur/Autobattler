@@ -3533,11 +3533,74 @@
             return 'common';
         }
 
+        // Body part salvage penalty configuration (mirrors battle-arena.html)
+        const BODY_PART_SALVAGE = {
+            penalties: {
+                torso: 1.0,      // Full penalty for torso damage
+                head: 0.0,       // No penalty for head damage - preserves salvage
+                leftArm: 1.0,    // Full penalty
+                rightArm: 1.0,
+                leftLeg: 0.3,    // Only 30% penalty for leg damage
+                rightLeg: 0.3
+            },
+            baseScrapChance: 0.5  // Even perfect kills have 50% chance per component to become scrap
+        };
+
+        // Calculate salvage quality based on body part damage
+        // Returns a value from 0 (all scrap) to 1 (perfect salvage)
+        function calculateSalvageQuality(enemyDamageData) {
+            if (!enemyDamageData || enemyDamageData.length === 0) {
+                return 0.5; // Default moderate quality if no data
+            }
+
+            let totalPenalty = 0;
+            let enemyCount = 0;
+
+            enemyDamageData.forEach(enemy => {
+                if (!enemy.bodyParts || !enemy.isDestroyed) return;
+                enemyCount++;
+
+                const dmg = enemy.bodyParts.totalDamageReceived || {};
+                const destroyed = enemy.bodyParts.destroyed || {};
+
+                // Calculate penalty based on damage received to each part
+                // More damage = more penalty (scaled by part's penalty multiplier)
+                Object.keys(BODY_PART_SALVAGE.penalties).forEach(part => {
+                    const partDamage = dmg[part] || 0;
+                    const penalty = BODY_PART_SALVAGE.penalties[part];
+
+                    // Destroyed parts add full penalty, damage adds proportional penalty
+                    if (destroyed[part]) {
+                        totalPenalty += penalty * 0.5; // 50% penalty for destroyed part
+                    } else if (partDamage > 0) {
+                        // Scale damage penalty (max 0.3 per part)
+                        totalPenalty += Math.min(0.3, partDamage / 100) * penalty;
+                    }
+                });
+            });
+
+            if (enemyCount === 0) return 0.5;
+
+            // Average penalty across enemies
+            const avgPenalty = totalPenalty / enemyCount;
+
+            // Convert to quality (0 = worst, 1 = best)
+            // Penalty of 0 = quality 1, penalty of 3 (max) = quality 0
+            const quality = Math.max(0, 1 - avgPenalty / 3);
+
+            console.log(`Salvage quality: ${(quality * 100).toFixed(0)}% (penalty: ${avgPenalty.toFixed(2)})`);
+            return quality;
+        }
+
         // Generate salvage components after battle
-        function generateSalvageOptions(result, enemyLevel = 1, missionDifficulty = 'Easy') {
+        // enemyDamageData contains body part damage info for salvage calculation
+        function generateSalvageOptions(result, enemyLevel = 1, missionDifficulty = 'Easy', enemyDamageData = null) {
             const options = [];
             const round = gameProgression.round;
             const isBoss = DIFFICULTY.isBossRound(round);
+
+            // Calculate salvage quality based on body part damage
+            const salvageQuality = calculateSalvageQuality(enemyDamageData);
 
             // Determine number of options based on result and boss status
             let numOptions;
@@ -3596,6 +3659,9 @@
                 }
             }
 
+            // Generate components (may become scrap based on salvage quality)
+            const generatedComponents = [];
+
             for (let i = 0; i < numOptions; i++) {
                 // Pick weighted random template
                 const templateType = weightedTemplates[Math.floor(Math.random() * weightedTemplates.length)];
@@ -3628,6 +3694,14 @@
                     component.isDamaged = isDamaged;
                     component.originalLevel = originalLevel;
 
+                    // Estimate component value for scrap priority
+                    const estimatedValue = (component.stats.damage || 0) * 10 +
+                                          (component.stats.damageReduction || 0) * 15 +
+                                          (component.stats.hpBonus || 0) * 2 +
+                                          (component.stats.energyShieldHP || 0) * 3 +
+                                          Math.abs(component.stats.energyDraw || 0) * 20;
+                    component._estimatedValue = estimatedValue;
+
                     // Damaged items have reduced stats (20-40% penalty) and 0 sell value
                     if (isDamaged) {
                         component.sellValue = 0;
@@ -3657,8 +3731,42 @@
                         component.isHighValue = true;
                         component.resaleBonus = 0.5;  // 50% extra sell value
                     }
+
+                    generatedComponents.push(component);
+                }
+            }
+
+            // BODY PART SALVAGE SYSTEM: Convert some components to scrap based on salvage quality
+            // Sort by value (most valuable first) - these get converted to scrap first
+            generatedComponents.sort((a, b) => (b._estimatedValue || 0) - (a._estimatedValue || 0));
+
+            // Calculate how many components become scrap
+            // Base 50% scrap chance + additional based on salvage quality
+            // salvageQuality 1.0 = only base 50% scrap, quality 0.0 = 100% scrap
+            const scrapChance = BODY_PART_SALVAGE.baseScrapChance + (1 - salvageQuality) * 0.5;
+
+            let scrapGold = 0;
+            generatedComponents.forEach(component => {
+                // Most valuable components have highest chance to become scrap when salvage quality is low
+                const valueBonus = Math.min(0.2, (component._estimatedValue || 0) / 500);
+                const finalScrapChance = Math.min(0.95, scrapChance + valueBonus * (1 - salvageQuality));
+
+                if (Math.random() < finalScrapChance) {
+                    // Convert to scrap - add gold instead
+                    const scrapValue = Math.floor(5 + (component._estimatedValue || 10) / 5);
+                    scrapGold += scrapValue;
+                    console.log(`Component ${component.name} -> SCRAP (${scrapValue} gold)`);
+                } else {
+                    // Keep as salvage option
+                    delete component._estimatedValue; // Clean up internal value
                     options.push(component);
                 }
+            });
+
+            // Add scrap gold to player (will be shown in salvage screen)
+            if (scrapGold > 0) {
+                console.log(`Total scrap gold from body damage: ${scrapGold}`);
+                playerGold += scrapGold;
             }
 
             return options;
@@ -8126,7 +8234,8 @@
             if (event.data && event.data.type === 'battleEnd') {
                 const result = event.data.result || 'victory';
                 const rewards = event.data.rewards || { xp: 0, scrap: 0, components: [] };
-                showSalvageScreen(result, rewards);
+                const enemyDamageData = event.data.enemyDamageData || null;
+                showSalvageScreen(result, rewards, enemyDamageData);
             }
         });
 
@@ -8182,7 +8291,7 @@
             return html;
         }
 
-        function showSalvageScreen(result, rewards) {
+        function showSalvageScreen(result, rewards, enemyDamageData) {
             // Hide battle iframe
             const battleFrame = document.getElementById('battleFrame');
             battleFrame.style.display = 'none';
@@ -8193,7 +8302,8 @@
             const missionDifficulty = lastBattleMission ? lastBattleMission.difficulty : 'Easy';
 
             // Generate salvage options using the mission's enemy level and difficulty
-            const salvageOptions = generateSalvageOptions(result, missionEnemyLevel, missionDifficulty);
+            // Pass enemy damage data for body-part-based salvage calculation
+            const salvageOptions = generateSalvageOptions(result, missionEnemyLevel, missionDifficulty, enemyDamageData);
 
             // Calculate skip salvage gold bonus (highest original level of salvage)
             const skipGoldBonus = salvageOptions.length > 0 ?

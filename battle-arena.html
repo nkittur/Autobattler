@@ -112,6 +112,45 @@
         }
         .hp-fill.player { background: linear-gradient(90deg, #00aa55, #00ff88); }
         .hp-fill.enemy { background: linear-gradient(90deg, #aa2222, #ff4444); }
+        .body-parts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            margin-top: 4px;
+            font-size: 9px;
+        }
+        .body-part {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 4px;
+            border-radius: 2px;
+            text-align: center;
+        }
+        .body-part.destroyed {
+            background: rgba(100,0,0,0.5);
+            color: #ff4444;
+            text-decoration: line-through;
+        }
+        .body-part.damaged {
+            background: rgba(100,50,0,0.4);
+            color: #ffaa00;
+        }
+        .body-part.healthy {
+            background: rgba(0,50,0,0.3);
+            color: #00ff88;
+        }
+        .body-part-bar {
+            height: 3px;
+            background: #222;
+            border-radius: 1px;
+            margin-top: 1px;
+        }
+        .body-part-fill {
+            height: 100%;
+            border-radius: 1px;
+            transition: width 0.2s;
+        }
+        .body-part-fill.player { background: #00ff88; }
+        .body-part-fill.enemy { background: #ff4444; }
         #polyCount {
             text-align: center;
             font-size: 10px;
@@ -1213,12 +1252,28 @@
                 <div class="hp-bar"><div class="hp-fill player" id="playerHP" style="width: 100%"></div></div>
                 <div id="playerHPText">HP: 150/150</div>
                 <div id="playerState">Idle</div>
+                <div class="body-parts" id="playerBodyParts">
+                    <div class="body-part healthy" id="player_leftArm">L.Arm<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_head">Head<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_rightArm">R.Arm<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_leftLeg">L.Leg<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_torso">Torso<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_rightLeg">R.Leg<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                </div>
             </div>
             <div class="mech-info enemy">
                 <strong style="color: #ff4444;">DIRE WOLF (Daishi)</strong>
                 <div class="hp-bar"><div class="hp-fill enemy" id="enemyHP" style="width: 100%"></div></div>
                 <div id="enemyHPText">HP: 200/200</div>
                 <div id="enemyState">Idle</div>
+                <div class="body-parts" id="enemyBodyParts">
+                    <div class="body-part healthy" id="enemy_leftArm">L.Arm<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_head">Head<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_rightArm">R.Arm<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_leftLeg">L.Leg<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_torso">Torso<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_rightLeg">R.Leg<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1802,6 +1857,310 @@
             minZ: -8,
             maxZ: 8
         };
+
+        // ============================================
+        // BODY PART DAMAGE SYSTEM
+        // Each body part has separate HP. Mech destroyed if head, torso, or both legs destroyed.
+        // ============================================
+        const BODY_PART_CONFIG = {
+            // HP distribution ratios (relative to torso)
+            hpRatios: {
+                torso: 1.0,      // Base - 100% of allocated torso HP
+                head: 0.75,      // 75% of torso - smaller but critical
+                leftArm: 0.5,    // 50% of torso - easiest to destroy
+                rightArm: 0.5,
+                leftLeg: 0.75,   // 75% of torso
+                rightLeg: 0.75
+            },
+            // Total ratio = 1.0 + 0.75 + 0.5 + 0.5 + 0.75 + 0.75 = 4.25
+            // So torsoHP = totalHP / 4.25
+
+            // Stability multiplier for leg hits
+            legStabilityMultiplier: 2.0,
+
+            // Damage reduction when arms are destroyed
+            firstArmDamageReduction: 0.5,    // 50% less damage with one arm gone
+            secondArmDamageReduction: 0.25,  // Additional 25% (75% total) with both gone
+
+            // Salvage penalties by body part (how much salvage quality decreases)
+            salvagePenalty: {
+                torso: 1.0,      // Full penalty
+                head: 0.0,       // No penalty - head shots preserve salvage
+                leftArm: 1.0,    // Full penalty
+                rightArm: 1.0,
+                leftLeg: 0.3,    // Only 30% penalty
+                rightLeg: 0.3
+            },
+
+            // Base scrap chance (even perfect kills have 50% chance per component)
+            baseScrapChance: 0.5
+        };
+
+        // Initialize body part health for a mech based on its total HP
+        function initializeBodyParts(totalHP) {
+            // Calculate torso HP: totalHP = torsoHP * 4.25
+            const torsoHP = Math.round(totalHP / 4.25);
+
+            return {
+                torso: {
+                    maxHP: torsoHP,
+                    currentHP: torsoHP,
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                head: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.head),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.head),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                leftArm: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftArm),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftArm),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                rightArm: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightArm),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightArm),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                leftLeg: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftLeg),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftLeg),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                rightLeg: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightLeg),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightLeg),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                // Track total damage to each part for salvage calculation
+                totalDamageReceived: {
+                    torso: 0,
+                    head: 0,
+                    leftArm: 0,
+                    rightArm: 0,
+                    leftLeg: 0,
+                    rightLeg: 0
+                }
+            };
+        }
+
+        // Check if mech should be destroyed based on body part status
+        function checkMechDestruction(mech) {
+            if (!mech.bodyParts) return false;
+
+            const bp = mech.bodyParts;
+
+            // Destroyed if head is gone
+            if (bp.head.destroyed) {
+                return { destroyed: true, reason: 'HEAD DESTROYED' };
+            }
+
+            // Destroyed if torso is gone
+            if (bp.torso.destroyed) {
+                return { destroyed: true, reason: 'TORSO DESTROYED' };
+            }
+
+            // Destroyed if BOTH legs are gone
+            if (bp.leftLeg.destroyed && bp.rightLeg.destroyed) {
+                return { destroyed: true, reason: 'LEGS DESTROYED' };
+            }
+
+            return { destroyed: false, reason: null };
+        }
+
+        // Calculate damage output multiplier based on destroyed arms
+        function getArmDamageMultiplier(mech) {
+            if (!mech.bodyParts) return 1.0;
+
+            const leftDestroyed = mech.bodyParts.leftArm.destroyed;
+            const rightDestroyed = mech.bodyParts.rightArm.destroyed;
+
+            if (leftDestroyed && rightDestroyed) {
+                // Both arms gone: 75% reduction (only 25% damage)
+                return 1.0 - BODY_PART_CONFIG.firstArmDamageReduction - BODY_PART_CONFIG.secondArmDamageReduction;
+            } else if (leftDestroyed || rightDestroyed) {
+                // One arm gone: 50% reduction
+                return 1.0 - BODY_PART_CONFIG.firstArmDamageReduction;
+            }
+
+            return 1.0;
+        }
+
+        // Determine which body part was hit based on impact position
+        function getHitBodyPart(mech, impactPosition) {
+            if (!mech || !impactPosition) return 'torso';
+
+            // Get positions of each body part (using meshes if available)
+            const pelvisPos = mech.pelvis ? mech.pelvis.getAbsolutePosition() : null;
+            if (!pelvisPos) return 'torso';
+
+            // Calculate relative height from pelvis
+            const relativeY = impactPosition.y - pelvisPos.y;
+            const relativeX = impactPosition.x - pelvisPos.x;
+            const mechFacing = mech.pelvis.rotationQuaternion ?
+                mech.pelvis.rotationQuaternion.toEulerAngles().y : 0;
+
+            // Rotate relative position to local coordinates
+            const cosY = Math.cos(-mechFacing);
+            const sinY = Math.sin(-mechFacing);
+            const localX = relativeX * cosY - (impactPosition.z - pelvisPos.z) * sinY;
+
+            // Height thresholds based on mech structure (scaled)
+            const scale = mech.scale || 1.0;
+            const headMinY = 2.0 * scale;     // Head is above this
+            const torsoMinY = 0.3 * scale;    // Torso is between leg and head
+            const legMaxY = 0.3 * scale;      // Legs are below this
+
+            // Width threshold for arms vs torso
+            const armThreshold = 0.6 * scale;
+
+            // Determine hit location
+            if (relativeY > headMinY) {
+                // Head hit
+                return 'head';
+            } else if (relativeY > torsoMinY) {
+                // Upper body - could be torso or arms
+                if (Math.abs(localX) > armThreshold) {
+                    // Hit an arm
+                    return localX > 0 ? 'rightArm' : 'leftArm';
+                } else {
+                    // Hit the torso
+                    return 'torso';
+                }
+            } else {
+                // Lower body - legs
+                return localX > 0 ? 'rightLeg' : 'leftLeg';
+            }
+        }
+
+        // Create or update damage overlay on a body part mesh
+        function updateDamageOverlay(mech, bodyPartName) {
+            if (!mech.bodyParts || !mech.bodyParts[bodyPartName]) return;
+
+            const bodyPart = mech.bodyParts[bodyPartName];
+            const damageRatio = 1 - (bodyPart.currentHP / bodyPart.maxHP);
+
+            // Get the mesh for this body part
+            let mesh = null;
+            switch (bodyPartName) {
+                case 'head':
+                    mesh = mech.head;
+                    break;
+                case 'torso':
+                    mesh = mech.torso;
+                    break;
+                case 'leftArm':
+                    mesh = mech.leftArm?.weaponPod || mech.leftArm?.arm || mech.leftArm;
+                    break;
+                case 'rightArm':
+                    mesh = mech.rightArm?.weaponPod || mech.rightArm?.arm || mech.rightArm;
+                    break;
+                case 'leftLeg':
+                    mesh = mech.leftLeg?.upperLeg || mech.leftLeg;
+                    break;
+                case 'rightLeg':
+                    mesh = mech.rightLeg?.upperLeg || mech.rightLeg;
+                    break;
+            }
+
+            if (!mesh) return;
+
+            // Create damage overlay material if it doesn't exist
+            if (!bodyPart.damageOverlay && damageRatio > 0) {
+                const overlayMesh = mesh.clone(mesh.name + '_damageOverlay');
+                if (overlayMesh) {
+                    overlayMesh.parent = mesh.parent;
+                    overlayMesh.position = mesh.position.clone();
+                    overlayMesh.rotation = mesh.rotation ? mesh.rotation.clone() : new BABYLON.Vector3(0, 0, 0);
+                    overlayMesh.scaling = mesh.scaling ? mesh.scaling.scale(1.02) : new BABYLON.Vector3(1.02, 1.02, 1.02);
+
+                    const overlayMat = new BABYLON.StandardMaterial(mesh.name + '_damageMat', scene);
+                    overlayMat.diffuseColor = new BABYLON.Color3(0.8, 0.1, 0.1);
+                    overlayMat.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
+                    overlayMat.alpha = 0;
+                    overlayMat.backFaceCulling = false;
+                    overlayMesh.material = overlayMat;
+                    bodyPart.damageOverlay = overlayMesh;
+                    bodyPart.damageOverlayMat = overlayMat;
+                }
+            }
+
+            // Update overlay transparency based on damage
+            if (bodyPart.damageOverlayMat) {
+                // Alpha increases from 0 to 0.6 as damage increases
+                bodyPart.damageOverlayMat.alpha = damageRatio * 0.6;
+                // Also increase emissive glow
+                const glowIntensity = damageRatio * 0.3;
+                bodyPart.damageOverlayMat.emissiveColor = new BABYLON.Color3(0.5 + glowIntensity, 0, 0);
+            }
+
+            // If destroyed, make it more dramatic
+            if (bodyPart.destroyed) {
+                if (bodyPart.damageOverlayMat) {
+                    bodyPart.damageOverlayMat.alpha = 0.8;
+                    bodyPart.damageOverlayMat.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                    bodyPart.damageOverlayMat.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+                }
+                // Optionally hide the destroyed part
+                if (mesh.visibility !== undefined) {
+                    mesh.visibility = 0.3;
+                }
+            }
+        }
+
+        // Handle body part destruction effects
+        function destroyBodyPart(mech, bodyPartName) {
+            if (!mech.bodyParts || !mech.bodyParts[bodyPartName]) return;
+
+            const bodyPart = mech.bodyParts[bodyPartName];
+            bodyPart.destroyed = true;
+            bodyPart.currentHP = 0;
+
+            log(`${mech.name}: ${bodyPartName.toUpperCase()} DESTROYED!`, 'error');
+
+            // Update visual
+            updateDamageOverlay(mech, bodyPartName);
+
+            // Create explosion effect at destroyed part
+            let partMesh = null;
+            switch (bodyPartName) {
+                case 'head': partMesh = mech.head; break;
+                case 'torso': partMesh = mech.torso; break;
+                case 'leftArm': partMesh = mech.leftArm?.weaponPod || mech.leftArm; break;
+                case 'rightArm': partMesh = mech.rightArm?.weaponPod || mech.rightArm; break;
+                case 'leftLeg': partMesh = mech.leftLeg?.upperLeg || mech.leftLeg; break;
+                case 'rightLeg': partMesh = mech.rightLeg?.upperLeg || mech.rightLeg; break;
+            }
+
+            if (partMesh) {
+                const pos = partMesh.getAbsolutePosition();
+                createImpactSparks(pos, new BABYLON.Vector3(0, 1, 0));
+                triggerCameraShake(0.4, 0.25);
+            }
+
+            // Special effects for leg destruction - major stability hit
+            if (bodyPartName === 'leftLeg' || bodyPartName === 'rightLeg') {
+                mech.stability -= 50;
+                if (mech.stability < 0) mech.stability = 0;
+
+                // Trigger ragdoll if one leg destroyed
+                if (mech.mechState === MechState.WALKING) {
+                    const hitForce = new BABYLON.Vector3(
+                        bodyPartName === 'leftLeg' ? 5 : -5,
+                        3,
+                        0
+                    );
+                    triggerRagdoll(mech, hitForce);
+                    log(`${mech.name} collapses from leg damage!`, 'warn');
+                }
+            }
+        }
 
         // ============================================
         // SHADOW & QUALITY CONFIGURATION
@@ -5633,9 +5992,16 @@
             } else {
                 // Phase 3: Recovery complete - back to walking state
                 mech.mechState = MechState.WALKING;
-                mech.stability = STABILITY_CONFIG.maxStability * 0.5;  // Partial stability after recovery
 
-                dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RECOVERED! Back to WALKING`, 'ai');
+                // STABILITY DOUBLING: After getting up, stability cap is doubled
+                // This makes it harder to knock them down again
+                if (!mech.stabilityMultiplier) mech.stabilityMultiplier = 1.0;
+                mech.stabilityMultiplier *= 2.0;
+                const newMaxStability = STABILITY_CONFIG.maxStability * mech.stabilityMultiplier;
+                mech.stability = newMaxStability;  // Full stability at new cap
+
+                dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RECOVERED! Back to WALKING (stability cap now ${newMaxStability})`, 'ai');
+                log(`${mech.name} gets up! (harder to knock down now: ${mech.stabilityMultiplier}x stability)`, 'info');
             }
         }
 
@@ -6291,10 +6657,19 @@
 
                 log(`[FIRE] ${from.name} attempting ${type}...`);
 
-                const weapon = WEAPONS[type];
-                if (!weapon) {
+                const baseWeapon = WEAPONS[type];
+                if (!baseWeapon) {
                     log(`[ERROR] Unknown weapon type: ${type}`, 'error');
                     return;
+                }
+
+                // Apply arm damage reduction if arms are destroyed
+                const armMultiplier = getArmDamageMultiplier(from);
+                const weapon = { ...baseWeapon };
+                weapon.damage = Math.round(baseWeapon.damage * armMultiplier);
+
+                if (armMultiplier < 1) {
+                    log(`${from.name}'s damaged arms reduce damage to ${weapon.damage}!`, 'warn');
                 }
 
                 from.recoilRecovery = weapon.recoil;
@@ -6378,7 +6753,11 @@
                 const wpnName = loadoutWeapon.name || loadoutWeapon.itemId;
                 const battleProps = loadoutWeapon.battle || {};
                 const baseDamage = loadoutWeapon.damage || 10;
-                const finalDamage = Math.round(baseDamage * damageMultiplier);
+
+                // Apply arm damage reduction if arms are destroyed
+                const armMultiplier = getArmDamageMultiplier(from);
+                const combinedMultiplier = damageMultiplier * armMultiplier;
+                const finalDamage = Math.round(baseDamage * combinedMultiplier);
 
                 if (damageMultiplier !== 1.0) {
                     log(`[LOADOUT FIRE] ${from.name} fires ${wpnName} (${baseDamage} × ${damageMultiplier} = ${finalDamage} damage)`);
@@ -6697,7 +7076,7 @@
                     halo: beamHalo, haloMat: haloMat,
                     createdAt: Date.now(), duration: weapon.beamDuration
                 });
-                applyDamage(to, weapon, from.isPlayer ? 1 : -1);
+                applyDamage(to, weapon, from.isPlayer ? 1 : -1, end.clone());
                 createImpact(end.clone(), weapon.color);
                 log(`[BEAM] Beam created successfully`);
             } catch (e) {
@@ -6837,7 +7216,7 @@
                 }, 30);
 
                 // Apply damage with massive knockback
-                applyDamage(to, weapon, from.isPlayer ? 1 : -1);
+                applyDamage(to, weapon, from.isPlayer ? 1 : -1, swingEnd.clone());
 
                 // Extra knockback for melee
                 const knockDir = toPos.subtract(fromPos).normalize();
@@ -6857,7 +7236,7 @@
             }
         }
 
-        function applyDamage(mech, weapon, dirSign) {
+        function applyDamage(mech, weapon, dirSign, impactPosition) {
             // Skip if mech is already destroyed or recovering
             if (mech.isDestroyed) return;
             if (mech.mechState === MechState.RECOVERING) return;  // Don't damage during recovery
@@ -6888,6 +7267,46 @@
                 }
             }
 
+            // BODY PART DAMAGE SYSTEM
+            // Determine which body part was hit
+            const hitPart = impactPosition ? getHitBodyPart(mech, impactPosition) : 'torso';
+
+            // Initialize body parts if not already done
+            if (!mech.bodyParts) {
+                mech.bodyParts = initializeBodyParts(mech.maxHP);
+            }
+
+            const bodyPart = mech.bodyParts[hitPart];
+
+            // Skip if this body part is already destroyed
+            if (bodyPart && bodyPart.destroyed) {
+                // Damage goes to torso instead if part is already gone
+                const fallbackPart = mech.bodyParts.torso;
+                if (!fallbackPart.destroyed) {
+                    fallbackPart.currentHP -= actualDamage;
+                    mech.bodyParts.totalDamageReceived.torso += actualDamage;
+                    if (fallbackPart.currentHP <= 0) {
+                        destroyBodyPart(mech, 'torso');
+                    }
+                    updateDamageOverlay(mech, 'torso');
+                }
+            } else if (bodyPart) {
+                // Apply damage to the hit body part
+                bodyPart.currentHP -= actualDamage;
+                mech.bodyParts.totalDamageReceived[hitPart] += actualDamage;
+
+                // Update damage overlay visual
+                updateDamageOverlay(mech, hitPart);
+
+                log(`${mech.name}: ${hitPart} hit for ${actualDamage} damage (${bodyPart.currentHP}/${bodyPart.maxHP})`, 'warn');
+
+                // Check if body part is destroyed
+                if (bodyPart.currentHP <= 0) {
+                    destroyBodyPart(mech, hitPart);
+                }
+            }
+
+            // Also track total HP for backwards compatibility
             mech.currentHP -= actualDamage;
             if (mech.currentHP < 0) mech.currentHP = 0;
 
@@ -6898,7 +7317,15 @@
             // Trigger cinematic camera to track damaged mech
             triggerCinematicAction(mech, 'damage');
 
-            // Check for destruction first
+            // Check for mech destruction based on body parts
+            const destructionCheck = checkMechDestruction(mech);
+            if (destructionCheck.destroyed && !mech.isDestroyed) {
+                log(`${mech.name} DESTROYED! (${destructionCheck.reason})`, 'error');
+                triggerDestruction(mech);
+                return;
+            }
+
+            // Legacy destruction check (fallback if no body parts)
             if (mech.currentHP <= 0 && !mech.isDestroyed) {
                 log(`${mech.name} DESTROYED!`, 'error');
                 triggerDestruction(mech);
@@ -6908,10 +7335,16 @@
             // HYBRID DAMAGE SYSTEM: Determine flinch vs ragdoll based on knockback and stability
 
             // Reduce stability based on knockback
-            mech.stability -= knockback * 0.8;
+            // LEG HITS DO 2X STABILITY DAMAGE
+            let stabilityDamage = knockback * 0.8;
+            if (hitPart === 'leftLeg' || hitPart === 'rightLeg') {
+                stabilityDamage *= BODY_PART_CONFIG.legStabilityMultiplier;
+                log(`${mech.name} leg hit - extra stability damage!`, 'warn');
+            }
+            mech.stability -= stabilityDamage;
             if (mech.stability < 0) mech.stability = 0;
 
-            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Hit! KB=${knockback} Stability=${mech.stability.toFixed(0)}`, 'phys');
+            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: ${hitPart} hit! KB=${knockback} Stability=${mech.stability.toFixed(0)}`, 'phys');
 
             // Case 1: Massive hit - immediate ragdoll regardless of stability
             if (knockback >= STABILITY_CONFIG.knockdownThreshold) {
@@ -6945,7 +7378,8 @@
             }
 
             // Visual flash effect for any hit
-            createImpactSparks(mech.torso.getAbsolutePosition(), impactDir);
+            const sparkPos = impactPosition || mech.torso.getAbsolutePosition();
+            createImpactSparks(sparkPos, impactDir);
         }
 
         function updateProjectiles(dt) {
@@ -6990,7 +7424,7 @@
                             if (!enemy.torso) continue;
                             const dist = BABYLON.Vector3.Distance(projPos, enemy.torso.getAbsolutePosition());
                             if (dist < 2.0) {  // Slightly larger hitbox for piloting mode
-                                applyDamage(enemy, p.weapon, enemy.isPlayer ? -1 : 1);
+                                applyDamage(enemy, p.weapon, enemy.isPlayer ? -1 : 1, projPos.clone());
                                 log(`[PILOT HIT] ${enemy.name} -${p.weapon.damage} (${enemy.currentHP}/${enemy.maxHP})`, 'warn');
                                 createImpact(projPos.clone(), p.weapon.color);
                                 disposeProjectile();
@@ -7025,7 +7459,7 @@
 
                     const dist = BABYLON.Vector3.Distance(projPos, p.target.torso.getAbsolutePosition());
                     if (dist < 1.6) {
-                        applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1);
+                        applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1, projPos.clone());
                         log(`HIT! ${p.target.name} -${p.weapon.damage} (${p.target.currentHP}/${p.target.maxHP})`, 'warn');
                         createImpact(projPos.clone(), p.weapon.color);
                         disposeProjectile();
@@ -7829,16 +8263,39 @@
                 // Generate salvage rewards
                 const rewards = generateSalvageRewards(playerWon);
 
-                // Send to parent with rewards
+                // Collect body part damage data from all enemy mechs for salvage calculation
+                const enemyDamageData = enemyMechs.map(mech => {
+                    if (!mech) return null;
+                    return {
+                        name: mech.displayName || mech.name,
+                        equipment: mech.loadoutWeapons || [],
+                        bodyParts: mech.bodyParts ? {
+                            totalDamageReceived: mech.bodyParts.totalDamageReceived,
+                            destroyed: {
+                                head: mech.bodyParts.head?.destroyed || false,
+                                torso: mech.bodyParts.torso?.destroyed || false,
+                                leftArm: mech.bodyParts.leftArm?.destroyed || false,
+                                rightArm: mech.bodyParts.rightArm?.destroyed || false,
+                                leftLeg: mech.bodyParts.leftLeg?.destroyed || false,
+                                rightLeg: mech.bodyParts.rightLeg?.destroyed || false
+                            }
+                        } : null,
+                        isDestroyed: mech.isDestroyed
+                    };
+                }).filter(d => d !== null);
+
+                // Send to parent with rewards and damage data
                 if (window.parent !== window) {
                     window.parent.postMessage({
                         type: 'battleEnd',
                         result: playerWon ? 'victory' : 'defeat',
-                        rewards: rewards
+                        rewards: rewards,
+                        enemyDamageData: enemyDamageData
                     }, '*');
                 } else {
                     // Standalone mode
                     localStorage.setItem('battleRewards', JSON.stringify(rewards));
+                    localStorage.setItem('enemyDamageData', JSON.stringify(enemyDamageData));
                     window.location.href = 'index.html';
                 }
             });
@@ -7913,6 +8370,61 @@
                 let stateText = enemyAlive === 0 ? 'ELIMINATED' : `${enemyAlive} mechs fighting`;
                 document.getElementById('enemyState').textContent = stateText;
             }
+
+            // Update body part UI for first player and enemy mech
+            if (playerMechs.length > 0) {
+                updateBodyPartUI(playerMechs[0], 'player');
+            }
+            if (enemyMechs.length > 0) {
+                updateBodyPartUI(enemyMechs[0], 'enemy');
+            }
+        }
+
+        // Update body part UI display for a mech
+        function updateBodyPartUI(mech, prefix) {
+            if (!mech || !mech.bodyParts) return;
+
+            const parts = ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'];
+            const partNames = {
+                head: 'Head',
+                torso: 'Torso',
+                leftArm: 'L.Arm',
+                rightArm: 'R.Arm',
+                leftLeg: 'L.Leg',
+                rightLeg: 'R.Leg'
+            };
+
+            parts.forEach(part => {
+                const elem = document.getElementById(`${prefix}_${part}`);
+                if (!elem) return;
+
+                const bp = mech.bodyParts[part];
+                if (!bp) return;
+
+                const hpPct = Math.max(0, bp.currentHP / bp.maxHP) * 100;
+                const fillBar = elem.querySelector('.body-part-fill');
+
+                // Update health bar width
+                if (fillBar) {
+                    fillBar.style.width = hpPct + '%';
+                }
+
+                // Update class for styling
+                elem.classList.remove('healthy', 'damaged', 'destroyed');
+                if (bp.destroyed) {
+                    elem.classList.add('destroyed');
+                } else if (hpPct < 50) {
+                    elem.classList.add('damaged');
+                } else {
+                    elem.classList.add('healthy');
+                }
+
+                // Update text to show HP
+                const textNode = elem.childNodes[0];
+                if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                    textNode.textContent = bp.destroyed ? `${partNames[part]}✗` : `${partNames[part]}`;
+                }
+            });
         }
 
         // ============================================
@@ -8353,7 +8865,7 @@
 
             // Apply damage if we hit an enemy
             if (hitEnemy) {
-                applyDamage(hitEnemy, weapon, from.isPlayer ? 1 : -1);
+                applyDamage(hitEnemy, weapon, from.isPlayer ? 1 : -1, hitPoint.clone());
                 log(`[PILOT BEAM HIT] ${hitEnemy.name} -${weapon.damage} (${hitEnemy.currentHP}/${hitEnemy.maxHP})`, 'warn');
                 createImpact(hitPoint.clone(), weapon.color || new BABYLON.Color3(0, 1, 0.5));
             }

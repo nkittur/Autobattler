@@ -1333,9 +1333,9 @@
             dragThreshold: 8,        // Pixels moved to count as drag (not click)
             yawOffset: 0,            // Horizontal look offset (radians)
             pitchOffset: 0,          // Vertical look offset (radians)
-            maxPitch: 0.5,           // Max vertical look (radians)
+            maxPitch: 0.6,           // Max vertical look (radians)
             maxYaw: 1.2,             // Max horizontal look (radians)
-            dragSensitivity: 0.003   // How fast drag rotates view
+            dragSensitivity: 0.005   // How fast drag rotates view
         };
 
         // Weapon cooldowns per mech (keyed by mech name)
@@ -7916,9 +7916,9 @@
             pilotingModeActive = true;
             log('User piloting mode ENABLED - cockpit view active');
 
-            // Reset look offset
+            // Reset look offset - start with slight downward pitch to better center enemies
             pilotingState.yawOffset = 0;
-            pilotingState.pitchOffset = 0;
+            pilotingState.pitchOffset = -0.15;  // Aim down slightly by default
 
             // Show cockpit HUD elements
             document.getElementById('cockpitCrosshair').classList.add('active');
@@ -8010,6 +8010,7 @@
         function handlePilotingMouseDown(event) {
             if (!pilotingModeActive) return;
             mouseIsDown = true;
+            pilotingState.isDragging = false;  // Reset drag state at start of new interaction
             lastMouseX = event.clientX;
             lastMouseY = event.clientY;
         }
@@ -8020,10 +8021,13 @@
             const dx = event.clientX - lastMouseX;
             const dy = event.clientY - lastMouseY;
 
-            // Mark as dragging if moved enough
-            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            // Mark as dragging if moved enough (threshold to distinguish from click)
+            if (!pilotingState.isDragging && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
                 pilotingState.isDragging = true;
+            }
 
+            // Once dragging, track all mouse movement
+            if (pilotingState.isDragging) {
                 // Update look offset
                 pilotingState.yawOffset -= dx * pilotingState.dragSensitivity;
                 pilotingState.pitchOffset -= dy * pilotingState.dragSensitivity;
@@ -8039,7 +8043,10 @@
 
         function handlePilotingMouseUp(event) {
             mouseIsDown = false;
-            // Note: isDragging is reset in handlePilotingClick after checking it
+            // Reset isDragging after a short delay to allow click event to check it first
+            setTimeout(() => {
+                pilotingState.isDragging = false;
+            }, 10);
         }
 
         // Touch drag-to-look handlers
@@ -8690,10 +8697,10 @@
             // Final look target with offset applied
             const lookAt = cameraPos.add(rotatedLook.scale(20));
 
-            // Smooth camera movement
+            // Smooth camera movement - responsive target following
             const smoothFactor = 1 - Math.pow(0.03, dt);
             camera.position = BABYLON.Vector3.Lerp(camera.position, cameraPos, smoothFactor);
-            camera.setTarget(BABYLON.Vector3.Lerp(camera.target, lookAt, smoothFactor * 0.5));
+            camera.setTarget(BABYLON.Vector3.Lerp(camera.target, lookAt, smoothFactor * 0.8));
 
             // Update weapon indicators periodically
             updateWeaponIndicators();

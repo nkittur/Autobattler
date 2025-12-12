@@ -2179,219 +2179,95 @@
             slots: {}
         };
 
-        // Item Definitions (The Deck)
-        const ITEM_DATABASE = {
-            railgun_mk1: {
-                id: 'railgun_mk1',
-                name: 'Training Railgun',
-                type: 'WEAPON',
-                category: 'weapon',
-                icon: '🔫',
-                gridShape: [[1], [1], [1], [1], [1]],  // 1x5 Vertical line
-                gridDimensions: { w: 1, h: 5 },
-                stats: {
-                    weight: 4,
-                    energyDraw: 1,
-                    damage: 4
-                },
-                constraints: {},
-                // Battle properties
-                battle: {
-                    projectileSpeed: 40,
-                    projectileSize: 0.12,
-                    knockback: 20,
-                    recoil: 0.1,
-                    shotsPerRound: 1,  // Fires once per 3-second round
-                    color: [1, 0.9, 0.3],  // Yellow-orange
-                    isProjectile: true
-                }
-            },
-            laser_array: {
-                id: 'laser_array',
-                name: 'Medium Laser',
-                type: 'WEAPON',
-                category: 'weapon',
-                icon: '⚡',
-                gridShape: [[1, 0], [1, 1]],  // L-shape (3 spaces)
-                gridDimensions: { w: 2, h: 2 },
-                stats: {
-                    weight: 2,
-                    energyDraw: 2,
-                    damage: 3
-                },
-                constraints: {},
-                // Battle properties
-                battle: {
-                    isBeam: true,
-                    beamDuration: 150,
-                    knockback: 5,
-                    recoil: 0.15,
-                    shotsPerRound: 1,  // Fires once per 3-second round
-                    color: [0.2, 1, 0.3]  // Green
-                }
-            },
-            armor_plate: {
-                id: 'armor_plate',
-                name: 'Basic Plating',
-                type: 'ARMOR',
-                category: 'armor',
-                icon: '🛡️',
-                gridShape: [[1, 1]],  // 2x1 Horizontal (smaller)
-                gridDimensions: { w: 2, h: 1 },
-                stats: {
-                    weight: 2,
-                    energyDraw: 0,
-                    damageReduction: 1  // -1 damage from ballistic/missile
-                },
-                constraints: {}
-            },
-            reactor_core: {
-                id: 'reactor_core',
-                name: 'Basic Reactor',
-                type: 'REACTOR',
-                category: 'reactor',
-                icon: '⚛️',
-                gridShape: [[1]],  // 1x1 Single (smaller)
-                gridDimensions: { w: 1, h: 1 },
-                stats: {
-                    weight: 1,
-                    energyDraw: -4,  // Provides 4 energy
-                    heatCapacity: 15
-                },
-                constraints: {}
-            },
-            targeting_computer: {
-                id: 'targeting_computer',
-                name: 'Targeting Link',
-                type: 'SYSTEM',
-                category: 'system',
-                icon: '🎯',
-                gridShape: [[1]],  // 1x1 Single
-                gridDimensions: { w: 1, h: 1 },
-                stats: {
-                    weight: 0,
-                    energyDraw: 0,
-                    directionalDamageBonus: 1  // +1 damage to weapon in one direction
-                },
-                special: {
-                    adjacentEffect: 'directionalDamage',
-                    effectDirection: 'up',  // Can be rotated
-                    effectValue: 1
-                },
-                constraints: {}
-            },
-            missile_rack: {
-                id: 'missile_rack',
-                name: 'Light Missile Rack',
-                type: 'WEAPON',
-                category: 'weapon',
-                icon: '🚀',
-                gridShape: [[1, 1, 1]],  // 3x1 Horizontal
-                gridDimensions: { w: 3, h: 1 },
-                stats: {
-                    weight: 2,
-                    energyDraw: 1,
-                    damage: 4
-                },
-                constraints: {},
-                battle: {
-                    projectileSpeed: 25,
-                    projectileSize: 0.15,
-                    knockback: 15,
-                    recoil: 0.12,
-                    shotsPerRound: 1,
-                    color: [1, 0.5, 0.2],  // Orange
-                    isProjectile: true,
-                    isMissile: true
-                }
-            },
-            basic_shield: {
-                id: 'basic_shield',
-                name: 'Light Shield',
-                type: 'ARMOR',
-                category: 'armor',
-                icon: '🔵',
-                gridShape: [[1], [1]],  // 1x2 Vertical
-                gridDimensions: { w: 1, h: 2 },
-                stats: {
-                    weight: 1,
-                    energyDraw: 1,
-                    energyShieldHP: 8  // Absorbs 8 HP of energy damage
-                },
-                constraints: {}
-            },
-            heat_sink: {
-                id: 'heat_sink',
-                name: 'Basic Heat Sink',
-                type: 'COOLING',
-                category: 'cooling',
-                icon: '❄️',
-                gridShape: [[1]],  // 1x1 Single
-                gridDimensions: { w: 1, h: 1 },
-                stats: {
-                    weight: 1,
-                    energyDraw: 0,
-                    energyReduction: 1  // Reduces energy cost of adjacent items
-                },
-                constraints: {},
-                special: {
-                    onPlace: 'drawCard',      // Draw a card when placed
-                    locksOnPlace: true        // Cannot be moved after placement this round
-                }
-            }
-        };
+        // Item Database - populated at runtime by generated items
+        // All items (starter and generated) use ITEM_TEMPLATES
+        const ITEM_DATABASE = {};
+
+        // Starter item configuration - generates level 0 items (weaker than shop items)
+        const STARTER_ITEMS = [
+            { template: 'railgun', name: 'Training Railgun', id: 'start_railgun' },
+            { template: 'laser', name: 'Training Laser', id: 'start_laser' },
+            { template: 'missile', name: 'Training Missiles', id: 'start_missile' },
+            { template: 'power_cell', name: 'Basic Reactor', id: 'start_reactor' },
+            { template: 'ballistic_plating', name: 'Basic Plating', id: 'start_armor' },
+            { template: 'targeting_link', name: 'Basic Targeting', id: 'start_targeting' }
+        ];
 
         // ============================================
-        // COMPONENT GENERATION SYSTEM
+        // COMPONENT GENERATION SYSTEM (v2)
+        // ============================================
+        //
+        // BUDGET FORMULA:
+        //   Budget Earned = Cells + Weight
+        //   Budget Spent = Damage + Energy×2 + other stats
+        //   Level 1 prototype should have Budget ≈ 0
+        //
+        // LEVEL SCALING:
+        //   Each level adds +1 budget, allocated proportionally to prototype stats
+        //   Weight/Energy can only decrease by 1 total from prototype
+        //   Knockback does NOT scale with level
+        //
+        // RARITY SCALING:
+        //   Levels 1-5:  +1 budget per rarity tier
+        //   Levels 6-10: +2 budget per rarity tier
+        //   Levels 11+:  +3 budget per rarity tier
+        //   Tiers: Common(0), Uncommon(1), Rare(2), Epic(3), Legendary(4)
+        //
+        // MODIFIERS:
+        //   Only uncommon+ items can have modifiers
+        //   Higher level = higher chance of modifier
+        //   Modifier budget: 1-3 based on rarity
         // ============================================
 
-        // Budget Exchange Rates: 1 square of "currency" converts to these values
         const COMPONENT_GENERATION = {
-            // Base exchange rates (1 square = X) - scaled for smaller economy (weight limit 6)
-            exchangeRates: {
-                damage: 1,           // 1 square = 1 damage
-                weight: -1,          // 1 square = -1 weight (scaled down from -10)
-                energyCost: -0.5,    // 1 square = -0.5 energy cost
-                energyProvided: 1,   // 1 square = 1 energy provided
-                armor: 1,            // 1 square = 1 armor
-                accuracy: 4,         // 1 square = 4% accuracy
-                knockback: 5,        // 1 square = 5 knockback
-                projectileSpeed: 8,  // 1 square = 8 projectile speed
-                heatCapacity: 8,     // 1 square = 8 heat capacity
-                energyReduction: 0.3 // 1 square = 0.3 energy reduction (for heat sinks)
+            // Master budget exchange rates
+            // Positive = earns budget, Negative = costs budget
+            budgetRates: {
+                // Budget sources (positive)
+                cell: 1,              // Each cell adds 1 budget
+                weight: 1,            // Each weight adds 1 budget (compensation)
+
+                // Budget costs (negative) - what you spend budget on
+                damage: 1,            // 1 budget = 1 damage
+                energyCost: 2,        // 1 budget = 0.5 energy (energy costs 2 budget each)
+                damageReduction: 1,   // 1 budget = 1 DR
+                hp: 0.4,              // 1 budget = 2.5 HP
+                energyProvided: 1,    // 1 budget = 1 energy provided
+                knockback: 0.2,       // 1 budget = 5 knockback (doesn't scale!)
+
+                // Expensive effects (multi-budget costs)
+                targetingDamage1Dir: 1,    // 1 budget = +1 dmg one direction
+                targetingDamageAllDir: 3,  // 3 budget = +1 dmg all adjacent
+                accuracyBonus: 0.25,       // 1 budget = 4% accuracy
+
+                // Cooling/utility
+                energyReduction: 3,        // 3 budget = 1 energy reduction to adjacent
+                heatCapacity: 0.125        // 1 budget = 8 heat capacity
             },
 
-            // Resource conversion rates (for trade-offs within same item)
-            conversionRates: {
-                energyToDamage: 2,      // 1 energy cost = 2 damage
-                weightToDamage: 1,      // 1 weight = 1 damage (weight is more valuable now)
-                accuracyToDamage: 0.3,  // 1% accuracy = 0.3 damage
-                armorToWeight: 2        // 1 armor = 2 weight
+            // Stats that can be improved with level budget (and their relative weights from prototype)
+            scalableStats: ['damage', 'damageReduction', 'hp', 'energyProvided', 'targetingDamage1Dir', 'targetingDamageAllDir'],
+
+            // Stats that can be reduced (max 1 reduction each from prototype)
+            reducibleStats: ['weight', 'energyCost'],
+
+            // Stats that do NOT scale with level
+            fixedStats: ['knockback', 'shotsPerRound'],
+
+            // Rarity budget bonus per tier (multiplied by tier number 0-4)
+            rarityBudgetPerTier: {
+                low: 1,      // Levels 1-5
+                mid: 2,      // Levels 6-10
+                high: 3      // Levels 11+
             },
 
-            // Shape bonuses: longer shapes get bonus budget squares
-            // This rewards specialized narrow/long items
-            lengthBonuses: {
-                4: 1,   // 4 length = +1 square bonus
-                5: 3,   // 5 length = +3 squares bonus
-                6: 6    // 6 length = +6 squares bonus
-            },
-
-            // Aspect ratio bonuses (max dimension / min dimension)
-            aspectBonuses: {
-                3: 0.5,   // 3:1 ratio = +0.5 squares
-                4: 1,     // 4:1 ratio = +1 square
-                5: 2,     // 5:1 ratio = +2 squares
-                6: 3      // 6:1 ratio = +3 squares
-            },
-
-            // Rarity multipliers for budget
-            rarityMultipliers: {
-                common: 1.0,
-                uncommon: 1.15,
-                rare: 1.35,
-                epic: 1.6,
-                legendary: 2.0
+            // Rarity tier numbers
+            rarityTiers: {
+                common: 0,
+                uncommon: 1,
+                rare: 2,
+                epic: 3,
+                legendary: 4
             },
 
             // Rarity colors for display
@@ -2403,108 +2279,164 @@
                 legendary: '#ffaa00'
             },
 
-            // Level bonus: each level adds this much budget
-            levelBudgetBonus: 0.5,
-
-            // Budget variance within same level/rarity (percentage)
-            budgetVariance: 0.15,   // +/- 15% variance
-
             // ============================================
-            // SPECIAL EFFECT BUDGET SYSTEM
+            // MODIFIER SYSTEM
             // ============================================
-            // This system ensures higher rarity items have better special effects.
-            // Edit these values to balance special abilities across rarities.
-            //
-            // HOW IT WORKS:
-            // 1. Each rarity gets a "bonus budget" for special effects
-            // 2. The bonus budget is spent on improvements based on exchange rates
-            // 3. Items can improve: damage bonuses, directions, efficiency (weight/energy)
-            //
-            // EXAMPLE - Targeting Link (base: +1 damage in 1 direction):
-            //   Common (0 bonus):    +1 damage, 1 direction
-            //   Uncommon (+1.5):     +1 damage, 2 directions OR +2 damage, 1 direction
-            //   Rare (+3):           +2 damage, 2 directions OR +3 damage, 1 direction
-            //   Epic (+5):           +2 damage, all 4 directions OR +4 damage, 2 directions
-            //   Legendary (+8):      +3 damage, all 4 directions
-            // ============================================
+            // Modifiers only appear on uncommon+ items
+            // Higher level = higher chance of getting a modifier
+            // Modifier power scales with budget cost (1-3)
 
-            // Bonus budget for special effects by rarity (separate from stat budget)
-            rarityBonusBudget: {
-                common: 0,        // No bonus - base effect only
-                uncommon: 1.5,    // Small improvement
-                rare: 3,          // Significant improvement
-                epic: 5,          // Major improvement
-                legendary: 8      // Maximum improvement
+            // Chance of getting a modifier by level (uncommon+ only)
+            modifierChanceByLevel: {
+                1: 0.1,   // 10% at level 1
+                3: 0.2,   // 20% at level 3
+                5: 0.3,   // 30% at level 5
+                7: 0.5,   // 50% at level 7
+                10: 0.7,  // 70% at level 10
+                15: 0.9   // 90% at level 15
             },
 
-            // Exchange rates for special effects (budget cost to add 1 unit)
-            // LOWER = cheaper to add, HIGHER = more expensive
-            specialEffectRates: {
-                // === ADJACENCY DAMAGE BONUSES ===
-                adjacentDamageBonus: 2.0,      // Cost to add +1 damage to ALL adjacent weapons
-                directionalDamageBonus: 1.0,   // Cost to add +1 damage in ONE direction
-
-                // === DIRECTION COVERAGE ===
-                // Base items affect 1 direction (up). Additional directions cost budget.
-                additionalDirection: 1.5,      // Cost per additional direction (up to 4 total)
-
-                // === EFFICIENCY IMPROVEMENTS ===
-                weightReduction: 1.0,          // Cost to reduce weight by 1
-                energyReduction: 1.0,          // Cost to reduce energy cost by 1
-
-                // === SHAPE IMPROVEMENTS ===
-                // Making items smaller is very valuable, so it's expensive
-                sizeReduction: 4.0,            // Cost to remove 1 grid square (very expensive)
-
-                // === OTHER SPECIAL EFFECTS ===
-                bonusShotsPerRound: 2.5,       // Cost to add +1 shot per round (multi-hit weapons)
-                critChanceBonus: 1.5,          // Cost to add +5% crit chance
-                lifestealBonus: 2.0,           // Cost to add +5% lifesteal
-                armorPenetration: 1.5          // Cost to add +1 armor penetration
+            // Max modifier budget by rarity
+            maxModifierBudget: {
+                uncommon: 1,
+                rare: 2,
+                epic: 3,
+                legendary: 3
             },
 
-            // Special effect caps (maximum values regardless of budget)
-            specialEffectCaps: {
-                adjacentDamageBonus: 5,        // Max +5 damage to all adjacent
-                directionalDamageBonus: 4,     // Max +4 damage per direction
-                totalDirections: 4,            // Max 4 directions (up, down, left, right)
-                bonusShotsPerRound: 4,         // Max +4 extra shots
-                weightReduction: 3,            // Can't reduce weight below 0
-                energyReduction: 3             // Can't reduce energy below 0
-            },
+            // Available modifiers by budget cost
+            modifiers: {
+                // 1-budget modifiers (minor effects)
+                1: [
+                    {
+                        id: 'first_strike',
+                        name: 'First Strike',
+                        description: 'First shot deals 2× damage',
+                        appliesTo: ['WEAPON'],
+                        effect: { firstShotMultiplier: 2 }
+                    },
+                    {
+                        id: 'lightweight',
+                        name: 'Lightweight',
+                        description: '-1 weight',
+                        appliesTo: ['WEAPON', 'ARMOR', 'SYSTEM'],
+                        effect: { weightBonus: -1 }
+                    },
+                    {
+                        id: 'efficient',
+                        name: 'Efficient',
+                        description: '-1 energy cost',
+                        appliesTo: ['WEAPON', 'SYSTEM'],
+                        effect: { energyBonus: -1 }
+                    },
+                    {
+                        id: 'hardened',
+                        name: 'Hardened',
+                        description: '+1 DR',
+                        appliesTo: ['ARMOR'],
+                        effect: { drBonus: 1 }
+                    }
+                ],
 
-            // Priority order for spending bonus budget on special effects
-            // Items will try to spend budget in this order based on their type
-            specialEffectPriorities: {
-                // For targeting systems: prioritize damage and directions
-                targeting: ['directionalDamageBonus', 'adjacentDamageBonus', 'additionalDirection', 'energyReduction'],
-                // For weapons: prioritize shots and damage
-                weapon: ['bonusShotsPerRound', 'critChanceBonus', 'armorPenetration', 'weightReduction'],
-                // For armor: prioritize efficiency
-                armor: ['weightReduction', 'energyReduction'],
-                // For reactors: prioritize energy output
-                reactor: ['energyReduction', 'weightReduction'],
-                // Default priority
-                default: ['weightReduction', 'energyReduction']
+                // 2-budget modifiers (moderate effects)
+                2: [
+                    {
+                        id: 'devastating',
+                        name: 'Devastating',
+                        description: 'First shot deals 2.5× damage',
+                        appliesTo: ['WEAPON'],
+                        effect: { firstShotMultiplier: 2.5 }
+                    },
+                    {
+                        id: 'reactor_synergy',
+                        name: 'Reactor Synergy',
+                        description: '+0.5 damage per adjacent reactor',
+                        appliesTo: ['WEAPON'],
+                        tags: ['energy'],
+                        effect: { damagePerReactor: 0.5 }
+                    },
+                    {
+                        id: 'weapon_link',
+                        name: 'Weapon Link',
+                        description: '+1 damage per adjacent weapon',
+                        appliesTo: ['WEAPON'],
+                        effect: { damagePerWeapon: 1 }
+                    },
+                    {
+                        id: 'fortified',
+                        name: 'Fortified',
+                        description: '+5 HP',
+                        appliesTo: ['ARMOR'],
+                        effect: { hpBonus: 5 }
+                    },
+                    {
+                        id: 'overcharged',
+                        name: 'Overcharged',
+                        description: '+1 energy provided',
+                        appliesTo: ['REACTOR'],
+                        effect: { energyProvidedBonus: 1 }
+                    }
+                ],
+
+                // 3-budget modifiers (powerful effects)
+                3: [
+                    {
+                        id: 'alpha_strike',
+                        name: 'Alpha Strike',
+                        description: 'First shot deals 3× damage',
+                        appliesTo: ['WEAPON'],
+                        effect: { firstShotMultiplier: 3 }
+                    },
+                    {
+                        id: 'reactor_amplifier',
+                        name: 'Reactor Amplifier',
+                        description: '+1 damage per adjacent reactor',
+                        appliesTo: ['WEAPON'],
+                        tags: ['energy'],
+                        effect: { damagePerReactor: 1 }
+                    },
+                    {
+                        id: 'adaptive_plating',
+                        name: 'Adaptive Plating',
+                        description: '+2 DR, -1 weight',
+                        appliesTo: ['ARMOR'],
+                        effect: { drBonus: 2, weightBonus: -1 }
+                    },
+                    {
+                        id: 'power_surge',
+                        name: 'Power Surge',
+                        description: '+2 energy provided',
+                        appliesTo: ['REACTOR'],
+                        effect: { energyProvidedBonus: 2 }
+                    },
+                    {
+                        id: 'targeting_matrix',
+                        name: 'Targeting Matrix',
+                        description: '+1 damage to all adjacent weapons',
+                        appliesTo: ['SYSTEM'],
+                        effect: { adjacentDamageBonus: 1 }
+                    }
+                ]
             }
         };
 
         // Base item templates - define the "class" of item with typical shape/stats
         // Scaled for smaller economy: weight limit 6, energy ~6, small grid
+        // Item sizes average 4-5 squares to make inventory management challenging
         const ITEM_TEMPLATES = {
-            // WEAPONS - base stats ~25% better than starters (damage 4-5), shapes 3+ squares
+            // WEAPONS - base stats ~25% better than starters (damage 4-5), shapes 4+ squares
             railgun: {
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔫',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Precision', 'Rapid'],
                 nameSuffix: ['Railgun', 'Cannon', 'Driver', 'Accelerator'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 3,
+                    weight: 2,  // Light but long - high knockback specialist
                     energyDraw: 1,
-                    damage: 5
+                    damage: 5  // Balanced: cost 4 (2+1×2), +1 from shape bonus, high KB (25) is key advantage
                 },
                 baseBattle: {
                     projectileSpeed: 55,
@@ -2525,17 +2457,17 @@
                 icon: '⚡',
                 namePrefix: ['ER', 'Pulse', 'Focused', 'Burst', 'Heavy'],
                 nameSuffix: ['Laser', 'Beam', 'Array', 'Emitter'],
-                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
+                baseShape: [[1, 1]],  // 2x1 (2 squares) - very compact energy weapon
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 2,
+                    weight: 1,
                     energyDraw: 2,
-                    damage: 4
+                    damage: 4  // Balanced: cost 5 (1+2×2), compact size is the advantage
                 },
                 baseBattle: {
                     isBeam: true,
                     beamDuration: 200,
-                    knockback: 8,
+                    knockback: 5,  // Low knockback - precision weapon, not impact
                     recoil: 0.15,
                     shotsPerRound: 1,
                     color: [0.2, 1, 0.3]
@@ -2550,77 +2482,77 @@
                 icon: '🚀',
                 namePrefix: ['Light', 'Cluster', 'Heavy', 'Guided', 'Swarm'],
                 nameSuffix: ['Missile', 'Rocket', 'Launcher', 'Pod'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares) - 1 shot per 2 cells
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 3,
-                    energyDraw: 1,
-                    damage: 5
+                    weight: 1,
+                    energyDraw: 0,
+                    damage: 1  // Low per-shot, but multi-hit synergy weapon
                 },
                 baseBattle: {
                     projectileSpeed: 30,
                     projectileSize: 0.2,
-                    knockback: 30,
+                    knockback: 10,  // Moderate KB - railgun is the knockback king
                     recoil: 0.2,
-                    shotsPerRound: 1,
+                    shotsPerRound: 2,  // 1 shot per 2 cells = 2 shots
                     color: [1, 0.4, 0.2],
                     isProjectile: true
                 },
                 statWeights: { damage: 0.6, knockback: 0.4 },
-                synergies: ['explosive', 'knockback', 'alpha-strike'],
-                synergyDescription: 'Heavy impact damage. Excellent with knockback synergies.'
+                synergies: ['explosive', 'multi-hit', 'synergy-payoff'],
+                synergyDescription: 'SYNERGY: 1×2=2 base. +2 flat damage = 3×2=6 (3x multiplier!)'
             },
             machinegun: {
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '🔥',
-                namePrefix: ['Rapid', 'Twin', 'Auto', 'Rotary', 'Ultra'],
-                nameSuffix: ['Cannon', 'Gun', 'Repeater', 'Vulcan'],
-                baseShape: [[1, 1]],  // 2x1 (2 squares - compact rapid fire)
+                namePrefix: ['Rapid', 'Twin', 'Auto', 'Light'],
+                nameSuffix: ['Cannon', 'Gun', 'Repeater', 'MG'],
+                baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
                 validSlots: ['leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,
-                    energyDraw: 1,
-                    damage: 2
+                    energyDraw: 0,
+                    damage: 1  // Fixed - no scaling for multi-hit
                 },
                 baseBattle: {
                     projectileSpeed: 60,
                     projectileSize: 0.08,
-                    knockback: 5,
+                    knockback: 3,
                     recoil: 0.05,
-                    shotsPerRound: 3,
+                    shotsPerRound: 2,  // 2 shots × 1 dmg = 2 DPR
                     color: [1, 1, 0.5],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.7, projectileSpeed: 0.3 },
+                statWeights: { projectileSpeed: 0.5 },  // No damage scaling!
                 synergies: ['kinetic', 'multi-hit', 'sustained']
             },
 
             // MULTI-HIT WEAPONS - Low damage per shot, many shots = flat damage bonuses multiply!
             // Example: Chain Gun does 1x8=8 damage. With +2 flat damage bonus: 3x8=24 damage (3x multiplier!)
-            chain_gun: {
+            minigun: {
                 type: 'WEAPON',
                 category: 'weapon',
                 icon: '⛓️',
-                namePrefix: ['Rotary', 'Gatling', 'Spinning', 'Chain'],
+                namePrefix: ['Rotary', 'Gatling', 'Spinning', 'Mini'],
                 nameSuffix: ['Gun', 'Cannon', 'Minigun', 'Shredder'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal
+                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['leftArm', 'rightArm', 'torso'],
                 baseStats: {
                     weight: 2,
                     energyDraw: 1,
-                    damage: 1  // Very low per shot
+                    damage: 1  // Fixed - no scaling for multi-hit
                 },
                 baseBattle: {
                     projectileSpeed: 65,
                     projectileSize: 0.06,
                     knockback: 2,
                     recoil: 0.03,
-                    shotsPerRound: 8,  // But MANY shots!
+                    shotsPerRound: 8,  // 8 shots × 1 dmg = 8 DPR
                     color: [1, 0.8, 0.3],
                     isProjectile: true
                 },
-                statWeights: { damage: 0.5, projectileSpeed: 0.3 },
+                statWeights: { projectileSpeed: 0.5 },  // No damage scaling!
                 synergies: ['kinetic', 'multi-hit', 'shredder'],
                 synergyDescription: 'SYNERGY: +1 flat damage = +8 total! Perfect with Targeting Hub.'
             },
@@ -2630,24 +2562,24 @@
                 icon: '💫',
                 namePrefix: ['Pulse', 'Rapid', 'Burst', 'Strobe'],
                 nameSuffix: ['Laser', 'Emitter', 'Array', 'Projector'],
-                baseShape: [[1], [1]],  // 1x2 vertical (compact)
+                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
                 validSlots: ['leftArm', 'rightArm', 'torso'],
                 baseStats: {
                     weight: 1,
                     energyDraw: 2,
-                    damage: 2  // Low per pulse
+                    damage: 1  // Fixed - no scaling for multi-hit
                 },
                 baseBattle: {
                     isBeam: true,
                     beamDuration: 80,  // Quick pulses
                     knockback: 3,
                     recoil: 0.02,
-                    shotsPerRound: 5,  // 5 pulses per round
+                    shotsPerRound: 5,  // 5 shots × 1 dmg = 5 DPR
                     color: [0.5, 1, 0.5]
                 },
-                statWeights: { damage: 0.8, knockback: 0.2 },
+                statWeights: { knockback: 0.5 },  // No damage scaling!
                 synergies: ['energy', 'multi-hit', 'precision'],
-                synergyDescription: 'SYNERGY: 2x5=10 base. +2 flat damage = 4x5=20 (2x multiplier!)'
+                synergyDescription: 'SYNERGY: 1x5=5 base. +2 flat damage = 3x5=15 (3x multiplier!)'
             },
             swarm_missiles: {
                 type: 'WEAPON',
@@ -2655,26 +2587,26 @@
                 icon: '🐝',
                 namePrefix: ['Swarm', 'Cluster', 'Micro', 'Hive'],
                 nameSuffix: ['Missiles', 'Rockets', 'Pods', 'Volley'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 (takes space but powerful)
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 2x3 (6 squares) - 1 shot per 2 cells
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 3,
-                    energyDraw: 1,
-                    damage: 3  // Moderate per missile
+                    weight: 1,
+                    energyDraw: 0,
+                    damage: 1  // Low per-shot, multi-hit synergy weapon
                 },
                 baseBattle: {
                     projectileSpeed: 25,
                     projectileSize: 0.12,
                     knockback: 10,
                     recoil: 0.08,
-                    shotsPerRound: 4,  // 4 missiles per volley
+                    shotsPerRound: 3,  // 1 shot per 2 cells = 3 shots
                     color: [1, 0.5, 0.2],
                     isProjectile: true,
                     isMissile: true
                 },
                 statWeights: { damage: 0.6, knockback: 0.4 },
-                synergies: ['explosive', 'multi-hit', 'area'],
-                synergyDescription: 'SYNERGY: 3x4=12 base. Each flat damage bonus applies 4 times!'
+                synergies: ['explosive', 'multi-hit', 'synergy-payoff'],
+                synergyDescription: 'SYNERGY: 1×3=3 base. +2 flat damage = 3×3=9 (3x multiplier!)'
             },
 
             // ARMOR - Three types: damage reduction, HP boost, and energy shield
@@ -2685,16 +2617,16 @@
                 icon: '🛡️',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Reinforced', 'Composite'],
                 nameSuffix: ['Plating', 'Armor', 'Carapace', 'Shell'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 2,
+                    weight: 0,
                     energyDraw: 0,
-                    damageReduction: 1  // -1 damage from each ballistic/missile hit
+                    damageReduction: 2  // -2 damage from each ballistic/missile hit
                 },
                 statWeights: { damageReduction: 1.0 }
             },
-            // Reactive Armor - better damage reduction, L-shape
+            // Reactive Armor - better damage reduction, energy-powered
             reactive_plating: {
                 type: 'ARMOR',
                 category: 'armor',
@@ -2704,9 +2636,9 @@
                 baseShape: [[1, 1], [1, 0]],  // L-shape (3 squares)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 3,
-                    energyDraw: 0,
-                    damageReduction: 2  // -2 damage from each ballistic/missile hit
+                    weight: 0,
+                    energyDraw: 1,
+                    damageReduction: 3  // -3 damage from each ballistic/missile hit
                 },
                 statWeights: { damageReduction: 1.0 }
             },
@@ -2717,16 +2649,16 @@
                 icon: '❤️',
                 namePrefix: ['Reinforced', 'Thick', 'Dense', 'Layered'],
                 nameSuffix: ['Hull', 'Frame', 'Structure', 'Bulkhead'],
-                baseShape: [[1, 1]],  // 2x1 (2 squares - compact)
+                baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 2,
+                    weight: 1,
                     energyDraw: 0,
-                    hpBonus: 8  // +8 HP at level 1
+                    hpBonus: 10  // 4 cost × 2.5 HP = 10 HP
                 },
                 statWeights: { hpBonus: 1.0 }
             },
-            // Heavy Hull - more HP, bigger shape
+            // Heavy Hull - more HP, compact shape
             heavy_hull: {
                 type: 'ARMOR',
                 category: 'armor',
@@ -2736,9 +2668,9 @@
                 baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 4,
+                    weight: 2,
                     energyDraw: 0,
-                    hpBonus: 15  // +15 HP at level 1
+                    hpBonus: 15  // 6 cost × 2.5 HP = 15 HP
                 },
                 statWeights: { hpBonus: 1.0 }
             },
@@ -2749,7 +2681,7 @@
                 icon: '🔵',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Hardened'],
                 nameSuffix: ['Shield', 'Barrier', 'Screen', 'Ward'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,
@@ -2766,7 +2698,7 @@
                 icon: '⚛️',
                 namePrefix: ['Compact', 'Standard', 'High-Output', 'Fusion', 'Plasma'],
                 nameSuffix: ['Reactor', 'Core', 'Generator', 'Cell'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['torso'],
                 baseStats: {
                     weight: 2,
@@ -2781,7 +2713,7 @@
                 icon: '🔋',
                 namePrefix: ['Emergency', 'Backup', 'Auxiliary', 'Compact'],
                 nameSuffix: ['Cell', 'Battery', 'Pack', 'Unit'],
-                baseShape: [[1, 1]],  // 2x1 (2 squares - smaller reactor option)
+                baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2799,7 +2731,7 @@
                 icon: '🎯',
                 namePrefix: ['Basic', 'Light', 'Compact', 'Simple'],
                 nameSuffix: ['Link', 'Connector', 'Coupler', 'Interface'],
-                baseShape: [[1]],  // 1x1 (small, cheap)
+                baseShape: [[1], [1]],  // 1x2 vertical
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 0,
@@ -2821,10 +2753,10 @@
                 icon: '🎯',
                 namePrefix: ['Advanced', 'Precision', 'Neural', 'Quantum'],
                 nameSuffix: ['Hub', 'Nexus', 'Core', 'Matrix'],
-                baseShape: [[0, 1, 0], [1, 1, 1]],  // T-shape (4 squares)
+                baseShape: [[0, 1, 0], [1, 1, 1], [0, 1, 0]],  // Plus shape (5 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 0,
+                    weight: 1,
                     energyDraw: 1,
                     adjacentDamageBonus: 2  // +2 damage to ALL adjacent weapons (buffed!)
                 },
@@ -2842,7 +2774,7 @@
                 icon: '🔄',
                 namePrefix: ['Light', 'Standard', 'Heavy', 'Stabilized'],
                 nameSuffix: ['Gyro', 'Stabilizer', 'Balance Unit'],
-                baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
+                baseShape: [[1], [1], [1], [1]],  // 1x4 vertical (4 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2859,7 +2791,7 @@
                 icon: '❄️',
                 namePrefix: ['Double', 'Enhanced', 'Cryo', 'Advanced'],
                 nameSuffix: ['Heat Sink', 'Cooler', 'Radiator', 'Vent'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
@@ -2878,7 +2810,7 @@
                 icon: '🌡️',
                 namePrefix: ['Advanced', 'Integrated', 'Active', 'Elite'],
                 nameSuffix: ['Cooling', 'System', 'Module', 'Array'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares - larger = more efficient)
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 3x2 (6 squares - larger = more efficient)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 2,
@@ -2902,7 +2834,7 @@
                 baseShape: [[1], [1], [1]],  // 1x3 vertical (3 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
-                    weight: 2,
+                    weight: 1,
                     energyDraw: 1,
                     adjacentDamageBonus: 1  // +1 damage to adjacent weapons
                 },
@@ -2920,7 +2852,7 @@
                 icon: '🔗',
                 namePrefix: ['Reactive', 'Adaptive', 'Linked', 'Network'],
                 nameSuffix: ['Linkage', 'Matrix', 'Network', 'Grid'],
-                baseShape: [[1, 1, 1]],  // 3x1 horizontal (3 squares)
+                baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
                 validSlots: ['torso'],
                 baseStats: {
                     weight: 1,
@@ -2939,7 +2871,7 @@
                 icon: '⚡',
                 namePrefix: ['Flux', 'Charged', 'Power', 'Energy'],
                 nameSuffix: ['Capacitor', 'Bank', 'Store', 'Reserve'],
-                baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
+                baseShape: [[1, 1], [1, 1]],  // 2x2 square (4 squares)
                 validSlots: ['torso', 'leftArm', 'rightArm'],
                 baseStats: {
                     weight: 1,
@@ -3052,49 +2984,176 @@
             return `gen_${templateType}_${rarity}_l${level}_${generatedItemCounter}_${Date.now()}`;
         }
 
-        // Calculate budget for a shape based on area and shape bonuses
-        function calculateShapeBudget(shape) {
-            let area = 0;
-            let maxLength = shape.length;
-            let maxWidth = shape[0] ? shape[0].length : 0;
-
-            // Count actual squares in shape
+        // Count cells in a shape
+        function countShapeCells(shape) {
+            let cells = 0;
             for (let row of shape) {
                 for (let cell of row) {
-                    if (cell === 1) area++;
+                    if (cell === 1) cells++;
                 }
             }
+            return cells;
+        }
 
-            // Calculate length bonus
-            let lengthBonus = 0;
-            const maxDim = Math.max(maxLength, maxWidth);
-            for (let len in COMPONENT_GENERATION.lengthBonuses) {
-                if (maxDim >= parseInt(len)) {
-                    lengthBonus = COMPONENT_GENERATION.lengthBonuses[len];
-                }
+        // ============================================
+        // BUDGET BALANCE & MINIMUM LEVEL CALCULATION
+        // ============================================
+        // Calculate the budget balance for a template at prototype (level 1)
+        // Positive = underpowered, Negative = overpowered (needs higher level)
+        function calculateTemplateBudgetBalance(template) {
+            const rates = COMPONENT_GENERATION.budgetRates;
+            const stats = template.baseStats;
+            const battle = template.baseBattle || {};
+            const cells = countShapeCells(template.baseShape);
+
+            // Budget EARNED (cost to player = justifies item power)
+            let budgetEarned = 0;
+            budgetEarned += cells * rates.cell;
+            budgetEarned += (stats.weight || 0) * rates.weight;
+            budgetEarned += (stats.energyDraw || 0) * rates.energyCost;
+
+            // Budget SPENT (item's value)
+            let budgetSpent = 0;
+
+            // Damage value
+            const shots = battle.shotsPerRound || 1;
+            const baseDamage = stats.damage || 0;
+            budgetSpent += baseDamage * shots * rates.damage;
+
+            // Multi-hit synergy bonus: 50% of (shots - 1)
+            // Represents the multiplicative value of flat damage bonuses
+            if (shots > 1) {
+                const multiHitBonus = 0.5 * (shots - 1);
+                budgetSpent += multiHitBonus;
             }
 
-            // Calculate aspect ratio bonus
-            let aspectBonus = 0;
-            const minDim = Math.min(maxLength, maxWidth);
-            if (minDim > 0) {
-                const aspectRatio = Math.floor(maxDim / minDim);
-                for (let ratio in COMPONENT_GENERATION.aspectBonuses) {
-                    if (aspectRatio >= parseInt(ratio)) {
-                        aspectBonus = COMPONENT_GENERATION.aspectBonuses[ratio];
+            // Defensive stats
+            budgetSpent += (stats.damageReduction || 0) * rates.damageReduction;
+            budgetSpent += (stats.hpBonus || 0) * rates.hp;
+
+            // Energy provided (reactors) - negative energyDraw = provides energy
+            if (stats.energyDraw < 0) {
+                budgetSpent += Math.abs(stats.energyDraw) * rates.energyProvided;
+            }
+
+            // Knockback (doesn't scale, but still has value)
+            budgetSpent += (battle.knockback || 0) * rates.knockback;
+
+            // Targeting bonuses
+            budgetSpent += (stats.directionalDamageBonus || 0) * rates.targetingDamage1Dir;
+            budgetSpent += (stats.adjacentDamageBonus || 0) * rates.targetingDamageAllDir;
+
+            // Energy reduction for cooling items
+            budgetSpent += (stats.energyReduction || 0) * rates.energyReduction;
+
+            // Heat capacity bonus
+            budgetSpent += (stats.heatCapacity || 0) * rates.heatCapacity;
+
+            return {
+                budgetEarned,
+                budgetSpent,
+                netBalance: budgetEarned - budgetSpent,  // Positive = underpowered
+                cells,
+                shots
+            };
+        }
+
+        // Calculate the minimum level an item should appear at
+        // Based on how "over budget" it is at prototype
+        function getTemplateMinLevel(template) {
+            const balance = calculateTemplateBudgetBalance(template);
+
+            // If netBalance >= 0, item is balanced or underpowered at level 1
+            if (balance.netBalance >= 0) {
+                return 1;
+            }
+
+            // If netBalance < 0, item is overpowered and needs level budget to compensate
+            // Level N gives (N-1) budget, so minLevel = ceil(-netBalance) + 1
+            const deficit = -balance.netBalance;
+            return Math.ceil(deficit) + 1;
+        }
+
+        // Cache of minimum levels for all templates
+        let TEMPLATE_MIN_LEVELS = null;
+
+        function getMinLevelCache() {
+            if (TEMPLATE_MIN_LEVELS === null) {
+                TEMPLATE_MIN_LEVELS = {};
+                for (const [key, template] of Object.entries(ITEM_TEMPLATES)) {
+                    TEMPLATE_MIN_LEVELS[key] = getTemplateMinLevel(template);
+                }
+                console.log('Template minimum levels:', TEMPLATE_MIN_LEVELS);
+            }
+            return TEMPLATE_MIN_LEVELS;
+        }
+
+        // Calculate rarity budget bonus based on level and rarity tier
+        function calculateRarityBudget(level, rarity) {
+            const tier = COMPONENT_GENERATION.rarityTiers[rarity] || 0;
+            if (tier === 0) return 0;  // Common gets no bonus
+
+            let budgetPerTier;
+            if (level <= 5) {
+                budgetPerTier = COMPONENT_GENERATION.rarityBudgetPerTier.low;
+            } else if (level <= 10) {
+                budgetPerTier = COMPONENT_GENERATION.rarityBudgetPerTier.mid;
+            } else {
+                budgetPerTier = COMPONENT_GENERATION.rarityBudgetPerTier.high;
+            }
+
+            return tier * budgetPerTier;
+        }
+
+        // Get modifier chance based on level
+        function getModifierChance(level) {
+            const chances = COMPONENT_GENERATION.modifierChanceByLevel;
+            let chance = 0;
+            for (const [lvl, chanceVal] of Object.entries(chances)) {
+                if (level >= parseInt(lvl)) {
+                    chance = chanceVal;
+                }
+            }
+            return chance;
+        }
+
+        // Select a random modifier for an item
+        function selectModifier(itemType, maxBudget) {
+            const allModifiers = COMPONENT_GENERATION.modifiers;
+            const validModifiers = [];
+
+            // Collect all valid modifiers up to maxBudget
+            for (let cost = 1; cost <= maxBudget; cost++) {
+                const modsAtCost = allModifiers[cost] || [];
+                for (const mod of modsAtCost) {
+                    if (mod.appliesTo.includes(itemType)) {
+                        validModifiers.push({ ...mod, cost });
                     }
                 }
             }
 
-            return {
-                area,
-                lengthBonus,
-                aspectBonus,
-                total: area + lengthBonus + aspectBonus
-            };
+            if (validModifiers.length === 0) return null;
+
+            // Weight towards higher cost modifiers slightly
+            const weighted = [];
+            for (const mod of validModifiers) {
+                const weight = mod.cost;  // Higher cost = more weight
+                for (let i = 0; i < weight; i++) {
+                    weighted.push(mod);
+                }
+            }
+
+            return weighted[Math.floor(Math.random() * weighted.length)];
         }
 
         // Generate a random component based on template, level, and rarity
+        // NEW BUDGET SYSTEM:
+        //   - Level 1 = prototype stats (from template.baseStats)
+        //   - Each level adds +1 budget, allocated proportionally to prototype
+        //   - Rarity adds fixed budget based on level range
+        //   - Weight/energy can only decrease by 1 from prototype
+        //   - Knockback and shotsPerRound don't scale
+        //   - Modifiers only for uncommon+ items
         function generateComponent(templateType, level = 1, rarity = 'common', options = {}) {
             const template = ITEM_TEMPLATES[templateType];
             if (!template) {
@@ -3105,230 +3164,157 @@
             // Clone base shape
             let shape = template.baseShape.map(row => [...row]);
 
-            // Apply random variant (30% chance)
+            // Variants disabled in new budget system
             let appliedVariants = [];
-            const variantChance = options.variantChance !== undefined ? options.variantChance : 0.3;
 
-            if (Math.random() < variantChance) {
-                const variantKeys = Object.keys(ITEM_VARIANTS);
-                const variantKey = variantKeys[Math.floor(Math.random() * variantKeys.length)];
-                const variant = ITEM_VARIANTS[variantKey];
-
-                if (variant.shapeModifier) {
-                    shape = variant.shapeModifier(shape);
-                }
-                appliedVariants.push(variantKey);
-            }
-
-            // Calculate budget from shape
-            const shapeBudget = calculateShapeBudget(shape);
-
-            // Calculate total budget with rarity and level multipliers
-            const rarityMult = COMPONENT_GENERATION.rarityMultipliers[rarity] || 1.0;
-            const levelBonus = (level - 1) * COMPONENT_GENERATION.levelBudgetBonus;
-
-            // Apply variance (+/- budgetVariance%)
-            const variance = 1 + (Math.random() * 2 - 1) * COMPONENT_GENERATION.budgetVariance;
-
-            let totalBudget = (shapeBudget.total + levelBonus) * rarityMult * variance;
-
-            // Subtract variant costs
-            for (let variantKey of appliedVariants) {
-                const variant = ITEM_VARIANTS[variantKey];
-                totalBudget += variant.budgetCost || 0;
-            }
-
-            // Clone base stats
+            // Clone prototype stats (level 1 base)
             let stats = { ...template.baseStats };
             let battle = template.baseBattle ? { ...template.baseBattle } : null;
 
-            // Apply stat variants
-            for (let variantKey of appliedVariants) {
-                const variant = ITEM_VARIANTS[variantKey];
-                if (variant.statModifier) {
-                    stats = variant.statModifier(stats);
-                }
-                if (variant.battleModifier && battle) {
-                    battle = variant.battleModifier(battle);
-                }
-            }
-
-            // Distribute remaining budget based on stat weights
-            const statWeights = template.statWeights || {};
-            const exchangeRates = COMPONENT_GENERATION.exchangeRates;
-
-            // Allocate budget to different stats based on weights
-            const budgetToSpend = Math.max(0, totalBudget - shapeBudget.area);  // Budget above base area
-
-            for (let stat in statWeights) {
-                const weight = statWeights[stat];
-                const budgetForStat = budgetToSpend * weight;
-
-                switch(stat) {
-                    case 'damage':
-                        stats.damage = (stats.damage || 0) + Math.round(budgetForStat * exchangeRates.damage);
-                        break;
-                    case 'armor':
-                        stats.armorBonus = (stats.armorBonus || 0) + Math.round(budgetForStat * exchangeRates.armor);
-                        break;
-                    case 'accuracy':
-                        stats.accuracyBonus = (stats.accuracyBonus || 0) + Math.round(budgetForStat * exchangeRates.accuracy);
-                        break;
-                    case 'energyProvided':
-                        stats.energyDraw = (stats.energyDraw || 0) - Math.round(budgetForStat * exchangeRates.energyProvided);
-                        break;
-                    case 'weight':
-                        stats.weight = Math.max(1, (stats.weight || 0) - Math.round(budgetForStat * Math.abs(exchangeRates.weight) * 0.3));
-                        break;
-                    case 'knockback':
-                        if (battle) {
-                            battle.knockback = (battle.knockback || 0) + Math.round(budgetForStat * exchangeRates.knockback);
-                        }
-                        break;
-                    case 'projectileSpeed':
-                        if (battle) {
-                            battle.projectileSpeed = (battle.projectileSpeed || 0) + Math.round(budgetForStat * exchangeRates.projectileSpeed);
-                        }
-                        break;
-                    case 'heatCapacity':
-                        stats.heatCapacity = (stats.heatCapacity || 0) + Math.round(budgetForStat * exchangeRates.heatCapacity);
-                        break;
-                    case 'energyReduction':
-                        stats.energyReduction = (stats.energyReduction || 0) + Math.round(budgetForStat * exchangeRates.energyReduction);
-                        break;
-                }
-            }
+            // Calculate cells for budget info
+            const cells = countShapeCells(shape);
 
             // ============================================
-            // APPLY SPECIAL EFFECT BUDGET SCALING
+            // BUDGET CALCULATION (v2 System)
             // ============================================
-            // Higher rarity items get bonus budget to improve special effects
-            const bonusBudget = COMPONENT_GENERATION.rarityBonusBudget[rarity] || 0;
-            const specialRates = COMPONENT_GENERATION.specialEffectRates;
-            const specialCaps = COMPONENT_GENERATION.specialEffectCaps;
+            // Level budget: +1 per level above 1
+            const levelBudget = Math.max(0, level - 1);
 
-            if (bonusBudget > 0) {
-                let remainingBudget = bonusBudget;
+            // Rarity budget: fixed amount based on level range and tier
+            const rarityBudget = calculateRarityBudget(level, rarity);
 
-                // Determine priority based on item type
-                let priorityKey = 'default';
-                if (template.type === 'SYSTEM' && (stats.directionalDamageBonus || stats.adjacentDamageBonus)) {
-                    priorityKey = 'targeting';
-                } else if (template.type === 'WEAPON') {
-                    priorityKey = 'weapon';
-                } else if (template.type === 'ARMOR') {
-                    priorityKey = 'armor';
-                } else if (template.type === 'REACTOR') {
-                    priorityKey = 'reactor';
+            // Total extra budget to allocate
+            const totalBudget = levelBudget + rarityBudget;
+
+            // ============================================
+            // PROPORTIONAL STAT ALLOCATION
+            // ============================================
+            // Calculate prototype "spend" to determine proportions
+            const rates = COMPONENT_GENERATION.budgetRates;
+            const prototypeSpend = {};
+            let totalPrototypeSpend = 0;
+
+            // Calculate how much budget each stat "costs" in the prototype
+            if (stats.damage > 0) {
+                prototypeSpend.damage = stats.damage * rates.damage;
+                totalPrototypeSpend += prototypeSpend.damage;
+            }
+            if (stats.damageReduction > 0) {
+                prototypeSpend.damageReduction = stats.damageReduction * rates.damageReduction;
+                totalPrototypeSpend += prototypeSpend.damageReduction;
+            }
+            if (stats.hpBonus > 0) {
+                prototypeSpend.hpBonus = stats.hpBonus * rates.hp;
+                totalPrototypeSpend += prototypeSpend.hpBonus;
+            }
+            if (stats.energyDraw < 0) {  // Negative = provides energy
+                prototypeSpend.energyProvided = Math.abs(stats.energyDraw) * rates.energyProvided;
+                totalPrototypeSpend += prototypeSpend.energyProvided;
+            }
+            if (stats.directionalDamageBonus > 0) {
+                prototypeSpend.directionalDamageBonus = stats.directionalDamageBonus * rates.targetingDamage1Dir;
+                totalPrototypeSpend += prototypeSpend.directionalDamageBonus;
+            }
+            if (stats.adjacentDamageBonus > 0) {
+                prototypeSpend.adjacentDamageBonus = stats.adjacentDamageBonus * rates.targetingDamageAllDir;
+                totalPrototypeSpend += prototypeSpend.adjacentDamageBonus;
+            }
+            if (stats.energyReduction > 0) {
+                prototypeSpend.energyReduction = stats.energyReduction * rates.energyReduction;
+                totalPrototypeSpend += prototypeSpend.energyReduction;
+            }
+
+            // Track reductions applied (max 1 each)
+            let weightReduced = 0;
+            let energyReduced = 0;
+
+            // Allocate budget proportionally
+            if (totalBudget > 0 && totalPrototypeSpend > 0) {
+                let remainingBudget = totalBudget;
+
+                // First, try to reduce weight/energy (max 1 each, costs 1 budget each)
+                // 30% chance to apply reduction if item has high weight/energy
+                if (remainingBudget > 0 && stats.weight > 1 && Math.random() < 0.3) {
+                    stats.weight -= 1;
+                    weightReduced = 1;
+                    remainingBudget -= 1;
                 }
-                const priorities = COMPONENT_GENERATION.specialEffectPriorities[priorityKey];
+                if (remainingBudget > 0 && stats.energyDraw > 0 && Math.random() < 0.3) {
+                    stats.energyDraw -= 1;
+                    energyReduced = 1;
+                    remainingBudget -= 1;
+                }
 
-                // Track applied bonuses for description
-                let appliedBonuses = [];
-
-                // Spend budget according to priority
-                for (const effectType of priorities) {
+                // Allocate remaining budget to scalable stats proportionally
+                for (const [stat, spendAmount] of Object.entries(prototypeSpend)) {
                     if (remainingBudget <= 0) break;
 
-                    const cost = specialRates[effectType];
-                    if (!cost) continue;
+                    const proportion = spendAmount / totalPrototypeSpend;
+                    const budgetForStat = Math.floor(remainingBudget * proportion);
+                    if (budgetForStat <= 0) continue;
 
-                    // Calculate how many units we can afford
-                    const unitsAffordable = Math.floor(remainingBudget / cost);
-                    if (unitsAffordable <= 0) continue;
-
-                    switch (effectType) {
+                    switch (stat) {
+                        case 'damage':
+                            // Don't scale damage for multi-hit weapons (shotsPerRound > 1)
+                            if (!battle || battle.shotsPerRound <= 1) {
+                                const damageIncrease = Math.floor(budgetForStat / rates.damage);
+                                stats.damage += damageIncrease;
+                            }
+                            break;
+                        case 'damageReduction':
+                            const drIncrease = Math.floor(budgetForStat / rates.damageReduction);
+                            stats.damageReduction += drIncrease;
+                            break;
+                        case 'hpBonus':
+                            const hpIncrease = Math.floor(budgetForStat / rates.hp);
+                            stats.hpBonus += hpIncrease;
+                            break;
+                        case 'energyProvided':
+                            const energyIncrease = Math.floor(budgetForStat / rates.energyProvided);
+                            stats.energyDraw -= energyIncrease;  // More negative = more energy
+                            break;
                         case 'directionalDamageBonus':
-                            if (stats.directionalDamageBonus !== undefined) {
-                                const maxAdd = specialCaps.directionalDamageBonus - stats.directionalDamageBonus;
-                                const toAdd = Math.min(unitsAffordable, maxAdd);
-                                if (toAdd > 0) {
-                                    stats.directionalDamageBonus += toAdd;
-                                    remainingBudget -= toAdd * cost;
-                                    appliedBonuses.push(`+${toAdd} directional dmg`);
-                                }
-                            }
+                            const dir1Increase = Math.floor(budgetForStat / rates.targetingDamage1Dir);
+                            stats.directionalDamageBonus += dir1Increase;
                             break;
-
                         case 'adjacentDamageBonus':
-                            if (stats.adjacentDamageBonus !== undefined) {
-                                const maxAdd = specialCaps.adjacentDamageBonus - stats.adjacentDamageBonus;
-                                const toAdd = Math.min(unitsAffordable, maxAdd);
-                                if (toAdd > 0) {
-                                    stats.adjacentDamageBonus += toAdd;
-                                    remainingBudget -= toAdd * cost;
-                                    appliedBonuses.push(`+${toAdd} adjacent dmg`);
-                                }
-                            }
+                            const adjIncrease = Math.floor(budgetForStat / rates.targetingDamageAllDir);
+                            stats.adjacentDamageBonus += adjIncrease;
                             break;
-
-                        case 'additionalDirection':
-                            // Add extra directions to directional damage items
-                            if (stats.directionalDamageBonus !== undefined && template.special?.effectDirection) {
-                                const currentDirs = stats.effectDirections ? stats.effectDirections.length : 1;
-                                const maxAdd = specialCaps.totalDirections - currentDirs;
-                                const toAdd = Math.min(unitsAffordable, maxAdd);
-                                if (toAdd > 0) {
-                                    // Initialize directions array if not present
-                                    if (!stats.effectDirections) {
-                                        stats.effectDirections = [template.special.effectDirection];
-                                    }
-                                    const allDirs = ['up', 'down', 'left', 'right'];
-                                    for (let i = 0; i < toAdd && stats.effectDirections.length < 4; i++) {
-                                        const available = allDirs.filter(d => !stats.effectDirections.includes(d));
-                                        if (available.length > 0) {
-                                            stats.effectDirections.push(available[Math.floor(Math.random() * available.length)]);
-                                            remainingBudget -= cost;
-                                        }
-                                    }
-                                    if (stats.effectDirections.length > 1) {
-                                        appliedBonuses.push(`${stats.effectDirections.length} directions`);
-                                    }
-                                }
-                            }
-                            break;
-
-                        case 'weightReduction':
-                            if (stats.weight > 0) {
-                                const maxReduce = Math.min(stats.weight - 0, specialCaps.weightReduction);
-                                const toReduce = Math.min(unitsAffordable, maxReduce);
-                                if (toReduce > 0) {
-                                    stats.weight -= toReduce;
-                                    remainingBudget -= toReduce * cost;
-                                    appliedBonuses.push(`-${toReduce} weight`);
-                                }
-                            }
-                            break;
-
                         case 'energyReduction':
-                            if (stats.energyDraw > 0) {
-                                const maxReduce = Math.min(stats.energyDraw, specialCaps.energyReduction);
-                                const toReduce = Math.min(unitsAffordable, maxReduce);
-                                if (toReduce > 0) {
-                                    stats.energyDraw -= toReduce;
-                                    remainingBudget -= toReduce * cost;
-                                    appliedBonuses.push(`-${toReduce} energy`);
-                                }
-                            }
-                            break;
-
-                        case 'bonusShotsPerRound':
-                            if (battle && battle.shotsPerRound) {
-                                const maxAdd = specialCaps.bonusShotsPerRound;
-                                const toAdd = Math.min(unitsAffordable, maxAdd);
-                                if (toAdd > 0) {
-                                    battle.shotsPerRound += toAdd;
-                                    remainingBudget -= toAdd * cost;
-                                    appliedBonuses.push(`+${toAdd} shots`);
-                                }
-                            }
+                            const reductionIncrease = Math.floor(budgetForStat / rates.energyReduction);
+                            stats.energyReduction += reductionIncrease;
                             break;
                     }
                 }
+            }
 
-                // Store applied bonuses for tooltip display
-                if (appliedBonuses.length > 0) {
-                    stats.rarityBonuses = appliedBonuses;
+            // ============================================
+            // MODIFIER SYSTEM (uncommon+ only)
+            // ============================================
+            let appliedModifier = null;
+
+            if (rarity !== 'common') {
+                const modifierChance = getModifierChance(level);
+                if (Math.random() < modifierChance) {
+                    const maxModBudget = COMPONENT_GENERATION.maxModifierBudget[rarity] || 1;
+                    appliedModifier = selectModifier(template.type, maxModBudget);
+
+                    if (appliedModifier) {
+                        // Apply modifier effects to stats
+                        const effect = appliedModifier.effect;
+                        if (effect.weightBonus) stats.weight = Math.max(0, stats.weight + effect.weightBonus);
+                        if (effect.energyBonus) stats.energyDraw = Math.max(0, stats.energyDraw + effect.energyBonus);
+                        if (effect.drBonus) stats.damageReduction = (stats.damageReduction || 0) + effect.drBonus;
+                        if (effect.hpBonus) stats.hpBonus = (stats.hpBonus || 0) + effect.hpBonus;
+                        if (effect.energyProvidedBonus) stats.energyDraw = (stats.energyDraw || 0) - effect.energyProvidedBonus;
+                        if (effect.adjacentDamageBonus) stats.adjacentDamageBonus = (stats.adjacentDamageBonus || 0) + effect.adjacentDamageBonus;
+
+                        // Store battle-related modifier effects for combat resolution
+                        if (effect.firstShotMultiplier || effect.damagePerReactor || effect.damagePerWeapon) {
+                            stats.modifier = appliedModifier;
+                        }
+                    }
                 }
             }
 
@@ -3337,12 +3323,9 @@
             const suffix = template.nameSuffix[Math.floor(Math.random() * template.nameSuffix.length)];
             let name = `${prefix} ${suffix}`;
 
-            // Add variant names
-            for (let variantKey of appliedVariants) {
-                const variant = ITEM_VARIANTS[variantKey];
-                if (!name.includes(variant.name)) {
-                    name = `${variant.name} ${name}`;
-                }
+            // Add modifier name if present
+            if (appliedModifier) {
+                name = `${appliedModifier.name} ${name}`;
             }
 
             // Add level indicator for higher levels
@@ -3378,11 +3361,17 @@
                 isGenerated: true,
                 templateType,
                 appliedVariants,
+                // Budget info for debugging/tooltips
                 budgetInfo: {
-                    shapeBudget: shapeBudget.total,
+                    cells,
+                    levelBudget,
+                    rarityBudget,
                     totalBudget,
-                    variance: variance
-                }
+                    weightReduced,
+                    energyReduced
+                },
+                // Modifier info if present
+                modifier: appliedModifier
             };
 
             // Add battle properties if weapon
@@ -3452,27 +3441,46 @@
                 railgun: 3,
                 laser: 3,
                 missile: 3,
-                machinegun: 3,
+                machinegun: 2,          // 1×2 = 2 DPR, cheap multi-hit
+                minigun: 1,             // 1×8 = 8 DPR, rare synergy weapon
+                pulse_laser: 1,         // 1×5 = 5 DPR, rare energy multi-hit
                 ballistic_plating: 2,   // Damage reduction armor
                 reactive_plating: 1,    // Better damage reduction, rarer
                 hull_armor: 2,          // HP boost armor
                 heavy_hull: 1,          // More HP, rarer
                 energy_shield: 1.5,     // Energy weapon defense
-                reactor: 0.5,      // Much less common
-                power_cell: 0.5,   // Much less common
-                targeting_link: 3, // Common - directional damage boost
-                targeting_hub: 1,  // Rarer - omnidirectional damage boost
+                reactor: 0.5,           // Much less common
+                power_cell: 0.5,        // Much less common
+                targeting_link: 3,      // Common - directional damage boost
+                targeting_hub: 1,       // Rarer - omnidirectional damage boost
                 gyro: 2,
                 heat_sink: 2,
                 cooling_system: 2
             };
 
-            // Build weighted template list
+            // Build weighted template list, filtered by minimum level
+            const minLevels = getMinLevelCache();
             const weightedTemplates = [];
             for (const [key, weight] of Object.entries(templateWeights)) {
                 if (ITEM_TEMPLATES[key]) {
-                    for (let w = 0; w < weight * 2; w++) {
-                        weightedTemplates.push(key);
+                    // Only include templates whose minLevel <= current enemy level
+                    const templateMinLevel = minLevels[key] || 1;
+                    if (templateMinLevel <= enemyLevel) {
+                        for (let w = 0; w < weight * 2; w++) {
+                            weightedTemplates.push(key);
+                        }
+                    }
+                }
+            }
+
+            // Fallback: if no templates available at this level, use basic templates
+            if (weightedTemplates.length === 0) {
+                console.warn(`No templates available for level ${enemyLevel}, using fallback`);
+                for (const [key, weight] of Object.entries(templateWeights)) {
+                    if (ITEM_TEMPLATES[key] && (minLevels[key] || 1) <= 3) {
+                        for (let w = 0; w < weight * 2; w++) {
+                            weightedTemplates.push(key);
+                        }
                     }
                 }
             }
@@ -3819,35 +3827,70 @@
             // Determine weapon count
             const weaponCount = Math.max(1, Math.min(3, Math.floor(weaponBudget / ENEMY_GENERATION.rates.weaponBudget) + 1));
 
-            // Generate equipment
+            // Generate equipment using templates
             const equipment = [];
             const weaponSlots = ['rightArm', 'leftArm', 'torso'];
-            const weaponTypes = ['railgun_mk1', 'laser_array'];
+
+            // Weapon templates with their weights - filtered by minLevel
+            const minLevels = getMinLevelCache();
+            const allWeaponTemplates = [
+                { key: 'railgun', weight: 3 },
+                { key: 'laser', weight: 3 },
+                { key: 'missile', weight: 2 },
+                { key: 'machinegun', weight: 2 },
+                { key: 'minigun', weight: 1 },
+                { key: 'pulse_laser', weight: 1 }
+            ];
+
+            // Filter to templates available at this level
+            const availableWeapons = allWeaponTemplates.filter(w => (minLevels[w.key] || 1) <= level);
+            const weightedWeapons = [];
+            for (const w of availableWeapons) {
+                for (let j = 0; j < w.weight; j++) {
+                    weightedWeapons.push(w.key);
+                }
+            }
 
             for (let i = 0; i < weaponCount && i < weaponSlots.length; i++) {
-                equipment.push({
-                    itemId: weaponTypes[i % weaponTypes.length],
-                    slot: weaponSlots[i],
-                    position: { x: 0, y: 0 }
-                });
+                const template = weightedWeapons[Math.floor(Math.random() * weightedWeapons.length)] || 'railgun';
+                const weapon = generateComponent(template, level, 'common', { variantChance: 0 });
+                if (weapon) {
+                    weapon.id = `enemy_${template}_${Date.now()}_${i}`;
+                    registerGeneratedComponent(weapon);
+                    equipment.push({
+                        itemId: weapon.id,
+                        slot: weaponSlots[i],
+                        position: { x: 0, y: 0 }
+                    });
+                }
             }
 
             // Add armor if high enough level
             if (level >= 2 && baseArmor > 20) {
-                equipment.push({
-                    itemId: 'armor_plate',
-                    slot: 'torso',
-                    position: { x: 0, y: 0 }
-                });
+                const armor = generateComponent('ballistic_plating', level, 'common', { variantChance: 0 });
+                if (armor) {
+                    armor.id = `enemy_armor_${Date.now()}`;
+                    registerGeneratedComponent(armor);
+                    equipment.push({
+                        itemId: armor.id,
+                        slot: 'torso',
+                        position: { x: 0, y: 0 }
+                    });
+                }
             }
 
             // Add reactor for energy
             if (weaponCount >= 2) {
-                equipment.push({
-                    itemId: 'reactor_core',
-                    slot: 'torso',
-                    position: { x: 2, y: 0 }
-                });
+                const reactor = generateComponent('power_cell', level, 'common', { variantChance: 0 });
+                if (reactor) {
+                    reactor.id = `enemy_reactor_${Date.now()}`;
+                    registerGeneratedComponent(reactor);
+                    equipment.push({
+                        itemId: reactor.id,
+                        slot: 'torso',
+                        position: { x: 2, y: 0 }
+                    });
+                }
             }
 
             // Generate name
@@ -4266,75 +4309,110 @@
         // Fire a weapon from loadout
         function fireLoadoutWeapon(mech, weaponData, target) {
             const now = performance.now();
-            // Calculate cooldown from shotsPerRound (3 second round)
-            const shotsPerRound = weaponData.battle.shotsPerRound || 1;
-            const cooldown = 3000 / shotsPerRound;
+            // Cooldown is per-burst (full 3 seconds), not per-shot
+            const cooldown = 3000;
             if (now - weaponData.lastFired < cooldown) {
                 return; // Still on cooldown
             }
             weaponData.lastFired = now;
 
             const battle = weaponData.battle;
+            const shotsPerRound = battle.shotsPerRound || 1;
             const fromPos = mech.pelvis.getAbsolutePosition();
             const toPos = target.pelvis.getAbsolutePosition();
             const direction = toPos.subtract(fromPos).normalize();
 
-            // Fire from alternating arms
-            const arm = mech.lastFiredArm === 'left' ? mech.rightArm : mech.leftArm;
-            mech.lastFiredArm = mech.lastFiredArm === 'left' ? 'right' : 'left';
-            const armPos = arm.getAbsolutePosition();
+            // Pick which arm fires this burst (alternate between bursts, not within burst)
+            const firingArm = mech.lastFiredArm === 'left' ? mech.rightArm : mech.leftArm;
 
-            if (battle.isBeam) {
-                // Create beam
-                const beamLength = BABYLON.Vector3.Distance(armPos, toPos);
-                const beam = BABYLON.MeshBuilder.CreateCylinder('beam_' + Date.now(), {
-                    diameter: 0.15,
-                    height: beamLength
-                }, battleScene);
+            // Fire all shots in a rapid burst with staggered timing
+            for (let shotIndex = 0; shotIndex < shotsPerRound; shotIndex++) {
+                // Delay between shots in burst (spread over ~400ms max for visual clarity)
+                const burstDuration = Math.min(500, 60 * shotsPerRound);
+                const shotDelay = shotIndex * (burstDuration / shotsPerRound);
 
-                const midpoint = armPos.add(toPos).scale(0.5);
-                beam.position = midpoint;
-                beam.lookAt(toPos);
-                beam.rotation.x += Math.PI / 2;
+                setTimeout(() => {
+                    // Check if battle is still ongoing
+                    if (!battleScene || mech.isDestroyed || target.isDestroyed) return;
 
-                const beamMat = new BABYLON.StandardMaterial('beamMat', battleScene);
-                beamMat.emissiveColor = new BABYLON.Color3(battle.color[0], battle.color[1], battle.color[2]);
-                beamMat.alpha = 0.8;
-                beam.material = beamMat;
+                    // All shots in burst come from the same weapon/arm
+                    const armPos = firingArm.getAbsolutePosition();
 
-                beams.push({
-                    mesh: beam,
-                    damage: weaponData.damage,
-                    knockback: battle.knockback,
-                    target: target,
-                    startTime: now,
-                    duration: battle.beamDuration,
-                    applied: false
-                });
-            } else {
-                // Create projectile
-                const projectile = BABYLON.MeshBuilder.CreateSphere('proj_' + Date.now(), {
-                    diameter: battle.projectileSize * 2
-                }, battleScene);
-                projectile.position = armPos.clone();
+                    // Recalculate direction for moving targets
+                    const currentTargetPos = target.pelvis.getAbsolutePosition();
+                    const currentDirection = currentTargetPos.subtract(armPos).normalize();
 
-                const projMat = new BABYLON.StandardMaterial('projMat', battleScene);
-                projMat.emissiveColor = new BABYLON.Color3(battle.color[0], battle.color[1], battle.color[2]);
-                projectile.material = projMat;
+                    // Add slight spread for visual variety (especially for high shot counts)
+                    const spread = shotsPerRound > 1 ? 0.05 : 0;
+                    const spreadDir = currentDirection.clone();
+                    spreadDir.x += (Math.random() - 0.5) * spread;
+                    spreadDir.z += (Math.random() - 0.5) * spread;
+                    spreadDir.normalize();
 
-                projectiles.push({
-                    mesh: projectile,
-                    velocity: direction.scale(battle.projectileSpeed),
-                    damage: weaponData.damage,
-                    knockback: battle.knockback,
-                    target: target,
-                    startTime: now
-                });
+                    if (battle.isBeam) {
+                        // Create beam pulse
+                        const beamLength = BABYLON.Vector3.Distance(armPos, currentTargetPos);
+                        const beam = BABYLON.MeshBuilder.CreateCylinder('beam_' + Date.now() + '_' + shotIndex, {
+                            diameter: 0.12 + (Math.random() * 0.06),  // Slight size variation
+                            height: beamLength
+                        }, battleScene);
+
+                        const midpoint = armPos.add(currentTargetPos).scale(0.5);
+                        beam.position = midpoint;
+                        beam.lookAt(currentTargetPos);
+                        beam.rotation.x += Math.PI / 2;
+
+                        const beamMat = new BABYLON.StandardMaterial('beamMat_' + shotIndex, battleScene);
+                        // Slight color variation per pulse
+                        const colorVar = 0.9 + Math.random() * 0.1;
+                        beamMat.emissiveColor = new BABYLON.Color3(
+                            battle.color[0] * colorVar,
+                            battle.color[1] * colorVar,
+                            battle.color[2] * colorVar
+                        );
+                        beamMat.alpha = 0.7 + Math.random() * 0.3;
+                        beam.material = beamMat;
+
+                        beams.push({
+                            mesh: beam,
+                            damage: weaponData.damage,  // Each shot does weapon's damage
+                            knockback: battle.knockback / shotsPerRound,  // Split knockback
+                            target: target,
+                            startTime: performance.now(),
+                            duration: battle.beamDuration || 100,
+                            applied: false
+                        });
+                    } else {
+                        // Create projectile
+                        const projectile = BABYLON.MeshBuilder.CreateSphere('proj_' + Date.now() + '_' + shotIndex, {
+                            diameter: battle.projectileSize * 2
+                        }, battleScene);
+                        projectile.position = armPos.clone();
+
+                        const projMat = new BABYLON.StandardMaterial('projMat_' + shotIndex, battleScene);
+                        projMat.emissiveColor = new BABYLON.Color3(battle.color[0], battle.color[1], battle.color[2]);
+                        projectile.material = projMat;
+
+                        projectiles.push({
+                            mesh: projectile,
+                            velocity: spreadDir.scale(battle.projectileSpeed),
+                            damage: weaponData.damage,  // Each projectile does weapon's damage
+                            knockback: battle.knockback / shotsPerRound,  // Split knockback
+                            target: target,
+                            startTime: performance.now()
+                        });
+                    }
+
+                    // Small recoil per shot
+                    const recoilImpulse = currentDirection.scale(-battle.knockback * 0.05);
+                    if (mech.pelvisBody) {
+                        mech.pelvisBody.applyImpulse(recoilImpulse, fromPos);
+                    }
+                }, shotDelay);
             }
 
-            // Apply recoil
-            const recoilImpulse = direction.scale(-battle.knockback * 0.2);
-            mech.pelvisBody.applyImpulse(recoilImpulse, fromPos);
+            // Update last fired arm after burst
+            mech.lastFiredArm = mech.lastFiredArm === 'left' ? 'right' : 'left';
         }
 
         // Update projectiles
@@ -4594,19 +4672,26 @@
         // Persistent bench items (no deck system - items stay on bench or mech)
         let benchItems = [];  // Array of item objects on the bench
 
-        // Initialize with starter items
+        // Initialize with starter items (level 0, weaker than shop items)
         function initializeStarterItems() {
             benchItems = [];
-            // Add starter weapons
-            const starterWeapon1 = { ...ITEM_DATABASE.railgun_mk1, instanceId: 'start_1' };
-            const starterWeapon2 = { ...ITEM_DATABASE.laser_array, instanceId: 'start_2' };
-            const starterMissile = { ...ITEM_DATABASE.missile_rack, instanceId: 'start_3' };
-            const starterReactor = { ...ITEM_DATABASE.reactor_core, instanceId: 'start_4' };
-            // Add starter defensive items
-            const starterArmor = { ...ITEM_DATABASE.armor_plate, instanceId: 'start_5' };
-            const starterShield = { ...ITEM_DATABASE.basic_shield, instanceId: 'start_6' };
-            const starterLink = { ...ITEM_DATABASE.targeting_computer, instanceId: 'start_7' };
-            benchItems.push(starterWeapon1, starterWeapon2, starterMissile, starterReactor, starterArmor, starterShield, starterLink);
+
+            // Generate starter items from templates at level 0 (weaker than level 1)
+            STARTER_ITEMS.forEach((config, index) => {
+                // Generate with level 0, common rarity, no variance
+                const item = generateComponent(config.template, 0, 'common', { variantChance: 0 });
+                if (item) {
+                    // Override name with starter name
+                    item.name = config.name;
+                    item.id = config.id;
+                    item.instanceId = `start_${index + 1}`;
+                    item.isStarter = true;  // Mark as starter item
+
+                    // Register in database and add to bench
+                    registerGeneratedComponent(item);
+                    benchItems.push(item);
+                }
+            });
         }
 
         // Player resources
@@ -8410,6 +8495,259 @@
 
             console.log('MechBuilder initialized!');
         }
+
+        // ============================================
+        // TEST FUNCTIONS (call from browser console)
+        // ============================================
+        function testComponentGeneration() {
+            console.log('=== COMPONENT GENERATION TESTS ===\n');
+            let passed = 0;
+            let failed = 0;
+
+            function assert(condition, testName, details = '') {
+                if (condition) {
+                    console.log(`✓ ${testName}`);
+                    passed++;
+                } else {
+                    console.error(`✗ ${testName}`, details);
+                    failed++;
+                }
+            }
+
+            // Test 1: Level 1 Common should have prototype stats
+            console.log('\n--- Test 1: Level 1 Common = Prototype Stats ---');
+            const laser1 = generateComponent('laser', 1, 'common');
+            assert(laser1.stats.damage === 4, 'Laser L1 damage = 4 (prototype)', `Got: ${laser1.stats.damage}`);
+            assert(laser1.stats.energyDraw === 2, 'Laser L1 energy = 2 (prototype)', `Got: ${laser1.stats.energyDraw}`);
+            assert(laser1.stats.weight === 1, 'Laser L1 weight = 1 (prototype)', `Got: ${laser1.stats.weight}`);
+            assert(laser1.budgetInfo.levelBudget === 0, 'Level budget = 0 at L1', `Got: ${laser1.budgetInfo.levelBudget}`);
+            assert(laser1.budgetInfo.rarityBudget === 0, 'Rarity budget = 0 for common', `Got: ${laser1.budgetInfo.rarityBudget}`);
+            assert(laser1.modifier === null, 'No modifier on common item', `Got: ${laser1.modifier}`);
+
+            // Test 2: Level 5 should have +4 budget
+            console.log('\n--- Test 2: Level 5 Common = +4 Budget ---');
+            const laser5 = generateComponent('laser', 5, 'common');
+            assert(laser5.budgetInfo.levelBudget === 4, 'Level budget = 4 at L5', `Got: ${laser5.budgetInfo.levelBudget}`);
+            assert(laser5.stats.damage >= 4, 'Laser L5 damage >= 4', `Got: ${laser5.stats.damage}`);
+            // Damage should increase (most of budget goes to damage since it's 50% of prototype spend)
+            assert(laser5.stats.damage > laser1.stats.damage, 'Laser L5 damage > L1 damage', `L5: ${laser5.stats.damage}, L1: ${laser1.stats.damage}`);
+
+            // Test 3: Multi-hit weapons should NOT scale damage
+            console.log('\n--- Test 3: Multi-Hit Weapons = Fixed Damage ---');
+            const minigun1 = generateComponent('minigun', 1, 'common');
+            const minigun10 = generateComponent('minigun', 10, 'common');
+            assert(minigun1.stats.damage === 1, 'Minigun L1 damage = 1 (fixed)', `Got: ${minigun1.stats.damage}`);
+            assert(minigun10.stats.damage === 1, 'Minigun L10 damage = 1 (still fixed!)', `Got: ${minigun10.stats.damage}`);
+            assert(minigun1.battle.shotsPerRound === 8, 'Minigun shots = 8', `Got: ${minigun1.battle.shotsPerRound}`);
+
+            const pulseLaser1 = generateComponent('pulse_laser', 1, 'common');
+            const pulseLaser10 = generateComponent('pulse_laser', 10, 'common');
+            assert(pulseLaser1.stats.damage === 1, 'Pulse Laser L1 damage = 1 (fixed)', `Got: ${pulseLaser1.stats.damage}`);
+            assert(pulseLaser10.stats.damage === 1, 'Pulse Laser L10 damage = 1 (still fixed!)', `Got: ${pulseLaser10.stats.damage}`);
+
+            // Test 4: Rarity budget scales with level range
+            console.log('\n--- Test 4: Rarity Budget Scaling ---');
+            const rareLv3 = generateComponent('laser', 3, 'rare');
+            const rareLv8 = generateComponent('laser', 8, 'rare');
+            const rareLv12 = generateComponent('laser', 12, 'rare');
+            assert(rareLv3.budgetInfo.rarityBudget === 2, 'Rare L3: rarity budget = 2 (tier 2 × 1)', `Got: ${rareLv3.budgetInfo.rarityBudget}`);
+            assert(rareLv8.budgetInfo.rarityBudget === 4, 'Rare L8: rarity budget = 4 (tier 2 × 2)', `Got: ${rareLv8.budgetInfo.rarityBudget}`);
+            assert(rareLv12.budgetInfo.rarityBudget === 6, 'Rare L12: rarity budget = 6 (tier 2 × 3)', `Got: ${rareLv12.budgetInfo.rarityBudget}`);
+
+            const legendaryLv5 = generateComponent('laser', 5, 'legendary');
+            const legendaryLv10 = generateComponent('laser', 10, 'legendary');
+            assert(legendaryLv5.budgetInfo.rarityBudget === 4, 'Legendary L5: rarity budget = 4 (tier 4 × 1)', `Got: ${legendaryLv5.budgetInfo.rarityBudget}`);
+            assert(legendaryLv10.budgetInfo.rarityBudget === 8, 'Legendary L10: rarity budget = 8 (tier 4 × 2)', `Got: ${legendaryLv10.budgetInfo.rarityBudget}`);
+
+            // Test 5: Weight/energy reduction max -1
+            console.log('\n--- Test 5: Weight/Energy Reduction Capped at -1 ---');
+            // Generate many items to check that reductions never exceed -1
+            let maxWeightReduction = 0;
+            let maxEnergyReduction = 0;
+            for (let i = 0; i < 100; i++) {
+                const item = generateComponent('laser', 10, 'legendary');
+                maxWeightReduction = Math.max(maxWeightReduction, item.budgetInfo.weightReduced);
+                maxEnergyReduction = Math.max(maxEnergyReduction, item.budgetInfo.energyReduced);
+            }
+            assert(maxWeightReduction <= 1, 'Weight reduction never exceeds 1', `Max seen: ${maxWeightReduction}`);
+            assert(maxEnergyReduction <= 1, 'Energy reduction never exceeds 1', `Max seen: ${maxEnergyReduction}`);
+
+            // Test 6: Only uncommon+ gets modifiers
+            console.log('\n--- Test 6: Modifiers Only on Uncommon+ ---');
+            let commonModCount = 0;
+            let uncommonModCount = 0;
+            for (let i = 0; i < 100; i++) {
+                const common = generateComponent('laser', 15, 'common');
+                const uncommon = generateComponent('laser', 15, 'uncommon');
+                if (common.modifier) commonModCount++;
+                if (uncommon.modifier) uncommonModCount++;
+            }
+            assert(commonModCount === 0, 'Common items never get modifiers', `Got ${commonModCount} modifiers in 100 items`);
+            assert(uncommonModCount > 0, 'Uncommon items can get modifiers', `Got ${uncommonModCount} modifiers in 100 items`);
+
+            // Test 7: Higher rarity = access to higher cost modifiers
+            console.log('\n--- Test 7: Modifier Budget by Rarity ---');
+            let uncommonMaxCost = 0;
+            let rareMaxCost = 0;
+            let epicMaxCost = 0;
+            for (let i = 0; i < 200; i++) {
+                const uncommon = generateComponent('laser', 15, 'uncommon');
+                const rare = generateComponent('laser', 15, 'rare');
+                const epic = generateComponent('laser', 15, 'epic');
+                if (uncommon.modifier) {
+                    const cost = Object.keys(COMPONENT_GENERATION.modifiers).find(c =>
+                        COMPONENT_GENERATION.modifiers[c].some(m => m.id === uncommon.modifier.id)
+                    );
+                    uncommonMaxCost = Math.max(uncommonMaxCost, parseInt(cost) || 0);
+                }
+                if (rare.modifier) {
+                    const cost = Object.keys(COMPONENT_GENERATION.modifiers).find(c =>
+                        COMPONENT_GENERATION.modifiers[c].some(m => m.id === rare.modifier.id)
+                    );
+                    rareMaxCost = Math.max(rareMaxCost, parseInt(cost) || 0);
+                }
+                if (epic.modifier) {
+                    const cost = Object.keys(COMPONENT_GENERATION.modifiers).find(c =>
+                        COMPONENT_GENERATION.modifiers[c].some(m => m.id === epic.modifier.id)
+                    );
+                    epicMaxCost = Math.max(epicMaxCost, parseInt(cost) || 0);
+                }
+            }
+            assert(uncommonMaxCost <= 1, 'Uncommon max modifier cost = 1', `Got: ${uncommonMaxCost}`);
+            assert(rareMaxCost <= 2, 'Rare max modifier cost = 2', `Got: ${rareMaxCost}`);
+            assert(epicMaxCost <= 3, 'Epic max modifier cost = 3', `Got: ${epicMaxCost}`);
+
+            // Test 8: Armor HP scaling
+            console.log('\n--- Test 8: Armor HP Scaling ---');
+            const hull1 = generateComponent('hull_armor', 1, 'common');
+            const hull5 = generateComponent('hull_armor', 5, 'common');
+            assert(hull1.stats.hpBonus === 10, 'Hull Armor L1 HP = 10 (prototype)', `Got: ${hull1.stats.hpBonus}`);
+            assert(hull5.stats.hpBonus > hull1.stats.hpBonus, 'Hull Armor L5 HP > L1 HP', `L5: ${hull5.stats.hpBonus}, L1: ${hull1.stats.hpBonus}`);
+
+            // Test 9: Minimum Level System
+            console.log('\n--- Test 9: Minimum Level Calculation ---');
+            const minLevels = getMinLevelCache();
+
+            // Minigun: 4 cells + 2 weight + 2 energy = 8 earned
+            //          8 damage (1×8) + 3.5 multi-hit = 11.5 spent
+            //          Net: 8 - 11.5 = -3.5, minLevel = ceil(3.5) + 1 = 5
+            const minigunMinLevel = minLevels['minigun'];
+            assert(minigunMinLevel >= 4, 'Minigun minLevel >= 4 (overpowered at L1)', `Got: ${minigunMinLevel}`);
+
+            // Laser: 2 cells + 1 weight + 4 energy = 7 earned
+            //        4 damage = 4 spent
+            //        Net: 7 - 4 = +3, minLevel = 1 (underpowered)
+            const laserMinLevel = minLevels['laser'];
+            assert(laserMinLevel === 1, 'Laser minLevel = 1 (balanced/underpowered)', `Got: ${laserMinLevel}`);
+
+            // Machinegun: 3 cells + 1 weight + 0 energy = 4 earned
+            //             2 damage (1×2) + 0.5 multi-hit = 2.5 spent
+            //             Net: 4 - 2.5 = +1.5, minLevel = 1
+            const machinegunMinLevel = minLevels['machinegun'];
+            assert(machinegunMinLevel === 1, 'Machinegun minLevel = 1 (underpowered)', `Got: ${machinegunMinLevel}`);
+
+            // Test 10: Budget Balance Sanity Check
+            console.log('\n--- Test 10: Budget Balance Values ---');
+            const templates = ['railgun', 'laser', 'missile', 'machinegun', 'minigun', 'pulse_laser',
+                              'ballistic_plating', 'hull_armor', 'reactor', 'targeting_hub'];
+            for (const key of templates) {
+                if (ITEM_TEMPLATES[key]) {
+                    const balance = calculateTemplateBudgetBalance(ITEM_TEMPLATES[key]);
+                    const minLevel = minLevels[key];
+                    console.log(`  ${key}: earned=${balance.budgetEarned.toFixed(1)}, spent=${balance.budgetSpent.toFixed(1)}, net=${balance.netBalance.toFixed(1)}, minLevel=${minLevel}`);
+                }
+            }
+            // Just verify the function runs without error
+            assert(Object.keys(minLevels).length > 0, 'MinLevel cache populated', `Keys: ${Object.keys(minLevels).length}`);
+
+            // Summary
+            console.log('\n=== TEST SUMMARY ===');
+            console.log(`Passed: ${passed}`);
+            console.log(`Failed: ${failed}`);
+            console.log(`Total: ${passed + failed}`);
+
+            return { passed, failed };
+        }
+
+        // Quick item generation diagnostic
+        function showItemStats(templateType, level = 1, rarity = 'common') {
+            const item = generateComponent(templateType, level, rarity);
+            console.log(`\n=== ${item.name} (${templateType} L${level} ${rarity}) ===`);
+            console.log('Stats:', item.stats);
+            console.log('Battle:', item.battle || 'N/A');
+            console.log('Budget Info:', item.budgetInfo);
+            if (item.modifier) {
+                console.log('Modifier:', item.modifier.name, '-', item.modifier.description);
+            }
+            return item;
+        }
+
+        // Generate comparison table
+        function compareItemLevels(templateType, levels = [1, 5, 10], rarities = ['common', 'rare', 'legendary']) {
+            console.log(`\n=== ${templateType} Level/Rarity Comparison ===`);
+            const results = [];
+            for (const rarity of rarities) {
+                for (const level of levels) {
+                    const item = generateComponent(templateType, level, rarity);
+                    results.push({
+                        level,
+                        rarity,
+                        damage: item.stats.damage || '-',
+                        energy: item.stats.energyDraw || '-',
+                        weight: item.stats.weight || '-',
+                        hp: item.stats.hpBonus || '-',
+                        dr: item.stats.damageReduction || '-',
+                        levelBudget: item.budgetInfo.levelBudget,
+                        rarityBudget: item.budgetInfo.rarityBudget,
+                        modifier: item.modifier ? item.modifier.name : '-'
+                    });
+                }
+            }
+            console.table(results);
+            return results;
+        }
+
+        // Show budget balance for all templates
+        function showAllTemplateBudgets() {
+            console.log('\n=== TEMPLATE BUDGET BALANCE REPORT ===');
+            const results = [];
+            const minLevels = getMinLevelCache();
+
+            for (const [key, template] of Object.entries(ITEM_TEMPLATES)) {
+                const balance = calculateTemplateBudgetBalance(template);
+                results.push({
+                    template: key,
+                    type: template.type,
+                    cells: balance.cells,
+                    shots: balance.shots,
+                    earned: balance.budgetEarned.toFixed(1),
+                    spent: balance.budgetSpent.toFixed(1),
+                    net: balance.netBalance.toFixed(1),
+                    minLevel: minLevels[key]
+                });
+            }
+
+            // Sort by minLevel descending (most restricted first)
+            results.sort((a, b) => b.minLevel - a.minLevel);
+            console.table(results);
+
+            // Summary
+            const overpowered = results.filter(r => r.minLevel > 1);
+            console.log(`\nOverpowered templates (need higher level):`);
+            for (const r of overpowered) {
+                console.log(`  ${r.template}: minLevel ${r.minLevel} (net ${r.net})`);
+            }
+
+            return results;
+        }
+
+        // Expose test functions globally
+        window.testComponentGeneration = testComponentGeneration;
+        window.showItemStats = showItemStats;
+        window.compareItemLevels = compareItemLevels;
+        window.showAllTemplateBudgets = showAllTemplateBudgets;
+        window.getMinLevelCache = getMinLevelCache;
+        window.calculateTemplateBudgetBalance = calculateTemplateBudgetBalance;
 
         // Start the game
         initEngine();

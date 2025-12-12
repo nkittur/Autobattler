@@ -1335,7 +1335,9 @@
             currentPitch: 0,         // Current torso pitch (with lag)
             aimSpeed: 3.0,           // How fast torso follows mouse (lower = more lag)
             maxYaw: 1.2,             // Max horizontal rotation (radians, ~69 degrees)
-            maxPitch: 0.4            // Max vertical rotation (radians, ~23 degrees)
+            maxPitch: 0.5,           // Max vertical rotation (radians, ~29 degrees)
+            pitchSensitivity: 1.8,   // Multiplier for vertical sensitivity
+            defaultPitch: -0.15      // Default pitch offset (negative = look down)
         };
 
         // Weapon cooldowns per mech (keyed by mech name)
@@ -7922,11 +7924,11 @@
             pilotingModeActive = true;
             log('User piloting mode ENABLED - cockpit view active');
 
-            // Reset aim state
+            // Reset aim state - use defaultPitch for initial downward view
             pilotingState.targetYaw = 0;
-            pilotingState.targetPitch = -0.1;  // Aim down slightly by default
+            pilotingState.targetPitch = pilotingState.defaultPitch;
             pilotingState.currentYaw = 0;
-            pilotingState.currentPitch = -0.1;
+            pilotingState.currentPitch = pilotingState.defaultPitch;
 
             // Show cockpit HUD elements
             document.getElementById('cockpitCrosshair').classList.add('active');
@@ -8020,8 +8022,11 @@
             // Convert to target angles (yaw and pitch)
             // Horizontal: mouse right = torso turns right (positive yaw)
             pilotingState.targetYaw = relX * pilotingState.maxYaw;
-            // Vertical: mouse up = look up (positive pitch)
-            pilotingState.targetPitch = -relY * pilotingState.maxPitch;
+            // Vertical: mouse up = look up, with increased sensitivity and default downward offset
+            // Center mouse = looking slightly down (defaultPitch), moving up/down from there
+            pilotingState.targetPitch = pilotingState.defaultPitch + (-relY * pilotingState.maxPitch * pilotingState.pitchSensitivity);
+            // Clamp to reasonable range
+            pilotingState.targetPitch = Math.max(-pilotingState.maxPitch * 1.5, Math.min(pilotingState.maxPitch, pilotingState.targetPitch));
         }
 
         // Touch handlers
@@ -8105,9 +8110,10 @@
             const relX = ((touchX - rect.left) / rect.width - 0.5) * 2;
             const relY = ((touchY - rect.top) / rect.height - 0.5) * 2;
 
-            // Convert to target angles
+            // Convert to target angles with sensitivity and default offset
             pilotingState.targetYaw = relX * pilotingState.maxYaw;
-            pilotingState.targetPitch = -relY * pilotingState.maxPitch;
+            pilotingState.targetPitch = pilotingState.defaultPitch + (-relY * pilotingState.maxPitch * pilotingState.pitchSensitivity);
+            pilotingState.targetPitch = Math.max(-pilotingState.maxPitch * 1.5, Math.min(pilotingState.maxPitch, pilotingState.targetPitch));
         }
 
         function showFireEffect(x, y) {
@@ -8196,11 +8202,26 @@
                 from.recoilRecovery = weapon.recoil;
                 from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';
 
-                // Get arm for firing
+                // Get fire point - try arm weaponPod, then shoulder pods, then torso
+                let firePoint = null;
                 const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
-                if (!arm || !arm.weaponPod) return;
 
-                const firePoint = arm.weaponPod.getAbsolutePosition();
+                if (arm && arm.weaponPod) {
+                    firePoint = arm.weaponPod.getAbsolutePosition();
+                } else if (from.lastFiredArm === 'left' && from.leftPod) {
+                    firePoint = from.leftPod.getAbsolutePosition();
+                } else if (from.lastFiredArm === 'right' && from.rightPod) {
+                    firePoint = from.rightPod.getAbsolutePosition();
+                } else if (from.torso) {
+                    // Fallback to torso position
+                    firePoint = from.torso.getAbsolutePosition();
+                    firePoint.y += 0.5;  // Raise slightly
+                }
+
+                if (!firePoint) {
+                    log(`[PILOT FIRE ERROR] No valid fire point found for ${from.name}`, 'error');
+                    return;
+                }
 
                 // Apply recoil
                 const toTarget = targetPos.subtract(firePoint).normalize();
@@ -8211,13 +8232,13 @@
                     );
                 }
 
-                // Fire based on weapon type
+                // Fire based on weapon type (pass firePoint to avoid recalculating)
                 if (weapon.isBeam) {
-                    fireBeamAtPosition(from, targetPos, weapon);
+                    fireBeamAtPosition(from, targetPos, weapon, firePoint);
                 } else if (weapon.isCluster) {
-                    fireClusterAtPosition(from, targetPos, weapon);
+                    fireClusterAtPosition(from, targetPos, weapon, firePoint);
                 } else {
-                    fireProjectileAtPosition(from, targetPos, weapon);
+                    fireProjectileAtPosition(from, targetPos, weapon, firePoint);
                 }
 
                 triggerCinematicAction(from, 'fire');
@@ -8227,11 +8248,13 @@
             }
         }
 
-        function fireProjectileAtPosition(from, targetPos, weapon) {
-            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
-            if (!arm || !arm.weaponPod) return;
-
-            const firePoint = arm.weaponPod.getAbsolutePosition();
+        function fireProjectileAtPosition(from, targetPos, weapon, firePoint) {
+            if (!firePoint) {
+                // Fallback if not passed
+                const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
+                if (!arm || !arm.weaponPod) return;
+                firePoint = arm.weaponPod.getAbsolutePosition();
+            }
             const direction = targetPos.subtract(firePoint).normalize();
 
             // Add slight spread
@@ -8263,11 +8286,13 @@
             });
         }
 
-        function fireBeamAtPosition(from, targetPos, weapon) {
-            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
-            if (!arm || !arm.weaponPod) return;
-
-            const firePoint = arm.weaponPod.getAbsolutePosition();
+        function fireBeamAtPosition(from, targetPos, weapon, firePoint) {
+            if (!firePoint) {
+                // Fallback if not passed
+                const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
+                if (!arm || !arm.weaponPod) return;
+                firePoint = arm.weaponPod.getAbsolutePosition();
+            }
 
             // Find enemies along the beam path and apply damage
             const enemies = allMechs.filter(m => m && !m.isDestroyed && m !== from && m.isPlayer !== from.isPlayer);
@@ -8334,11 +8359,13 @@
             }
         }
 
-        function fireClusterAtPosition(from, targetPos, weapon) {
-            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
-            if (!arm || !arm.weaponPod) return;
-
-            const firePoint = arm.weaponPod.getAbsolutePosition();
+        function fireClusterAtPosition(from, targetPos, weapon, firePoint) {
+            if (!firePoint) {
+                // Fallback if not passed
+                const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
+                if (!arm || !arm.weaponPod) return;
+                firePoint = arm.weaponPod.getAbsolutePosition();
+            }
             const clusterCount = weapon.clusterCount || 6;
 
             for (let i = 0; i < clusterCount; i++) {

@@ -5954,55 +5954,88 @@
 
             // Store the current fallen position for blending
             const pos = mech.pelvis.getAbsolutePosition();
+            mech.recoveryStartX = pos.x;
             mech.recoveryStartY = pos.y;
+            mech.recoveryStartZ = pos.z;
             mech.recoveryStartQuat = quat ? quat.clone() : BABYLON.Quaternion.Identity();
         }
 
         function updateRecovery(mech, dt) {
             mech.recoveryTimer += dt;
             const body = mech.pelvisAggregate.body;
+            const pos = mech.pelvis.getAbsolutePosition();
+            const currentQuat = body.transformNode.rotationQuaternion;
 
             const blendTime = STABILITY_CONFIG.recoveryBlendTime;
             const stabilizeTime = 0.3;
 
+            // Target standing position and rotation
+            const standingY = 3.5 * mech.scale;
+            const startQuat = mech.recoveryStartQuat || BABYLON.Quaternion.Identity();
+            const startEuler = startQuat.toEulerAngles();
+            const targetQuat = BABYLON.Quaternion.FromEulerAngles(0, startEuler.y, 0);
+
             if (mech.recoveryTimer < blendTime) {
-                // Phase 1: Blend from fallen position to upright standing
+                // Phase 1: Use velocity to lift and rotate upright
                 const t = mech.recoveryTimer / blendTime;
-                const easeT = t * t * (3 - 2 * t);  // Smoothstep for nice easing
+                const easeT = t * t * (3 - 2 * t);  // Smoothstep
 
-                // Get stored starting quaternion (from when mech was fallen)
-                const startQuat = mech.recoveryStartQuat || BABYLON.Quaternion.Identity();
-                const startEuler = startQuat.toEulerAngles();
+                // Calculate linear velocity to reach standing height
+                // Also keep X/Z position stable (don't drift)
+                const startX = mech.recoveryStartX || pos.x;
+                const startZ = mech.recoveryStartZ || pos.z;
+                const heightError = standingY - pos.y;
+                const xError = startX - pos.x;
+                const zError = startZ - pos.z;
 
-                // Target: upright (0 pitch/roll) but preserve the yaw facing direction
-                const targetQuat = BABYLON.Quaternion.FromEulerAngles(0, startEuler.y, 0);
+                // Velocity-based movement (similar to ground-seeking in walking)
+                const liftSpeed = 10.0;  // How fast we lift
+                const stabilizeSpeed = 5.0;  // How fast we correct X/Z drift
+                body.setLinearVelocity(new BABYLON.Vector3(
+                    xError * stabilizeSpeed,
+                    heightError * liftSpeed,
+                    zError * stabilizeSpeed
+                ));
+
+                // Blend rotation using slerp, then set it directly
+                // In ANIMATED mode, we can set rotation directly
                 const blendedQuat = BABYLON.Quaternion.Slerp(startQuat, targetQuat, easeT);
                 body.transformNode.rotationQuaternion = blendedQuat;
 
-                // Blend Y position from fallen to standing height
-                const standingY = 3.5 * mech.scale;
-                const startY = mech.recoveryStartY || 0;
-                const targetY = standingY;
-                mech.pelvis.position.y = BABYLON.Scalar.Lerp(startY, targetY, easeT);
+                // Stop angular velocity (we're setting rotation directly)
+                body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
 
                 // Reset leg positions during blend
                 dampLegs(mech, dt * 3);
 
             } else if (mech.recoveryTimer < blendTime + stabilizeTime) {
-                // Phase 2: Hold upright position for a moment (already in ANIMATED mode)
-                const standingY = 3.5 * mech.scale;
-                mech.pelvis.position.y = standingY;
+                // Phase 2: Hold upright position with velocity control
+                const heightError = standingY - pos.y;
+                const startX = mech.recoveryStartX || pos.x;
+                const startZ = mech.recoveryStartZ || pos.z;
+                const xError = startX - pos.x;
+                const zError = startZ - pos.z;
+
+                // Keep position stable via velocity
+                body.setLinearVelocity(new BABYLON.Vector3(
+                    xError * 5.0,
+                    heightError * 10.0,
+                    zError * 5.0
+                ));
+                body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
 
                 // Ensure fully upright
-                const quat = body.transformNode.rotationQuaternion;
-                const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
-                body.transformNode.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
+                body.transformNode.rotationQuaternion = targetQuat;
 
                 dampLegs(mech, dt * 3);
 
             } else {
                 // Phase 3: Recovery complete - back to walking state
                 mech.mechState = MechState.WALKING;
+
+                // Zero velocities before returning to walking
+                body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
+                body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
 
                 // STABILITY DOUBLING: After getting up, stability cap is doubled
                 // This makes it harder to knock them down again

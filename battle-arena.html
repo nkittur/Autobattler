@@ -373,6 +373,206 @@
         #minigameResult.good { color: #00ff88; }
         #minigameResult.weak { color: #ff8844; }
         #minigameResult.jam { color: #ff4444; }
+
+        /* Cockpit/Piloting Mode HUD */
+        #pilotingHUD {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #pilotingHUD.active {
+            display: block;
+        }
+
+        /* Weapon indicators at bottom */
+        #weaponIndicators {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background: linear-gradient(0deg, rgba(0,0,0,0.8), transparent);
+        }
+
+        .weapon-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(0, 20, 10, 0.9);
+            border: 2px solid rgba(0, 255, 136, 0.5);
+            border-radius: 8px;
+            min-width: 80px;
+            transition: all 0.2s ease;
+        }
+
+        .weapon-indicator.ready {
+            border-color: #00ff88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+        }
+
+        .weapon-indicator.charging {
+            border-color: #ffaa00;
+        }
+
+        .weapon-indicator-name {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            text-align: center;
+            max-width: 70px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .weapon-indicator.ready .weapon-indicator-name {
+            color: #00ff88;
+        }
+
+        .weapon-cooldown-bar {
+            width: 60px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .weapon-cooldown-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffaa00, #00ff88);
+            transition: width 0.1s linear;
+        }
+
+        .weapon-indicator.ready .weapon-cooldown-fill {
+            background: #00ff88;
+        }
+
+        .weapon-damage {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffaa00;
+            margin-top: 2px;
+        }
+
+        .weapon-indicator.ready .weapon-damage {
+            color: #00ff88;
+        }
+
+        /* Crosshair */
+        #cockpitCrosshair {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        #cockpitCrosshair.active {
+            display: block;
+        }
+
+        .crosshair-element {
+            position: absolute;
+            background: rgba(0, 255, 136, 0.8);
+        }
+
+        .crosshair-h {
+            width: 20px;
+            height: 2px;
+        }
+
+        .crosshair-v {
+            width: 2px;
+            height: 20px;
+        }
+
+        .crosshair-top { top: -25px; left: -1px; }
+        .crosshair-bottom { top: 5px; left: -1px; }
+        .crosshair-left { left: -25px; top: -1px; }
+        .crosshair-right { left: 5px; top: -1px; }
+
+        .crosshair-center {
+            width: 6px;
+            height: 6px;
+            border: 2px solid rgba(0, 255, 136, 0.8);
+            border-radius: 50%;
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            background: transparent;
+        }
+
+        /* Cockpit frame overlay */
+        #cockpitFrame {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 98;
+            border: 8px solid rgba(20, 30, 25, 0.9);
+            border-radius: 15px;
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5);
+        }
+
+        #cockpitFrame.active {
+            display: block;
+        }
+
+        /* Piloting mode instruction */
+        #pilotingInstruction {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ffaa00;
+            border-radius: 8px;
+            padding: 10px 20px;
+            color: #ffaa00;
+            font-size: 12px;
+            z-index: 101;
+            text-align: center;
+        }
+
+        #pilotingInstruction.active {
+            display: block;
+        }
+
+        /* Click effect */
+        .fire-effect {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #ff4400;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: fireRipple 0.4s ease-out forwards;
+            z-index: 102;
+        }
+
+        @keyframes fireRipple {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -406,6 +606,30 @@
             <div id="minigameChargeFill"></div>
         </div>
         <div id="minigameResult"></div>
+    </div>
+
+    <!-- Piloting Mode HUD -->
+    <div id="pilotingHUD">
+        <div id="weaponIndicators">
+            <!-- Weapon indicators populated by JS -->
+        </div>
+    </div>
+
+    <!-- Cockpit crosshair -->
+    <div id="cockpitCrosshair">
+        <div class="crosshair-element crosshair-v crosshair-top"></div>
+        <div class="crosshair-element crosshair-v crosshair-bottom"></div>
+        <div class="crosshair-element crosshair-h crosshair-left"></div>
+        <div class="crosshair-element crosshair-h crosshair-right"></div>
+        <div class="crosshair-center"></div>
+    </div>
+
+    <!-- Cockpit frame -->
+    <div id="cockpitFrame"></div>
+
+    <!-- Piloting instructions -->
+    <div id="pilotingInstruction">
+        CLICK/TAP to fire weapons at target location
     </div>
 
     <div id="polyCount">Triangles: <span id="triCount">0</span></div>
@@ -519,6 +743,14 @@
             actionTarget: null,      // Mech that just fired/took damage
             actionTime: 0,           // When action occurred
             sweepPhase: 0            // Phase of panoramic sweep
+        };
+
+        // Piloting mode state
+        let pilotingModeActive = false;
+        let pilotingState = {
+            weaponCooldowns: {},     // Track cooldowns for player weapons
+            lastClickTime: 0,        // Prevent rapid clicking
+            clickCooldown: 100       // Minimum ms between clicks
         };
 
         // Weapon cooldowns per mech (keyed by mech name)
@@ -1097,6 +1329,10 @@
         const backgroundType = urlParams.get('bg') || 'grasslands';
         console.log('Background type:', backgroundType);
 
+        // Read piloting mode from URL parameter
+        const userPilotingMode = urlParams.get('piloting') === '1';
+        console.log('User piloting mode:', userPilotingMode);
+
         // Background configurations
         const BACKGROUND_CONFIGS = {
             grasslands: {
@@ -1223,6 +1459,7 @@
                         }
                         updateUI();
                         updateCinematicCamera(dt);
+                        updateCockpitCamera(dt);
 
                         // Update debug timer AFTER all subsystems have had a chance to log
                         if (gameTime - lastDebugTime > DEBUG_INTERVAL) {
@@ -1291,6 +1528,10 @@
                             // Auto-start the AI battle
                             if (!autoFireEnabled) {
                                 toggleAutoFire();
+                            }
+                            // Initialize piloting mode if enabled
+                            if (userPilotingMode) {
+                                initPilotingMode();
                             }
                         }, 600);
                     }
@@ -5361,8 +5602,10 @@
 
             // ============================================
             // WEAPON FIRING (separate from movement)
+            // Skip AI weapon firing for player mech when in piloting mode (user controls weapons)
             // ============================================
-            if (gameTime - mech.ai.lastDecision > AI_CONFIG.decisionInterval) {
+            const skipWeaponFiring = mech.isPlayer && pilotingModeActive;
+            if (!skipWeaponFiring && gameTime - mech.ai.lastDecision > AI_CONFIG.decisionInterval) {
                 mech.ai.lastDecision = gameTime;
 
                 const now = Date.now();
@@ -7034,6 +7277,433 @@
                 let stateText = enemyAlive === 0 ? 'ELIMINATED' : `${enemyAlive} mechs fighting`;
                 document.getElementById('enemyState').textContent = stateText;
             }
+        }
+
+        // ============================================
+        // USER PILOTING MODE SYSTEM
+        // ============================================
+        function initPilotingMode() {
+            if (!userPilotingMode) return;
+
+            pilotingModeActive = true;
+            log('User piloting mode ENABLED - cockpit view active');
+
+            // Show HUD elements
+            document.getElementById('pilotingHUD').classList.add('active');
+            document.getElementById('cockpitCrosshair').classList.add('active');
+            document.getElementById('cockpitFrame').classList.add('active');
+            document.getElementById('pilotingInstruction').classList.add('active');
+
+            // Hide the instruction after 5 seconds
+            setTimeout(() => {
+                document.getElementById('pilotingInstruction').classList.remove('active');
+            }, 5000);
+
+            // Detach regular camera controls
+            camera.detachControl();
+
+            // Disable cinematic mode if it was enabled
+            if (cinematicEnabled) {
+                toggleCinematicCamera();
+            }
+
+            // Initialize weapon cooldowns for player mech
+            if (playerMechs.length > 0 && playerMechs[0].loadoutWeapons) {
+                playerMechs[0].loadoutWeapons.forEach(wpn => {
+                    pilotingState.weaponCooldowns[wpn.itemId] = 0;
+                });
+            }
+
+            // Set up click/touch event handlers
+            const canvas = document.getElementById('renderCanvas');
+            canvas.addEventListener('click', handlePilotingClick);
+            canvas.addEventListener('touchstart', handlePilotingTouch, { passive: false });
+
+            // Initial weapon indicator render
+            renderWeaponIndicators();
+        }
+
+        function handlePilotingClick(event) {
+            if (!pilotingModeActive || battleEnded || minigameState.active) return;
+
+            const now = performance.now();
+            if (now - pilotingState.lastClickTime < pilotingState.clickCooldown) return;
+            pilotingState.lastClickTime = now;
+
+            // Get click position and fire weapons
+            firePlayerWeaponsAtScreenPosition(event.clientX, event.clientY);
+
+            // Show fire effect
+            showFireEffect(event.clientX, event.clientY);
+        }
+
+        function handlePilotingTouch(event) {
+            if (!pilotingModeActive || battleEnded || minigameState.active) return;
+            event.preventDefault();
+
+            const now = performance.now();
+            if (now - pilotingState.lastClickTime < pilotingState.clickCooldown) return;
+            pilotingState.lastClickTime = now;
+
+            const touch = event.touches[0];
+            firePlayerWeaponsAtScreenPosition(touch.clientX, touch.clientY);
+
+            // Show fire effect
+            showFireEffect(touch.clientX, touch.clientY);
+        }
+
+        function showFireEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'fire-effect';
+            effect.style.left = x + 'px';
+            effect.style.top = y + 'px';
+            document.body.appendChild(effect);
+
+            setTimeout(() => effect.remove(), 400);
+        }
+
+        function firePlayerWeaponsAtScreenPosition(screenX, screenY) {
+            const playerMech = playerMechs.find(m => m && !m.isDestroyed);
+            if (!playerMech || !playerMech.loadoutWeapons) return;
+
+            // Convert screen position to world position using raycasting
+            const pickResult = scene.pick(screenX, screenY);
+            let targetPosition;
+
+            if (pickResult.hit) {
+                targetPosition = pickResult.pickedPoint;
+            } else {
+                // If no hit, create a target position in the direction of the click
+                const ray = scene.createPickingRay(screenX, screenY, BABYLON.Matrix.Identity(), camera);
+                targetPosition = ray.origin.add(ray.direction.scale(20));
+            }
+
+            // Fire all ready weapons at the target position
+            const now = performance.now();
+            let firedAny = false;
+
+            playerMech.loadoutWeapons.forEach(wpn => {
+                const wpnKey = wpn.itemId;
+                const cooldown = pilotingState.weaponCooldowns[wpnKey] || 0;
+
+                if (now >= cooldown) {
+                    // Fire this weapon at the target position
+                    fireWeaponAtPosition(playerMech, wpn, targetPosition);
+
+                    // Set cooldown
+                    const weaponCooldown = (wpn.battle && wpn.battle.cooldown) || 2000;
+                    pilotingState.weaponCooldowns[wpnKey] = now + weaponCooldown;
+                    firedAny = true;
+                }
+            });
+
+            if (firedAny) {
+                updateWeaponIndicators();
+            }
+        }
+
+        function fireWeaponAtPosition(mech, loadoutWeapon, targetPos) {
+            try {
+                const from = mech;
+                if (!from || from.isDestroyed) return;
+
+                const wpnName = loadoutWeapon.name || loadoutWeapon.itemId;
+                const battleProps = loadoutWeapon.battle || {};
+                const baseDamage = loadoutWeapon.damage || 10;
+
+                log(`[PILOT FIRE] ${from.name} fires ${wpnName} at target position`);
+
+                // Build weapon object from loadout data
+                const weapon = {
+                    name: wpnName,
+                    damage: baseDamage,
+                    knockback: battleProps.knockback || 15,
+                    recoil: battleProps.recoil || 0.15,
+                    projectileSpeed: battleProps.projectileSpeed || 40,
+                    projectileSize: battleProps.projectileSize || 0.12,
+                    isBeam: battleProps.isBeam || false,
+                    isCluster: battleProps.isCluster || false,
+                    isProjectile: battleProps.isProjectile || (!battleProps.isBeam && !battleProps.isCluster),
+                    beamDuration: battleProps.beamDuration || 180,
+                    clusterCount: battleProps.clusterCount || 6,
+                    color: battleProps.color ? new BABYLON.Color3(battleProps.color[0], battleProps.color[1], battleProps.color[2]) : new BABYLON.Color3(1, 0.8, 0.2)
+                };
+
+                from.recoilRecovery = weapon.recoil;
+                from.lastFiredArm = from.lastFiredArm === 'left' ? 'right' : 'left';
+
+                // Get arm for firing
+                const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
+                if (!arm || !arm.weaponPod) return;
+
+                const firePoint = arm.weaponPod.getAbsolutePosition();
+
+                // Apply recoil
+                const toTarget = targetPos.subtract(firePoint).normalize();
+                if (from.pelvisAggregate && from.pelvisAggregate.body) {
+                    from.pelvisAggregate.body.applyImpulse(
+                        toTarget.scale(-weapon.knockback * 0.25),
+                        from.pelvis.getAbsolutePosition()
+                    );
+                }
+
+                // Fire based on weapon type
+                if (weapon.isBeam) {
+                    fireBeamAtPosition(from, targetPos, weapon);
+                } else if (weapon.isCluster) {
+                    fireClusterAtPosition(from, targetPos, weapon);
+                } else {
+                    fireProjectileAtPosition(from, targetPos, weapon);
+                }
+
+                triggerCinematicAction(from, 'fire');
+            } catch (e) {
+                log(`[PILOT FIRE ERROR] ${e.message}`, 'error');
+                console.error('fireWeaponAtPosition error:', e);
+            }
+        }
+
+        function fireProjectileAtPosition(from, targetPos, weapon) {
+            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
+            if (!arm || !arm.weaponPod) return;
+
+            const firePoint = arm.weaponPod.getAbsolutePosition();
+            const direction = targetPos.subtract(firePoint).normalize();
+
+            // Add slight spread
+            const spread = 0.02;
+            direction.x += (Math.random() - 0.5) * spread;
+            direction.y += (Math.random() - 0.5) * spread;
+            direction.z += (Math.random() - 0.5) * spread;
+            direction.normalize();
+
+            // Create projectile
+            const projectile = BABYLON.MeshBuilder.CreateSphere('proj', {
+                diameter: weapon.projectileSize * 2
+            }, scene);
+            projectile.position = firePoint.clone();
+
+            const mat = new BABYLON.StandardMaterial('projMat', scene);
+            mat.emissiveColor = weapon.color || new BABYLON.Color3(1, 0.8, 0.2);
+            mat.disableLighting = true;
+            projectile.material = mat;
+
+            projectiles.push({
+                mesh: projectile,
+                velocity: direction.scale(weapon.projectileSpeed),
+                owner: from,
+                weapon: weapon,
+                targetPosition: targetPos,
+                spawnTime: performance.now(),
+                timeout: 3500
+            });
+        }
+
+        function fireBeamAtPosition(from, targetPos, weapon) {
+            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
+            if (!arm || !arm.weaponPod) return;
+
+            const firePoint = arm.weaponPod.getAbsolutePosition();
+            const distance = BABYLON.Vector3.Distance(firePoint, targetPos);
+
+            // Create beam cylinder
+            const beam = BABYLON.MeshBuilder.CreateCylinder('beam', {
+                height: distance,
+                diameter: 0.15,
+                tessellation: 8
+            }, scene);
+
+            // Position beam between fire point and target
+            const midPoint = firePoint.add(targetPos).scale(0.5);
+            beam.position = midPoint;
+
+            // Rotate beam to point at target
+            const direction = targetPos.subtract(firePoint).normalize();
+            beam.rotationQuaternion = BABYLON.Quaternion.FromUnitVectorsToRef(
+                BABYLON.Vector3.Up(),
+                direction,
+                new BABYLON.Quaternion()
+            );
+
+            const mat = new BABYLON.StandardMaterial('beamMat', scene);
+            mat.emissiveColor = weapon.color || new BABYLON.Color3(0, 1, 0.5);
+            mat.alpha = 0.8;
+            mat.disableLighting = true;
+            beam.material = mat;
+
+            beams.push({
+                mesh: beam,
+                owner: from,
+                weapon: weapon,
+                targetPosition: targetPos,
+                spawnTime: performance.now(),
+                duration: weapon.beamDuration || 180,
+                damageApplied: false
+            });
+        }
+
+        function fireClusterAtPosition(from, targetPos, weapon) {
+            const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
+            if (!arm || !arm.weaponPod) return;
+
+            const firePoint = arm.weaponPod.getAbsolutePosition();
+            const clusterCount = weapon.clusterCount || 6;
+
+            for (let i = 0; i < clusterCount; i++) {
+                setTimeout(() => {
+                    if (from.isDestroyed) return;
+
+                    // Add spread to target position
+                    const spreadTarget = targetPos.clone();
+                    spreadTarget.x += (Math.random() - 0.5) * 2;
+                    spreadTarget.y += (Math.random() - 0.5) * 1;
+                    spreadTarget.z += (Math.random() - 0.5) * 2;
+
+                    const direction = spreadTarget.subtract(firePoint).normalize();
+
+                    const missile = BABYLON.MeshBuilder.CreateCylinder('missile', {
+                        height: 0.4,
+                        diameter: 0.1,
+                        tessellation: 6
+                    }, scene);
+                    missile.position = firePoint.clone();
+                    missile.rotationQuaternion = BABYLON.Quaternion.FromUnitVectorsToRef(
+                        BABYLON.Vector3.Up(),
+                        direction,
+                        new BABYLON.Quaternion()
+                    );
+
+                    const mat = new BABYLON.StandardMaterial('missileMat', scene);
+                    mat.emissiveColor = weapon.color || new BABYLON.Color3(1, 0.4, 0.1);
+                    mat.disableLighting = true;
+                    missile.material = mat;
+
+                    projectiles.push({
+                        mesh: missile,
+                        velocity: direction.scale(weapon.projectileSpeed * 0.8),
+                        owner: from,
+                        weapon: { ...weapon, damage: Math.ceil(weapon.damage / clusterCount) },
+                        targetPosition: spreadTarget,
+                        spawnTime: performance.now(),
+                        timeout: 4000,
+                        isMissile: true
+                    });
+                }, i * 50);  // Stagger missile launches
+            }
+        }
+
+        function renderWeaponIndicators() {
+            const container = document.getElementById('weaponIndicators');
+            if (!container) return;
+
+            const playerMech = playerMechs.find(m => m && !m.isDestroyed);
+            if (!playerMech || !playerMech.loadoutWeapons) {
+                container.innerHTML = '<div style="color: #888;">No weapons available</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            playerMech.loadoutWeapons.forEach(wpn => {
+                const indicator = document.createElement('div');
+                indicator.className = 'weapon-indicator';
+                indicator.dataset.weaponId = wpn.itemId;
+
+                const damage = wpn.damage || 10;
+                const shotsPerRound = (wpn.battle && wpn.battle.shotsPerRound) || 1;
+                const damageText = shotsPerRound > 1 ? `${damage}x${shotsPerRound}` : damage;
+
+                indicator.innerHTML = `
+                    <div class="weapon-indicator-name">${wpn.name || wpn.itemId}</div>
+                    <div class="weapon-damage">${damageText}</div>
+                    <div class="weapon-cooldown-bar">
+                        <div class="weapon-cooldown-fill" style="width: 100%"></div>
+                    </div>
+                `;
+
+                container.appendChild(indicator);
+            });
+
+            updateWeaponIndicators();
+        }
+
+        function updateWeaponIndicators() {
+            if (!pilotingModeActive) return;
+
+            const now = performance.now();
+            const playerMech = playerMechs.find(m => m && !m.isDestroyed);
+            if (!playerMech || !playerMech.loadoutWeapons) return;
+
+            playerMech.loadoutWeapons.forEach(wpn => {
+                const indicator = document.querySelector(`.weapon-indicator[data-weapon-id="${wpn.itemId}"]`);
+                if (!indicator) return;
+
+                const cooldown = pilotingState.weaponCooldowns[wpn.itemId] || 0;
+                const weaponCooldownTime = (wpn.battle && wpn.battle.cooldown) || 2000;
+                const remaining = Math.max(0, cooldown - now);
+                const progress = remaining > 0 ? (1 - remaining / weaponCooldownTime) * 100 : 100;
+
+                const fill = indicator.querySelector('.weapon-cooldown-fill');
+                if (fill) {
+                    fill.style.width = progress + '%';
+                }
+
+                if (remaining <= 0) {
+                    indicator.classList.add('ready');
+                    indicator.classList.remove('charging');
+                } else {
+                    indicator.classList.remove('ready');
+                    indicator.classList.add('charging');
+                }
+            });
+        }
+
+        function updateCockpitCamera(dt) {
+            if (!pilotingModeActive) return;
+
+            const playerMech = playerMechs.find(m => m && !m.isDestroyed);
+            if (!playerMech) {
+                // Player mech destroyed - switch to spectate mode
+                pilotingModeActive = false;
+                document.getElementById('pilotingHUD').classList.remove('active');
+                document.getElementById('cockpitCrosshair').classList.remove('active');
+                document.getElementById('cockpitFrame').classList.remove('active');
+                camera.attachControl(document.getElementById('renderCanvas'), true);
+                return;
+            }
+
+            // Position camera inside the mech's cockpit (head/canopy area)
+            const cockpit = playerMech.cockpit || playerMech.head || playerMech.torso;
+            if (!cockpit) return;
+
+            // Get cockpit world position
+            const cockpitPos = cockpit.getAbsolutePosition();
+
+            // Get mech's forward direction
+            const pelvisQuat = playerMech.pelvis.rotationQuaternion;
+            const forward = new BABYLON.Vector3(0, 0, 1);
+            if (pelvisQuat) {
+                forward.rotateByQuaternionToRef(pelvisQuat, forward);
+            }
+
+            // Calculate camera position (slightly inside and above the cockpit)
+            const cameraHeight = 0.8;  // Height offset inside cockpit
+            const cameraForward = 0.3;  // Forward offset to be at front of cockpit
+
+            const cameraPos = cockpitPos.add(new BABYLON.Vector3(0, cameraHeight, 0));
+            cameraPos.addInPlace(forward.scale(cameraForward));
+
+            // Look ahead in the direction the mech is facing
+            const lookDistance = 20;
+            const lookAt = cameraPos.add(forward.scale(lookDistance));
+
+            // Smooth camera movement
+            const smoothFactor = 1 - Math.pow(0.05, dt);
+            camera.position = BABYLON.Vector3.Lerp(camera.position, cameraPos, smoothFactor);
+            camera.setTarget(BABYLON.Vector3.Lerp(camera.target, lookAt, smoothFactor * 0.5));
+
+            // Update weapon indicators periodically
+            updateWeaponIndicators();
         }
 
         initEngine();

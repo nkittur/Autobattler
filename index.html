@@ -1671,6 +1671,103 @@
             color: #888;
         }
 
+        /* Piloting Mode Toggle */
+        .piloting-mode-selector {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .piloting-mode-title {
+            font-size: 14px;
+            color: #00aa66;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .piloting-toggle-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .piloting-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: rgba(0, 255, 136, 0.05);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .piloting-toggle:hover {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: #00ff88;
+        }
+
+        .piloting-toggle.active {
+            background: rgba(255, 170, 0, 0.2);
+            border-color: #ffaa00;
+            box-shadow: 0 0 15px rgba(255, 170, 0, 0.3);
+        }
+
+        .piloting-toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .piloting-toggle.active .piloting-toggle-switch {
+            background: rgba(255, 170, 0, 0.4);
+        }
+
+        .piloting-toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #666;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: all 0.2s ease;
+        }
+
+        .piloting-toggle.active .piloting-toggle-switch::after {
+            left: 23px;
+            background: #ffaa00;
+        }
+
+        .piloting-toggle-label {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .piloting-toggle-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .piloting-toggle.active .piloting-toggle-name {
+            color: #ffaa00;
+        }
+
+        .piloting-toggle-desc {
+            font-size: 10px;
+            color: #888;
+        }
+
         /* ============================================
            MOBILE RESPONSIVE STYLES
            ============================================ */
@@ -1968,6 +2065,20 @@
                         <div class="background-selector-title">Arena Environment</div>
                         <div class="background-options" id="backgroundOptions">
                             <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Piloting Mode Toggle -->
+                    <div class="piloting-mode-selector">
+                        <div class="piloting-mode-title">Combat Mode</div>
+                        <div class="piloting-toggle-container">
+                            <div class="piloting-toggle" id="pilotingToggle" onclick="togglePilotingMode()">
+                                <div class="piloting-toggle-switch"></div>
+                                <div class="piloting-toggle-label">
+                                    <div class="piloting-toggle-name">Manual Pilot</div>
+                                    <div class="piloting-toggle-desc">Control targeting and weapons from the cockpit</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3987,6 +4098,7 @@
             { id: 'desert', name: 'Sand Dunes', description: 'Harsh desert environment' }
         ];
         let selectedBackground = 'grasslands';
+        let userPilotingEnabled = false;  // User-controlled piloting mode
 
         // ============================================
         // PHYSICS BATTLE SYSTEM
@@ -6644,6 +6756,9 @@
 
             // Render background options
             renderBackgroundOptions();
+
+            // Update piloting toggle state
+            updatePilotingToggle();
         }
 
         function renderBackgroundOptions() {
@@ -6665,6 +6780,22 @@
                 });
                 container.appendChild(option);
             });
+        }
+
+        function togglePilotingMode() {
+            userPilotingEnabled = !userPilotingEnabled;
+            updatePilotingToggle();
+        }
+
+        function updatePilotingToggle() {
+            const toggle = document.getElementById('pilotingToggle');
+            if (!toggle) return;
+
+            if (userPilotingEnabled) {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
         }
 
         function renderMissions() {
@@ -7985,7 +8116,7 @@
             const battleFrame = document.getElementById('battleFrame');
             battleFrame.style.display = 'block';
             // Add cache-busting parameter and background parameter
-            battleFrame.src = `battle-arena.html?t=${Date.now()}&bg=${selectedBackground}`;
+            battleFrame.src = `battle-arena.html?t=${Date.now()}&bg=${selectedBackground}&piloting=${userPilotingEnabled ? '1' : '0'}`;
 
             currentPhase = GamePhase.BATTLE;
         }

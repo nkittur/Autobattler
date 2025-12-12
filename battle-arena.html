@@ -500,7 +500,9 @@
             background: transparent;
         }
 
-        /* Cockpit frame overlay */
+        /* ============================================
+           DETAILED MECH COCKPIT OVERLAY
+           ============================================ */
         #cockpitFrame {
             display: none;
             position: absolute;
@@ -518,186 +520,329 @@
             display: block;
         }
 
-        /* Main cockpit structure */
-        .cockpit-top {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 50px;
-            background: linear-gradient(180deg, rgba(10, 15, 12, 0.98) 0%, rgba(15, 25, 20, 0.9) 60%, transparent 100%);
-            border-bottom: 3px solid rgba(0, 255, 136, 0.6);
-            box-shadow: inset 0 -5px 20px rgba(0, 255, 136, 0.1);
+        /* Metal texture base */
+        .metal-texture {
+            background: linear-gradient(135deg,
+                #2a2a28 0%, #3d3d38 15%, #2a2a28 30%,
+                #3d3d38 45%, #2a2a28 60%, #3d3d38 75%, #2a2a28 100%);
         }
 
-        .cockpit-bottom {
+        /* Main curved frame struts */
+        .frame-strut {
+            position: absolute;
+            background: linear-gradient(180deg, #4a4540 0%, #2a2520 50%, #1a1510 100%);
+            border: 2px solid #5a5550;
+            box-shadow:
+                inset 2px 2px 4px rgba(255,255,255,0.1),
+                inset -2px -2px 4px rgba(0,0,0,0.3),
+                3px 3px 8px rgba(0,0,0,0.5);
+        }
+
+        .frame-strut-left {
+            left: 0;
+            top: 0;
+            width: 25px;
+            height: 100%;
+            border-radius: 0 15px 15px 0;
+            clip-path: polygon(0 0, 100% 5%, 100% 95%, 0 100%);
+        }
+
+        .frame-strut-right {
+            right: 0;
+            top: 0;
+            width: 25px;
+            height: 100%;
+            border-radius: 15px 0 0 15px;
+            clip-path: polygon(0 5%, 100% 0, 100% 100%, 0 95%);
+        }
+
+        .frame-strut-top-left {
+            left: 20px;
+            top: 0;
+            width: 35%;
+            height: 20px;
+            transform: skewX(25deg);
+            transform-origin: left top;
+            border-radius: 0 0 10px 0;
+        }
+
+        .frame-strut-top-right {
+            right: 20px;
+            top: 0;
+            width: 35%;
+            height: 20px;
+            transform: skewX(-25deg);
+            transform-origin: right top;
+            border-radius: 0 0 0 10px;
+        }
+
+        /* Bottom console panel */
+        .console-panel {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 100px;
-            background: linear-gradient(0deg, rgba(10, 15, 12, 0.98) 0%, rgba(15, 25, 20, 0.95) 50%, transparent 100%);
-            border-top: 2px solid rgba(0, 255, 136, 0.4);
+            height: 45%;
+            background: linear-gradient(0deg, #1a1815 0%, #2a2825 60%, #3a3835 85%, transparent 100%);
+            border-top: 3px solid #4a4540;
         }
 
-        .cockpit-left {
+        /* Left instrument panel */
+        .instrument-panel-left {
             position: absolute;
-            top: 50px;
-            left: 0;
-            bottom: 100px;
-            width: 70px;
-            background: linear-gradient(90deg, rgba(10, 15, 12, 0.98) 0%, rgba(15, 25, 20, 0.8) 50%, transparent 100%);
-            border-right: 2px solid rgba(0, 255, 136, 0.3);
-        }
-
-        .cockpit-right {
-            position: absolute;
-            top: 50px;
-            right: 0;
-            bottom: 100px;
-            width: 70px;
-            background: linear-gradient(-90deg, rgba(10, 15, 12, 0.98) 0%, rgba(15, 25, 20, 0.8) 50%, transparent 100%);
-            border-left: 2px solid rgba(0, 255, 136, 0.3);
-        }
-
-        /* Cockpit struts/frame pieces */
-        .cockpit-strut {
-            position: absolute;
-            background: linear-gradient(90deg, #1a2520, #0a0f0c);
-            border: 1px solid rgba(0, 255, 136, 0.3);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-        }
-
-        .strut-left-top {
-            top: 42px;
-            left: 0;
-            width: 100px;
-            height: 6px;
-            transform: rotate(20deg);
-            transform-origin: left center;
-        }
-
-        .strut-right-top {
-            top: 42px;
-            right: 0;
-            width: 100px;
-            height: 6px;
-            transform: rotate(-20deg);
-            transform-origin: right center;
-        }
-
-        .strut-left-bottom {
-            bottom: 95px;
-            left: 0;
-            width: 120px;
-            height: 8px;
-            transform: rotate(-15deg);
-            transform-origin: left center;
-        }
-
-        .strut-right-bottom {
-            bottom: 95px;
-            right: 0;
-            width: 120px;
-            height: 8px;
-            transform: rotate(15deg);
-            transform-origin: right center;
-        }
-
-        /* Cockpit details - rivets/bolts */
-        .cockpit-rivet {
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            background: radial-gradient(circle at 30% 30%, #3a4540, #1a2520);
-            border-radius: 50%;
-            border: 1px solid rgba(0, 0, 0, 0.5);
-        }
-
-        /* HUD displays in cockpit */
-        .cockpit-display {
-            position: absolute;
-            background: rgba(0, 15, 10, 0.95);
-            border: 2px solid rgba(0, 255, 136, 0.5);
-            border-radius: 4px;
-            padding: 6px 8px;
-            font-size: 10px;
-            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2), inset 0 0 20px rgba(0, 255, 136, 0.05);
-        }
-
-        .cockpit-display-left {
-            top: 60px;
-            left: 8px;
-            width: 52px;
-        }
-
-        .cockpit-display-right {
-            top: 60px;
-            right: 8px;
-            width: 52px;
-        }
-
-        .display-label {
-            color: rgba(0, 255, 136, 0.7);
-            font-size: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .display-value {
-            color: #00ff88;
-            font-size: 13px;
-            font-weight: bold;
-            text-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
-        }
-
-        /* Throttle/control visuals */
-        .cockpit-throttle {
-            position: absolute;
-            bottom: 110px;
-            width: 16px;
-            height: 60px;
-            background: linear-gradient(90deg, #1a2520, #2a3530, #1a2520);
-            border: 2px solid rgba(0, 255, 136, 0.4);
-            border-radius: 4px;
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
-        }
-
-        .throttle-left {
-            left: 15px;
-        }
-
-        .throttle-right {
-            right: 15px;
-        }
-
-        .throttle-handle {
-            position: absolute;
-            bottom: 20%;
-            left: 2px;
-            right: 2px;
-            height: 16px;
-            background: linear-gradient(180deg, #4a5a55, #2a3530);
-            border: 1px solid rgba(0, 255, 136, 0.5);
-            border-radius: 3px;
-            box-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
-        }
-
-        /* Integrated weapon panel at bottom */
-        .cockpit-weapon-panel {
-            position: absolute;
+            left: 25px;
             bottom: 10px;
+            width: 140px;
+            height: 42%;
+            background: linear-gradient(135deg, #2a2825 0%, #1a1815 100%);
+            border: 3px solid #3a3530;
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 2px 2px 8px rgba(0,0,0,0.5);
+            padding: 8px;
+        }
+
+        /* Right instrument panel */
+        .instrument-panel-right {
+            position: absolute;
+            right: 25px;
+            bottom: 10px;
+            width: 140px;
+            height: 42%;
+            background: linear-gradient(225deg, #2a2825 0%, #1a1815 100%);
+            border: 3px solid #3a3530;
+            border-radius: 8px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 2px 2px 8px rgba(0,0,0,0.5);
+            padding: 8px;
+        }
+
+        /* Center console */
+        .center-console {
+            position: absolute;
+            bottom: 5px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 15, 10, 0.95);
-            border: 2px solid rgba(0, 255, 136, 0.5);
-            border-radius: 8px;
-            padding: 10px 15px;
+            width: 45%;
+            height: 38%;
+            background: linear-gradient(180deg, #2a2825 0%, #1a1815 100%);
+            border: 3px solid #3a3530;
+            border-radius: 10px 10px 5px 5px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.5), 0 -5px 15px rgba(0,0,0,0.3);
             display: flex;
-            gap: 12px;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
         }
 
-        /* Scanline effect */
+        /* CRT Screen displays */
+        .crt-screen {
+            background: radial-gradient(ellipse at center, #001a0a 0%, #000a05 70%, #000502 100%);
+            border: 3px solid #2a2a25;
+            border-radius: 5px;
+            box-shadow:
+                inset 0 0 30px rgba(0, 255, 100, 0.1),
+                inset 0 0 10px rgba(0, 255, 100, 0.05),
+                2px 2px 4px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .crt-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 1px,
+                rgba(0, 50, 0, 0.03) 1px,
+                rgba(0, 50, 0, 0.03) 2px
+            );
+            pointer-events: none;
+        }
+
+        /* Radar display */
+        .radar-display {
+            width: 90%;
+            height: 55%;
+            margin: 5px auto;
+            position: relative;
+        }
+
+        .radar-grid {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 80%;
+            border: 1px solid rgba(0, 255, 100, 0.3);
+            border-radius: 50%;
+        }
+
+        .radar-grid::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(0, 255, 100, 0.2);
+        }
+
+        .radar-grid::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(0, 255, 100, 0.2);
+        }
+
+        .radar-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px;
+            height: 6px;
+            border: 1px solid #00ff66;
+            border-radius: 50%;
+        }
+
+        /* Button clusters */
+        .button-cluster {
+            display: grid;
+            gap: 3px;
+            padding: 4px;
+            background: #1a1815;
+            border-radius: 4px;
+            border: 1px solid #2a2520;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+        }
+
+        .cockpit-btn {
+            width: 14px;
+            height: 10px;
+            border-radius: 2px;
+            border: 1px solid rgba(0,0,0,0.5);
+            box-shadow: inset 1px 1px 2px rgba(255,255,255,0.2);
+        }
+
+        .btn-red { background: linear-gradient(180deg, #cc3333 0%, #881111 100%); }
+        .btn-red.lit { background: linear-gradient(180deg, #ff4444 0%, #cc2222 100%); box-shadow: 0 0 5px #ff4444; }
+        .btn-green { background: linear-gradient(180deg, #33cc33 0%, #118811 100%); }
+        .btn-green.lit { background: linear-gradient(180deg, #44ff44 0%, #22cc22 100%); box-shadow: 0 0 5px #44ff44; }
+        .btn-amber { background: linear-gradient(180deg, #cc9933 0%, #886611 100%); }
+        .btn-amber.lit { background: linear-gradient(180deg, #ffaa44 0%, #cc8822 100%); box-shadow: 0 0 5px #ffaa44; }
+        .btn-dark { background: linear-gradient(180deg, #444 0%, #222 100%); }
+
+        /* Toggle switches */
+        .toggle-switch {
+            width: 10px;
+            height: 18px;
+            background: linear-gradient(90deg, #2a2520 0%, #3a3530 50%, #2a2520 100%);
+            border-radius: 3px;
+            border: 1px solid #1a1510;
+            position: relative;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            height: 6px;
+            background: linear-gradient(180deg, #666 0%, #444 100%);
+            border-radius: 2px;
+        }
+
+        /* Screen labels */
+        .screen-label {
+            position: absolute;
+            font-size: 6px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #1a1815;
+            padding: 1px 3px;
+            border-radius: 2px;
+        }
+
+        /* HP Bar integrated */
+        .cockpit-hp-bar {
+            width: 100%;
+            height: 8px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 2px;
+            margin: 3px 0;
+            overflow: hidden;
+        }
+
+        .cockpit-hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444 0%, #ffaa00 50%, #00ff66 100%);
+            transition: width 0.3s;
+            box-shadow: 0 0 5px currentColor;
+        }
+
+        /* Integrated weapon panel */
+        .cockpit-weapon-panel {
+            display: flex;
+            gap: 6px;
+            margin-top: 5px;
+            padding: 5px;
+            background: rgba(0, 10, 5, 0.8);
+            border: 1px solid #2a3530;
+            border-radius: 4px;
+        }
+
+        /* Warning indicator lights */
+        .indicator-light {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 1px solid #222;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .indicator-off { background: #333; }
+        .indicator-red { background: radial-gradient(circle at 30% 30%, #ff6666, #aa2222); box-shadow: 0 0 4px #ff4444; }
+        .indicator-green { background: radial-gradient(circle at 30% 30%, #66ff66, #22aa22); box-shadow: 0 0 4px #44ff44; }
+        .indicator-amber { background: radial-gradient(circle at 30% 30%, #ffaa66, #aa6622); box-shadow: 0 0 4px #ffaa44; }
+
+        /* Wiring/cable details */
+        .cable {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg, #222 0%, #333 50%, #222 100%);
+            border-radius: 2px;
+        }
+
+        /* Text displays */
+        .digital-text {
+            font-family: monospace;
+            color: #00ff66;
+            text-shadow: 0 0 5px #00ff66;
+            font-size: 9px;
+        }
+
+        .amber-text {
+            color: #ffaa44;
+            text-shadow: 0 0 5px #ffaa44;
+        }
+
+        /* Cockpit scanline effect */
         .cockpit-scanlines {
             position: absolute;
             top: 0;
@@ -708,29 +853,21 @@
                 0deg,
                 transparent,
                 transparent 2px,
-                rgba(0, 0, 0, 0.03) 2px,
-                rgba(0, 0, 0, 0.03) 4px
+                rgba(0, 0, 0, 0.02) 2px,
+                rgba(0, 0, 0, 0.02) 4px
             );
             pointer-events: none;
+            z-index: 1;
         }
 
-        /* Warning lights */
-        .cockpit-warning {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #333;
-            border: 1px solid #555;
-        }
-
-        .warning-active {
-            animation: warningBlink 0.5s ease-in-out infinite;
-        }
-
+        /* Warning blink animation */
         @keyframes warningBlink {
-            0%, 100% { background: #ff4444; box-shadow: 0 0 8px #ff4444; }
-            50% { background: #aa2222; box-shadow: none; }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .warning-blink {
+            animation: warningBlink 0.5s ease-in-out infinite;
         }
 
         /* Piloting mode instruction */
@@ -800,58 +937,132 @@
             <div class="crosshair-center"></div>
         </div>
 
-        <!-- Cockpit frame with mech interior visuals -->
+        <!-- Detailed Mech Cockpit Frame -->
         <div id="cockpitFrame">
-            <!-- Main cockpit structure -->
-            <div class="cockpit-top"></div>
-            <div class="cockpit-bottom"></div>
-            <div class="cockpit-left"></div>
-            <div class="cockpit-right"></div>
+            <!-- Frame struts -->
+            <div class="frame-strut frame-strut-left"></div>
+            <div class="frame-strut frame-strut-right"></div>
+            <div class="frame-strut frame-strut-top-left"></div>
+            <div class="frame-strut frame-strut-top-right"></div>
 
-            <!-- Structural struts -->
-            <div class="cockpit-strut strut-left-top"></div>
-            <div class="cockpit-strut strut-right-top"></div>
-            <div class="cockpit-strut strut-left-bottom"></div>
-            <div class="cockpit-strut strut-right-bottom"></div>
+            <!-- Bottom console panel background -->
+            <div class="console-panel"></div>
 
-            <!-- Left side displays -->
-            <div class="cockpit-display cockpit-display-left">
-                <div class="display-label">HEAT</div>
-                <div class="display-value" id="cockpitHeat">32%</div>
+            <!-- LEFT INSTRUMENT PANEL -->
+            <div class="instrument-panel-left">
+                <!-- Status screen -->
+                <div class="crt-screen" style="height: 45%; margin-bottom: 5px;">
+                    <div style="padding: 4px;">
+                        <div class="digital-text" style="font-size: 7px; margin-bottom: 2px;">MECH STATUS</div>
+                        <div class="digital-text amber-text" style="font-size: 6px;">ARMOR</div>
+                        <div class="cockpit-hp-bar">
+                            <div class="cockpit-hp-fill" id="cockpitHpFill" style="width: 100%;"></div>
+                        </div>
+                        <div class="digital-text" style="font-size: 6px; margin-top: 3px;">HEAT: <span id="cockpitHeat" class="amber-text">0%</span></div>
+                        <div class="digital-text" style="font-size: 6px;">ZOOM: <span id="cockpitZoom">1.0x</span></div>
+                    </div>
+                </div>
+                <!-- Button cluster -->
+                <div class="button-cluster" style="margin-bottom: 4px;">
+                    <div class="button-row">
+                        <div class="cockpit-btn btn-red" id="warnBtn1"></div>
+                        <div class="cockpit-btn btn-red"></div>
+                        <div class="cockpit-btn btn-amber"></div>
+                        <div class="cockpit-btn btn-green lit"></div>
+                    </div>
+                    <div class="button-row">
+                        <div class="cockpit-btn btn-dark"></div>
+                        <div class="cockpit-btn btn-dark"></div>
+                        <div class="cockpit-btn btn-amber lit"></div>
+                        <div class="cockpit-btn btn-dark"></div>
+                    </div>
+                </div>
+                <!-- Toggle switches row -->
+                <div style="display: flex; gap: 6px; justify-content: center;">
+                    <div class="toggle-switch"></div>
+                    <div class="toggle-switch"></div>
+                    <div class="toggle-switch"></div>
+                </div>
             </div>
 
-            <!-- Right side displays -->
-            <div class="cockpit-display cockpit-display-right">
-                <div class="display-label">ZOOM</div>
-                <div class="display-value" id="cockpitZoom">1.0x</div>
+            <!-- RIGHT INSTRUMENT PANEL -->
+            <div class="instrument-panel-right">
+                <!-- Targeting screen -->
+                <div class="crt-screen" style="height: 45%; margin-bottom: 5px;">
+                    <div style="padding: 4px;">
+                        <div class="digital-text" style="font-size: 7px; margin-bottom: 2px;">TARGETING</div>
+                        <div style="display: flex; justify-content: center; align-items: center; height: 70%;">
+                            <div style="width: 50px; height: 50px; border: 1px solid rgba(0,255,100,0.3); border-radius: 50%; position: relative;">
+                                <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: rgba(0,255,100,0.3);"></div>
+                                <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(0,255,100,0.3);"></div>
+                                <div id="radarEnemy" style="position: absolute; width: 4px; height: 4px; background: #ff4444; border-radius: 50%; top: 30%; left: 60%; box-shadow: 0 0 4px #ff4444;"></div>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 4px; height: 4px; background: #00ff66; border-radius: 50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Button cluster -->
+                <div class="button-cluster" style="margin-bottom: 4px;">
+                    <div class="button-row">
+                        <div class="cockpit-btn btn-green"></div>
+                        <div class="cockpit-btn btn-green lit"></div>
+                        <div class="cockpit-btn btn-amber"></div>
+                        <div class="cockpit-btn btn-red"></div>
+                    </div>
+                    <div class="button-row">
+                        <div class="cockpit-btn btn-dark"></div>
+                        <div class="cockpit-btn btn-amber lit"></div>
+                        <div class="cockpit-btn btn-dark"></div>
+                        <div class="cockpit-btn btn-dark"></div>
+                    </div>
+                </div>
+                <!-- Indicator lights row -->
+                <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
+                    <div class="indicator-light indicator-green"></div>
+                    <div class="indicator-light indicator-green"></div>
+                    <div class="indicator-light indicator-amber" id="heatIndicator"></div>
+                    <div class="indicator-light indicator-off" id="damageIndicator"></div>
+                </div>
             </div>
 
-            <!-- Throttle controls -->
-            <div class="cockpit-throttle throttle-left">
-                <div class="throttle-handle" id="throttleLeft"></div>
+            <!-- CENTER CONSOLE with Weapons -->
+            <div class="center-console">
+                <!-- Radar/targeting display -->
+                <div class="crt-screen radar-display">
+                    <div class="radar-grid"></div>
+                    <div class="radar-crosshair"></div>
+                    <div id="radarEnemyMain" style="position: absolute; width: 6px; height: 6px; background: #ff4444; border-radius: 50%; box-shadow: 0 0 6px #ff4444; top: 35%; left: 55%;"></div>
+                </div>
+
+                <!-- Weapon status panel -->
+                <div class="cockpit-weapon-panel" id="weaponIndicators">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Bottom button row -->
+                <div style="display: flex; gap: 4px; margin-top: 4px;">
+                    <div class="button-cluster" style="padding: 2px;">
+                        <div class="button-row">
+                            <div class="cockpit-btn btn-red"></div>
+                            <div class="cockpit-btn btn-red"></div>
+                        </div>
+                    </div>
+                    <div class="button-cluster" style="padding: 2px;">
+                        <div class="button-row">
+                            <div class="cockpit-btn btn-green lit"></div>
+                            <div class="cockpit-btn btn-green"></div>
+                        </div>
+                    </div>
+                    <div class="button-cluster" style="padding: 2px;">
+                        <div class="button-row">
+                            <div class="cockpit-btn btn-amber lit"></div>
+                            <div class="cockpit-btn btn-amber"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="cockpit-throttle throttle-right">
-                <div class="throttle-handle" id="throttleRight"></div>
-            </div>
 
-            <!-- Warning lights -->
-            <div class="cockpit-warning" style="top: 12px; left: 25px;" id="warningLeft"></div>
-            <div class="cockpit-warning" style="top: 12px; right: 25px;" id="warningRight"></div>
-            <div class="cockpit-warning" style="top: 12px; left: 45px;" id="warningCenter"></div>
-            <div class="cockpit-warning" style="top: 12px; right: 45px;" id="warningArmor"></div>
-
-            <!-- Rivets/details on frame -->
-            <div class="cockpit-rivet" style="top: 55px; left: 65px;"></div>
-            <div class="cockpit-rivet" style="top: 55px; right: 65px;"></div>
-            <div class="cockpit-rivet" style="bottom: 115px; left: 65px;"></div>
-            <div class="cockpit-rivet" style="bottom: 115px; right: 65px;"></div>
-
-            <!-- Integrated weapon panel -->
-            <div class="cockpit-weapon-panel" id="weaponIndicators">
-                <!-- Weapon indicators populated by JS -->
-            </div>
-
-            <!-- Scanline overlay effect -->
+            <!-- Scanline overlay -->
             <div class="cockpit-scanlines"></div>
         </div>
 
@@ -8048,6 +8259,47 @@
                 zoomDisplay.textContent = pilotingState.zoomLevel.toFixed(1) + 'x';
             }
 
+            // Update HP bar
+            const hpFill = document.getElementById('cockpitHpFill');
+            if (hpFill && playerMech) {
+                const hpPercent = (playerMech.currentHP / playerMech.maxHP) * 100;
+                hpFill.style.width = hpPercent + '%';
+
+                // Change color based on HP level
+                if (hpPercent < 25) {
+                    hpFill.style.background = '#ff4444';
+                    hpFill.style.boxShadow = '0 0 8px #ff4444';
+                } else if (hpPercent < 50) {
+                    hpFill.style.background = 'linear-gradient(90deg, #ff4444 0%, #ffaa00 100%)';
+                    hpFill.style.boxShadow = '0 0 5px #ffaa00';
+                } else {
+                    hpFill.style.background = 'linear-gradient(90deg, #ffaa00 0%, #00ff66 100%)';
+                    hpFill.style.boxShadow = '0 0 5px #00ff66';
+                }
+
+                // Make warning button blink when HP is low
+                const warnBtn = document.getElementById('warnBtn1');
+                if (warnBtn) {
+                    if (hpPercent < 30) {
+                        warnBtn.classList.add('lit', 'warning-blink');
+                    } else {
+                        warnBtn.classList.remove('warning-blink');
+                    }
+                }
+
+                // Update damage indicator light
+                const damageIndicator = document.getElementById('damageIndicator');
+                if (damageIndicator) {
+                    if (hpPercent < 30) {
+                        damageIndicator.className = 'indicator-light indicator-red';
+                    } else if (hpPercent < 70) {
+                        damageIndicator.className = 'indicator-light indicator-amber';
+                    } else {
+                        damageIndicator.className = 'indicator-light indicator-green';
+                    }
+                }
+            }
+
             // Update warning lights based on mech status
             const warningArmor = document.getElementById('warningArmor');
             if (warningArmor && playerMech) {
@@ -8072,6 +8324,44 @@
 
                 throttleLeft.style.bottom = Math.max(10, Math.min(70, leftPos)) + '%';
                 throttleRight.style.bottom = Math.max(10, Math.min(70, rightPos)) + '%';
+            }
+
+            // Update radar displays with enemy position
+            const radarEnemy = document.getElementById('radarEnemy');
+            const radarEnemyMain = document.getElementById('radarEnemyMain');
+
+            if ((radarEnemy || radarEnemyMain) && playerMech && playerMech.torso) {
+                // Find nearest enemy
+                const enemies = allMechs.filter(m => m && !m.isDestroyed && !m.isPlayer);
+                const nearestEnemy = enemies[0];
+
+                if (nearestEnemy && nearestEnemy.torso) {
+                    const playerPos = playerMech.torso.getAbsolutePosition();
+                    const enemyPos = nearestEnemy.torso.getAbsolutePosition();
+
+                    // Calculate relative position
+                    const dx = enemyPos.x - playerPos.x;
+                    const dz = enemyPos.z - playerPos.z;
+                    const dist = Math.sqrt(dx * dx + dz * dz);
+
+                    // Normalize and scale to radar (clamp to radar bounds)
+                    const maxDist = 80; // Max distance for radar
+                    const scale = Math.min(dist / maxDist, 1);
+                    const angle = Math.atan2(dx, dz);
+
+                    // Convert to radar coordinates (50% is center)
+                    const radarX = 50 + Math.sin(angle) * scale * 40;
+                    const radarY = 50 - Math.cos(angle) * scale * 40;
+
+                    if (radarEnemy) {
+                        radarEnemy.style.left = radarX + '%';
+                        radarEnemy.style.top = radarY + '%';
+                    }
+                    if (radarEnemyMain) {
+                        radarEnemyMain.style.left = radarX + '%';
+                        radarEnemyMain.style.top = radarY + '%';
+                    }
+                }
             }
         }
 

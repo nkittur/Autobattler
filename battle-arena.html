@@ -7978,16 +7978,18 @@
         }
 
         // Mouse drag-to-look handlers
+        let mouseIsDown = false;
+
         function handlePilotingMouseDown(event) {
             if (!pilotingModeActive) return;
+            mouseIsDown = true;
             pilotingState.isDragging = false;
             pilotingState.dragStartX = event.clientX;
             pilotingState.dragStartY = event.clientY;
         }
 
         function handlePilotingMouseMove(event) {
-            if (!pilotingModeActive) return;
-            if (pilotingState.dragStartX === 0 && pilotingState.dragStartY === 0) return;
+            if (!pilotingModeActive || !mouseIsDown) return;
 
             const dx = event.clientX - pilotingState.dragStartX;
             const dy = event.clientY - pilotingState.dragStartY;
@@ -8014,19 +8016,20 @@
         }
 
         function handlePilotingMouseUp(event) {
-            if (!pilotingModeActive) return;
+            if (!pilotingModeActive || !mouseIsDown) return;
 
             // If not dragging, it was a click - fire weapons
             if (!pilotingState.isDragging && !battleEnded && !minigameState.active) {
                 const now = performance.now();
                 if (now - pilotingState.lastClickTime >= pilotingState.clickCooldown) {
                     pilotingState.lastClickTime = now;
-                    firePlayerWeaponsAtScreenPosition(event.clientX, event.clientY);
-                    showFireEffect(event.clientX, event.clientY);
+                    firePlayerWeaponsAtScreenPosition(pilotingState.dragStartX, pilotingState.dragStartY);
+                    showFireEffect(pilotingState.dragStartX, pilotingState.dragStartY);
                 }
             }
 
             // Reset drag state
+            mouseIsDown = false;
             pilotingState.isDragging = false;
             pilotingState.dragStartX = 0;
             pilotingState.dragStartY = 0;
@@ -8037,12 +8040,14 @@
         let touchStartX = 0;
         let touchStartY = 0;
         let touchIsDragging = false;
+        let touchIsActive = false;
 
         function handlePilotingTouchStart(event) {
             if (!pilotingModeActive) return;
             event.preventDefault();
 
             if (event.touches.length === 1) {
+                touchIsActive = true;
                 touchStartX = event.touches[0].clientX;
                 touchStartY = event.touches[0].clientY;
                 touchIsDragging = false;
@@ -8056,6 +8061,7 @@
 
             // Two-finger pinch for zoom
             if (event.touches.length === 2) {
+                touchIsDragging = true; // Mark as drag so tap doesn't fire
                 const dx = event.touches[0].clientX - event.touches[1].clientX;
                 const dy = event.touches[0].clientY - event.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -8070,7 +8076,7 @@
             }
 
             // Single finger drag for look
-            if (event.touches.length === 1 && touchStartX !== 0) {
+            if (event.touches.length === 1 && touchIsActive) {
                 const dx = event.touches[0].clientX - touchStartX;
                 const dy = event.touches[0].clientY - touchStartY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -8097,7 +8103,7 @@
             event.preventDefault();
 
             // If not dragging, it was a tap - fire weapons
-            if (!touchIsDragging && !battleEnded && !minigameState.active && touchStartX !== 0) {
+            if (!touchIsDragging && !battleEnded && !minigameState.active && touchIsActive) {
                 const now = performance.now();
                 if (now - pilotingState.lastClickTime >= pilotingState.clickCooldown) {
                     pilotingState.lastClickTime = now;
@@ -8107,6 +8113,7 @@
             }
 
             // Reset
+            touchIsActive = false;
             touchIsDragging = false;
             touchStartX = 0;
             touchStartY = 0;

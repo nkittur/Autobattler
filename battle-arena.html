@@ -1326,16 +1326,16 @@
             zoomLevel: 1.0,          // Camera zoom (1.0 = normal, higher = zoomed in)
             minZoom: 0.5,
             maxZoom: 2.5,
-            // Drag-to-look state
-            isDragging: false,
-            dragStartX: 0,
-            dragStartY: 0,
-            dragThreshold: 8,        // Pixels moved to count as drag (not click)
-            yawOffset: 0,            // Horizontal look offset (radians)
-            pitchOffset: 0,          // Vertical look offset (radians)
-            maxPitch: 0.6,           // Max vertical look (radians)
-            maxYaw: 1.2,             // Max horizontal look (radians)
-            dragSensitivity: 0.005   // How fast drag rotates view
+            // Mouse-aim torso control
+            mouseX: 0,               // Current mouse X on canvas
+            mouseY: 0,               // Current mouse Y on canvas
+            targetYaw: 0,            // Target torso yaw angle (radians)
+            targetPitch: 0,          // Target torso pitch angle (radians)
+            currentYaw: 0,           // Current torso yaw (with lag)
+            currentPitch: 0,         // Current torso pitch (with lag)
+            aimSpeed: 3.0,           // How fast torso follows mouse (lower = more lag)
+            maxYaw: 1.2,             // Max horizontal rotation (radians, ~69 degrees)
+            maxPitch: 0.4            // Max vertical rotation (radians, ~23 degrees)
         };
 
         // Weapon cooldowns per mech (keyed by mech name)
@@ -5844,52 +5844,58 @@
             const dz = targetPos.z - myPos.z;
 
             // =============================================
-            // TORSO ALWAYS FACES ENEMY
+            // TORSO ALWAYS FACES ENEMY (AI-controlled mechs only)
             // =============================================
-            // Calculate angle to enemy (in XZ plane) - this is the WORLD angle
-            const angleToEnemy = Math.atan2(dz, dx);
+            // Skip torso AI for player mech when in piloting mode - player controls it
+            if (pilotingModeActive && mech.isPlayer) {
+                // Player torso is controlled by updateCockpitCamera via mouse input
+                // Just skip this section
+            } else {
+                // Calculate angle to enemy (in XZ plane) - this is the WORLD angle
+                const angleToEnemy = Math.atan2(dz, dx);
 
-            // Get the pelvis's current world Y rotation
-            // Since torso is parented to pelvis, we need to calculate LOCAL rotation
-            const body = mech.pelvisAggregate.body;
-            const pelvisQuat = body.transformNode.rotationQuaternion;
-            let pelvisYaw = 0;
-            if (pelvisQuat) {
-                const euler = pelvisQuat.toEulerAngles();
-                pelvisYaw = euler.y;
-            }
+                // Get the pelvis's current world Y rotation
+                // Since torso is parented to pelvis, we need to calculate LOCAL rotation
+                const body = mech.pelvisAggregate.body;
+                const pelvisQuat = body.transformNode.rotationQuaternion;
+                let pelvisYaw = 0;
+                if (pelvisQuat) {
+                    const euler = pelvisQuat.toEulerAngles();
+                    pelvisYaw = euler.y;
+                }
 
-            // Mech mesh faces +Z by default (chest at +Z, reactor at -Z)
-            // Babylon.js uses LEFT-HANDED coordinates: +Y rotation is CLOCKWISE from above
-            // rotation.y = 0 faces +Z, rotation.y = +π/2 faces +X, rotation.y = -π/2 faces -X
-            // To convert world angle to mech rotation: baseAngle - angleToEnemy (not the reverse!)
-            const baseAngle = Math.PI / 2;
-            let worldTorsoAngle = baseAngle - angleToEnemy;
+                // Mech mesh faces +Z by default (chest at +Z, reactor at -Z)
+                // Babylon.js uses LEFT-HANDED coordinates: +Y rotation is CLOCKWISE from above
+                // rotation.y = 0 faces +Z, rotation.y = +π/2 faces +X, rotation.y = -π/2 faces -X
+                // To convert world angle to mech rotation: baseAngle - angleToEnemy (not the reverse!)
+                const baseAngle = Math.PI / 2;
+                let worldTorsoAngle = baseAngle - angleToEnemy;
 
-            // Convert to LOCAL torso rotation by subtracting pelvis world rotation
-            // The torso is parented to the pelvis, so its rotation.y is relative to pelvis
-            let torsoAngle = worldTorsoAngle - pelvisYaw;
+                // Convert to LOCAL torso rotation by subtracting pelvis world rotation
+                // The torso is parented to the pelvis, so its rotation.y is relative to pelvis
+                let torsoAngle = worldTorsoAngle - pelvisYaw;
 
-            // Normalize to -PI to PI range
-            while (torsoAngle > Math.PI) torsoAngle -= Math.PI * 2;
-            while (torsoAngle < -Math.PI) torsoAngle += Math.PI * 2;
+                // Normalize to -PI to PI range
+                while (torsoAngle > Math.PI) torsoAngle -= Math.PI * 2;
+                while (torsoAngle < -Math.PI) torsoAngle += Math.PI * 2;
 
-            // Clamp torso rotation to reasonable range (about 60 degrees each way from pelvis)
-            mech.targetTorsoTwist = Math.max(-1.0, Math.min(1.0, torsoAngle));
+                // Clamp torso rotation to reasonable range (about 60 degrees each way from pelvis)
+                mech.targetTorsoTwist = Math.max(-1.0, Math.min(1.0, torsoAngle));
 
-            // Smooth interpolation for torso rotation
-            mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, mech.targetTorsoTwist, dt * 5);
-            mech.torso.rotation.y = mech.torsoTwist;
+                // Smooth interpolation for torso rotation
+                mech.torsoTwist = BABYLON.Scalar.Lerp(mech.torsoTwist, mech.targetTorsoTwist, dt * 5);
+                mech.torso.rotation.y = mech.torsoTwist;
 
-            // Diagnostic: Log torso tracking calculations
-            if (shouldLog) {
-                dbg(`${name}: torso dx=${dx.toFixed(2)} dz=${dz.toFixed(2)} angleToEnemy=${(angleToEnemy * 180/Math.PI).toFixed(1)}°`, 'torso');
-                dbg(`${name}: torso pelvisYaw=${(pelvisYaw * 180/Math.PI).toFixed(1)}° worldAngle=${(worldTorsoAngle * 180/Math.PI).toFixed(1)}° localAngle=${(torsoAngle * 180/Math.PI).toFixed(1)}° actual=${(mech.torsoTwist * 180/Math.PI).toFixed(1)}°`, 'torso');
-            }
+                // Diagnostic: Log torso tracking calculations
+                if (shouldLog) {
+                    dbg(`${name}: torso dx=${dx.toFixed(2)} dz=${dz.toFixed(2)} angleToEnemy=${(angleToEnemy * 180/Math.PI).toFixed(1)}°`, 'torso');
+                    dbg(`${name}: torso pelvisYaw=${(pelvisYaw * 180/Math.PI).toFixed(1)}° worldAngle=${(worldTorsoAngle * 180/Math.PI).toFixed(1)}° localAngle=${(torsoAngle * 180/Math.PI).toFixed(1)}° actual=${(mech.torsoTwist * 180/Math.PI).toFixed(1)}°`, 'torso');
+                }
 
-            // Head follows torso but can look even more toward enemy
-            if (mech.head) {
-                mech.head.rotation.y = mech.torsoTwist * 1.2;
+                // Head follows torso but can look even more toward enemy
+                if (mech.head) {
+                    mech.head.rotation.y = mech.torsoTwist * 1.2;
+                }
             }
 
             // =============================================
@@ -7916,9 +7922,11 @@
             pilotingModeActive = true;
             log('User piloting mode ENABLED - cockpit view active');
 
-            // Reset look offset - start with slight downward pitch to better center enemies
-            pilotingState.yawOffset = 0;
-            pilotingState.pitchOffset = -0.15;  // Aim down slightly by default
+            // Reset aim state
+            pilotingState.targetYaw = 0;
+            pilotingState.targetPitch = -0.1;  // Aim down slightly by default
+            pilotingState.currentYaw = 0;
+            pilotingState.currentPitch = -0.1;
 
             // Show cockpit HUD elements
             document.getElementById('cockpitCrosshair').classList.add('active');
@@ -7950,19 +7958,16 @@
                 });
             }
 
-            // Set up mouse/touch event handlers for drag-to-look and click-to-fire
+            // Set up mouse/touch event handlers for aim and fire
             const canvas = document.getElementById('renderCanvas');
 
-            // Click to fire (only fires if not dragging)
+            // Click to fire at crosshair (center of screen)
             canvas.addEventListener('click', handlePilotingClick);
 
-            // Drag to look around
-            canvas.addEventListener('mousedown', handlePilotingMouseDown);
+            // Mouse move to aim torso (no click required)
             canvas.addEventListener('mousemove', handlePilotingMouseMove);
-            canvas.addEventListener('mouseup', handlePilotingMouseUp);
-            canvas.addEventListener('mouseleave', handlePilotingMouseUp);
 
-            // Touch handlers
+            // Touch handlers - tap to fire, drag to aim
             canvas.addEventListener('touchstart', handlePilotingTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handlePilotingTouchMove, { passive: false });
             canvas.addEventListener('touchend', handlePilotingTouchEnd, { passive: false });
@@ -7983,78 +7988,46 @@
             pilotingState.zoomLevel = Math.max(pilotingState.minZoom, Math.min(pilotingState.maxZoom, pilotingState.zoomLevel));
         }
 
-        // Click handler for firing weapons
+        // Click handler for firing weapons at crosshair (center of screen)
         function handlePilotingClick(event) {
             if (!pilotingModeActive || battleEnded || minigameState.active) return;
-
-            // Don't fire if we just finished dragging
-            if (pilotingState.isDragging) {
-                pilotingState.isDragging = false;
-                return;
-            }
 
             const now = performance.now();
             if (now - pilotingState.lastClickTime < pilotingState.clickCooldown) return;
             pilotingState.lastClickTime = now;
 
-            // Fire weapons at click position
-            firePlayerWeaponsAtScreenPosition(event.clientX, event.clientY);
-            showFireEffect(event.clientX, event.clientY);
+            // Fire weapons at screen center (where crosshair is)
+            const canvas = document.getElementById('renderCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            firePlayerWeaponsAtScreenPosition(centerX, centerY);
+            showFireEffect(centerX, centerY);
         }
 
-        // Mouse drag-to-look handlers
-        let mouseIsDown = false;
-        let lastMouseX = 0;
-        let lastMouseY = 0;
-
-        function handlePilotingMouseDown(event) {
-            if (!pilotingModeActive) return;
-            mouseIsDown = true;
-            pilotingState.isDragging = false;  // Reset drag state at start of new interaction
-            lastMouseX = event.clientX;
-            lastMouseY = event.clientY;
-        }
-
+        // Mouse move handler - torso follows mouse position
         function handlePilotingMouseMove(event) {
-            if (!pilotingModeActive || !mouseIsDown) return;
+            if (!pilotingModeActive) return;
 
-            const dx = event.clientX - lastMouseX;
-            const dy = event.clientY - lastMouseY;
+            const canvas = document.getElementById('renderCanvas');
+            const rect = canvas.getBoundingClientRect();
 
-            // Mark as dragging if moved enough (threshold to distinguish from click)
-            if (!pilotingState.isDragging && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
-                pilotingState.isDragging = true;
-            }
+            // Calculate mouse position relative to canvas center (-1 to 1 range)
+            const relX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+            const relY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
 
-            // Once dragging, track all mouse movement
-            if (pilotingState.isDragging) {
-                // Update look offset
-                pilotingState.yawOffset -= dx * pilotingState.dragSensitivity;
-                pilotingState.pitchOffset -= dy * pilotingState.dragSensitivity;
-
-                // Clamp to limits
-                pilotingState.yawOffset = Math.max(-pilotingState.maxYaw, Math.min(pilotingState.maxYaw, pilotingState.yawOffset));
-                pilotingState.pitchOffset = Math.max(-pilotingState.maxPitch, Math.min(pilotingState.maxPitch, pilotingState.pitchOffset));
-            }
-
-            lastMouseX = event.clientX;
-            lastMouseY = event.clientY;
+            // Convert to target angles (yaw and pitch)
+            // Horizontal: left = positive yaw, right = negative yaw
+            pilotingState.targetYaw = -relX * pilotingState.maxYaw;
+            // Vertical: up = positive pitch, down = negative pitch
+            pilotingState.targetPitch = -relY * pilotingState.maxPitch;
         }
 
-        function handlePilotingMouseUp(event) {
-            mouseIsDown = false;
-            // Reset isDragging after a short delay to allow click event to check it first
-            setTimeout(() => {
-                pilotingState.isDragging = false;
-            }, 10);
-        }
-
-        // Touch drag-to-look handlers
+        // Touch handlers
         let lastPinchDistance = 0;
         let lastTouchX = 0;
         let lastTouchY = 0;
-        let touchIsDragging = false;
-        let touchActive = false;
         let touchStartTime = 0;
 
         function handlePilotingTouchStart(event) {
@@ -8062,11 +8035,12 @@
             event.preventDefault();
 
             if (event.touches.length === 1) {
-                touchActive = true;
-                touchIsDragging = false;
                 lastTouchX = event.touches[0].clientX;
                 lastTouchY = event.touches[0].clientY;
                 touchStartTime = performance.now();
+
+                // Update aim to touch position
+                updateTouchAim(lastTouchX, lastTouchY);
             }
             lastPinchDistance = 0;
         }
@@ -8077,7 +8051,6 @@
 
             // Two-finger pinch for zoom
             if (event.touches.length === 2) {
-                touchIsDragging = true;
                 const dx = event.touches[0].clientX - event.touches[1].clientX;
                 const dy = event.touches[0].clientY - event.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -8091,23 +8064,11 @@
                 return;
             }
 
-            // Single finger drag for look
-            if (event.touches.length === 1 && touchActive) {
-                const dx = event.touches[0].clientX - lastTouchX;
-                const dy = event.touches[0].clientY - lastTouchY;
-
-                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-                    touchIsDragging = true;
-
-                    pilotingState.yawOffset -= dx * pilotingState.dragSensitivity;
-                    pilotingState.pitchOffset -= dy * pilotingState.dragSensitivity;
-
-                    pilotingState.yawOffset = Math.max(-pilotingState.maxYaw, Math.min(pilotingState.maxYaw, pilotingState.yawOffset));
-                    pilotingState.pitchOffset = Math.max(-pilotingState.maxPitch, Math.min(pilotingState.maxPitch, pilotingState.pitchOffset));
-                }
-
+            // Single finger - update aim position
+            if (event.touches.length === 1) {
                 lastTouchX = event.touches[0].clientX;
                 lastTouchY = event.touches[0].clientY;
+                updateTouchAim(lastTouchX, lastTouchY);
             }
         }
 
@@ -8115,23 +8076,38 @@
             if (!pilotingModeActive) return;
             event.preventDefault();
 
-            // If not dragging and was a quick tap, fire weapons
-            if (!touchIsDragging && touchActive && !battleEnded && !minigameState.active) {
-                const tapDuration = performance.now() - touchStartTime;
-                if (tapDuration < 300) {  // Quick tap (< 300ms)
-                    const now = performance.now();
-                    if (now - pilotingState.lastClickTime >= pilotingState.clickCooldown) {
-                        pilotingState.lastClickTime = now;
-                        firePlayerWeaponsAtScreenPosition(lastTouchX, lastTouchY);
-                        showFireEffect(lastTouchX, lastTouchY);
-                    }
+            // Quick tap fires weapons at crosshair
+            const tapDuration = performance.now() - touchStartTime;
+            if (tapDuration < 300 && !battleEnded && !minigameState.active) {
+                const now = performance.now();
+                if (now - pilotingState.lastClickTime >= pilotingState.clickCooldown) {
+                    pilotingState.lastClickTime = now;
+
+                    // Fire at center (crosshair)
+                    const canvas = document.getElementById('renderCanvas');
+                    const rect = canvas.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+
+                    firePlayerWeaponsAtScreenPosition(centerX, centerY);
+                    showFireEffect(centerX, centerY);
                 }
             }
 
-            // Reset
-            touchActive = false;
-            touchIsDragging = false;
             lastPinchDistance = 0;
+        }
+
+        function updateTouchAim(touchX, touchY) {
+            const canvas = document.getElementById('renderCanvas');
+            const rect = canvas.getBoundingClientRect();
+
+            // Calculate touch position relative to canvas center (-1 to 1 range)
+            const relX = ((touchX - rect.left) / rect.width - 0.5) * 2;
+            const relY = ((touchY - rect.top) / rect.height - 0.5) * 2;
+
+            // Convert to target angles
+            pilotingState.targetYaw = -relX * pilotingState.maxYaw;
+            pilotingState.targetPitch = -relY * pilotingState.maxPitch;
         }
 
         function showFireEffect(x, y) {
@@ -8620,87 +8596,89 @@
                 return;
             }
 
-            // Position camera inside the mech's cockpit (head/canopy area)
+            // =============================================
+            // PHYSICS LAG: Smooth torso movement toward target
+            // =============================================
+            // Lerp current angles toward target with physics-like lag
+            const aimLerp = 1 - Math.pow(0.1, dt * pilotingState.aimSpeed);
+            pilotingState.currentYaw = BABYLON.Scalar.Lerp(pilotingState.currentYaw, pilotingState.targetYaw, aimLerp);
+            pilotingState.currentPitch = BABYLON.Scalar.Lerp(pilotingState.currentPitch, pilotingState.targetPitch, aimLerp);
+
+            // =============================================
+            // TORSO ROTATION: Apply aim to mech torso
+            // =============================================
+            if (playerMech.torso) {
+                // Set torso yaw (horizontal rotation)
+                // This overrides the AI torso control for the player mech
+                playerMech.torsoTwist = pilotingState.currentYaw;
+                playerMech.targetTorsoTwist = pilotingState.currentYaw;
+                playerMech.torso.rotation.y = pilotingState.currentYaw;
+
+                // Head follows torso more
+                if (playerMech.head) {
+                    playerMech.head.rotation.y = pilotingState.currentYaw * 1.1;
+                }
+            }
+
+            // =============================================
+            // CAMERA: Follow torso direction from cockpit
+            // =============================================
             const cockpit = playerMech.cockpit || playerMech.head || playerMech.torso;
             if (!cockpit) return;
 
             // Get cockpit world position
             const cockpitPos = cockpit.getAbsolutePosition();
 
-            // Get mech's forward direction
+            // Get mech pelvis forward direction (base orientation)
             const pelvisQuat = playerMech.pelvis.rotationQuaternion;
-            const forward = new BABYLON.Vector3(0, 0, 1);
+            let pelvisYaw = 0;
             if (pelvisQuat) {
-                forward.rotateByQuaternionToRef(pelvisQuat, forward);
+                const euler = pelvisQuat.toEulerAngles();
+                pelvisYaw = euler.y;
             }
 
-            // Calculate camera position - lower viewpoint for better enemy centering
-            // Position at torso level looking slightly down at enemies
-            const cameraHeight = -0.3;  // Lower than cockpit for better enemy view
-            const cameraForward = 0.8;  // Push forward to see over mech body
+            // Calculate camera position - inside cockpit
+            const cameraHeight = -0.2;
+            const cameraForward = 0.6;
+
+            // Get forward direction from pelvis
+            const pelvisForward = new BABYLON.Vector3(
+                Math.sin(pelvisYaw),
+                0,
+                Math.cos(pelvisYaw)
+            );
 
             const cameraPos = cockpitPos.add(new BABYLON.Vector3(0, cameraHeight, 0));
-            cameraPos.addInPlace(forward.scale(cameraForward));
+            cameraPos.addInPlace(pelvisForward.scale(cameraForward));
 
-            // Look ahead and slightly down toward enemy position
-            // Apply zoom by adjusting FOV instead of position
-            const baseFOV = 0.9;  // Base field of view (radians)
+            // Apply zoom via FOV
+            const baseFOV = 0.9;
             const targetFOV = baseFOV / pilotingState.zoomLevel;
-            camera.fov = camera.fov + (targetFOV - camera.fov) * 0.1;  // Smooth FOV transition
+            camera.fov = camera.fov + (targetFOV - camera.fov) * 0.1;
 
-            // Find nearest enemy for look-at targeting
-            const enemies = allMechs.filter(m => m && !m.isDestroyed && !m.isPlayer);
-            let baseLookAt;
+            // =============================================
+            // LOOK DIRECTION: Based on torso aim (with lag)
+            // =============================================
+            // World yaw = pelvis yaw + torso twist (currentYaw includes the lag)
+            const worldYaw = pelvisYaw + pilotingState.currentYaw;
 
-            if (enemies.length > 0) {
-                // Find closest enemy
-                let closestEnemy = enemies[0];
-                let closestDist = Infinity;
-                enemies.forEach(e => {
-                    const dist = BABYLON.Vector3.Distance(cameraPos, e.pelvis.getAbsolutePosition());
-                    if (dist < closestDist) {
-                        closestDist = dist;
-                        closestEnemy = e;
-                    }
-                });
+            // Calculate look direction with yaw and pitch
+            const lookDistance = 20;
+            const pitchCos = Math.cos(pilotingState.currentPitch);
+            const pitchSin = Math.sin(pilotingState.currentPitch);
 
-                // Look toward the enemy, blended with forward direction
-                const enemyPos = closestEnemy.torso ? closestEnemy.torso.getAbsolutePosition() : closestEnemy.pelvis.getAbsolutePosition();
-                const forwardLook = cameraPos.add(forward.scale(20));
+            const lookOffset = new BABYLON.Vector3(
+                Math.sin(worldYaw) * pitchCos * lookDistance,
+                pitchSin * lookDistance,
+                Math.cos(worldYaw) * pitchCos * lookDistance
+            );
 
-                // Blend between forward and enemy - more toward enemy when zoomed
-                const blendFactor = 0.3 + (pilotingState.zoomLevel - 1) * 0.2;
-                baseLookAt = BABYLON.Vector3.Lerp(forwardLook, enemyPos, Math.min(0.6, blendFactor));
-            } else {
-                // No enemies, just look forward
-                baseLookAt = cameraPos.add(forward.scale(20));
-            }
+            const lookAt = cameraPos.add(lookOffset);
 
-            // Apply drag offset (yaw and pitch) to look direction
-            const lookDirection = baseLookAt.subtract(cameraPos).normalize();
-
-            // Calculate right and up vectors for rotation
-            const worldUp = new BABYLON.Vector3(0, 1, 0);
-            const right = BABYLON.Vector3.Cross(worldUp, lookDirection).normalize();
-            const up = BABYLON.Vector3.Cross(lookDirection, right).normalize();
-
-            // Apply yaw (horizontal rotation around up axis)
-            let rotatedLook = lookDirection.scale(Math.cos(pilotingState.yawOffset))
-                .add(right.scale(Math.sin(pilotingState.yawOffset)));
-
-            // Apply pitch (vertical rotation around right axis)
-            const pitchCos = Math.cos(pilotingState.pitchOffset);
-            const pitchSin = Math.sin(pilotingState.pitchOffset);
-            rotatedLook = rotatedLook.scale(pitchCos).add(up.scale(pitchSin));
-            rotatedLook.normalize();
-
-            // Final look target with offset applied
-            const lookAt = cameraPos.add(rotatedLook.scale(20));
-
-            // Smooth camera movement - responsive target following
-            const smoothFactor = 1 - Math.pow(0.03, dt);
+            // Smooth camera movement
+            const smoothFactor = 1 - Math.pow(0.02, dt);
             camera.position = BABYLON.Vector3.Lerp(camera.position, cameraPos, smoothFactor);
-            camera.setTarget(BABYLON.Vector3.Lerp(camera.target, lookAt, smoothFactor * 0.8));
+            camera.setTarget(BABYLON.Vector3.Lerp(camera.target, lookAt, smoothFactor * 0.9));
 
             // Update weapon indicators periodically
             updateWeaponIndicators();

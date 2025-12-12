@@ -629,7 +629,7 @@
 
     <!-- Piloting instructions -->
     <div id="pilotingInstruction">
-        CLICK/TAP to fire weapons at target location
+        CLICK/TAP to fire weapons • SCROLL/PINCH to zoom
     </div>
 
     <div id="polyCount">Triangles: <span id="triCount">0</span></div>
@@ -750,7 +750,10 @@
         let pilotingState = {
             weaponCooldowns: {},     // Track cooldowns for player weapons
             lastClickTime: 0,        // Prevent rapid clicking
-            clickCooldown: 100       // Minimum ms between clicks
+            clickCooldown: 100,      // Minimum ms between clicks
+            zoomLevel: 1.0,          // Camera zoom (1.0 = normal, higher = zoomed in)
+            minZoom: 0.5,
+            maxZoom: 2.5
         };
 
         // Weapon cooldowns per mech (keyed by mech name)
@@ -6377,16 +6380,59 @@
                         return p.mesh.position;
                     };
 
-                    if (now - p.firedAt > 3500) { disposeProjectile(); return false; }
+                    // Check timeout - use spawnTime if available (piloting mode), otherwise firedAt
+                    const spawnTime = p.spawnTime || p.firedAt;
+                    const timeout = p.timeout || 3500;
+                    if (now - spawnTime > timeout) { disposeProjectile(); return false; }
 
-                    // Safety check for target and torso
+                    const projPos = getPosition();
+
+                    // Handle piloting mode projectiles (no specific target, check all enemies)
+                    if (!p.target && p.targetPosition) {
+                        // Move projectile based on velocity
+                        if (p.velocity) {
+                            p.mesh.position.addInPlace(p.velocity.scale(dt));
+                        }
+
+                        // Check collision with all mechs that aren't the owner
+                        const enemies = allMechs.filter(m => m && !m.isDestroyed && m !== p.owner && m.isPlayer !== p.owner.isPlayer);
+                        for (const enemy of enemies) {
+                            if (!enemy.torso) continue;
+                            const dist = BABYLON.Vector3.Distance(projPos, enemy.torso.getAbsolutePosition());
+                            if (dist < 2.0) {  // Slightly larger hitbox for piloting mode
+                                applyDamage(enemy, p.weapon, enemy.isPlayer ? -1 : 1);
+                                log(`[PILOT HIT] ${enemy.name} -${p.weapon.damage} (${enemy.currentHP}/${enemy.maxHP})`, 'warn');
+                                createImpact(projPos.clone(), p.weapon.color);
+                                disposeProjectile();
+                                return false;
+                            }
+                        }
+
+                        // Check for ground hit
+                        if (projPos.y < 0.3) {
+                            const groundPos = projPos.clone();
+                            groundPos.y = 0.1;
+                            createDustPlume(groundPos);
+                            disposeProjectile();
+                            return false;
+                        }
+
+                        // Out of bounds
+                        if (Math.abs(projPos.x) > 22 || Math.abs(projPos.z) > 15) {
+                            disposeProjectile();
+                            return false;
+                        }
+
+                        return true;
+                    }
+
+                    // Standard projectile with specific target
                     if (!p.target || !p.target.torso) {
                         log(`[WARN] Projectile has invalid target, removing`, 'warn');
                         disposeProjectile();
                         return false;
                     }
 
-                    const projPos = getPosition();
                     const dist = BABYLON.Vector3.Distance(projPos, p.target.torso.getAbsolutePosition());
                     if (dist < 1.6) {
                         applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1);
@@ -7302,6 +7348,11 @@
             // Detach regular camera controls
             camera.detachControl();
 
+            // Disable depth of field for clearer cockpit view
+            if (scene.miniaturePipeline) {
+                scene.miniaturePipeline.depthOfFieldEnabled = false;
+            }
+
             // Disable cinematic mode if it was enabled
             if (cinematicEnabled) {
                 toggleCinematicCamera();
@@ -7319,8 +7370,41 @@
             canvas.addEventListener('click', handlePilotingClick);
             canvas.addEventListener('touchstart', handlePilotingTouch, { passive: false });
 
+            // Set up zoom controls (mouse wheel and pinch)
+            canvas.addEventListener('wheel', handlePilotingZoom, { passive: false });
+            canvas.addEventListener('touchmove', handlePilotingPinch, { passive: false });
+
             // Initial weapon indicator render
             renderWeaponIndicators();
+        }
+
+        function handlePilotingZoom(event) {
+            if (!pilotingModeActive) return;
+            event.preventDefault();
+
+            const zoomSpeed = 0.001;
+            pilotingState.zoomLevel -= event.deltaY * zoomSpeed;
+            pilotingState.zoomLevel = Math.max(pilotingState.minZoom, Math.min(pilotingState.maxZoom, pilotingState.zoomLevel));
+        }
+
+        let lastPinchDistance = 0;
+        function handlePilotingPinch(event) {
+            if (!pilotingModeActive || event.touches.length !== 2) {
+                lastPinchDistance = 0;
+                return;
+            }
+            event.preventDefault();
+
+            const dx = event.touches[0].clientX - event.touches[1].clientX;
+            const dy = event.touches[0].clientY - event.touches[1].clientY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (lastPinchDistance > 0) {
+                const delta = distance - lastPinchDistance;
+                pilotingState.zoomLevel += delta * 0.005;
+                pilotingState.zoomLevel = Math.max(pilotingState.minZoom, Math.min(pilotingState.maxZoom, pilotingState.zoomLevel));
+            }
+            lastPinchDistance = distance;
         }
 
         function handlePilotingClick(event) {
@@ -7504,42 +7588,70 @@
             if (!arm || !arm.weaponPod) return;
 
             const firePoint = arm.weaponPod.getAbsolutePosition();
-            const distance = BABYLON.Vector3.Distance(firePoint, targetPos);
 
-            // Create beam cylinder
-            const beam = BABYLON.MeshBuilder.CreateCylinder('beam', {
-                height: distance,
-                diameter: 0.15,
-                tessellation: 8
+            // Find enemies along the beam path and apply damage
+            const enemies = allMechs.filter(m => m && !m.isDestroyed && m !== from && m.isPlayer !== from.isPlayer);
+            let hitEnemy = null;
+            let hitDistance = Infinity;
+            let hitPoint = targetPos;
+
+            for (const enemy of enemies) {
+                if (!enemy.torso) continue;
+                const enemyPos = enemy.torso.getAbsolutePosition();
+
+                // Check if enemy is near the beam line
+                const beamDir = targetPos.subtract(firePoint).normalize();
+                const toEnemy = enemyPos.subtract(firePoint);
+                const projLength = BABYLON.Vector3.Dot(toEnemy, beamDir);
+
+                if (projLength > 0) {
+                    const closestPoint = firePoint.add(beamDir.scale(projLength));
+                    const distToBeam = BABYLON.Vector3.Distance(enemyPos, closestPoint);
+
+                    if (distToBeam < 2.5 && projLength < hitDistance) {  // Hit radius
+                        hitEnemy = enemy;
+                        hitDistance = projLength;
+                        hitPoint = closestPoint;
+                    }
+                }
+            }
+
+            // Use hit point as beam endpoint if we hit an enemy
+            const beamEnd = hitEnemy ? hitPoint : targetPos;
+            const distance = BABYLON.Vector3.Distance(firePoint, beamEnd);
+
+            // Create main beam core using tube for better visuals
+            const beam = BABYLON.MeshBuilder.CreateTube('beam' + Date.now(), {
+                path: [firePoint, beamEnd], radius: 0.08, updatable: false
             }, scene);
-
-            // Position beam between fire point and target
-            const midPoint = firePoint.add(targetPos).scale(0.5);
-            beam.position = midPoint;
-
-            // Rotate beam to point at target
-            const direction = targetPos.subtract(firePoint).normalize();
-            beam.rotationQuaternion = BABYLON.Quaternion.FromUnitVectorsToRef(
-                BABYLON.Vector3.Up(),
-                direction,
-                new BABYLON.Quaternion()
-            );
-
-            const mat = new BABYLON.StandardMaterial('beamMat', scene);
+            const mat = new BABYLON.StandardMaterial('beamMat' + Date.now(), scene);
             mat.emissiveColor = weapon.color || new BABYLON.Color3(0, 1, 0.5);
-            mat.alpha = 0.8;
+            mat.alpha = 0.95;
             mat.disableLighting = true;
             beam.material = mat;
 
+            // Create outer glow
+            const beamGlow = BABYLON.MeshBuilder.CreateTube('beamGlow' + Date.now(), {
+                path: [firePoint, beamEnd], radius: 0.2, updatable: false
+            }, scene);
+            const glowMat = new BABYLON.StandardMaterial('beamGlowMat' + Date.now(), scene);
+            glowMat.emissiveColor = weapon.color || new BABYLON.Color3(0, 1, 0.5);
+            glowMat.alpha = 0.25;
+            glowMat.disableLighting = true;
+            beamGlow.material = glowMat;
+
             beams.push({
-                mesh: beam,
-                owner: from,
-                weapon: weapon,
-                targetPosition: targetPos,
-                spawnTime: performance.now(),
-                duration: weapon.beamDuration || 180,
-                damageApplied: false
+                mesh: beam, material: mat,
+                glow: beamGlow, glowMat: glowMat,
+                createdAt: Date.now(), duration: weapon.beamDuration || 180
             });
+
+            // Apply damage if we hit an enemy
+            if (hitEnemy) {
+                applyDamage(hitEnemy, weapon, from.isPlayer ? 1 : -1);
+                log(`[PILOT BEAM HIT] ${hitEnemy.name} -${weapon.damage} (${hitEnemy.currentHP}/${hitEnemy.maxHP})`, 'warn');
+                createImpact(hitPoint.clone(), weapon.color || new BABYLON.Color3(0, 1, 0.5));
+            }
         }
 
         function fireClusterAtPosition(from, targetPos, weapon) {
@@ -7668,6 +7780,12 @@
                 document.getElementById('pilotingHUD').classList.remove('active');
                 document.getElementById('cockpitCrosshair').classList.remove('active');
                 document.getElementById('cockpitFrame').classList.remove('active');
+
+                // Re-enable DOF
+                if (scene.miniaturePipeline) {
+                    scene.miniaturePipeline.depthOfFieldEnabled = true;
+                }
+
                 camera.attachControl(document.getElementById('renderCanvas'), true);
                 return;
             }
@@ -7686,21 +7804,52 @@
                 forward.rotateByQuaternionToRef(pelvisQuat, forward);
             }
 
-            // Calculate camera position (slightly inside and above the cockpit)
-            const cameraHeight = 0.8;  // Height offset inside cockpit
-            const cameraForward = 0.3;  // Forward offset to be at front of cockpit
+            // Calculate camera position - lower viewpoint for better enemy centering
+            // Position at torso level looking slightly down at enemies
+            const cameraHeight = -0.3;  // Lower than cockpit for better enemy view
+            const cameraForward = 0.8;  // Push forward to see over mech body
 
             const cameraPos = cockpitPos.add(new BABYLON.Vector3(0, cameraHeight, 0));
             cameraPos.addInPlace(forward.scale(cameraForward));
 
-            // Look ahead in the direction the mech is facing
-            const lookDistance = 20;
-            const lookAt = cameraPos.add(forward.scale(lookDistance));
+            // Look ahead and slightly down toward enemy position
+            // Apply zoom by adjusting FOV instead of position
+            const baseFOV = 0.9;  // Base field of view (radians)
+            const targetFOV = baseFOV / pilotingState.zoomLevel;
+            camera.fov = camera.fov + (targetFOV - camera.fov) * 0.1;  // Smooth FOV transition
+
+            // Find nearest enemy for look-at targeting
+            const enemies = allMechs.filter(m => m && !m.isDestroyed && !m.isPlayer);
+            let lookAt;
+
+            if (enemies.length > 0) {
+                // Find closest enemy
+                let closestEnemy = enemies[0];
+                let closestDist = Infinity;
+                enemies.forEach(e => {
+                    const dist = BABYLON.Vector3.Distance(cameraPos, e.pelvis.getAbsolutePosition());
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestEnemy = e;
+                    }
+                });
+
+                // Look toward the enemy, blended with forward direction
+                const enemyPos = closestEnemy.torso ? closestEnemy.torso.getAbsolutePosition() : closestEnemy.pelvis.getAbsolutePosition();
+                const forwardLook = cameraPos.add(forward.scale(20));
+
+                // Blend between forward and enemy - more toward enemy when zoomed
+                const blendFactor = 0.3 + (pilotingState.zoomLevel - 1) * 0.2;
+                lookAt = BABYLON.Vector3.Lerp(forwardLook, enemyPos, Math.min(0.6, blendFactor));
+            } else {
+                // No enemies, just look forward
+                lookAt = cameraPos.add(forward.scale(20));
+            }
 
             // Smooth camera movement
-            const smoothFactor = 1 - Math.pow(0.05, dt);
+            const smoothFactor = 1 - Math.pow(0.03, dt);
             camera.position = BABYLON.Vector3.Lerp(camera.position, cameraPos, smoothFactor);
-            camera.setTarget(BABYLON.Vector3.Lerp(camera.target, lookAt, smoothFactor * 0.5));
+            camera.setTarget(BABYLON.Vector3.Lerp(camera.target, lookAt, smoothFactor * 0.3));
 
             // Update weapon indicators periodically
             updateWeaponIndicators();

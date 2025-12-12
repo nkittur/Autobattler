@@ -13,13 +13,18 @@
             color: #00ff88;
             overflow-x: hidden;
         }
-        #renderCanvas {
+        #canvasContainer {
+            position: relative;
             width: 100%;
             max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        #renderCanvas {
+            width: 100%;
             height: 55vh;
             max-height: 450px;
             display: block;
-            margin: 0 auto;
             border: 3px solid #00ff88;
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
@@ -452,7 +457,7 @@
         /* Crosshair */
         #cockpitCrosshair {
             display: none;
-            position: fixed;
+            position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -498,13 +503,15 @@
         /* Cockpit frame overlay */
         #cockpitFrame {
             display: none;
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
             pointer-events: none;
             z-index: 98;
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         #cockpitFrame.active {
@@ -517,9 +524,10 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 60px;
-            background: linear-gradient(180deg, rgba(15, 20, 18, 0.95) 0%, rgba(15, 20, 18, 0.7) 70%, transparent 100%);
-            border-bottom: 2px solid rgba(0, 255, 136, 0.3);
+            height: 50px;
+            background: linear-gradient(180deg, rgba(10, 15, 12, 0.98) 0%, rgba(15, 25, 20, 0.9) 60%, transparent 100%);
+            border-bottom: 3px solid rgba(0, 255, 136, 0.6);
+            box-shadow: inset 0 -5px 20px rgba(0, 255, 136, 0.1);
         }
 
         .cockpit-bottom {
@@ -527,68 +535,72 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 140px;
-            background: linear-gradient(0deg, rgba(15, 20, 18, 0.98) 0%, rgba(15, 20, 18, 0.85) 60%, transparent 100%);
+            height: 100px;
+            background: linear-gradient(0deg, rgba(10, 15, 12, 0.98) 0%, rgba(15, 25, 20, 0.95) 50%, transparent 100%);
+            border-top: 2px solid rgba(0, 255, 136, 0.4);
         }
 
         .cockpit-left {
             position: absolute;
-            top: 60px;
+            top: 50px;
             left: 0;
-            bottom: 140px;
-            width: 80px;
-            background: linear-gradient(90deg, rgba(15, 20, 18, 0.95) 0%, rgba(15, 20, 18, 0.6) 60%, transparent 100%);
+            bottom: 100px;
+            width: 70px;
+            background: linear-gradient(90deg, rgba(10, 15, 12, 0.98) 0%, rgba(15, 25, 20, 0.8) 50%, transparent 100%);
+            border-right: 2px solid rgba(0, 255, 136, 0.3);
         }
 
         .cockpit-right {
             position: absolute;
-            top: 60px;
+            top: 50px;
             right: 0;
-            bottom: 140px;
-            width: 80px;
-            background: linear-gradient(-90deg, rgba(15, 20, 18, 0.95) 0%, rgba(15, 20, 18, 0.6) 60%, transparent 100%);
+            bottom: 100px;
+            width: 70px;
+            background: linear-gradient(-90deg, rgba(10, 15, 12, 0.98) 0%, rgba(15, 25, 20, 0.8) 50%, transparent 100%);
+            border-left: 2px solid rgba(0, 255, 136, 0.3);
         }
 
         /* Cockpit struts/frame pieces */
         .cockpit-strut {
             position: absolute;
-            background: linear-gradient(90deg, #1a2520, #0f1512);
-            border: 1px solid rgba(0, 255, 136, 0.2);
+            background: linear-gradient(90deg, #1a2520, #0a0f0c);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
 
         .strut-left-top {
-            top: 50px;
+            top: 42px;
             left: 0;
-            width: 120px;
-            height: 8px;
-            transform: rotate(25deg);
+            width: 100px;
+            height: 6px;
+            transform: rotate(20deg);
             transform-origin: left center;
         }
 
         .strut-right-top {
-            top: 50px;
+            top: 42px;
             right: 0;
-            width: 120px;
-            height: 8px;
-            transform: rotate(-25deg);
+            width: 100px;
+            height: 6px;
+            transform: rotate(-20deg);
             transform-origin: right center;
         }
 
         .strut-left-bottom {
-            bottom: 130px;
+            bottom: 95px;
             left: 0;
-            width: 150px;
-            height: 10px;
-            transform: rotate(-20deg);
+            width: 120px;
+            height: 8px;
+            transform: rotate(-15deg);
             transform-origin: left center;
         }
 
         .strut-right-bottom {
-            bottom: 130px;
+            bottom: 95px;
             right: 0;
-            width: 150px;
-            height: 10px;
-            transform: rotate(20deg);
+            width: 120px;
+            height: 8px;
+            transform: rotate(15deg);
             transform-origin: right center;
         }
 
@@ -605,27 +617,28 @@
         /* HUD displays in cockpit */
         .cockpit-display {
             position: absolute;
-            background: rgba(0, 20, 15, 0.9);
-            border: 2px solid rgba(0, 255, 136, 0.4);
+            background: rgba(0, 15, 10, 0.95);
+            border: 2px solid rgba(0, 255, 136, 0.5);
             border-radius: 4px;
-            padding: 8px;
+            padding: 6px 8px;
             font-size: 10px;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2), inset 0 0 20px rgba(0, 255, 136, 0.05);
         }
 
         .cockpit-display-left {
-            top: 80px;
-            left: 10px;
-            width: 60px;
+            top: 60px;
+            left: 8px;
+            width: 52px;
         }
 
         .cockpit-display-right {
-            top: 80px;
-            right: 10px;
-            width: 60px;
+            top: 60px;
+            right: 8px;
+            width: 52px;
         }
 
         .display-label {
-            color: rgba(0, 255, 136, 0.6);
+            color: rgba(0, 255, 136, 0.7);
             font-size: 8px;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -633,27 +646,29 @@
 
         .display-value {
             color: #00ff88;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
         }
 
         /* Throttle/control visuals */
         .cockpit-throttle {
             position: absolute;
-            bottom: 160px;
-            width: 20px;
-            height: 80px;
-            background: linear-gradient(90deg, #1a2520, #252f2a, #1a2520);
-            border: 2px solid rgba(0, 255, 136, 0.3);
+            bottom: 110px;
+            width: 16px;
+            height: 60px;
+            background: linear-gradient(90deg, #1a2520, #2a3530, #1a2520);
+            border: 2px solid rgba(0, 255, 136, 0.4);
             border-radius: 4px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
         }
 
         .throttle-left {
-            left: 25px;
+            left: 15px;
         }
 
         .throttle-right {
-            right: 25px;
+            right: 15px;
         }
 
         .throttle-handle {
@@ -661,10 +676,11 @@
             bottom: 20%;
             left: 2px;
             right: 2px;
-            height: 20px;
-            background: linear-gradient(180deg, #3a4a45, #252f2a);
-            border: 1px solid rgba(0, 255, 136, 0.4);
+            height: 16px;
+            background: linear-gradient(180deg, #4a5a55, #2a3530);
+            border: 1px solid rgba(0, 255, 136, 0.5);
             border-radius: 3px;
+            box-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
         }
 
         /* Integrated weapon panel at bottom */
@@ -720,16 +736,16 @@
         /* Piloting mode instruction */
         #pilotingInstruction {
             display: none;
-            position: fixed;
-            top: 20px;
+            position: absolute;
+            top: 15px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             border: 2px solid #ffaa00;
             border-radius: 8px;
-            padding: 10px 20px;
+            padding: 8px 16px;
             color: #ffaa00;
-            font-size: 12px;
+            font-size: 11px;
             z-index: 101;
             text-align: center;
         }
@@ -770,7 +786,80 @@
         <button onclick="resetScene()">Reset</button>
         <button id="returnToLoadoutBtn" onclick="returnToLoadout()" style="background: rgba(0, 255, 136, 0.3); border-color: #00ff88; color: #00ff88;">Return to Loadout</button>
     </div>
-    <canvas id="renderCanvas"></canvas>
+
+    <!-- Canvas container for relative positioning of cockpit overlay -->
+    <div id="canvasContainer">
+        <canvas id="renderCanvas"></canvas>
+
+        <!-- Cockpit crosshair -->
+        <div id="cockpitCrosshair">
+            <div class="crosshair-element crosshair-v crosshair-top"></div>
+            <div class="crosshair-element crosshair-v crosshair-bottom"></div>
+            <div class="crosshair-element crosshair-h crosshair-left"></div>
+            <div class="crosshair-element crosshair-h crosshair-right"></div>
+            <div class="crosshair-center"></div>
+        </div>
+
+        <!-- Cockpit frame with mech interior visuals -->
+        <div id="cockpitFrame">
+            <!-- Main cockpit structure -->
+            <div class="cockpit-top"></div>
+            <div class="cockpit-bottom"></div>
+            <div class="cockpit-left"></div>
+            <div class="cockpit-right"></div>
+
+            <!-- Structural struts -->
+            <div class="cockpit-strut strut-left-top"></div>
+            <div class="cockpit-strut strut-right-top"></div>
+            <div class="cockpit-strut strut-left-bottom"></div>
+            <div class="cockpit-strut strut-right-bottom"></div>
+
+            <!-- Left side displays -->
+            <div class="cockpit-display cockpit-display-left">
+                <div class="display-label">HEAT</div>
+                <div class="display-value" id="cockpitHeat">32%</div>
+            </div>
+
+            <!-- Right side displays -->
+            <div class="cockpit-display cockpit-display-right">
+                <div class="display-label">ZOOM</div>
+                <div class="display-value" id="cockpitZoom">1.0x</div>
+            </div>
+
+            <!-- Throttle controls -->
+            <div class="cockpit-throttle throttle-left">
+                <div class="throttle-handle" id="throttleLeft"></div>
+            </div>
+            <div class="cockpit-throttle throttle-right">
+                <div class="throttle-handle" id="throttleRight"></div>
+            </div>
+
+            <!-- Warning lights -->
+            <div class="cockpit-warning" style="top: 12px; left: 25px;" id="warningLeft"></div>
+            <div class="cockpit-warning" style="top: 12px; right: 25px;" id="warningRight"></div>
+            <div class="cockpit-warning" style="top: 12px; left: 45px;" id="warningCenter"></div>
+            <div class="cockpit-warning" style="top: 12px; right: 45px;" id="warningArmor"></div>
+
+            <!-- Rivets/details on frame -->
+            <div class="cockpit-rivet" style="top: 55px; left: 65px;"></div>
+            <div class="cockpit-rivet" style="top: 55px; right: 65px;"></div>
+            <div class="cockpit-rivet" style="bottom: 115px; left: 65px;"></div>
+            <div class="cockpit-rivet" style="bottom: 115px; right: 65px;"></div>
+
+            <!-- Integrated weapon panel -->
+            <div class="cockpit-weapon-panel" id="weaponIndicators">
+                <!-- Weapon indicators populated by JS -->
+            </div>
+
+            <!-- Scanline overlay effect -->
+            <div class="cockpit-scanlines"></div>
+        </div>
+
+        <!-- Piloting instructions -->
+        <div id="pilotingInstruction">
+            CLICK/TAP to fire weapons • SCROLL/PINCH to zoom
+        </div>
+    </div>
 
     <!-- Countdown overlay -->
     <div id="countdownOverlay" class="hidden">
@@ -793,80 +882,6 @@
             <div id="minigameChargeFill"></div>
         </div>
         <div id="minigameResult"></div>
-    </div>
-
-    <!-- Cockpit crosshair -->
-    <div id="cockpitCrosshair">
-        <div class="crosshair-element crosshair-v crosshair-top"></div>
-        <div class="crosshair-element crosshair-v crosshair-bottom"></div>
-        <div class="crosshair-element crosshair-h crosshair-left"></div>
-        <div class="crosshair-element crosshair-h crosshair-right"></div>
-        <div class="crosshair-center"></div>
-    </div>
-
-    <!-- Cockpit frame with mech interior visuals -->
-    <div id="cockpitFrame">
-        <!-- Main cockpit structure -->
-        <div class="cockpit-top"></div>
-        <div class="cockpit-bottom"></div>
-        <div class="cockpit-left"></div>
-        <div class="cockpit-right"></div>
-
-        <!-- Structural struts -->
-        <div class="cockpit-strut strut-left-top"></div>
-        <div class="cockpit-strut strut-right-top"></div>
-        <div class="cockpit-strut strut-left-bottom"></div>
-        <div class="cockpit-strut strut-right-bottom"></div>
-
-        <!-- Left side displays -->
-        <div class="cockpit-display cockpit-display-left">
-            <div class="display-label">HEAT</div>
-            <div class="display-value" id="cockpitHeat">32%</div>
-        </div>
-
-        <!-- Right side displays -->
-        <div class="cockpit-display cockpit-display-right">
-            <div class="display-label">ZOOM</div>
-            <div class="display-value" id="cockpitZoom">1.0x</div>
-        </div>
-
-        <!-- Throttle controls -->
-        <div class="cockpit-throttle throttle-left">
-            <div class="throttle-handle" id="throttleLeft"></div>
-        </div>
-        <div class="cockpit-throttle throttle-right">
-            <div class="throttle-handle" id="throttleRight"></div>
-        </div>
-
-        <!-- Warning lights -->
-        <div class="cockpit-warning" style="top: 15px; left: 30px;" id="warningLeft"></div>
-        <div class="cockpit-warning" style="top: 15px; right: 30px;" id="warningRight"></div>
-        <div class="cockpit-warning" style="top: 15px; left: 50px;" id="warningCenter"></div>
-        <div class="cockpit-warning" style="top: 15px; right: 50px;" id="warningArmor"></div>
-
-        <!-- Rivets/details on frame -->
-        <div class="cockpit-rivet" style="top: 65px; left: 75px;"></div>
-        <div class="cockpit-rivet" style="top: 65px; right: 75px;"></div>
-        <div class="cockpit-rivet" style="bottom: 145px; left: 75px;"></div>
-        <div class="cockpit-rivet" style="bottom: 145px; right: 75px;"></div>
-        <div class="cockpit-rivet" style="top: 25px; left: 100px;"></div>
-        <div class="cockpit-rivet" style="top: 25px; right: 100px;"></div>
-
-        <!-- Integrated weapon panel (moved from pilotingHUD) -->
-        <div class="cockpit-weapon-panel" id="weaponIndicators">
-            <!-- Weapon indicators populated by JS -->
-        </div>
-
-        <!-- Scanline overlay effect -->
-        <div class="cockpit-scanlines"></div>
-    </div>
-
-    <!-- Piloting Mode HUD (for any other HUD elements) -->
-    <div id="pilotingHUD"></div>
-
-    <!-- Piloting instructions -->
-    <div id="pilotingInstruction">
-        CLICK/TAP to fire weapons • SCROLL/PINCH to zoom
     </div>
 
     <div id="polyCount">Triangles: <span id="triCount">0</span></div>

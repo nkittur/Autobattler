@@ -377,42 +377,25 @@
         /* Cockpit/Piloting Mode HUD */
         #pilotingHUD {
             display: none;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            pointer-events: none;
-            z-index: 100;
         }
 
-        #pilotingHUD.active {
-            display: block;
-        }
-
-        /* Weapon indicators at bottom */
-        #weaponIndicators {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            padding: 15px;
-            background: linear-gradient(0deg, rgba(0,0,0,0.8), transparent);
-        }
-
+        /* Weapon indicators in cockpit panel */
         .weapon-indicator {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 8px 12px;
-            background: rgba(0, 20, 10, 0.9);
-            border: 2px solid rgba(0, 255, 136, 0.5);
-            border-radius: 8px;
-            min-width: 80px;
+            padding: 6px 10px;
+            background: rgba(0, 30, 20, 0.8);
+            border: 2px solid rgba(0, 255, 136, 0.4);
+            border-radius: 6px;
+            min-width: 70px;
             transition: all 0.2s ease;
         }
 
         .weapon-indicator.ready {
             border-color: #00ff88;
-            box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 12px rgba(0, 255, 136, 0.5);
+            background: rgba(0, 40, 25, 0.9);
         }
 
         .weapon-indicator.charging {
@@ -420,15 +403,16 @@
         }
 
         .weapon-indicator-name {
-            font-size: 10px;
+            font-size: 9px;
             color: #888;
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             text-align: center;
-            max-width: 70px;
+            max-width: 65px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            letter-spacing: 0.5px;
         }
 
         .weapon-indicator.ready .weapon-indicator-name {
@@ -436,12 +420,12 @@
         }
 
         .weapon-cooldown-bar {
-            width: 60px;
-            height: 6px;
+            width: 55px;
+            height: 5px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
+            border-radius: 2px;
             overflow: hidden;
-            margin-top: 4px;
+            margin-top: 3px;
         }
 
         .weapon-cooldown-fill {
@@ -455,7 +439,7 @@
         }
 
         .weapon-damage {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             color: #ffaa00;
             margin-top: 2px;
@@ -521,13 +505,216 @@
             bottom: 0;
             pointer-events: none;
             z-index: 98;
-            border: 8px solid rgba(20, 30, 25, 0.9);
-            border-radius: 15px;
-            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5);
         }
 
         #cockpitFrame.active {
             display: block;
+        }
+
+        /* Main cockpit structure */
+        .cockpit-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(180deg, rgba(15, 20, 18, 0.95) 0%, rgba(15, 20, 18, 0.7) 70%, transparent 100%);
+            border-bottom: 2px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .cockpit-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 140px;
+            background: linear-gradient(0deg, rgba(15, 20, 18, 0.98) 0%, rgba(15, 20, 18, 0.85) 60%, transparent 100%);
+        }
+
+        .cockpit-left {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            bottom: 140px;
+            width: 80px;
+            background: linear-gradient(90deg, rgba(15, 20, 18, 0.95) 0%, rgba(15, 20, 18, 0.6) 60%, transparent 100%);
+        }
+
+        .cockpit-right {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            bottom: 140px;
+            width: 80px;
+            background: linear-gradient(-90deg, rgba(15, 20, 18, 0.95) 0%, rgba(15, 20, 18, 0.6) 60%, transparent 100%);
+        }
+
+        /* Cockpit struts/frame pieces */
+        .cockpit-strut {
+            position: absolute;
+            background: linear-gradient(90deg, #1a2520, #0f1512);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .strut-left-top {
+            top: 50px;
+            left: 0;
+            width: 120px;
+            height: 8px;
+            transform: rotate(25deg);
+            transform-origin: left center;
+        }
+
+        .strut-right-top {
+            top: 50px;
+            right: 0;
+            width: 120px;
+            height: 8px;
+            transform: rotate(-25deg);
+            transform-origin: right center;
+        }
+
+        .strut-left-bottom {
+            bottom: 130px;
+            left: 0;
+            width: 150px;
+            height: 10px;
+            transform: rotate(-20deg);
+            transform-origin: left center;
+        }
+
+        .strut-right-bottom {
+            bottom: 130px;
+            right: 0;
+            width: 150px;
+            height: 10px;
+            transform: rotate(20deg);
+            transform-origin: right center;
+        }
+
+        /* Cockpit details - rivets/bolts */
+        .cockpit-rivet {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle at 30% 30%, #3a4540, #1a2520);
+            border-radius: 50%;
+            border: 1px solid rgba(0, 0, 0, 0.5);
+        }
+
+        /* HUD displays in cockpit */
+        .cockpit-display {
+            position: absolute;
+            background: rgba(0, 20, 15, 0.9);
+            border: 2px solid rgba(0, 255, 136, 0.4);
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 10px;
+        }
+
+        .cockpit-display-left {
+            top: 80px;
+            left: 10px;
+            width: 60px;
+        }
+
+        .cockpit-display-right {
+            top: 80px;
+            right: 10px;
+            width: 60px;
+        }
+
+        .display-label {
+            color: rgba(0, 255, 136, 0.6);
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .display-value {
+            color: #00ff88;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Throttle/control visuals */
+        .cockpit-throttle {
+            position: absolute;
+            bottom: 160px;
+            width: 20px;
+            height: 80px;
+            background: linear-gradient(90deg, #1a2520, #252f2a, #1a2520);
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-radius: 4px;
+        }
+
+        .throttle-left {
+            left: 25px;
+        }
+
+        .throttle-right {
+            right: 25px;
+        }
+
+        .throttle-handle {
+            position: absolute;
+            bottom: 20%;
+            left: 2px;
+            right: 2px;
+            height: 20px;
+            background: linear-gradient(180deg, #3a4a45, #252f2a);
+            border: 1px solid rgba(0, 255, 136, 0.4);
+            border-radius: 3px;
+        }
+
+        /* Integrated weapon panel at bottom */
+        .cockpit-weapon-panel {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 15, 10, 0.95);
+            border: 2px solid rgba(0, 255, 136, 0.5);
+            border-radius: 8px;
+            padding: 10px 15px;
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Scanline effect */
+        .cockpit-scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+            pointer-events: none;
+        }
+
+        /* Warning lights */
+        .cockpit-warning {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #333;
+            border: 1px solid #555;
+        }
+
+        .warning-active {
+            animation: warningBlink 0.5s ease-in-out infinite;
+        }
+
+        @keyframes warningBlink {
+            0%, 100% { background: #ff4444; box-shadow: 0 0 8px #ff4444; }
+            50% { background: #aa2222; box-shadow: none; }
         }
 
         /* Piloting mode instruction */
@@ -608,13 +795,6 @@
         <div id="minigameResult"></div>
     </div>
 
-    <!-- Piloting Mode HUD -->
-    <div id="pilotingHUD">
-        <div id="weaponIndicators">
-            <!-- Weapon indicators populated by JS -->
-        </div>
-    </div>
-
     <!-- Cockpit crosshair -->
     <div id="cockpitCrosshair">
         <div class="crosshair-element crosshair-v crosshair-top"></div>
@@ -624,8 +804,65 @@
         <div class="crosshair-center"></div>
     </div>
 
-    <!-- Cockpit frame -->
-    <div id="cockpitFrame"></div>
+    <!-- Cockpit frame with mech interior visuals -->
+    <div id="cockpitFrame">
+        <!-- Main cockpit structure -->
+        <div class="cockpit-top"></div>
+        <div class="cockpit-bottom"></div>
+        <div class="cockpit-left"></div>
+        <div class="cockpit-right"></div>
+
+        <!-- Structural struts -->
+        <div class="cockpit-strut strut-left-top"></div>
+        <div class="cockpit-strut strut-right-top"></div>
+        <div class="cockpit-strut strut-left-bottom"></div>
+        <div class="cockpit-strut strut-right-bottom"></div>
+
+        <!-- Left side displays -->
+        <div class="cockpit-display cockpit-display-left">
+            <div class="display-label">HEAT</div>
+            <div class="display-value" id="cockpitHeat">32%</div>
+        </div>
+
+        <!-- Right side displays -->
+        <div class="cockpit-display cockpit-display-right">
+            <div class="display-label">ZOOM</div>
+            <div class="display-value" id="cockpitZoom">1.0x</div>
+        </div>
+
+        <!-- Throttle controls -->
+        <div class="cockpit-throttle throttle-left">
+            <div class="throttle-handle" id="throttleLeft"></div>
+        </div>
+        <div class="cockpit-throttle throttle-right">
+            <div class="throttle-handle" id="throttleRight"></div>
+        </div>
+
+        <!-- Warning lights -->
+        <div class="cockpit-warning" style="top: 15px; left: 30px;" id="warningLeft"></div>
+        <div class="cockpit-warning" style="top: 15px; right: 30px;" id="warningRight"></div>
+        <div class="cockpit-warning" style="top: 15px; left: 50px;" id="warningCenter"></div>
+        <div class="cockpit-warning" style="top: 15px; right: 50px;" id="warningArmor"></div>
+
+        <!-- Rivets/details on frame -->
+        <div class="cockpit-rivet" style="top: 65px; left: 75px;"></div>
+        <div class="cockpit-rivet" style="top: 65px; right: 75px;"></div>
+        <div class="cockpit-rivet" style="bottom: 145px; left: 75px;"></div>
+        <div class="cockpit-rivet" style="bottom: 145px; right: 75px;"></div>
+        <div class="cockpit-rivet" style="top: 25px; left: 100px;"></div>
+        <div class="cockpit-rivet" style="top: 25px; right: 100px;"></div>
+
+        <!-- Integrated weapon panel (moved from pilotingHUD) -->
+        <div class="cockpit-weapon-panel" id="weaponIndicators">
+            <!-- Weapon indicators populated by JS -->
+        </div>
+
+        <!-- Scanline overlay effect -->
+        <div class="cockpit-scanlines"></div>
+    </div>
+
+    <!-- Piloting Mode HUD (for any other HUD elements) -->
+    <div id="pilotingHUD"></div>
 
     <!-- Piloting instructions -->
     <div id="pilotingInstruction">
@@ -7334,8 +7571,7 @@
             pilotingModeActive = true;
             log('User piloting mode ENABLED - cockpit view active');
 
-            // Show HUD elements
-            document.getElementById('pilotingHUD').classList.add('active');
+            // Show cockpit HUD elements
             document.getElementById('cockpitCrosshair').classList.add('active');
             document.getElementById('cockpitFrame').classList.add('active');
             document.getElementById('pilotingInstruction').classList.add('active');
@@ -7450,15 +7686,21 @@
             const playerMech = playerMechs.find(m => m && !m.isDestroyed);
             if (!playerMech || !playerMech.loadoutWeapons) return;
 
-            // Convert screen position to world position using raycasting
-            const pickResult = scene.pick(screenX, screenY);
+            // Convert client coordinates to canvas-relative coordinates
+            const canvas = document.getElementById('renderCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = screenX - rect.left;
+            const canvasY = screenY - rect.top;
+
+            // Convert canvas position to world position using raycasting
+            const pickResult = scene.pick(canvasX, canvasY);
             let targetPosition;
 
             if (pickResult.hit) {
                 targetPosition = pickResult.pickedPoint;
             } else {
                 // If no hit, create a target position in the direction of the click
-                const ray = scene.createPickingRay(screenX, screenY, BABYLON.Matrix.Identity(), camera);
+                const ray = scene.createPickingRay(canvasX, canvasY, BABYLON.Matrix.Identity(), camera);
                 targetPosition = ray.origin.add(ray.direction.scale(20));
             }
 
@@ -7746,6 +7988,10 @@
             const playerMech = playerMechs.find(m => m && !m.isDestroyed);
             if (!playerMech || !playerMech.loadoutWeapons) return;
 
+            // Calculate heat based on weapons on cooldown
+            let totalCooldownPercent = 0;
+            let weaponCount = 0;
+
             playerMech.loadoutWeapons.forEach(wpn => {
                 const indicator = document.querySelector(`.weapon-indicator[data-weapon-id="${wpn.itemId}"]`);
                 if (!indicator) return;
@@ -7754,6 +8000,10 @@
                 const weaponCooldownTime = (wpn.battle && wpn.battle.cooldown) || 2000;
                 const remaining = Math.max(0, cooldown - now);
                 const progress = remaining > 0 ? (1 - remaining / weaponCooldownTime) * 100 : 100;
+
+                // Track heat
+                totalCooldownPercent += (100 - progress);
+                weaponCount++;
 
                 const fill = indicator.querySelector('.weapon-cooldown-fill');
                 if (fill) {
@@ -7768,6 +8018,46 @@
                     indicator.classList.add('charging');
                 }
             });
+
+            // Update cockpit displays
+            const heatDisplay = document.getElementById('cockpitHeat');
+            const zoomDisplay = document.getElementById('cockpitZoom');
+
+            if (heatDisplay && weaponCount > 0) {
+                const avgHeat = Math.round(totalCooldownPercent / weaponCount);
+                heatDisplay.textContent = avgHeat + '%';
+                heatDisplay.style.color = avgHeat > 70 ? '#ff4444' : avgHeat > 40 ? '#ffaa00' : '#00ff88';
+            }
+
+            if (zoomDisplay) {
+                zoomDisplay.textContent = pilotingState.zoomLevel.toFixed(1) + 'x';
+            }
+
+            // Update warning lights based on mech status
+            const warningArmor = document.getElementById('warningArmor');
+            if (warningArmor && playerMech) {
+                const hpPercent = playerMech.currentHP / playerMech.maxHP;
+                if (hpPercent < 0.3) {
+                    warningArmor.classList.add('warning-active');
+                } else {
+                    warningArmor.classList.remove('warning-active');
+                }
+            }
+
+            // Update throttle positions based on movement
+            const throttleLeft = document.getElementById('throttleLeft');
+            const throttleRight = document.getElementById('throttleRight');
+            if (throttleLeft && throttleRight && playerMech) {
+                const walkDir = playerMech.walkDirection || 0;
+                const strafe = playerMech.ai ? playerMech.ai.strafeAmount || 0 : 0;
+
+                // Throttle position based on movement (20% to 80% range)
+                const leftPos = 30 + (walkDir + strafe) * 25;
+                const rightPos = 30 + (walkDir - strafe) * 25;
+
+                throttleLeft.style.bottom = Math.max(10, Math.min(70, leftPos)) + '%';
+                throttleRight.style.bottom = Math.max(10, Math.min(70, rightPos)) + '%';
+            }
         }
 
         function updateCockpitCamera(dt) {
@@ -7777,7 +8067,6 @@
             if (!playerMech) {
                 // Player mech destroyed - switch to spectate mode
                 pilotingModeActive = false;
-                document.getElementById('pilotingHUD').classList.remove('active');
                 document.getElementById('cockpitCrosshair').classList.remove('active');
                 document.getElementById('cockpitFrame').classList.remove('active');
 

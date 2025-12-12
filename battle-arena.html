@@ -5944,50 +5944,61 @@
             }
             mech.isFaceDown = forward.y < 0;
 
+            // Switch to ANIMATED mode immediately so we can control position/rotation
+            // This must happen BEFORE we try to blend position/rotation in updateRecovery
+            body.setMotionType(BABYLON.PhysicsMotionType.ANIMATED);
+
             // Stop all motion before recovery
             body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
             body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+
+            // Store the current fallen position for blending
+            const pos = mech.pelvis.getAbsolutePosition();
+            mech.recoveryStartY = pos.y;
+            mech.recoveryStartQuat = quat ? quat.clone() : BABYLON.Quaternion.Identity();
         }
 
         function updateRecovery(mech, dt) {
             mech.recoveryTimer += dt;
             const body = mech.pelvisAggregate.body;
-            const pos = mech.pelvis.getAbsolutePosition();
-            const quat = body.transformNode.rotationQuaternion;
-            const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
 
             const blendTime = STABILITY_CONFIG.recoveryBlendTime;
+            const stabilizeTime = 0.3;
 
             if (mech.recoveryTimer < blendTime) {
-                // Phase 1: Blend rotation to upright
+                // Phase 1: Blend from fallen position to upright standing
                 const t = mech.recoveryTimer / blendTime;
                 const easeT = t * t * (3 - 2 * t);  // Smoothstep for nice easing
 
-                // Blend to upright (keep Y rotation for facing)
-                const targetQuat = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
-                const blendedQuat = BABYLON.Quaternion.Slerp(quat, targetQuat, easeT);
+                // Get stored starting quaternion (from when mech was fallen)
+                const startQuat = mech.recoveryStartQuat || BABYLON.Quaternion.Identity();
+                const startEuler = startQuat.toEulerAngles();
+
+                // Target: upright (0 pitch/roll) but preserve the yaw facing direction
+                const targetQuat = BABYLON.Quaternion.FromEulerAngles(0, startEuler.y, 0);
+                const blendedQuat = BABYLON.Quaternion.Slerp(startQuat, targetQuat, easeT);
                 body.transformNode.rotationQuaternion = blendedQuat;
 
-                // Also lift to standing height
+                // Blend Y position from fallen to standing height
                 const standingY = 3.5 * mech.scale;
-                const targetY = Math.max(pos.y, standingY);
-                mech.pelvis.position.y = BABYLON.Scalar.Lerp(pos.y, targetY, easeT);
+                const startY = mech.recoveryStartY || 0;
+                const targetY = standingY;
+                mech.pelvis.position.y = BABYLON.Scalar.Lerp(startY, targetY, easeT);
 
                 // Reset leg positions during blend
                 dampLegs(mech, dt * 3);
 
-            } else if (mech.recoveryTimer < blendTime + 0.3) {
-                // Phase 2: Switch back to kinematic and stabilize
-                if (body.getMotionType() !== BABYLON.PhysicsMotionType.ANIMATED) {
-                    body.setMotionType(BABYLON.PhysicsMotionType.ANIMATED);
-                    body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
-                    body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+            } else if (mech.recoveryTimer < blendTime + stabilizeTime) {
+                // Phase 2: Hold upright position for a moment (already in ANIMATED mode)
+                const standingY = 3.5 * mech.scale;
+                mech.pelvis.position.y = standingY;
 
-                    // Make sure we're upright
-                    body.transformNode.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
+                // Ensure fully upright
+                const quat = body.transformNode.rotationQuaternion;
+                const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
+                body.transformNode.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
 
-                    dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Switched back to ANIMATED`, 'ai');
-                }
+                dampLegs(mech, dt * 3);
 
             } else {
                 // Phase 3: Recovery complete - back to walking state
@@ -6562,8 +6573,10 @@
             // ============================================
             // WEAPON FIRING (separate from movement)
             // Skip AI weapon firing for player mech when in piloting mode (user controls weapons)
+            // Also skip if mech is ragdolled or recovering - can't fire while fallen!
             // ============================================
-            const skipWeaponFiring = mech.isPlayer && pilotingModeActive;
+            const isIncapacitated = mech.mechState === MechState.RAGDOLL || mech.mechState === MechState.RECOVERING;
+            const skipWeaponFiring = (mech.isPlayer && pilotingModeActive) || isIncapacitated;
             if (!skipWeaponFiring && gameTime - mech.ai.lastDecision > AI_CONFIG.decisionInterval) {
                 mech.ai.lastDecision = gameTime;
 
@@ -8641,6 +8654,11 @@
         function firePlayerWeaponsAtScreenPosition(screenX, screenY) {
             const playerMech = playerMechs.find(m => m && !m.isDestroyed);
             if (!playerMech || !playerMech.loadoutWeapons) return;
+
+            // Can't fire while fallen or recovering
+            if (playerMech.mechState === MechState.RAGDOLL || playerMech.mechState === MechState.RECOVERING) {
+                return;
+            }
 
             // Convert client coordinates to canvas-relative coordinates
             const canvas = document.getElementById('renderCanvas');

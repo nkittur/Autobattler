@@ -2039,79 +2039,442 @@
             }
         }
 
-        // Create or update damage overlay on a body part mesh
-        function updateDamageOverlay(mech, bodyPartName) {
+        // ============================================
+        // DAMAGE VISUAL SYSTEM - Sparks, Decals, Deformation
+        // ============================================
+
+        // Cache for damage decal textures
+        let damageDecalTextures = null;
+
+        // Create procedural damage/scorch textures
+        function createDamageTextures() {
+            if (damageDecalTextures) return damageDecalTextures;
+
+            damageDecalTextures = [];
+
+            // Create several variations of damage decals
+            for (let variant = 0; variant < 3; variant++) {
+                const size = 128;
+                const texture = new BABYLON.DynamicTexture('damageDecal_' + variant, size, scene, false);
+                const ctx = texture.getContext();
+
+                // Clear with transparency
+                ctx.clearRect(0, 0, size, size);
+
+                // Draw scorch/damage pattern
+                const centerX = size / 2;
+                const centerY = size / 2;
+                const maxRadius = size / 2 - 4;
+
+                // Outer scorch ring
+                const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+                gradient.addColorStop(0, 'rgba(20, 20, 20, 0.9)');
+                gradient.addColorStop(0.3, 'rgba(40, 30, 20, 0.8)');
+                gradient.addColorStop(0.6, 'rgba(60, 40, 30, 0.5)');
+                gradient.addColorStop(0.85, 'rgba(80, 50, 30, 0.2)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Add some random burn marks/cracks
+                ctx.strokeStyle = 'rgba(10, 10, 10, 0.7)';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 5 + variant * 2; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const len = maxRadius * (0.3 + Math.random() * 0.5);
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(
+                        centerX + Math.cos(angle) * len,
+                        centerY + Math.sin(angle) * len
+                    );
+                    ctx.stroke();
+                }
+
+                // Add some orange/hot spots near center for fresh damage look
+                if (variant === 0) {
+                    const hotGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius * 0.3);
+                    hotGradient.addColorStop(0, 'rgba(255, 150, 50, 0.4)');
+                    hotGradient.addColorStop(0.5, 'rgba(255, 100, 30, 0.2)');
+                    hotGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = hotGradient;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, maxRadius * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                texture.update();
+                texture.hasAlpha = true;
+                damageDecalTextures.push(texture);
+            }
+
+            return damageDecalTextures;
+        }
+
+        // Get the mesh for a body part
+        function getBodyPartMesh(mech, bodyPartName) {
+            switch (bodyPartName) {
+                case 'head': return mech.head;
+                case 'torso': return mech.torso;
+                case 'leftArm': return mech.leftArm?.weaponPod || mech.leftArm?.arm || mech.leftArm;
+                case 'rightArm': return mech.rightArm?.weaponPod || mech.rightArm?.arm || mech.rightArm;
+                case 'leftLeg': return mech.leftLeg?.upperLeg || mech.leftLeg;
+                case 'rightLeg': return mech.rightLeg?.upperLeg || mech.rightLeg;
+                default: return null;
+            }
+        }
+
+        // Create a damage decal at impact point
+        function createDamageDecal(mech, bodyPartName, impactPosition, impactDirection, damage) {
+            const mesh = getBodyPartMesh(mech, bodyPartName);
+            if (!mesh) return;
+
+            // Initialize decal tracking on body part
+            const bodyPart = mech.bodyParts?.[bodyPartName];
+            if (!bodyPart) return;
+            if (!bodyPart.decals) bodyPart.decals = [];
+
+            // Limit decals per body part for performance
+            const maxDecals = 5;
+            if (bodyPart.decals.length >= maxDecals) {
+                // Remove oldest decal
+                const oldDecal = bodyPart.decals.shift();
+                if (oldDecal) oldDecal.dispose();
+            }
+
+            // Get damage textures
+            const textures = createDamageTextures();
+            const textureIndex = Math.floor(Math.random() * textures.length);
+
+            // Calculate decal size based on damage (larger damage = larger scorch)
+            const baseSize = 0.3 + (damage / 30) * 0.4;  // 0.3 to 0.7 based on damage
+            const size = Math.min(baseSize, 1.0) * mech.scale;
+
+            // Calculate normal from impact direction (facing outward from hit)
+            const normal = impactDirection.normalize().scale(-1);
+
+            try {
+                // Create decal projected onto the mesh
+                const decal = BABYLON.MeshBuilder.CreateDecal('damageDecal', mesh, {
+                    position: impactPosition,
+                    normal: normal,
+                    size: new BABYLON.Vector3(size, size, size),
+                    angle: Math.random() * Math.PI * 2
+                });
+
+                if (decal) {
+                    // Create material for the decal
+                    const decalMat = new BABYLON.StandardMaterial('decalMat_' + Date.now(), scene);
+                    decalMat.diffuseTexture = textures[textureIndex];
+                    decalMat.diffuseTexture.hasAlpha = true;
+                    decalMat.useAlphaFromDiffuseTexture = true;
+                    decalMat.zOffset = -2;  // Render slightly in front to avoid z-fighting
+                    decalMat.backFaceCulling = false;
+                    decalMat.emissiveColor = new BABYLON.Color3(0.1, 0.05, 0);  // Slight glow
+                    decal.material = decalMat;
+
+                    // Parent to the body part so it moves with the mech
+                    decal.parent = mesh;
+
+                    bodyPart.decals.push(decal);
+                }
+            } catch (e) {
+                // Decal creation can fail on complex meshes - that's okay
+                console.log('Decal creation failed (expected for some mesh types):', e.message);
+            }
+        }
+
+        // Enhanced impact sparks with metal debris
+        function createDamageSparksBurst(position, direction, intensity) {
+            const sparkCount = Math.floor(8 + intensity * 12);  // 8-20 sparks based on intensity
+
+            for (let i = 0; i < sparkCount; i++) {
+                // Mix of bright sparks and darker debris
+                const isSpark = Math.random() > 0.3;
+
+                const particle = BABYLON.MeshBuilder.CreateSphere('spark', {
+                    diameter: isSpark ? 0.06 : 0.1
+                }, scene);
+                particle.position = position.clone();
+
+                const mat = new BABYLON.StandardMaterial('sparkMat', scene);
+                if (isSpark) {
+                    // Bright orange/yellow spark
+                    mat.emissiveColor = new BABYLON.Color3(1, 0.6 + Math.random() * 0.4, 0.1);
+                } else {
+                    // Dark metal debris
+                    mat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                    mat.emissiveColor = new BABYLON.Color3(0.3, 0.15, 0.05);
+                }
+                mat.disableLighting = isSpark;
+                particle.material = mat;
+
+                // Random velocity - sparks fly faster than debris
+                const speed = isSpark ? 6 : 3;
+                const vel = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * speed + direction.x * 2,
+                    Math.random() * 4 + 1,
+                    (Math.random() - 0.5) * speed + direction.z * 2
+                );
+
+                let age = 0;
+                const lifetime = isSpark ? 400 : 600;
+                const updateInterval = setInterval(() => {
+                    age += 30;
+                    if (age > lifetime) {
+                        clearInterval(updateInterval);
+                        particle.dispose();
+                        mat.dispose();
+                        return;
+                    }
+
+                    particle.position.addInPlace(vel.scale(0.03));
+                    vel.y -= isSpark ? 0.4 : 0.5;  // Gravity
+
+                    // Fade out
+                    mat.alpha = 1 - (age / lifetime);
+
+                    // Sparks flicker
+                    if (isSpark && Math.random() > 0.7) {
+                        mat.emissiveColor = new BABYLON.Color3(
+                            0.8 + Math.random() * 0.2,
+                            0.4 + Math.random() * 0.4,
+                            0.1
+                        );
+                    }
+                }, 30);
+            }
+        }
+
+        // Create smoke puff at impact
+        function createImpactSmoke(position, intensity) {
+            const smokeCount = Math.floor(3 + intensity * 4);
+
+            for (let i = 0; i < smokeCount; i++) {
+                const smoke = BABYLON.MeshBuilder.CreateSphere('smoke', {
+                    diameter: 0.3 + Math.random() * 0.3
+                }, scene);
+                smoke.position = position.clone().add(new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 0.3,
+                    Math.random() * 0.2,
+                    (Math.random() - 0.5) * 0.3
+                ));
+
+                const smokeMat = new BABYLON.StandardMaterial('smokeMat', scene);
+                smokeMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                smokeMat.alpha = 0.4;
+                smokeMat.backFaceCulling = false;
+                smoke.material = smokeMat;
+
+                let age = 0;
+                const lifetime = 800 + Math.random() * 400;
+                const riseSpeed = 0.5 + Math.random() * 0.5;
+                const expandRate = 1.02;
+
+                const updateInterval = setInterval(() => {
+                    age += 30;
+                    if (age > lifetime) {
+                        clearInterval(updateInterval);
+                        smoke.dispose();
+                        smokeMat.dispose();
+                        return;
+                    }
+
+                    // Rise and expand
+                    smoke.position.y += riseSpeed * 0.03;
+                    smoke.scaling.scaleInPlace(expandRate);
+
+                    // Fade out
+                    smokeMat.alpha = 0.4 * (1 - age / lifetime);
+                }, 30);
+            }
+        }
+
+        // Apply geometry deformation to damaged parts
+        function applyDamageDeformation(mech, bodyPartName) {
+            const bodyPart = mech.bodyParts?.[bodyPartName];
+            if (!bodyPart) return;
+
+            const mesh = getBodyPartMesh(mech, bodyPartName);
+            if (!mesh) return;
+
+            const damageRatio = 1 - (bodyPart.currentHP / bodyPart.maxHP);
+
+            // Only deform if significantly damaged (>30%)
+            if (damageRatio < 0.3) return;
+
+            // Store original scaling if not already stored
+            if (!bodyPart.originalScaling) {
+                bodyPart.originalScaling = mesh.scaling.clone();
+            }
+
+            // Apply asymmetric scaling to simulate dents/damage
+            // More damage = more deformation
+            const deformAmount = (damageRatio - 0.3) * 0.15;  // 0 to ~0.1 deformation
+
+            // Random but consistent deformation per part
+            if (!bodyPart.deformSeed) {
+                bodyPart.deformSeed = {
+                    x: (Math.random() - 0.5) * 2,
+                    y: (Math.random() - 0.5) * 2,
+                    z: (Math.random() - 0.5) * 2
+                };
+            }
+
+            const newScaling = bodyPart.originalScaling.clone();
+            newScaling.x *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.x);
+            newScaling.y *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.y) * 0.5;  // Less vertical deform
+            newScaling.z *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.z);
+
+            mesh.scaling = newScaling;
+
+            // Darken the material slightly to show battle wear
+            if (mesh.material && mesh.material.diffuseColor) {
+                const darkenFactor = 1 - damageRatio * 0.3;
+                // Don't modify original material - create a clone if needed
+                if (!bodyPart.originalMaterial) {
+                    bodyPart.originalMaterial = mesh.material;
+                    const damagedMat = mesh.material.clone(mesh.material.name + '_damaged');
+                    mesh.material = damagedMat;
+                }
+                mesh.material.diffuseColor = bodyPart.originalMaterial.diffuseColor.scale(darkenFactor);
+            }
+        }
+
+        // Handle destroyed body part visuals
+        function applyDestructionVisuals(mech, bodyPartName) {
+            const mesh = getBodyPartMesh(mech, bodyPartName);
+            if (!mesh) return;
+
+            // Make the part semi-transparent and very dark
+            if (mesh.material) {
+                if (!mesh.material._isDestroyedMaterial) {
+                    const destroyedMat = mesh.material.clone(mesh.material.name + '_destroyed');
+                    destroyedMat.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.15);
+                    destroyedMat.emissiveColor = new BABYLON.Color3(0, 0, 0);
+                    destroyedMat.alpha = 0.6;
+                    destroyedMat._isDestroyedMaterial = true;
+                    mesh.material = destroyedMat;
+                }
+            }
+
+            // Significant deformation for destroyed parts
+            const bodyPart = mech.bodyParts?.[bodyPartName];
+            if (bodyPart && !bodyPart.originalScaling) {
+                bodyPart.originalScaling = mesh.scaling.clone();
+            }
+            if (bodyPart) {
+                mesh.scaling = bodyPart.originalScaling.scale(0.7);  // Crushed/compacted look
+            }
+
+            // Spawn debris
+            createDestructionDebris(mesh.getAbsolutePosition(), mech.scale);
+        }
+
+        // Spawn debris when a part is destroyed
+        function createDestructionDebris(position, scale) {
+            const debrisCount = 8 + Math.floor(Math.random() * 6);
+
+            for (let i = 0; i < debrisCount; i++) {
+                // Create angular debris pieces
+                const debris = BABYLON.MeshBuilder.CreateBox('debris', {
+                    width: 0.1 + Math.random() * 0.15,
+                    height: 0.05 + Math.random() * 0.1,
+                    depth: 0.08 + Math.random() * 0.12
+                }, scene);
+                debris.position = position.clone();
+                debris.scaling.scaleInPlace(scale);
+
+                const debrisMat = new BABYLON.StandardMaterial('debrisMat', scene);
+                debrisMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.35);
+                debrisMat.emissiveColor = new BABYLON.Color3(0.1, 0.05, 0);
+                debris.material = debrisMat;
+
+                // Random velocity - explosion outward
+                const vel = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 8,
+                    Math.random() * 6 + 2,
+                    (Math.random() - 0.5) * 8
+                );
+                const angularVel = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10
+                );
+
+                let age = 0;
+                const lifetime = 1500 + Math.random() * 500;
+
+                const updateInterval = setInterval(() => {
+                    age += 30;
+                    if (age > lifetime) {
+                        clearInterval(updateInterval);
+                        debris.dispose();
+                        debrisMat.dispose();
+                        return;
+                    }
+
+                    // Physics
+                    debris.position.addInPlace(vel.scale(0.03));
+                    vel.y -= 0.5;  // Gravity
+
+                    // Rotation
+                    debris.rotation.addInPlace(angularVel.scale(0.03));
+
+                    // Fade out in last 30%
+                    if (age > lifetime * 0.7) {
+                        debrisMat.alpha = 1 - (age - lifetime * 0.7) / (lifetime * 0.3);
+                    }
+
+                    // Stop when hitting ground
+                    if (debris.position.y < 0.1) {
+                        debris.position.y = 0.1;
+                        vel.y = 0;
+                        vel.x *= 0.8;
+                        vel.z *= 0.8;
+                        angularVel.scaleInPlace(0.9);
+                    }
+                }, 30);
+            }
+        }
+
+        // Main function to apply all damage visuals
+        function applyDamageVisuals(mech, bodyPartName, impactPosition, impactDirection, damage) {
             if (!mech.bodyParts || !mech.bodyParts[bodyPartName]) return;
 
             const bodyPart = mech.bodyParts[bodyPartName];
             const damageRatio = 1 - (bodyPart.currentHP / bodyPart.maxHP);
+            const intensity = Math.min(1, damage / 20);  // Normalize damage to 0-1
 
-            // Get the mesh for this body part
-            let mesh = null;
-            switch (bodyPartName) {
-                case 'head':
-                    mesh = mech.head;
-                    break;
-                case 'torso':
-                    mesh = mech.torso;
-                    break;
-                case 'leftArm':
-                    mesh = mech.leftArm?.weaponPod || mech.leftArm?.arm || mech.leftArm;
-                    break;
-                case 'rightArm':
-                    mesh = mech.rightArm?.weaponPod || mech.rightArm?.arm || mech.rightArm;
-                    break;
-                case 'leftLeg':
-                    mesh = mech.leftLeg?.upperLeg || mech.leftLeg;
-                    break;
-                case 'rightLeg':
-                    mesh = mech.rightLeg?.upperLeg || mech.rightLeg;
-                    break;
-            }
+            // 1. Always create sparks at impact
+            if (impactPosition && impactDirection) {
+                createDamageSparksBurst(impactPosition, impactDirection, intensity);
 
-            if (!mesh) return;
-
-            // Create damage overlay material if it doesn't exist
-            if (!bodyPart.damageOverlay && damageRatio > 0) {
-                const overlayMesh = mesh.clone(mesh.name + '_damageOverlay');
-                if (overlayMesh) {
-                    overlayMesh.parent = mesh.parent;
-                    overlayMesh.position = mesh.position.clone();
-                    overlayMesh.rotation = mesh.rotation ? mesh.rotation.clone() : new BABYLON.Vector3(0, 0, 0);
-                    overlayMesh.scaling = mesh.scaling ? mesh.scaling.scale(1.02) : new BABYLON.Vector3(1.02, 1.02, 1.02);
-
-                    const overlayMat = new BABYLON.StandardMaterial(mesh.name + '_damageMat', scene);
-                    overlayMat.diffuseColor = new BABYLON.Color3(0.8, 0.1, 0.1);
-                    overlayMat.emissiveColor = new BABYLON.Color3(0.5, 0, 0);
-                    overlayMat.alpha = 0;
-                    overlayMat.backFaceCulling = false;
-                    overlayMesh.material = overlayMat;
-                    bodyPart.damageOverlay = overlayMesh;
-                    bodyPart.damageOverlayMat = overlayMat;
+                // Add smoke for heavier hits
+                if (intensity > 0.3) {
+                    createImpactSmoke(impactPosition, intensity);
                 }
+
+                // 2. Add damage decal at impact point
+                createDamageDecal(mech, bodyPartName, impactPosition, impactDirection, damage);
             }
 
-            // Update overlay transparency based on damage
-            if (bodyPart.damageOverlayMat) {
-                // Alpha increases from 0 to 0.6 as damage increases
-                bodyPart.damageOverlayMat.alpha = damageRatio * 0.6;
-                // Also increase emissive glow
-                const glowIntensity = damageRatio * 0.3;
-                bodyPart.damageOverlayMat.emissiveColor = new BABYLON.Color3(0.5 + glowIntensity, 0, 0);
-            }
+            // 3. Apply geometry deformation for accumulated damage
+            applyDamageDeformation(mech, bodyPartName);
 
-            // If destroyed, make it more dramatic
+            // 4. If destroyed, apply destruction visuals
             if (bodyPart.destroyed) {
-                if (bodyPart.damageOverlayMat) {
-                    bodyPart.damageOverlayMat.alpha = 0.8;
-                    bodyPart.damageOverlayMat.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.2);
-                    bodyPart.damageOverlayMat.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-                }
-                // Optionally hide the destroyed part
-                if (mesh.visibility !== undefined) {
-                    mesh.visibility = 0.3;
-                }
+                applyDestructionVisuals(mech, bodyPartName);
             }
+        }
+
+        // Legacy function - now redirects to new system
+        function updateDamageOverlay(mech, bodyPartName, impactPosition, impactDirection, damage) {
+            // Redirect to new damage visual system
+            applyDamageVisuals(mech, bodyPartName, impactPosition, impactDirection, damage || 10);
         }
 
         // Handle body part destruction effects
@@ -2124,25 +2487,22 @@
 
             log(`${mech.name}: ${bodyPartName.toUpperCase()} DESTROYED!`, 'error');
 
-            // Update visual
-            updateDamageOverlay(mech, bodyPartName);
+            // Get the destroyed part's position for effects
+            const partMesh = getBodyPartMesh(mech, bodyPartName);
+            const pos = partMesh ? partMesh.getAbsolutePosition() : mech.pelvis.getAbsolutePosition();
+            const explosionDir = new BABYLON.Vector3(
+                (Math.random() - 0.5) * 2,
+                1,
+                (Math.random() - 0.5) * 2
+            ).normalize();
 
-            // Create explosion effect at destroyed part
-            let partMesh = null;
-            switch (bodyPartName) {
-                case 'head': partMesh = mech.head; break;
-                case 'torso': partMesh = mech.torso; break;
-                case 'leftArm': partMesh = mech.leftArm?.weaponPod || mech.leftArm; break;
-                case 'rightArm': partMesh = mech.rightArm?.weaponPod || mech.rightArm; break;
-                case 'leftLeg': partMesh = mech.leftLeg?.upperLeg || mech.leftLeg; break;
-                case 'rightLeg': partMesh = mech.rightLeg?.upperLeg || mech.rightLeg; break;
-            }
+            // Apply destruction visuals (debris, darkening, deformation)
+            applyDamageVisuals(mech, bodyPartName, pos, explosionDir, 50);
 
-            if (partMesh) {
-                const pos = partMesh.getAbsolutePosition();
-                createImpactSparks(pos, new BABYLON.Vector3(0, 1, 0));
-                triggerCameraShake(0.4, 0.25);
-            }
+            // Extra destruction effects
+            createDamageSparksBurst(pos, explosionDir, 1.0);
+            createImpactSmoke(pos, 1.0);
+            triggerCameraShake(0.4, 0.25);
 
             // Special effects for leg destruction - major stability hit
             if (bodyPartName === 'leftLeg' || bodyPartName === 'rightLeg') {
@@ -7286,6 +7646,9 @@
 
             const bodyPart = mech.bodyParts[hitPart];
 
+            // Calculate impact direction for visual effects
+            const impactDir = new BABYLON.Vector3(dirSign, 0, 0);
+
             // Skip if this body part is already destroyed
             if (bodyPart && bodyPart.destroyed) {
                 // Damage goes to torso instead if part is already gone
@@ -7293,18 +7656,20 @@
                 if (!fallbackPart.destroyed) {
                     fallbackPart.currentHP -= actualDamage;
                     mech.bodyParts.totalDamageReceived.torso += actualDamage;
+                    // Get torso position for effects
+                    const torsoPos = mech.torso ? mech.torso.getAbsolutePosition() : impactPosition;
+                    applyDamageVisuals(mech, 'torso', torsoPos, impactDir, actualDamage);
                     if (fallbackPart.currentHP <= 0) {
                         destroyBodyPart(mech, 'torso');
                     }
-                    updateDamageOverlay(mech, 'torso');
                 }
             } else if (bodyPart) {
                 // Apply damage to the hit body part
                 bodyPart.currentHP -= actualDamage;
                 mech.bodyParts.totalDamageReceived[hitPart] += actualDamage;
 
-                // Update damage overlay visual
-                updateDamageOverlay(mech, hitPart);
+                // Apply damage visual effects (sparks, decals, deformation)
+                applyDamageVisuals(mech, hitPart, impactPosition, impactDir, actualDamage);
 
                 log(`${mech.name}: ${hitPart} hit for ${actualDamage} damage (${bodyPart.currentHP}/${bodyPart.maxHP})`, 'warn');
 
@@ -7319,7 +7684,6 @@
             if (mech.currentHP < 0) mech.currentHP = 0;
 
             const knockback = weapon.knockback;
-            const impactDir = new BABYLON.Vector3(dirSign, 0, 0);
             mech.impactDirection = impactDir;
 
             // Trigger cinematic camera to track damaged mech

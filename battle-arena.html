@@ -5949,9 +5949,10 @@
             mech.recoveryStartZ = pos.z;
 
             // IMMEDIATELY snap to upright rotation (preserve yaw/facing direction)
-            const currentEuler = euler;
-            const uprightQuat = BABYLON.Quaternion.FromEulerAngles(0, currentEuler.y, 0);
-            body.transformNode.rotationQuaternion = uprightQuat;
+            // Must use setTargetTransform for ANIMATED physics bodies!
+            const uprightQuat = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
+            mech.recoveryUprightQuat = uprightQuat;  // Store for use in updateRecovery
+            body.setTargetTransform(pos, uprightQuat);
 
             // Reset legs to default pose
             dampLegs(mech, 1.0);
@@ -5962,39 +5963,41 @@
             const body = mech.pelvisAggregate.body;
             const pos = mech.pelvis.getAbsolutePosition();
 
-            // Recovery timing - mech was already snapped upright in startRecovery
-            // Now we just need to lift it to standing height
+            // Recovery timing - use setTargetTransform to animate from fallen to standing
             const liftTime = 0.6;  // Time to lift to standing
             const standingY = 3.5 * mech.scale;
+            const uprightQuat = mech.recoveryUprightQuat || BABYLON.Quaternion.Identity();
 
             if (mech.recoveryTimer < liftTime) {
-                // Lift phase: Use velocity to raise mech to standing height
-                const heightError = standingY - pos.y;
-                const startX = mech.recoveryStartX || pos.x;
-                const startZ = mech.recoveryStartZ || pos.z;
-                const xError = startX - pos.x;
-                const zError = startZ - pos.z;
+                // Lift phase: Interpolate position from start to standing height
+                const t = mech.recoveryTimer / liftTime;
+                const easeT = t * t * (3 - 2 * t);  // Smoothstep easing
 
-                // Velocity-based lift (similar to ground-seeking in walking)
-                const liftSpeed = 8.0;
-                const stabilizeSpeed = 5.0;
-                body.setLinearVelocity(new BABYLON.Vector3(
-                    xError * stabilizeSpeed,
-                    heightError * liftSpeed,
-                    zError * stabilizeSpeed
-                ));
-                body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+                const startX = mech.recoveryStartX || pos.x;
+                const startY = mech.recoveryStartY || pos.y;
+                const startZ = mech.recoveryStartZ || pos.z;
+
+                // Interpolate Y position from fallen to standing
+                const currentY = startY + (standingY - startY) * easeT;
+                const targetPos = new BABYLON.Vector3(startX, currentY, startZ);
+
+                // Use setTargetTransform to maintain upright rotation while lifting
+                body.setTargetTransform(targetPos, uprightQuat);
 
                 // Keep legs in default pose during lift
                 dampLegs(mech, dt * 3);
 
             } else {
-                // Recovery complete - back to walking state
-                mech.mechState = MechState.WALKING;
+                // Recovery complete - ensure final standing position
+                const finalPos = new BABYLON.Vector3(
+                    mech.recoveryStartX || pos.x,
+                    standingY,
+                    mech.recoveryStartZ || pos.z
+                );
+                body.setTargetTransform(finalPos, uprightQuat);
 
-                // Zero velocities before returning to walking
-                body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
-                body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+                // Back to walking state
+                mech.mechState = MechState.WALKING;
 
                 // STABILITY DOUBLING: After getting up, stability cap is doubled
                 // This makes it harder to knock them down again

@@ -3766,7 +3766,7 @@
             // Add scrap gold to player (will be shown in salvage screen)
             if (scrapGold > 0) {
                 console.log(`Total scrap gold from body damage: ${scrapGold}`);
-                playerGold += scrapGold;
+                playerResources.gold += scrapGold;
             }
 
             return options;
@@ -8120,9 +8120,10 @@
             });
 
             // Use mech's base HP + hpBonus from armor
+            // Player gets 2x health advantage
             const mech = getActiveMech();
             const baseHealth = mech.baseHP || 25;
-            const totalHealth = baseHealth + hpBonus;
+            const totalHealth = (baseHealth + hpBonus) * 2;
 
             return {
                 maxHealth: totalHealth,

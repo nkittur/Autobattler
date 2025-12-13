@@ -2509,12 +2509,12 @@
                 mech.stability -= 50;
                 if (mech.stability < 0) mech.stability = 0;
 
-                // Trigger ragdoll if one leg destroyed
+                // Trigger ragdoll if one leg destroyed - use strong force to ensure actual fall
                 if (mech.mechState === MechState.WALKING) {
                     const hitForce = new BABYLON.Vector3(
-                        bodyPartName === 'leftLeg' ? 5 : -5,
-                        3,
-                        0
+                        bodyPartName === 'leftLeg' ? 20 : -20,  // Strong sideways force
+                        15,  // Significant upward lift
+                        (Math.random() - 0.5) * 10  // Some random Z variation
                     );
                     triggerRagdoll(mech, hitForce);
                     log(`${mech.name} collapses from leg damage!`, 'warn');
@@ -6273,9 +6273,19 @@
             // ROBUST SETTLE DETECTION
             // Require multiple conditions before recovery can start:
 
-            // 1. MINIMUM TIME IN RAGDOLL - must be ragdolling for at least 0.8 seconds
-            //    This ensures physics has time to apply and the mech actually falls
-            const minRagdollTime = 0.8;
+            // 1. MINIMUM TIME IN RAGDOLL - must be ragdolling for at least 0.5 seconds
+            //    This ensures physics has time to apply and the mech actually moves
+            const minRagdollTime = 0.5;
+
+            // 2. MAXIMUM RAGDOLL TIMEOUT - don't stay in ragdoll forever
+            //    After this time, force recovery regardless of other conditions
+            const maxRagdollTime = 3.0;
+            if (mech.ragdollTotalTime > maxRagdollTime) {
+                dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Ragdoll timeout - forcing recovery after ${mech.ragdollTotalTime.toFixed(2)}s`, 'ai');
+                startRecovery(mech);
+                return;
+            }
+
             if (mech.ragdollTotalTime < minRagdollTime) {
                 // Still in initial ragdoll phase - don't even check for settle
                 if (quat && mech.leftLeg.footGroup) {
@@ -6286,24 +6296,29 @@
                 return;
             }
 
-            // 2. CHECK IF MECH HAS ACTUALLY FALLEN
-            //    Either Y position is low (near ground) OR rotation is significantly non-upright
+            // 3. CHECK IF MECH HAS ACTUALLY FALLEN (becomes less strict over time)
             const standingY = mech.standingHeight || 3.0;
-            const hasFallen = pos.y < standingY * 0.7;  // Below 70% of standing height
+            const timeFactor = Math.min(1.0, (mech.ragdollTotalTime - minRagdollTime) / 1.5);  // 0 to 1 over 1.5s
 
-            // Check if rotation is non-upright (tilted significantly)
+            // Height check becomes more lenient over time (70% → 95%)
+            const heightThreshold = standingY * (0.7 + 0.25 * timeFactor);
+            const hasFallen = pos.y < heightThreshold;
+
+            // Tilt check becomes more lenient over time (0.5 → 0.15 radians)
             const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
             const tiltAmount = Math.abs(euler.x) + Math.abs(euler.z);
-            const isRotatedOver = tiltAmount > 0.5;  // More than ~30 degrees tilted
+            const tiltThreshold = 0.5 - (0.35 * timeFactor);  // 0.5 → 0.15
+            const isRotatedOver = tiltAmount > tiltThreshold;
 
-            const hasActuallyFallen = hasFallen || isRotatedOver;
+            // After enough time, always consider "fallen" (mech might just be wobbling in place)
+            const hasActuallyFallen = hasFallen || isRotatedOver || timeFactor > 0.8;
 
-            // 3. CHECK VELOCITY (both linear and angular must be low)
+            // 4. CHECK VELOCITY (both linear and angular must be low)
             const isLinearSettled = speed < STABILITY_CONFIG.ragdollSettleVelocity;
-            const isAngularSettled = angularSpeed < 0.5;  // Angular velocity must also be low
+            const isAngularSettled = angularSpeed < 0.5;
             const isSettled = isLinearSettled && isAngularSettled;
 
-            // 4. ACCUMULATE SETTLE TIME (with all conditions met)
+            // 5. ACCUMULATE SETTLE TIME (with all conditions met)
             if (isSettled && hasActuallyFallen) {
                 mech.ragdollSettleTimer += dt;
 

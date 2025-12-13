@@ -6010,10 +6010,12 @@
         function triggerRagdoll(mech, hitForce) {
             if (mech.mechState === MechState.RAGDOLL) return;  // Already ragdolling
 
-            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RAGDOLL triggered!`, 'warn');
+            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RAGDOLL triggered! Force: ${hitForce.length().toFixed(1)}`, 'warn');
 
             mech.mechState = MechState.RAGDOLL;
             mech.ragdollSettleTimer = 0;
+            mech.ragdollTotalTime = 0;  // Track total time in ragdoll
+            mech.ragdollStartY = mech.pelvis.getAbsolutePosition().y;  // Remember starting height
             mech.isWalking = false;
 
             const body = mech.pelvisAggregate.body;
@@ -6040,14 +6042,17 @@
             scaledHitForce.y = Math.max(scaledHitForce.y, hitForce.length() * 0.5);
 
             body.applyImpulse(scaledHitForce, pos);
+            dbg(`Applied impulse: ${scaledHitForce.x.toFixed(1)}, ${scaledHitForce.y.toFixed(1)}, ${scaledHitForce.z.toFixed(1)}`, 'phys');
 
             // 5. Strong angular impulse for dramatic spin/tumble
             const hitDir = hitForce.normalizeToNew();
-            body.applyAngularImpulse(new BABYLON.Vector3(
+            const angularImpulse = new BABYLON.Vector3(
                 hitDir.z * hitForce.length() * 0.3,  // Pitch based on Z hit direction
                 (Math.random() - 0.5) * hitForce.length() * 0.1,  // Random yaw spin
                 -hitDir.x * hitForce.length() * 0.3  // Roll based on X hit direction
-            ));
+            );
+            body.applyAngularImpulse(angularImpulse);
+            dbg(`Applied angular impulse: ${angularImpulse.x.toFixed(1)}, ${angularImpulse.y.toFixed(1)}, ${angularImpulse.z.toFixed(1)}`, 'phys');
 
             // 6. DRAMATIC LIMB FLINGING - arms and legs fly outward on impact
             flingLimbs(mech, hitForce);
@@ -6227,7 +6232,15 @@
         function updateRagdoll(mech, dt) {
             const body = mech.pelvisAggregate.body;
             const velocity = body.getLinearVelocity();
+            const angularVel = body.getAngularVelocity();
             const speed = velocity.length();
+            const angularSpeed = angularVel.length();
+            const pos = mech.pelvis.getAbsolutePosition();
+            const quat = body.transformNode.rotationQuaternion;
+
+            // Track total time in ragdoll state
+            if (!mech.ragdollTotalTime) mech.ragdollTotalTime = 0;
+            mech.ragdollTotalTime += dt;
 
             // Handle destroyed mechs differently - they don't recover, but need friction
             if (mech.isDestroyed) {
@@ -6249,7 +6262,6 @@
                 }
 
                 // Keep feet somewhat level during ragdoll for visual consistency
-                const quat = body.transformNode.rotationQuaternion;
                 if (quat && mech.leftLeg.footGroup) {
                     const euler = quat.toEulerAngles();
                     mech.leftLeg.footGroup.rotation.x = -euler.x * 0.5;
@@ -6258,23 +6270,56 @@
                 return;  // Destroyed mechs don't recover
             }
 
-            // Check if mech has settled (low velocity)
-            if (speed < STABILITY_CONFIG.ragdollSettleVelocity) {
+            // ROBUST SETTLE DETECTION
+            // Require multiple conditions before recovery can start:
+
+            // 1. MINIMUM TIME IN RAGDOLL - must be ragdolling for at least 0.8 seconds
+            //    This ensures physics has time to apply and the mech actually falls
+            const minRagdollTime = 0.8;
+            if (mech.ragdollTotalTime < minRagdollTime) {
+                // Still in initial ragdoll phase - don't even check for settle
+                if (quat && mech.leftLeg.footGroup) {
+                    const euler = quat.toEulerAngles();
+                    mech.leftLeg.footGroup.rotation.x = -euler.x * 0.5;
+                    mech.rightLeg.footGroup.rotation.x = -euler.x * 0.5;
+                }
+                return;
+            }
+
+            // 2. CHECK IF MECH HAS ACTUALLY FALLEN
+            //    Either Y position is low (near ground) OR rotation is significantly non-upright
+            const standingY = mech.standingHeight || 3.0;
+            const hasFallen = pos.y < standingY * 0.7;  // Below 70% of standing height
+
+            // Check if rotation is non-upright (tilted significantly)
+            const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
+            const tiltAmount = Math.abs(euler.x) + Math.abs(euler.z);
+            const isRotatedOver = tiltAmount > 0.5;  // More than ~30 degrees tilted
+
+            const hasActuallyFallen = hasFallen || isRotatedOver;
+
+            // 3. CHECK VELOCITY (both linear and angular must be low)
+            const isLinearSettled = speed < STABILITY_CONFIG.ragdollSettleVelocity;
+            const isAngularSettled = angularSpeed < 0.5;  // Angular velocity must also be low
+            const isSettled = isLinearSettled && isAngularSettled;
+
+            // 4. ACCUMULATE SETTLE TIME (with all conditions met)
+            if (isSettled && hasActuallyFallen) {
                 mech.ragdollSettleTimer += dt;
 
                 // If settled for long enough, start recovery
                 if (mech.ragdollSettleTimer > STABILITY_CONFIG.ragdollSettleTime) {
+                    dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Settle conditions met - starting recovery. TotalTime: ${mech.ragdollTotalTime.toFixed(2)}s, Y: ${pos.y.toFixed(1)}, Tilt: ${tiltAmount.toFixed(2)}`, 'ai');
                     startRecovery(mech);
+                    return;
                 }
             } else {
-                // Still moving - reset settle timer
+                // Not settled yet - reset settle timer
                 mech.ragdollSettleTimer = 0;
             }
 
             // Keep feet somewhat level during ragdoll for visual consistency
-            const quat = body.transformNode.rotationQuaternion;
             if (quat && mech.leftLeg.footGroup) {
-                const euler = quat.toEulerAngles();
                 mech.leftLeg.footGroup.rotation.x = -euler.x * 0.5;
                 mech.rightLeg.footGroup.rotation.x = -euler.x * 0.5;
             }

@@ -3719,30 +3719,29 @@
             }
 
             // ============================================
-            // MODIFIER SYSTEM (uncommon+ only)
+            // MODIFIER SYSTEM
             // ============================================
             let appliedModifier = null;
 
-            if (rarity !== 'common') {
-                const modifierChance = getModifierChance(level);
-                if (Math.random() < modifierChance) {
-                    const maxModBudget = COMPONENT_GENERATION.maxModifierBudget[rarity] || 1;
-                    appliedModifier = selectModifier(template.type, maxModBudget);
+            // Uncommon+ always get modifiers, common has 30% chance
+            const shouldGetModifier = rarity !== 'common' || Math.random() < 0.3;
+            if (shouldGetModifier) {
+                const maxModBudget = COMPONENT_GENERATION.maxModifierBudget[rarity] || 1;
+                appliedModifier = selectModifier(template.type, maxModBudget);
 
-                    if (appliedModifier) {
-                        // Apply modifier effects to stats
-                        const effect = appliedModifier.effect;
-                        if (effect.weightBonus) stats.weight = Math.max(0, stats.weight + effect.weightBonus);
-                        if (effect.energyBonus) stats.energyDraw = Math.max(0, stats.energyDraw + effect.energyBonus);
-                        if (effect.drBonus) stats.damageReduction = (stats.damageReduction || 0) + effect.drBonus;
-                        if (effect.hpBonus) stats.hpBonus = (stats.hpBonus || 0) + effect.hpBonus;
-                        if (effect.energyProvidedBonus) stats.energyDraw = (stats.energyDraw || 0) - effect.energyProvidedBonus;
-                        if (effect.adjacentDamageBonus) stats.adjacentDamageBonus = (stats.adjacentDamageBonus || 0) + effect.adjacentDamageBonus;
+                if (appliedModifier) {
+                    // Apply modifier effects to stats
+                    const effect = appliedModifier.effect;
+                    if (effect.weightBonus) stats.weight = Math.max(0, stats.weight + effect.weightBonus);
+                    if (effect.energyBonus) stats.energyDraw = Math.max(0, stats.energyDraw + effect.energyBonus);
+                    if (effect.drBonus) stats.damageReduction = (stats.damageReduction || 0) + effect.drBonus;
+                    if (effect.hpBonus) stats.hpBonus = (stats.hpBonus || 0) + effect.hpBonus;
+                    if (effect.energyProvidedBonus) stats.energyDraw = (stats.energyDraw || 0) - effect.energyProvidedBonus;
+                    if (effect.adjacentDamageBonus) stats.adjacentDamageBonus = (stats.adjacentDamageBonus || 0) + effect.adjacentDamageBonus;
 
-                        // Store battle-related modifier effects for combat resolution
-                        if (effect.firstShotMultiplier || effect.damagePerReactor || effect.damagePerWeapon) {
-                            stats.modifier = appliedModifier;
-                        }
+                    // Store battle-related modifier effects for combat resolution
+                    if (effect.firstShotMultiplier || effect.damagePerReactor || effect.damagePerWeapon) {
+                        stats.modifier = appliedModifier;
                     }
                 }
             }
@@ -6839,28 +6838,6 @@
                 specialHtml += item.description;
             }
 
-            // Show synergy tags
-            let synergyHtml = '';
-            if (item.synergies && item.synergies.length > 0) {
-                const tagColors = {
-                    'multi-hit': '#ff8844',
-                    'multi-hit-synergy': '#ffcc00',
-                    'kinetic': '#888',
-                    'energy': '#4488ff',
-                    'explosive': '#ff4444',
-                    'precision': '#44ff88',
-                    'alpha-strike': '#ff44ff',
-                    'amplifier': '#ffcc00',
-                    'shredder': '#ff6600'
-                };
-                synergyHtml = '<div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px;">';
-                item.synergies.forEach(tag => {
-                    const color = tagColors[tag] || '#666';
-                    synergyHtml += `<span style="background: ${color}33; color: ${color}; padding: 1px 4px; border-radius: 3px; font-size: 9px; border: 1px solid ${color};">${tag}</span>`;
-                });
-                synergyHtml += '</div>';
-            }
-
             // Show synergy description
             let synergyDescHtml = '';
             if (item.synergyDescription) {
@@ -6890,7 +6867,6 @@
                     <div class="tooltip-name" style="color: ${rarityColor};">${item.name}</div>
                     <div class="tooltip-stats">${statsHtml}</div>
                     ${specialHtml ? `<div class="tooltip-special">${specialHtml}</div>` : ''}
-                    ${synergyHtml}
                     ${synergyDescHtml}
                     <div class="tooltip-shape" style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 6px;">
                         <span style="font-size: 9px; color: #888;">Shape:</span>
@@ -6957,28 +6933,6 @@
                 statsHtml += `<div style="color: #ff8844;">🎯 +${stats.directionalDamageBonus} dmg ${arrow} direction</div>`;
             }
 
-            // Show synergy tags
-            let synergyHtml = '';
-            if (item.synergies && item.synergies.length > 0) {
-                const tagColors = {
-                    'multi-hit': '#ff8844',
-                    'multi-hit-synergy': '#ffcc00',
-                    'kinetic': '#888',
-                    'energy': '#4488ff',
-                    'explosive': '#ff4444',
-                    'precision': '#44ff88',
-                    'alpha-strike': '#ff44ff',
-                    'amplifier': '#ffcc00',
-                    'shredder': '#ff6600'
-                };
-                synergyHtml = '<div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px;">';
-                item.synergies.forEach(tag => {
-                    const color = tagColors[tag] || '#666';
-                    synergyHtml += `<span style="background: ${color}33; color: ${color}; padding: 1px 4px; border-radius: 3px; font-size: 9px; border: 1px solid ${color};">${tag}</span>`;
-                });
-                synergyHtml += '</div>';
-            }
-
             const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
                 (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
 
@@ -6986,7 +6940,6 @@
                 <div class="item-tooltip">
                     <div class="tooltip-name" style="color: ${rarityColor};">${item.name}${adjBonus > 0 ? ' <span style="color: #ffcc00;">★</span>' : ''}</div>
                     <div class="tooltip-stats">${statsHtml}</div>
-                    ${synergyHtml}
                 </div>
             `;
         }
@@ -7030,33 +6983,6 @@
 
             tooltip.style.left = Math.min(x, maxX) + 'px';
             tooltip.style.top = Math.min(y, maxY) + 'px';
-        }
-
-        // Build synergy tags HTML for compact display
-        function buildSynergyTags(item) {
-            if (!item.synergies || item.synergies.length === 0) return '';
-
-            const tagColors = {
-                'multi-hit': '#ff8844',
-                'multi-hit-synergy': '#ffcc00',
-                'kinetic': '#888',
-                'energy': '#4488ff',
-                'explosive': '#ff4444',
-                'precision': '#44ff88',
-                'alpha-strike': '#ff44ff',
-                'amplifier': '#ffcc00',
-                'shredder': '#ff6600',
-                'knockback': '#aa88ff',
-                'sustained': '#88ff88'
-            };
-
-            let html = '<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 4px;">';
-            item.synergies.forEach(tag => {
-                const color = tagColors[tag] || '#666';
-                html += `<span style="background: ${color}33; color: ${color}; padding: 1px 3px; border-radius: 2px; font-size: 8px; border: 1px solid ${color};">${tag}</span>`;
-            });
-            html += '</div>';
-            return html;
         }
 
         // ============================================

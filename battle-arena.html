@@ -7268,8 +7268,10 @@
                 const start = arm.weaponPod.getAbsolutePosition();
                 start.z += 0.5;
                 const target = to.torso.getAbsolutePosition();
-                target.x += (Math.random() - 0.5) * 0.4;
-                target.y += (Math.random() - 0.5) * 0.4;
+                // Spread fire across entire mech body (head to legs, side to side)
+                target.x += (Math.random() - 0.5) * 1.8;   // Reach arms on sides
+                target.y += (Math.random() - 0.5) * 3.5;   // Head to legs spread
+                target.z += (Math.random() - 0.5) * 0.8;   // Depth variance
 
                 // Validate positions
                 if (isNaN(start.x) || isNaN(target.x)) {

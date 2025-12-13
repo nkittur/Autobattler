@@ -6279,13 +6279,13 @@
             // ROBUST SETTLE DETECTION
             // Require multiple conditions before recovery can start:
 
-            // 1. MINIMUM TIME IN RAGDOLL - must be ragdolling for at least 0.5 seconds
-            //    This ensures physics has time to apply and the mech actually moves
-            const minRagdollTime = 0.5;
+            // 1. MINIMUM TIME IN RAGDOLL - must stay down for at least this long
+            //    This ensures mech stays fallen for a noticeable duration
+            const minRagdollTime = 5.0;  // 5 seconds down before can start recovery
 
             // 2. MAXIMUM RAGDOLL TIMEOUT - don't stay in ragdoll forever
             //    After this time, force recovery regardless of other conditions
-            const maxRagdollTime = 3.0;
+            const maxRagdollTime = 8.0;
             if (mech.ragdollTotalTime > maxRagdollTime) {
                 dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Ragdoll timeout - forcing recovery after ${mech.ragdollTotalTime.toFixed(2)}s`, 'ai');
                 startRecovery(mech);
@@ -7345,7 +7345,7 @@
                     engineGlow.material = glowMat;
 
                     // Orient missile toward target
-                    proj.lookAt(target);
+                    proj.lookAt(spreadTarget);
                     proj.rotation.x += Math.PI / 2;  // Point forward
 
                     // Store body mesh for physics (we'll attach aggregate to body)
@@ -7364,7 +7364,7 @@
                         height: 0.25, diameter: 0.04, tessellation: 6
                     }, scene);
                     proj.position = start.clone();
-                    proj.lookAt(target);
+                    proj.lookAt(spreadTarget);
                     proj.rotation.x += Math.PI / 2;
 
                     const mat = new BABYLON.StandardMaterial('bulletMat' + Date.now(), scene);

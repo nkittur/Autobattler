@@ -2331,6 +2331,9 @@
         // ============================================
 
         const COMPONENT_GENERATION = {
+            // Feature flags
+            useRandomShapes: true,  // Generate random shapes instead of template shapes (same cell count)
+
             // Master budget exchange rates
             // Positive = earns budget, Negative = costs budget
             budgetRates: {
@@ -2960,7 +2963,7 @@
             armor_linkage: {
                 type: 'SYSTEM',
                 category: 'system',
-                icon: '🔗',
+                icon: '🛡️',
                 namePrefix: ['Reactive', 'Adaptive', 'Linked', 'Network'],
                 nameSuffix: ['Linkage', 'Matrix', 'Network', 'Grid'],
                 baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
@@ -3104,6 +3107,75 @@
                 }
             }
             return cells;
+        }
+
+        // Generate a random connected shape with the specified number of cells
+        // All cells are guaranteed to be adjacent to at least one other cell
+        function generateRandomShape(cellCount) {
+            if (cellCount <= 0) return [[1]];
+            if (cellCount === 1) return [[1]];
+
+            // Start with a larger grid to allow growth in any direction
+            const maxSize = Math.max(4, Math.ceil(Math.sqrt(cellCount) * 2));
+            const grid = Array(maxSize).fill(null).map(() => Array(maxSize).fill(0));
+
+            // Start in the center
+            const centerX = Math.floor(maxSize / 2);
+            const centerY = Math.floor(maxSize / 2);
+            grid[centerY][centerX] = 1;
+
+            const filled = [{x: centerX, y: centerY}];
+            const directions = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+
+            // Grow the shape by adding adjacent cells
+            while (filled.length < cellCount) {
+                // Find all valid expansion points (empty cells adjacent to filled cells)
+                const candidates = [];
+                for (const cell of filled) {
+                    for (const dir of directions) {
+                        const nx = cell.x + dir.dx;
+                        const ny = cell.y + dir.dy;
+                        if (nx >= 0 && nx < maxSize && ny >= 0 && ny < maxSize && grid[ny][nx] === 0) {
+                            // Check if this candidate is already in the list
+                            if (!candidates.some(c => c.x === nx && c.y === ny)) {
+                                candidates.push({x: nx, y: ny});
+                            }
+                        }
+                    }
+                }
+
+                if (candidates.length === 0) break;  // No more room to grow
+
+                // Pick a random candidate
+                const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                grid[chosen.y][chosen.x] = 1;
+                filled.push(chosen);
+            }
+
+            // Trim the grid to remove empty rows/columns
+            let minX = maxSize, maxX = 0, minY = maxSize, maxY = 0;
+            for (let y = 0; y < maxSize; y++) {
+                for (let x = 0; x < maxSize; x++) {
+                    if (grid[y][x] === 1) {
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+
+            // Extract the trimmed shape
+            const trimmed = [];
+            for (let y = minY; y <= maxY; y++) {
+                const row = [];
+                for (let x = minX; x <= maxX; x++) {
+                    row.push(grid[y][x]);
+                }
+                trimmed.push(row);
+            }
+
+            return trimmed.length > 0 ? trimmed : [[1]];
         }
 
         // ============================================
@@ -3272,8 +3344,16 @@
                 return null;
             }
 
-            // Clone base shape
-            let shape = template.baseShape.map(row => [...row]);
+            // Generate shape - either random or from template
+            let shape;
+            if (COMPONENT_GENERATION.useRandomShapes) {
+                // Generate random connected shape with same cell count as template
+                const cellCount = countShapeCells(template.baseShape);
+                shape = generateRandomShape(cellCount);
+            } else {
+                // Clone base shape from template
+                shape = template.baseShape.map(row => [...row]);
+            }
 
             // Variants disabled in new budget system
             let appliedVariants = [];
@@ -6334,7 +6414,7 @@
 
             // Adjacent armor bonus
             if (stats.adjacentArmorBonus) {
-                html += `<span class="item-stat" style="color: #88ccff;"><span class="item-stat-icon">🔗</span><span class="item-stat-value">+${stats.adjacentArmorBonus} adj</span></span>`;
+                html += `<span class="item-stat" style="color: #88ccff;"><span class="item-stat-icon">🛡️</span><span class="item-stat-value">+${stats.adjacentArmorBonus} adj</span></span>`;
             }
 
             // Adjacent energy bonus
@@ -6467,7 +6547,7 @@
             }
             if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
             if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
-            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction}</div>`;
+            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction} <span style="color: #888; font-size: 10px;">(highest only)</span></div>`;
             if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
             if (stats.energyShieldHP) statsHtml += `<div>🔵 Energy Shield: ${stats.energyShieldHP} HP</div>`;
             if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
@@ -6610,7 +6690,7 @@
 
             if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
             if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
-            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction}</div>`;
+            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction} <span style="color: #888; font-size: 10px;">(highest only)</span></div>`;
             if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
             if (stats.energyShieldHP) statsHtml += `<div>🔵 Energy Shield: ${stats.energyShieldHP} HP</div>`;
             if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
@@ -7548,7 +7628,7 @@
             let totalArmor = 0;
             let accuracyBonus = 0;
             let hpBonus = 0;
-            let damageReduction = 0;
+            let damageReduction = 0;  // Takes highest value, doesn't stack
             let energyShieldHP = 0;
 
             loadoutState.equipment.forEach(eq => {
@@ -7558,7 +7638,7 @@
                     totalArmor += item.stats.armorBonus || 0;
                     accuracyBonus += item.stats.accuracyBonus || 0;
                     hpBonus += item.stats.hpBonus || 0;
-                    damageReduction += item.stats.damageReduction || 0;
+                    damageReduction = Math.max(damageReduction, item.stats.damageReduction || 0);  // Highest only
                     energyShieldHP += item.stats.energyShieldHP || 0;
                     const draw = item.stats.energyDraw || 0;
                     if (draw > 0) {
@@ -8080,7 +8160,7 @@
             let totalArmor = 0;
             let totalWeight = 0;
             let hpBonus = 0;
-            let damageReduction = 0;
+            let damageReduction = 0;  // Takes highest value, doesn't stack
             let energyShieldHP = 0;
             let weapons = [];
 
@@ -8094,7 +8174,7 @@
                     totalDamage += item.stats.damage || 0;
                     totalArmor += item.stats.armorBonus || 0;
                     hpBonus += item.stats.hpBonus || 0;
-                    damageReduction += item.stats.damageReduction || 0;
+                    damageReduction = Math.max(damageReduction, item.stats.damageReduction || 0);  // Highest only
                     energyShieldHP += item.stats.energyShieldHP || 0;
                     if (item.type === 'WEAPON') {
                         // Get adjacency bonus for this weapon
@@ -8269,7 +8349,7 @@
             if (stats.energyDraw < 0) statsLines.push(`⚡ +${Math.abs(stats.energyDraw)}`);
             if (stats.energyReduction) statsLines.push(`COOL: -${stats.energyReduction}`);
             if (stats.adjacentDamageBonus) statsLines.push(`⚔️ +${stats.adjacentDamageBonus} adj wpn`);
-            if (stats.adjacentArmorBonus) statsLines.push(`🔗 +${stats.adjacentArmorBonus} adj arm`);
+            if (stats.adjacentArmorBonus) statsLines.push(`🛡️ +${stats.adjacentArmorBonus} adj arm`);
             if (stats.adjacentEnergyBonus) statsLines.push(`⚡ +${stats.adjacentEnergyBonus} adj pwr`);
             if (stats.heatCapacity) statsLines.push(`HEAT: ${stats.heatCapacity}`);
             if (battle.knockback) statsLines.push(`KB: ${battle.knockback}`);

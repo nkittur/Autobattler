@@ -6822,6 +6822,13 @@
                 statsHtml += `✨ Rarity bonus: ${stats.rarityBonuses.join(', ')}</div>`;
             }
 
+            // Show modifier if present
+            if (item.modifier) {
+                const modColor = '#ffaa00';
+                statsHtml += `<div style="color: ${modColor}; font-size: 11px; margin-top: 4px; border-top: 1px solid ${modColor}33; padding-top: 4px;">`;
+                statsHtml += `⚡ <b>${item.modifier.name}</b>: ${item.modifier.description}</div>`;
+            }
+
             let specialHtml = '';
             if (item.special) {
                 if (item.special.damageBoost) specialHtml += `+${Math.round((item.special.damageBoost - 1) * 100)}% damage to adjacent weapons<br>`;

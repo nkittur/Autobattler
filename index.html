@@ -6349,11 +6349,14 @@
                     el.style.borderColor = rarityColor;
                 }
 
+                const modLine = item.modifier ?
+                    `<div style="font-size: 9px; color: #ffaa00;">⚡ ${item.modifier.name}</div>` : '';
                 el.innerHTML = `
                     <div class="rotate-btn" title="Rotate (R)">↻</div>
                     <span class="item-icon">${item.icon}</span>
                     <div class="item-info">
                         <div class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
+                        ${modLine}
                         ${buildItemStatIcons(item)}
                         <div class="item-bottom-row">
                             ${buildItemSecondaryStats(item)}
@@ -6778,10 +6781,7 @@
                 const shotsPerRound = battle.shotsPerRound || 1;
                 if (shotsPerRound > 1) {
                     const totalDmg = stats.damage * shotsPerRound;
-                    // Calculate what damage would be with a +2 flat bonus to show synergy potential
-                    const withBonus = (stats.damage + 2) * shotsPerRound;
                     statsHtml += `<div style="color: #ff8844; font-weight: bold;">💥 ${stats.damage} × ${shotsPerRound} = ${totalDmg} dmg/round</div>`;
-                    statsHtml += `<div style="color: #ffcc00; font-size: 10px;">↳ With +2 bonus: ${stats.damage + 2} × ${shotsPerRound} = ${withBonus} (+${withBonus - totalDmg}!)</div>`;
                 } else {
                     statsHtml += `<div>💥 Damage: ${stats.damage}</div>`;
                 }
@@ -6838,12 +6838,6 @@
                 specialHtml += item.description;
             }
 
-            // Show synergy description
-            let synergyDescHtml = '';
-            if (item.synergyDescription) {
-                synergyDescHtml = `<div style="margin-top: 4px; color: #ffcc00; font-size: 10px; font-style: italic; border-left: 2px solid #ffcc00; padding-left: 6px;">${item.synergyDescription}</div>`;
-            }
-
             const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
                 (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
 
@@ -6867,7 +6861,6 @@
                     <div class="tooltip-name" style="color: ${rarityColor};">${item.name}</div>
                     <div class="tooltip-stats">${statsHtml}</div>
                     ${specialHtml ? `<div class="tooltip-special">${specialHtml}</div>` : ''}
-                    ${synergyDescHtml}
                     <div class="tooltip-shape" style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 6px;">
                         <span style="font-size: 9px; color: #888;">Shape:</span>
                         ${shapeHtml}
@@ -6893,20 +6886,13 @@
                     const boostedTotalDmg = totalDamage * shotsPerRound;
 
                     if (adjBonus > 0) {
-                        // Show boosted damage prominently
                         statsHtml += `<div style="color: #ffcc00; font-weight: bold; font-size: 12px;">💥 ${baseDamage}+${adjBonus} × ${shotsPerRound} = ${boostedTotalDmg} dmg</div>`;
-                        statsHtml += `<div style="color: #888; font-size: 10px; text-decoration: line-through;">Base: ${baseDamage} × ${shotsPerRound} = ${baseTotalDmg}</div>`;
-                        statsHtml += `<div style="color: #00ff88; font-size: 10px;">🎯 SYNERGY ACTIVE: +${adjBonus * shotsPerRound} total damage!</div>`;
                     } else {
-                        // Show potential synergy
-                        const withBonus = (baseDamage + 2) * shotsPerRound;
                         statsHtml += `<div style="color: #ff8844; font-weight: bold;">💥 ${baseDamage} × ${shotsPerRound} = ${baseTotalDmg} dmg/round</div>`;
-                        statsHtml += `<div style="color: #666; font-size: 10px;">↳ With +2 bonus: ${baseDamage + 2} × ${shotsPerRound} = ${withBonus} (+${withBonus - baseTotalDmg}!)</div>`;
                     }
                 } else {
                     if (adjBonus > 0) {
                         statsHtml += `<div style="color: #ffcc00; font-weight: bold;">💥 ${baseDamage}+${adjBonus} = ${totalDamage} damage</div>`;
-                        statsHtml += `<div style="color: #00ff88; font-size: 10px;">🎯 SYNERGY ACTIVE!</div>`;
                     } else {
                         statsHtml += `<div>💥 Damage: ${baseDamage}</div>`;
                     }
@@ -7377,6 +7363,9 @@
                         const bargainBadge = shopItem.isBargain ?
                             `<div style="position: absolute; top: -8px; left: -8px; background: #ff6600; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold;">BARGAIN!</div>` : '';
 
+                        const modifierLine = item.modifier ?
+                            `<div style="font-size: 9px; color: #ffaa00; margin-top: 2px;">⚡ ${item.modifier.name}</div>` : '';
+
                         card.innerHTML = `
                             ${bargainBadge}
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -7387,6 +7376,7 @@
                                 </div>
                             </div>
                             <div style="font-size: 11px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
+                            ${modifierLine}
                             ${buildItemStatIcons(item)}
                             <div class="item-bottom-row">
                                 ${buildItemSecondaryStats(item)}
@@ -7512,10 +7502,13 @@
                         const el = document.createElement('div');
                         el.className = `shop-sell-item ${item.category}`;
                         el.style.borderColor = '#ffaa00';
+                        const modLine = item.modifier ?
+                            `<div style="font-size: 9px; color: #ffaa00;">⚡ ${item.modifier.name}</div>` : '';
                         el.innerHTML = `
                             <span class="item-icon">${item.icon}</span>
                             <div class="item-info">
                                 <div class="item-name" style="color: ${rarityColor};">${item.name}</div>
+                                ${modLine}
                                 ${buildItemStatIcons(item)}
                                 <div style="margin-top: 4px; color: #ffaa00; font-size: 10px;">🔄 Buyback: 1g</div>
                             </div>
@@ -7537,11 +7530,14 @@
             const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
                 (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
 
+            const modLine = item.modifier ?
+                `<div style="font-size: 9px; color: #ffaa00;">⚡ ${item.modifier.name}</div>` : '';
             el.innerHTML = `
                 ${buildItemShapePreview(item)}
                 <span class="item-icon">${item.icon}</span>
                 <div class="item-info">
                     <div class="item-name" style="color: ${rarityColor};">${item.name}</div>
+                    ${modLine}
                     ${buildItemStatIcons(item)}
                     <div class="item-sell-price" style="margin-top: 4px;">💰 Sell: ${sellPrice}g</div>
                 </div>

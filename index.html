@@ -2734,9 +2734,9 @@
                 baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 0,
+                    weight: 2,  // DR is powerful, requires weight investment
                     energyDraw: 0,
-                    damageReduction: 2  // -2 damage from each ballistic/missile hit
+                    damageReduction: 2  // -2 damage from each hit (highest only)
                 },
                 statWeights: { damageReduction: 1.0 }
             },
@@ -2750,41 +2750,108 @@
                 baseShape: [[1, 1], [1, 0]],  // L-shape (3 squares)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 0,
+                    weight: 2,  // DR is powerful, requires weight investment
                     energyDraw: 1,
-                    damageReduction: 3  // -3 damage from each ballistic/missile hit
+                    damageReduction: 3  // -3 damage from each hit (highest only)
                 },
                 statWeights: { damageReduction: 1.0 }
             },
-            // Hull Armor - adds raw HP
-            hull_armor: {
+            // HULL ARMOR - HP bonus scales with size: cells × 3 + (cells-1) × 1
+            // 1 cell = 3 HP, 2 cells = 7 HP, 3 cells = 11 HP, 4 cells = 15 HP, etc.
+
+            // Small Armor - 1 cell, 3 HP
+            armor_small: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🔘',
+                namePrefix: ['Tiny', 'Small', 'Mini', 'Compact'],
+                nameSuffix: ['Plate', 'Guard', 'Patch', 'Cover'],
+                baseShape: [[1]],  // 1 cell
+                validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'head'],
+                baseStats: {
+                    weight: 0,
+                    energyDraw: 0,
+                    hpBonus: 3  // 1×3 + 0×1 = 3 HP
+                },
+                statWeights: { hpBonus: 1.0 }
+            },
+            // Light Armor - 2 cells, 7 HP
+            armor_light: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🛡️',
+                namePrefix: ['Light', 'Thin', 'Basic', 'Simple'],
+                nameSuffix: ['Armor', 'Plating', 'Shell', 'Guard'],
+                baseShape: [[1, 1]],  // 2 cells
+                validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
+                baseStats: {
+                    weight: 0,
+                    energyDraw: 0,
+                    hpBonus: 7  // 2×3 + 1×1 = 7 HP
+                },
+                statWeights: { hpBonus: 1.0 }
+            },
+            // Medium Armor - 3 cells, 11 HP
+            armor_medium: {
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '❤️',
-                namePrefix: ['Reinforced', 'Thick', 'Dense', 'Layered'],
-                nameSuffix: ['Hull', 'Frame', 'Structure', 'Bulkhead'],
-                baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
+                namePrefix: ['Standard', 'Medium', 'Regular', 'Solid'],
+                nameSuffix: ['Hull', 'Frame', 'Armor', 'Plating'],
+                baseShape: [[1, 1, 1]],  // 3 cells
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
                     energyDraw: 0,
-                    hpBonus: 10  // 4 cost × 2.5 HP = 10 HP
+                    hpBonus: 11  // 3×3 + 2×1 = 11 HP
                 },
                 statWeights: { hpBonus: 1.0 }
             },
-            // Heavy Hull - more HP, compact shape
-            heavy_hull: {
+            // Heavy Armor - 4 cells, 15 HP
+            armor_heavy: {
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '💪',
-                namePrefix: ['Heavy', 'Massive', 'Fortified', 'Titan'],
+                namePrefix: ['Heavy', 'Thick', 'Dense', 'Reinforced'],
                 nameSuffix: ['Hull', 'Bulkhead', 'Plating', 'Chassis'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares)
+                baseShape: [[1, 1], [1, 1]],  // 4 cells
+                validSlots: ['torso', 'leftLeg', 'rightLeg'],
+                baseStats: {
+                    weight: 1,
+                    energyDraw: 0,
+                    hpBonus: 15  // 4×3 + 3×1 = 15 HP
+                },
+                statWeights: { hpBonus: 1.0 }
+            },
+            // Reinforced Armor - 5 cells, 19 HP
+            armor_reinforced: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🏋️',
+                namePrefix: ['Reinforced', 'Fortified', 'Hardened', 'Layered'],
+                nameSuffix: ['Plating', 'Armor', 'Shell', 'Carapace'],
+                baseShape: [[1, 1, 1], [1, 1, 0]],  // 5 cells (L-shape)
                 validSlots: ['torso'],
                 baseStats: {
                     weight: 2,
                     energyDraw: 0,
-                    hpBonus: 15  // 6 cost × 2.5 HP = 15 HP
+                    hpBonus: 19  // 5×3 + 4×1 = 19 HP
+                },
+                statWeights: { hpBonus: 1.0 }
+            },
+            // Titan Armor - 6 cells, 23 HP
+            armor_titan: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🦾',
+                namePrefix: ['Titan', 'Massive', 'Juggernaut', 'Colossal'],
+                nameSuffix: ['Hull', 'Frame', 'Bulwark', 'Fortress'],
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 6 cells (2x3)
+                validSlots: ['torso'],
+                baseStats: {
+                    weight: 2,
+                    energyDraw: 0,
+                    hpBonus: 23  // 6×3 + 5×1 = 23 HP
                 },
                 statWeights: { hpBonus: 1.0 }
             },
@@ -3111,12 +3178,13 @@
 
         // Generate a random connected shape with the specified number of cells
         // All cells are guaranteed to be adjacent to at least one other cell
+        // Algorithm picks a random existing cell to expand from, creating varied shapes
         function generateRandomShape(cellCount) {
             if (cellCount <= 0) return [[1]];
             if (cellCount === 1) return [[1]];
 
             // Start with a larger grid to allow growth in any direction
-            const maxSize = Math.max(4, Math.ceil(Math.sqrt(cellCount) * 2));
+            const maxSize = Math.max(5, Math.ceil(Math.sqrt(cellCount) * 2.5));
             const grid = Array(maxSize).fill(null).map(() => Array(maxSize).fill(0));
 
             // Start in the center
@@ -3127,29 +3195,34 @@
             const filled = [{x: centerX, y: centerY}];
             const directions = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
 
-            // Grow the shape by adding adjacent cells
+            // Grow the shape by randomly picking an existing cell and expanding from it
             while (filled.length < cellCount) {
-                // Find all valid expansion points (empty cells adjacent to filled cells)
-                const candidates = [];
-                for (const cell of filled) {
+                // Shuffle filled cells to try them in random order
+                const shuffled = [...filled].sort(() => Math.random() - 0.5);
+                let foundCandidate = false;
+
+                for (const cell of shuffled) {
+                    // Find valid expansion points from THIS cell only
+                    const candidates = [];
                     for (const dir of directions) {
                         const nx = cell.x + dir.dx;
                         const ny = cell.y + dir.dy;
                         if (nx >= 0 && nx < maxSize && ny >= 0 && ny < maxSize && grid[ny][nx] === 0) {
-                            // Check if this candidate is already in the list
-                            if (!candidates.some(c => c.x === nx && c.y === ny)) {
-                                candidates.push({x: nx, y: ny});
-                            }
+                            candidates.push({x: nx, y: ny});
                         }
+                    }
+
+                    if (candidates.length > 0) {
+                        // Pick a random direction from this cell
+                        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                        grid[chosen.y][chosen.x] = 1;
+                        filled.push(chosen);
+                        foundCandidate = true;
+                        break;  // Successfully added a cell, continue to next iteration
                     }
                 }
 
-                if (candidates.length === 0) break;  // No more room to grow
-
-                // Pick a random candidate
-                const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-                grid[chosen.y][chosen.x] = 1;
-                filled.push(chosen);
+                if (!foundCandidate) break;  // No more room to grow anywhere
             }
 
             // Trim the grid to remove empty rows/columns
@@ -3698,10 +3771,14 @@
                 machinegun: 2,          // 1×2 = 2 DPR, cheap multi-hit
                 minigun: 1,             // 1×8 = 8 DPR, rare synergy weapon
                 pulse_laser: 1,         // 1×5 = 5 DPR, rare energy multi-hit
-                ballistic_plating: 2,   // Damage reduction armor
+                ballistic_plating: 2,   // Damage reduction armor (weight 2)
                 reactive_plating: 1,    // Better damage reduction, rarer
-                hull_armor: 2,          // HP boost armor
-                heavy_hull: 1,          // More HP, rarer
+                armor_small: 2,         // 1 cell, 3 HP
+                armor_light: 2,         // 2 cells, 7 HP
+                armor_medium: 2,        // 3 cells, 11 HP
+                armor_heavy: 1.5,       // 4 cells, 15 HP
+                armor_reinforced: 1,    // 5 cells, 19 HP
+                armor_titan: 0.5,       // 6 cells, 23 HP (rare)
                 energy_shield: 1.5,     // Energy weapon defense
                 reactor: 0.5,           // Much less common
                 power_cell: 0.5,        // Much less common
@@ -8946,10 +9023,10 @@
 
             // Test 8: Armor HP scaling
             console.log('\n--- Test 8: Armor HP Scaling ---');
-            const hull1 = generateComponent('hull_armor', 1, 'common');
-            const hull5 = generateComponent('hull_armor', 5, 'common');
-            assert(hull1.stats.hpBonus === 10, 'Hull Armor L1 HP = 10 (prototype)', `Got: ${hull1.stats.hpBonus}`);
-            assert(hull5.stats.hpBonus > hull1.stats.hpBonus, 'Hull Armor L5 HP > L1 HP', `L5: ${hull5.stats.hpBonus}, L1: ${hull1.stats.hpBonus}`);
+            const armor1 = generateComponent('armor_medium', 1, 'common');
+            const armor5 = generateComponent('armor_medium', 5, 'common');
+            assert(armor1.stats.hpBonus === 11, 'Medium Armor L1 HP = 11 (prototype)', `Got: ${armor1.stats.hpBonus}`);
+            assert(armor5.stats.hpBonus > armor1.stats.hpBonus, 'Medium Armor L5 HP > L1 HP', `L5: ${armor5.stats.hpBonus}, L1: ${armor1.stats.hpBonus}`);
 
             // Test 9: Minimum Level System
             console.log('\n--- Test 9: Minimum Level Calculation ---');
@@ -8976,7 +9053,7 @@
             // Test 10: Budget Balance Sanity Check
             console.log('\n--- Test 10: Budget Balance Values ---');
             const templates = ['railgun', 'laser', 'missile', 'machinegun', 'minigun', 'pulse_laser',
-                              'ballistic_plating', 'hull_armor', 'reactor', 'targeting_hub'];
+                              'ballistic_plating', 'armor_medium', 'reactor', 'targeting_hub'];
             for (const key of templates) {
                 if (ITEM_TEMPLATES[key]) {
                     const balance = calculateTemplateBudgetBalance(ITEM_TEMPLATES[key]);

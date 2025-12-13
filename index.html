@@ -2449,6 +2449,35 @@
                         description: '+1 DR',
                         appliesTo: ['ARMOR'],
                         effect: { drBonus: 1 }
+                    },
+                    // === POSITIONAL MODIFIERS (Cost 1) ===
+                    {
+                        id: 'top_mounted',
+                        name: 'Top Mounted',
+                        description: '+2 damage when in top row (head area)',
+                        appliesTo: ['WEAPON'],
+                        effect: { topRowDamageBonus: 2 }
+                    },
+                    {
+                        id: 'grounded',
+                        name: 'Grounded',
+                        description: '+3 HP when in bottom row (leg area)',
+                        appliesTo: ['ARMOR'],
+                        effect: { bottomRowHPBonus: 3 }
+                    },
+                    {
+                        id: 'flanker',
+                        name: 'Flanker',
+                        description: '+1 damage when on left or right edge',
+                        appliesTo: ['WEAPON'],
+                        effect: { edgeDamageBonus: 1 }
+                    },
+                    {
+                        id: 'compact',
+                        name: 'Compact',
+                        description: '+1 energy when in center (not on edge)',
+                        appliesTo: ['REACTOR'],
+                        effect: { centralEnergyBonus: 1 }
                     }
                 ],
 
@@ -2489,6 +2518,56 @@
                         description: '+1 energy provided',
                         appliesTo: ['REACTOR'],
                         effect: { energyProvidedBonus: 1 }
+                    },
+                    // === POSITIONAL MODIFIERS (Cost 2) ===
+                    {
+                        id: 'weapon_array',
+                        name: 'Weapon Array',
+                        description: '+0.5 damage per adjacent weapon',
+                        appliesTo: ['WEAPON'],
+                        effect: { damagePerAdjacentWeapon: 0.5 }
+                    },
+                    {
+                        id: 'armor_mesh',
+                        name: 'Armor Mesh',
+                        description: '+2 HP per adjacent armor piece',
+                        appliesTo: ['ARMOR'],
+                        effect: { hpPerAdjacentArmor: 2 }
+                    },
+                    {
+                        id: 'power_grid',
+                        name: 'Power Grid',
+                        description: '+0.5 energy per adjacent reactor',
+                        appliesTo: ['REACTOR'],
+                        effect: { energyPerAdjacentReactor: 0.5 }
+                    },
+                    {
+                        id: 'lone_wolf',
+                        name: 'Lone Wolf',
+                        description: '+3 damage when not adjacent to any other items',
+                        appliesTo: ['WEAPON'],
+                        effect: { isolationDamageBonus: 3 }
+                    },
+                    {
+                        id: 'hermit_plating',
+                        name: 'Hermit Plating',
+                        description: '+5 HP when not adjacent to any other items',
+                        appliesTo: ['ARMOR'],
+                        effect: { isolationHPBonus: 5 }
+                    },
+                    {
+                        id: 'corner_pocket',
+                        name: 'Corner Pocket',
+                        description: '+2 damage when in a corner position',
+                        appliesTo: ['WEAPON'],
+                        effect: { cornerDamageBonus: 2 }
+                    },
+                    {
+                        id: 'symmetry_bonus',
+                        name: 'Mirror Match',
+                        description: '+2 HP if same item type on opposite side',
+                        appliesTo: ['ARMOR'],
+                        effect: { symmetryHPBonus: 2 }
                     }
                 ],
 
@@ -2529,8 +2608,94 @@
                         description: '+1 damage to all adjacent weapons',
                         appliesTo: ['SYSTEM'],
                         effect: { adjacentDamageBonus: 1 }
+                    },
+                    // === POSITIONAL MODIFIERS (Cost 3) ===
+                    {
+                        id: 'weapon_chain',
+                        name: 'Weapon Chain',
+                        description: '+1 damage per weapon in longest connected chain',
+                        appliesTo: ['WEAPON'],
+                        effect: { damagePerChainWeapon: 1 }
+                    },
+                    {
+                        id: 'armor_chain',
+                        name: 'Armor Chain',
+                        description: '+2 HP per armor in longest connected chain',
+                        appliesTo: ['ARMOR'],
+                        effect: { hpPerChainArmor: 2 }
+                    },
+                    {
+                        id: 'row_complete',
+                        name: 'Row Dominator',
+                        description: '+3 damage if any row is completely filled',
+                        appliesTo: ['WEAPON'],
+                        effect: { rowCompleteDamageBonus: 3 }
+                    },
+                    {
+                        id: 'column_complete',
+                        name: 'Column Master',
+                        description: '+5 HP if any column is completely filled',
+                        appliesTo: ['ARMOR'],
+                        effect: { columnCompleteHPBonus: 5 }
                     }
                 ]
+            },
+
+            // === POSITIONAL MODIFIER CONFIGURATION ===
+            // These modifiers give bonuses based on item placement
+            positionalModifiers: {
+                // Position checks use the mech grid coordinate system
+                // Grid is typically 7 cols x 7 rows (MECH_CHASSIS.gridCols/gridRows)
+
+                // Budget 1: Simple position checks
+                topRowBonus: {
+                    description: 'Bonus when item occupies top row (row 0)',
+                    checkFn: 'isInTopRow'
+                },
+                bottomRowBonus: {
+                    description: 'Bonus when item occupies bottom row',
+                    checkFn: 'isInBottomRow'
+                },
+                edgeBonus: {
+                    description: 'Bonus when item is on left or right edge',
+                    checkFn: 'isOnEdge'
+                },
+
+                // Budget 2: Adjacency counts
+                adjacentWeaponCount: {
+                    description: 'Bonus per adjacent weapon',
+                    checkFn: 'countAdjacentWeapons'
+                },
+                adjacentArmorCount: {
+                    description: 'Bonus per adjacent armor',
+                    checkFn: 'countAdjacentArmor'
+                },
+                adjacentReactorCount: {
+                    description: 'Bonus per adjacent reactor',
+                    checkFn: 'countAdjacentReactors'
+                },
+                isolationBonus: {
+                    description: 'Bonus when not adjacent to any other items',
+                    checkFn: 'isIsolated'
+                },
+                centralBonus: {
+                    description: 'Bonus when not touching any edge',
+                    checkFn: 'isCentral'
+                },
+
+                // Budget 3: Complex chain/completion checks
+                chainLength: {
+                    description: 'Bonus per item in longest connected chain of same type',
+                    checkFn: 'getLongestChainOfType'
+                },
+                rowComplete: {
+                    description: 'Bonus if any row is completely filled',
+                    checkFn: 'hasCompleteRow'
+                },
+                columnComplete: {
+                    description: 'Bonus if any column is completely filled',
+                    checkFn: 'hasCompleteColumn'
+                }
             }
         };
 
@@ -8232,6 +8397,227 @@
             return bonusMap;
         }
 
+        // ============================================
+        // POSITIONAL MODIFIER CALCULATION
+        // Evaluates positional bonuses for items with special modifiers
+        // ============================================
+        function calculatePositionalBonuses() {
+            const bonuses = {};  // instanceId -> { damage: 0, hp: 0, energy: 0 }
+
+            if (!unifiedGridOccupation || !unifiedGridOccupation.cells) return bonuses;
+
+            // Build a map of all occupied cells and their item types
+            const cellMap = {};  // "x,y" -> { instanceId, type, category }
+            const itemPositions = {};  // instanceId -> [{x, y}, ...]
+
+            loadoutState.equipment.forEach(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                if (!item || !eq.position) return;
+
+                itemPositions[eq.instanceId] = [];
+                const shape = item.gridShape;
+                if (shape) {
+                    for (let dy = 0; dy < shape.length; dy++) {
+                        for (let dx = 0; dx < shape[0].length; dx++) {
+                            if (shape[dy][dx] === 1) {
+                                const x = eq.position.x + dx;
+                                const y = eq.position.y + dy;
+                                const key = `${x},${y}`;
+                                cellMap[key] = {
+                                    instanceId: eq.instanceId,
+                                    type: item.type,
+                                    category: item.category
+                                };
+                                itemPositions[eq.instanceId].push({ x, y });
+                            }
+                        }
+                    }
+                }
+
+                // Initialize bonus tracking
+                bonuses[eq.instanceId] = { damage: 0, hp: 0, energy: 0 };
+            });
+
+            // Helper functions for position checks
+            const isInTopRow = (positions) => positions.some(p => p.y === 0);
+            const isInBottomRow = (positions) => positions.some(p => p.y === MECH_CHASSIS.gridRows - 1);
+            const isOnLeftEdge = (positions) => positions.some(p => p.x === 0);
+            const isOnRightEdge = (positions) => positions.some(p => p.x === MECH_CHASSIS.gridCols - 1);
+            const isOnEdge = (positions) => isOnLeftEdge(positions) || isOnRightEdge(positions);
+            const isInCorner = (positions) => positions.some(p =>
+                (p.x === 0 || p.x === MECH_CHASSIS.gridCols - 1) &&
+                (p.y === 0 || p.y === MECH_CHASSIS.gridRows - 1)
+            );
+            const isCentral = (positions) => !positions.some(p =>
+                p.x === 0 || p.x === MECH_CHASSIS.gridCols - 1 ||
+                p.y === 0 || p.y === MECH_CHASSIS.gridRows - 1
+            );
+
+            // Count adjacent items of a specific type
+            const countAdjacentOfType = (positions, targetType, excludeInstanceId) => {
+                const offsets = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+                const counted = new Set();
+                positions.forEach(p => {
+                    offsets.forEach(({dx, dy}) => {
+                        const key = `${p.x + dx},${p.y + dy}`;
+                        if (cellMap[key] && cellMap[key].type === targetType &&
+                            cellMap[key].instanceId !== excludeInstanceId) {
+                            counted.add(cellMap[key].instanceId);
+                        }
+                    });
+                });
+                return counted.size;
+            };
+
+            // Check if item is isolated (no adjacent items)
+            const isIsolated = (positions, instanceId) => {
+                const offsets = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+                for (const p of positions) {
+                    for (const {dx, dy} of offsets) {
+                        const key = `${p.x + dx},${p.y + dy}`;
+                        if (cellMap[key] && cellMap[key].instanceId !== instanceId) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            };
+
+            // Calculate longest chain of connected items of same type
+            const getLongestChain = (startInstanceId, targetType) => {
+                const visited = new Set();
+                const queue = [startInstanceId];
+                visited.add(startInstanceId);
+
+                while (queue.length > 0) {
+                    const currentId = queue.shift();
+                    const positions = itemPositions[currentId] || [];
+                    const offsets = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+
+                    positions.forEach(p => {
+                        offsets.forEach(({dx, dy}) => {
+                            const key = `${p.x + dx},${p.y + dy}`;
+                            if (cellMap[key] && cellMap[key].type === targetType &&
+                                !visited.has(cellMap[key].instanceId)) {
+                                visited.add(cellMap[key].instanceId);
+                                queue.push(cellMap[key].instanceId);
+                            }
+                        });
+                    });
+                }
+                return visited.size;
+            };
+
+            // Check if any row is completely filled
+            const hasCompleteRow = () => {
+                for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
+                    let rowFilled = true;
+                    for (let x = 0; x < MECH_CHASSIS.gridCols; x++) {
+                        // Only check valid cells in the mech shape
+                        if (MECH_CHASSIS.gridShape[y]?.[x] === 1 && !cellMap[`${x},${y}`]) {
+                            rowFilled = false;
+                            break;
+                        }
+                    }
+                    // Count valid cells in row
+                    const validCells = MECH_CHASSIS.gridShape[y]?.filter(c => c === 1).length || 0;
+                    if (validCells > 0 && rowFilled) return true;
+                }
+                return false;
+            };
+
+            // Check if any column is completely filled
+            const hasCompleteColumn = () => {
+                for (let x = 0; x < MECH_CHASSIS.gridCols; x++) {
+                    let colFilled = true;
+                    let validCells = 0;
+                    for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
+                        if (MECH_CHASSIS.gridShape[y]?.[x] === 1) {
+                            validCells++;
+                            if (!cellMap[`${x},${y}`]) {
+                                colFilled = false;
+                            }
+                        }
+                    }
+                    if (validCells > 0 && colFilled) return true;
+                }
+                return false;
+            };
+
+            // Now evaluate each item's modifiers
+            loadoutState.equipment.forEach(eq => {
+                const item = ITEM_DATABASE[eq.itemId];
+                if (!item || !eq.position) return;
+
+                const positions = itemPositions[eq.instanceId];
+                const modifier = item.modifier;
+                if (!modifier || !modifier.effect) return;
+
+                const effect = modifier.effect;
+
+                // Position-based bonuses (Cost 1)
+                if (effect.topRowDamageBonus && isInTopRow(positions)) {
+                    bonuses[eq.instanceId].damage += effect.topRowDamageBonus;
+                }
+                if (effect.bottomRowHPBonus && isInBottomRow(positions)) {
+                    bonuses[eq.instanceId].hp += effect.bottomRowHPBonus;
+                }
+                if (effect.edgeDamageBonus && isOnEdge(positions)) {
+                    bonuses[eq.instanceId].damage += effect.edgeDamageBonus;
+                }
+                if (effect.centralEnergyBonus && isCentral(positions)) {
+                    bonuses[eq.instanceId].energy += effect.centralEnergyBonus;
+                }
+
+                // Adjacency count bonuses (Cost 2)
+                if (effect.damagePerAdjacentWeapon) {
+                    const count = countAdjacentOfType(positions, 'WEAPON', eq.instanceId);
+                    bonuses[eq.instanceId].damage += effect.damagePerAdjacentWeapon * count;
+                }
+                if (effect.hpPerAdjacentArmor) {
+                    const count = countAdjacentOfType(positions, 'ARMOR', eq.instanceId);
+                    bonuses[eq.instanceId].hp += effect.hpPerAdjacentArmor * count;
+                }
+                if (effect.energyPerAdjacentReactor) {
+                    const count = countAdjacentOfType(positions, 'REACTOR', eq.instanceId);
+                    bonuses[eq.instanceId].energy += effect.energyPerAdjacentReactor * count;
+                }
+
+                // Isolation bonuses (Cost 2)
+                if (effect.isolationDamageBonus && isIsolated(positions, eq.instanceId)) {
+                    bonuses[eq.instanceId].damage += effect.isolationDamageBonus;
+                }
+                if (effect.isolationHPBonus && isIsolated(positions, eq.instanceId)) {
+                    bonuses[eq.instanceId].hp += effect.isolationHPBonus;
+                }
+
+                // Corner bonus (Cost 2)
+                if (effect.cornerDamageBonus && isInCorner(positions)) {
+                    bonuses[eq.instanceId].damage += effect.cornerDamageBonus;
+                }
+
+                // Chain bonuses (Cost 3)
+                if (effect.damagePerChainWeapon) {
+                    const chainLength = getLongestChain(eq.instanceId, 'WEAPON');
+                    bonuses[eq.instanceId].damage += effect.damagePerChainWeapon * (chainLength - 1);  // -1 to not count self
+                }
+                if (effect.hpPerChainArmor) {
+                    const chainLength = getLongestChain(eq.instanceId, 'ARMOR');
+                    bonuses[eq.instanceId].hp += effect.hpPerChainArmor * (chainLength - 1);
+                }
+
+                // Row/Column completion bonuses (Cost 3)
+                if (effect.rowCompleteDamageBonus && hasCompleteRow()) {
+                    bonuses[eq.instanceId].damage += effect.rowCompleteDamageBonus;
+                }
+                if (effect.columnCompleteHPBonus && hasCompleteColumn()) {
+                    bonuses[eq.instanceId].hp += effect.columnCompleteHPBonus;
+                }
+            });
+
+            return bonuses;
+        }
+
         function calculatePlayerStats() {
             let totalDamage = 0;
             let totalArmor = 0;
@@ -8241,8 +8627,9 @@
             let energyShieldHP = 0;
             let weapons = [];
 
-            // Calculate adjacency bonuses FIRST
+            // Calculate adjacency bonuses and positional bonuses
             const adjacencyBonuses = calculateAdjacencyBonuses();
+            const positionalBonuses = calculatePositionalBonuses();
 
             loadoutState.equipment.forEach(eq => {
                 const item = ITEM_DATABASE[eq.itemId];
@@ -8253,11 +8640,17 @@
                     hpBonus += item.stats.hpBonus || 0;
                     damageReduction = Math.max(damageReduction, item.stats.damageReduction || 0);  // Highest only
                     energyShieldHP += item.stats.energyShieldHP || 0;
+
+                    // Add positional HP bonus if present
+                    const posBonuses = positionalBonuses[eq.instanceId] || { damage: 0, hp: 0, energy: 0 };
+                    hpBonus += posBonuses.hp;
+
                     if (item.type === 'WEAPON') {
                         // Get adjacency bonus for this weapon
                         const adjBonus = adjacencyBonuses[eq.instanceId] || 0;
                         const baseDamage = item.stats.damage || 0;
-                        const totalWeaponDamage = baseDamage + adjBonus;
+                        // Include positional damage bonus
+                        const totalWeaponDamage = baseDamage + adjBonus + posBonuses.damage;
 
                         // Pass full weapon info for battle simulation
                         weapons.push({
@@ -8265,18 +8658,20 @@
                             instanceId: eq.instanceId,
                             slot: eq.slot,
                             name: item.name,
-                            damage: totalWeaponDamage,  // Base + adjacency bonus!
+                            damage: totalWeaponDamage,  // Base + adjacency + positional!
                             baseDamage: baseDamage,
                             adjacencyBonus: adjBonus,
+                            positionalBonus: posBonuses.damage,
                             battle: item.battle || {},
                             synergies: item.synergies || [],
                             synergyDescription: item.synergyDescription || ''
                         });
 
                         // Log synergy activation
-                        if (adjBonus > 0) {
+                        const totalBonus = adjBonus + posBonuses.damage;
+                        if (totalBonus > 0) {
                             const shots = item.battle?.shotsPerRound || 1;
-                            console.log(`🎯 SYNERGY! ${item.name}: ${baseDamage}+${adjBonus}=${totalWeaponDamage} damage x${shots} shots = ${totalWeaponDamage * shots} total (was ${baseDamage * shots})`);
+                            console.log(`🎯 BONUS! ${item.name}: ${baseDamage}+${totalBonus}=${totalWeaponDamage} damage x${shots} shots = ${totalWeaponDamage * shots} total`);
                         }
                     }
                 }

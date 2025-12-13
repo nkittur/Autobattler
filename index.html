@@ -6435,8 +6435,9 @@
                 }
             });
 
-            // Calculate adjacency bonuses for visual display
+            // Calculate adjacency bonuses and positional bonuses for visual display
             const adjacencyBonuses = calculateAdjacencyBonuses();
+            const positionalBonuses = calculatePositionalBonuses();
 
             // Render placed items
             loadoutState.equipment.forEach(eq => {
@@ -6447,8 +6448,10 @@
                 const w = shape[0].length;
                 const h = shape.length;
 
-                // Get adjacency bonus for this item (if it's a weapon)
+                // Get total bonus for this item (adjacency + positional)
                 const adjBonus = adjacencyBonuses[eq.instanceId] || 0;
+                const posBonus = positionalBonuses[eq.instanceId] || { damage: 0, hp: 0, energy: 0 };
+                const totalBonus = adjBonus + posBonus.damage;
 
                 // Create a container for the item that spans the bounding box
                 const placedEl = document.createElement('div');
@@ -6464,8 +6467,8 @@
                 placedEl.style.background = 'transparent';
                 placedEl.style.border = 'none';
 
-                // Add glow effect if receiving adjacency bonus
-                if (adjBonus > 0) {
+                // Add glow effect if receiving any bonus (adjacency or positional)
+                if (totalBonus > 0) {
                     placedEl.style.filter = 'drop-shadow(0 0 6px #ffcc00)';
                 }
 
@@ -6477,7 +6480,7 @@
                             const cellLeft = dx * (cellSize + gap);
                             const cellTop = dy * (cellSize + gap);
                             // Add golden border if receiving bonus
-                            const bonusBorder = adjBonus > 0 ? 'box-shadow: 0 0 8px #ffcc00, inset 0 0 4px rgba(255,204,0,0.3);' : '';
+                            const bonusBorder = totalBonus > 0 ? 'box-shadow: 0 0 8px #ffcc00, inset 0 0 4px rgba(255,204,0,0.3);' : '';
                             shapeCellsHtml += `<div class="item-shape-cell" style="
                                 position: absolute;
                                 left: ${cellLeft}px;
@@ -6512,7 +6515,7 @@
                 const iconTop = centerY * (cellSize + gap) + cellSize / 2;
 
                 // Build tooltip HTML with adjacency bonus info
-                const tooltipHtml = buildItemTooltipHtmlWithBonus(item, adjBonus);
+                const tooltipHtml = buildItemTooltipHtmlWithBonus(item, totalBonus);
 
                 // Build direction indicator for directional damage items
                 let directionHtml = '';
@@ -7803,7 +7806,7 @@
             let energyShieldHP = 0;
 
             loadoutState.equipment.forEach(eq => {
-                const item = ITEM_DATABASE[eq.itemId];
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
                 if (item && item.stats) {
                     totalWeight += item.stats.weight || 0;
                     totalArmor += item.stats.armorBonus || 0;
@@ -8340,7 +8343,7 @@
             const itemPositions = {};  // instanceId -> [{x, y}, ...]
 
             loadoutState.equipment.forEach(eq => {
-                const item = ITEM_DATABASE[eq.itemId];
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
                 if (!item || !eq.position) return;
 
                 itemPositions[eq.instanceId] = [];
@@ -8475,7 +8478,7 @@
 
             // Now evaluate each item's modifiers
             loadoutState.equipment.forEach(eq => {
-                const item = ITEM_DATABASE[eq.itemId];
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
                 if (!item || !eq.position) return;
 
                 const positions = itemPositions[eq.instanceId];
@@ -8561,7 +8564,7 @@
             const positionalBonuses = calculatePositionalBonuses();
 
             loadoutState.equipment.forEach(eq => {
-                const item = ITEM_DATABASE[eq.itemId];
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
                 if (item && item.stats) {
                     totalWeight += item.stats.weight || 0;
                     totalDamage += item.stats.damage || 0;

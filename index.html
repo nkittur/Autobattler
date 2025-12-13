@@ -6418,17 +6418,25 @@
         }
 
         // Build inline shape preview (always visible, not a tooltip)
+        // Colors match the slot colors used on the mech grid
+        const SLOT_TYPE_COLORS = {
+            weapon: '#ff6644',
+            armor: '#4488ff',
+            reactor: '#ffaa00',
+            system: '#aa44ff',
+            cooling: '#44ddff'
+        };
+
         function buildInlineShapePreview(item, cellSize = 8) {
             const shape = item.gridShape || [[1]];
-            const rarityColor = (item.isGenerated && COMPONENT_GENERATION) ?
-                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00aa66') : '#00aa66';
+            const slotColor = SLOT_TYPE_COLORS[item.category] || '#00aa66';
 
             const cols = shape[0].length;
             let html = `<div style="display: inline-grid; gap: 2px; grid-template-columns: repeat(${cols}, ${cellSize}px);">`;
             for (let row of shape) {
                 for (let cell of row) {
                     if (cell === 1) {
-                        html += `<div style="width: ${cellSize}px; height: ${cellSize}px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 1px;"></div>`;
+                        html += `<div style="width: ${cellSize}px; height: ${cellSize}px; background: ${slotColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 1px;"></div>`;
                     } else {
                         html += `<div style="width: ${cellSize}px; height: ${cellSize}px;"></div>`;
                     }

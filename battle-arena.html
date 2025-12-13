@@ -1863,17 +1863,18 @@
         // Each body part has separate HP. Mech destroyed if head, torso, or both legs destroyed.
         // ============================================
         const BODY_PART_CONFIG = {
-            // HP distribution ratios (relative to torso)
+            // HP distribution ratios (relative to base unit)
+            // Torso is 2x to make it the toughest part
             hpRatios: {
-                torso: 1.0,      // Base - 100% of allocated torso HP
-                head: 0.75,      // 75% of torso - smaller but critical
-                leftArm: 0.5,    // 50% of torso - easiest to destroy
+                torso: 2.0,      // Double HP - main body, hardest to destroy
+                head: 0.75,      // 75% of base - smaller but critical
+                leftArm: 0.5,    // 50% of base - easiest to destroy
                 rightArm: 0.5,
-                leftLeg: 0.75,   // 75% of torso
+                leftLeg: 0.75,   // 75% of base
                 rightLeg: 0.75
             },
-            // Total ratio = 1.0 + 0.75 + 0.5 + 0.5 + 0.75 + 0.75 = 4.25
-            // So torsoHP = totalHP / 4.25
+            // Total ratio = 2.0 + 0.75 + 0.5 + 0.5 + 0.75 + 0.75 = 5.25
+            // So baseHP = totalHP / 5.25, then torsoHP = baseHP * 2.0
 
             // Stability multiplier for leg hits
             legStabilityMultiplier: 2.0,
@@ -1898,8 +1899,9 @@
 
         // Initialize body part health for a mech based on its total HP
         function initializeBodyParts(totalHP) {
-            // Calculate torso HP: totalHP = torsoHP * 4.25
-            const torsoHP = Math.round(totalHP / 4.25);
+            // Calculate base HP unit: totalHP = baseHP * 5.25 (sum of all ratios)
+            const baseHP = Math.round(totalHP / 5.25);
+            const torsoHP = Math.round(baseHP * BODY_PART_CONFIG.hpRatios.torso);
 
             return {
                 torso: {
@@ -2020,23 +2022,27 @@
             // Width threshold for arms vs torso
             const armThreshold = 0.6 * scale;
 
+            let hitPart = 'torso';
+
             // Determine hit location
             if (relativeY > headMinY) {
-                // Head hit
-                return 'head';
+                hitPart = 'head';
             } else if (relativeY > torsoMinY) {
                 // Upper body - could be torso or arms
                 if (Math.abs(localX) > armThreshold) {
-                    // Hit an arm
-                    return localX > 0 ? 'rightArm' : 'leftArm';
+                    hitPart = localX > 0 ? 'rightArm' : 'leftArm';
                 } else {
-                    // Hit the torso
-                    return 'torso';
+                    hitPart = 'torso';
                 }
             } else {
                 // Lower body - legs
-                return localX > 0 ? 'rightLeg' : 'leftLeg';
+                hitPart = localX > 0 ? 'rightLeg' : 'leftLeg';
             }
+
+            // Debug: Log hit detection details
+            console.log(`[HIT] ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} ${hitPart} | relY=${relativeY.toFixed(2)} localX=${localX.toFixed(2)} | thresholds: head>${headMinY.toFixed(2)}, torso>${torsoMinY.toFixed(2)}, arm>${armThreshold.toFixed(2)}`);
+
+            return hitPart;
         }
 
         // ============================================
@@ -7267,19 +7273,20 @@
 
                 const start = arm.weaponPod.getAbsolutePosition();
                 start.z += 0.5;
-                const target = to.torso.getAbsolutePosition();
+                const torsoPos = to.torso.getAbsolutePosition();
                 // Spread fire across entire mech body (head to legs, side to side)
-                target.x += (Math.random() - 0.5) * 1.8;   // Reach arms on sides
-                target.y += (Math.random() - 0.5) * 3.5;   // Head to legs spread
-                target.z += (Math.random() - 0.5) * 0.8;   // Depth variance
+                const spreadTarget = torsoPos.clone();
+                spreadTarget.x += (Math.random() - 0.5) * 1.8;   // Reach arms on sides
+                spreadTarget.y += (Math.random() - 0.5) * 3.5;   // Head to legs spread
+                spreadTarget.z += (Math.random() - 0.5) * 0.8;   // Depth variance
 
                 // Validate positions
-                if (isNaN(start.x) || isNaN(target.x)) {
-                    log(`[ERROR] NaN position: start=${start} target=${target}`, 'error');
+                if (isNaN(start.x) || isNaN(spreadTarget.x)) {
+                    log(`[ERROR] NaN position: start=${start} spreadTarget=${spreadTarget}`, 'error');
                     return;
                 }
 
-                const dir = target.subtract(start).normalize();
+                const dir = spreadTarget.subtract(start).normalize();
                 const projSize = weapon.projectileSize || 0.1;
 
                 // Determine projectile type based on weapon characteristics
@@ -7287,7 +7294,7 @@
                 const isBallistic = weapon.projectileSpeed > 40 || (weapon.name && (weapon.name.toLowerCase().includes('railgun') || weapon.name.toLowerCase().includes('cannon') || weapon.name.toLowerCase().includes('gun')));
 
                 let proj;
-                let projectileData = { weapon, target: to, firedAt: Date.now() };
+                let projectileData = { weapon, target: to, spreadTarget: spreadTarget.clone(), firedAt: Date.now() };
 
                 if (isMissileWeapon) {
                     // MISSILE: Long narrow tube with nose cone and engine
@@ -7455,7 +7462,12 @@
 
                 const start = arm.weaponPod.getAbsolutePosition();
                 start.z += 0.6;
-                const end = to.torso.getAbsolutePosition();
+                // Spread beam endpoint across mech body
+                const torsoPos = to.torso.getAbsolutePosition();
+                const end = torsoPos.clone();
+                end.x += (Math.random() - 0.5) * 1.8;   // Reach arms on sides
+                end.y += (Math.random() - 0.5) * 3.5;   // Head to legs spread
+                end.z += (Math.random() - 0.5) * 0.8;   // Depth variance
 
                 // Validate positions and check for degenerate path
                 if (isNaN(start.x) || isNaN(end.x)) {
@@ -7590,7 +7602,7 @@
                     projectiles.push({
                         mesh: missile, aggregate: agg,
                         weapon: { ...weapon, damage: weapon.damage / weapon.clusterCount },
-                        target: to, firedAt: Date.now(), isMissile: true
+                        target: to, spreadTarget: spread.clone(), firedAt: Date.now(), isMissile: true
                     });
 
                     // Create small muzzle flash at each tube
@@ -7923,13 +7935,12 @@
                             if (p.currentSpeed > p.maxSpeed) p.currentSpeed = p.maxSpeed;
                         }
 
-                        // Update velocity to fly straight toward target
-                        if (p.aggregate && p.aggregate.body && p.target && p.target.torso && p.missileBody) {
-                            const targetPos = p.target.torso.getAbsolutePosition();
+                        // Update velocity to fly straight toward spread target (NOT torso center)
+                        if (p.aggregate && p.aggregate.body && p.spreadTarget && p.missileBody) {
                             const currentPos = p.missileBody.getAbsolutePosition();
-                            const dirToTarget = targetPos.subtract(currentPos).normalize();
+                            const dirToTarget = p.spreadTarget.subtract(currentPos).normalize();
 
-                            // Set velocity directly toward target
+                            // Set velocity directly toward spread target
                             p.aggregate.body.setLinearVelocity(dirToTarget.scale(p.currentSpeed));
 
                             // Sync TransformNode position with physics body

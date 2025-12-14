@@ -3013,9 +3013,14 @@
                         }
                         // Use weapons from ITEM_DATABASE
                         enemyMech.loadoutWeapons = enemyData.weapons || [];
+                        // Store full equipment data (items with body part assignments)
+                        enemyMech.equipment = enemyData.equipment || [];
                         // Store enemy name for UI
                         enemyMech.displayName = enemyData.name || `Enemy ${index + 1}`;
+                        // Store enemy level for salvage calculations
+                        enemyMech.level = enemyData.level || 1;
                         console.log(`Enemy ${index + 1} (${enemyMech.displayName}) weapons:`, enemyMech.loadoutWeapons);
+                        console.log(`Enemy ${index + 1} equipment:`, enemyMech.equipment);
                     }
 
                     enemyMechs.push(enemyMech);
@@ -8711,9 +8716,46 @@
                 // Collect body part damage data from all enemy mechs for salvage calculation
                 const enemyDamageData = enemyMechs.map(mech => {
                     if (!mech) return null;
+
+                    // Calculate equipment survival based on body part status
+                    const equipmentStatus = (mech.equipment || []).map(eq => {
+                        const bodyPart = eq.bodyPart || 'torso';
+                        const bp = mech.bodyParts?.[bodyPart];
+                        const isBodyPartDestroyed = bp?.destroyed || false;
+                        const bodyPartHPPercent = bp ? (bp.current / bp.max) : 1.0;
+
+                        // Item is destroyed if body part is destroyed, or severely damaged (random chance)
+                        const damageChance = isBodyPartDestroyed ? 1.0 : (1.0 - bodyPartHPPercent) * 0.8;
+                        const isDestroyed = Math.random() < damageChance;
+
+                        return {
+                            ...eq,
+                            bodyPart: bodyPart,
+                            isDestroyed: isDestroyed,
+                            bodyPartHPPercent: bodyPartHPPercent
+                        };
+                    });
+
+                    // Build body part HP data
+                    const bodyPartHP = {};
+                    if (mech.bodyParts) {
+                        ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'].forEach(part => {
+                            const bp = mech.bodyParts[part];
+                            if (bp) {
+                                bodyPartHP[part] = {
+                                    current: bp.current,
+                                    max: bp.max,
+                                    destroyed: bp.destroyed || false
+                                };
+                            }
+                        });
+                    }
+
                     return {
                         name: mech.displayName || mech.name,
-                        equipment: mech.loadoutWeapons || [],
+                        level: mech.level || 1,
+                        equipment: equipmentStatus,
+                        bodyPartHP: bodyPartHP,
                         bodyParts: mech.bodyParts ? {
                             totalDamageReceived: mech.bodyParts.totalDamageReceived,
                             destroyed: {

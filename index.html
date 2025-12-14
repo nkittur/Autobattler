@@ -4367,9 +4367,18 @@
             // Determine weapon count
             const weaponCount = Math.max(1, Math.min(3, Math.floor(weaponBudget / ENEMY_GENERATION.rates.weaponBudget) + 1));
 
-            // Generate equipment using templates
+            // Generate equipment using templates - with body part assignments
             const equipment = [];
-            const weaponSlots = ['rightArm', 'leftArm', 'torso'];
+
+            // Body part to item slot mapping for enemies
+            const bodyPartSlots = {
+                rightArm: 'rightArm',
+                leftArm: 'leftArm',
+                torso: 'torso',
+                head: 'head',
+                leftLeg: 'leftLeg',
+                rightLeg: 'rightLeg'
+            };
 
             // Weapon templates with their weights - filtered by minLevel
             const minLevels = getMinLevelCache();
@@ -4391,7 +4400,10 @@
                 }
             }
 
-            for (let i = 0; i < weaponCount && i < weaponSlots.length; i++) {
+            // Weapon slots assigned to body parts
+            const weaponBodyParts = ['rightArm', 'leftArm', 'torso'];
+
+            for (let i = 0; i < weaponCount && i < weaponBodyParts.length; i++) {
                 const template = weightedWeapons[Math.floor(Math.random() * weightedWeapons.length)] || 'railgun';
                 const weapon = generateComponent(template, level, 'common', { variantChance: 0 });
                 if (weapon) {
@@ -4399,13 +4411,15 @@
                     registerGeneratedComponent(weapon);
                     equipment.push({
                         itemId: weapon.id,
-                        slot: weaponSlots[i],
+                        item: weapon,  // Store full item data
+                        bodyPart: weaponBodyParts[i],  // Which body part this item is on
+                        slot: weaponBodyParts[i],
                         position: { x: 0, y: 0 }
                     });
                 }
             }
 
-            // Add armor if high enough level
+            // Add armor to torso if high enough level
             if (level >= 2 && baseArmor > 20) {
                 const armor = generateComponent('ballistic_plating', level, 'common', { variantChance: 0 });
                 if (armor) {
@@ -4413,13 +4427,15 @@
                     registerGeneratedComponent(armor);
                     equipment.push({
                         itemId: armor.id,
+                        item: armor,
+                        bodyPart: 'torso',  // Armor on torso
                         slot: 'torso',
                         position: { x: 0, y: 0 }
                     });
                 }
             }
 
-            // Add reactor for energy
+            // Add reactor to torso for energy
             if (weaponCount >= 2) {
                 const reactor = generateComponent('power_cell', level, 'common', { variantChance: 0 });
                 if (reactor) {
@@ -4427,6 +4443,8 @@
                     registerGeneratedComponent(reactor);
                     equipment.push({
                         itemId: reactor.id,
+                        item: reactor,
+                        bodyPart: 'torso',  // Reactor in torso
                         slot: 'torso',
                         position: { x: 2, y: 0 }
                     });
@@ -8842,6 +8860,153 @@
                 (isBoss ? 'BOSS DEFEATED!' : 'MISSION COMPLETE') :
                 'MISSION FAILED';
 
+            // Build enemy mech component view HTML
+            let enemyMechsHTML = '';
+            let totalScrap = 0;
+            const salvagableItems = [];  // Items that survived and can be salvaged
+
+            if (enemyDamageData && enemyDamageData.length > 0) {
+                enemyMechsHTML = '<div style="margin-top: 20px; width: 100%; max-width: 1200px;">';
+                enemyMechsHTML += '<div style="font-size: 16px; color: #ff6644; margin-bottom: 15px; text-align: center; letter-spacing: 2px;">ENEMY MECHS STATUS</div>';
+                enemyMechsHTML += '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">';
+
+                enemyDamageData.forEach((enemy, mechIndex) => {
+                    const bodyPartHP = enemy.bodyPartHP || {};
+                    const equipment = enemy.equipment || [];
+
+                    // Build body part HP display (mech silhouette style)
+                    const bodyPartOrder = ['head', 'leftArm', 'torso', 'rightArm', 'leftLeg', 'rightLeg'];
+                    const bodyPartNames = {
+                        head: 'Head', torso: 'Torso', leftArm: 'L.Arm', rightArm: 'R.Arm', leftLeg: 'L.Leg', rightLeg: 'R.Leg'
+                    };
+                    const bodyPartIcons = {
+                        head: '🎯', torso: '💪', leftArm: '🦾', rightArm: '🦾', leftLeg: '🦵', rightLeg: '🦵'
+                    };
+
+                    let bodyPartsHTML = '<div style="display: grid; grid-template-columns: auto auto auto; gap: 3px; justify-content: center; align-items: center;">';
+                    // Row 1: Head (centered)
+                    bodyPartsHTML += '<div></div>';
+                    const head = bodyPartHP.head;
+                    if (head) {
+                        const hpPercent = Math.max(0, head.current / head.max);
+                        const hpColor = head.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
+                        bodyPartsHTML += `<div style="background: ${head.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px;">
+                            <div style="color: #888;">Head</div>
+                            <div style="color: ${hpColor}; font-weight: bold;">${head.destroyed ? 'X' : Math.round(hpPercent * 100) + '%'}</div>
+                        </div>`;
+                    } else {
+                        bodyPartsHTML += '<div></div>';
+                    }
+                    bodyPartsHTML += '<div></div>';
+
+                    // Row 2: Arms + Torso
+                    ['leftArm', 'torso', 'rightArm'].forEach(part => {
+                        const bp = bodyPartHP[part];
+                        if (bp) {
+                            const hpPercent = Math.max(0, bp.current / bp.max);
+                            const hpColor = bp.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
+                            bodyPartsHTML += `<div style="background: ${bp.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px;">
+                                <div style="color: #888;">${bodyPartNames[part]}</div>
+                                <div style="color: ${hpColor}; font-weight: bold;">${bp.destroyed ? 'X' : Math.round(hpPercent * 100) + '%'}</div>
+                            </div>`;
+                        } else {
+                            bodyPartsHTML += '<div></div>';
+                        }
+                    });
+
+                    // Row 3: Legs
+                    bodyPartsHTML += '<div></div>';
+                    ['leftLeg', 'rightLeg'].forEach(part => {
+                        const bp = bodyPartHP[part];
+                        if (bp) {
+                            const hpPercent = Math.max(0, bp.current / bp.max);
+                            const hpColor = bp.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
+                            bodyPartsHTML += `<div style="background: ${bp.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px; ${part === 'leftLeg' ? 'grid-column: span 1;' : ''}">
+                                <div style="color: #888;">${bodyPartNames[part]}</div>
+                                <div style="color: ${hpColor}; font-weight: bold;">${bp.destroyed ? 'X' : Math.round(hpPercent * 100) + '%'}</div>
+                            </div>`;
+                        }
+                    });
+                    // Fix grid for legs (they span middle columns)
+                    bodyPartsHTML = bodyPartsHTML.replace('leftLeg', 'L.Leg').replace('rightLeg', 'R.Leg');
+                    bodyPartsHTML += '</div>';
+
+                    // Build equipment list with salvage status
+                    let equipmentHTML = '<div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 8px;">';
+                    equipmentHTML += '<div style="font-size: 10px; color: #888; margin-bottom: 6px;">Equipment:</div>';
+
+                    let mechScrap = 0;
+                    equipment.forEach(eq => {
+                        const item = eq.item || ITEM_DATABASE[eq.itemId];
+                        if (!item) return;
+
+                        const rarityColor = COMPONENT_GENERATION.rarityColors[item.rarity] || '#aaa';
+                        const isDestroyed = eq.isDestroyed;
+                        const bodyPart = eq.bodyPart || 'torso';
+
+                        if (isDestroyed) {
+                            // Item destroyed - becomes scrap
+                            const scrapValue = Math.ceil((item.stats?.damage || 1) + (item.level || 1));
+                            mechScrap += scrapValue;
+                            equipmentHTML += `<div style="display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: rgba(255,68,68,0.15); border-radius: 3px; margin-bottom: 3px; opacity: 0.7;">
+                                <span style="font-size: 14px;">${item.icon || '📦'}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 10px; color: #ff4444; text-decoration: line-through;">${item.name}</div>
+                                    <div style="font-size: 8px; color: #666;">${bodyPartNames[bodyPart] || bodyPart} - DESTROYED</div>
+                                </div>
+                                <div style="font-size: 9px; color: #888;">+${scrapValue}🔩</div>
+                            </div>`;
+                        } else {
+                            // Item survived - can be salvaged
+                            salvagableItems.push({
+                                ...item,
+                                mechIndex: mechIndex,
+                                mechName: enemy.name,
+                                bodyPart: bodyPart,
+                                isDamaged: (eq.bodyPartHPPercent || 1) < 0.5,  // Damaged if body part was below 50%
+                                originalLevel: item.level || 1
+                            });
+                            equipmentHTML += `<div style="display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: rgba(0,255,136,0.15); border-radius: 3px; margin-bottom: 3px;">
+                                <span style="font-size: 14px;">${item.icon || '📦'}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 10px; color: ${rarityColor};">${item.name}</div>
+                                    <div style="font-size: 8px; color: #666;">${bodyPartNames[bodyPart] || bodyPart}</div>
+                                </div>
+                                <div style="font-size: 9px; color: #00ff88;">✓ Salvage</div>
+                            </div>`;
+                        }
+                    });
+
+                    totalScrap += mechScrap;
+                    equipmentHTML += '</div>';
+
+                    // Mech card
+                    enemyMechsHTML += `
+                        <div style="background: rgba(0,0,0,0.5); border: 2px solid #ff6644; border-radius: 8px; padding: 12px; width: 220px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="font-size: 12px; color: #ff6644; font-weight: bold;">${enemy.name}</div>
+                                <div style="font-size: 10px; color: #666;">Lv.${enemy.level || 1}</div>
+                            </div>
+                            ${bodyPartsHTML}
+                            ${equipmentHTML}
+                            <div style="margin-top: 8px; text-align: center; font-size: 10px; color: #888;">
+                                Scrap: <span style="color: #ffcc00;">+${mechScrap}🔩</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                enemyMechsHTML += '</div>';
+                enemyMechsHTML += `<div style="margin-top: 15px; text-align: center; font-size: 14px; color: #ffcc00;">Total Scrap Collected: +${totalScrap}🔩</div>`;
+                enemyMechsHTML += '</div>';
+
+                // Award scrap as gold
+                playerResources.gold += totalScrap;
+            }
+
+            // Use actual salvageable items from enemies instead of random generation
+            const salvageOptions = salvagableItems.length > 0 ? salvagableItems : generateSalvageOptions(result, missionEnemyLevel, missionDifficulty, enemyDamageData);
+
             // Calculate sell prices for each salvage option
             function getSellPrice(comp) {
                 // Damaged items have 0 sell value
@@ -8960,8 +9125,13 @@
                             <div style="font-size: 28px; color: #88aaff;">+${rewards.xp}</div>
                             <div style="font-size: 10px; color: #888;">EXPERIENCE</div>
                         </div>
+                        ${totalScrap > 0 ? `<div style="text-align: center;">
+                            <div style="font-size: 28px; color: #aa8844;">+${totalScrap}</div>
+                            <div style="font-size: 10px; color: #888;">SCRAP</div>
+                        </div>` : ''}
                     </div>
                 </div>
+                ${enemyMechsHTML}
                 ${salvageHTML}
                 <div style="display: flex; gap: 15px; margin-top: 25px; margin-bottom: 20px;">
                     <button id="skipSalvageBtn" style="

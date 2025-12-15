@@ -540,6 +540,103 @@
         }
 
         /* ============================================
+           TARGET INFO PANEL
+           ============================================ */
+        #targetPanel {
+            display: none;
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 220px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(255, 100, 100, 0.6);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #targetPanel.active {
+            display: block;
+        }
+
+        #targetPanel .target-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 100, 100, 0.4);
+        }
+
+        #targetPanel .target-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff6666;
+        }
+
+        #targetPanel .target-level {
+            font-size: 11px;
+            background: rgba(255, 100, 100, 0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        #targetPanel .target-hp-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        #targetPanel .target-hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ff8844);
+            transition: width 0.3s ease;
+        }
+
+        #targetPanel .target-hp-text {
+            font-size: 10px;
+            color: #aaa;
+            text-align: center;
+            margin-top: -10px;
+            margin-bottom: 6px;
+            position: relative;
+        }
+
+        #targetPanel .target-equipment {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 8px;
+        }
+
+        #targetPanel .target-equipment-title {
+            font-size: 9px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        #targetPanel .target-item {
+            font-size: 11px;
+            padding: 2px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #targetPanel .target-item-name {
+            flex: 1;
+        }
+
+        #targetPanel .target-item-location {
+            font-size: 9px;
+            color: #666;
+        }
+
+        /* ============================================
            DETAILED MECH COCKPIT OVERLAY
            ============================================ */
         #cockpitFrame {
@@ -1140,6 +1237,24 @@
             <div class="crosshair-center"></div>
         </div>
 
+        <!-- Target Info Panel -->
+        <div id="targetPanel">
+            <div class="target-header">
+                <span class="target-name" id="targetName">No Target</span>
+                <span class="target-level" id="targetLevel">Lv.?</span>
+            </div>
+            <div class="target-hp-bar">
+                <div class="target-hp-fill" id="targetHPFill" style="width: 100%;"></div>
+            </div>
+            <div class="target-hp-text" id="targetHPText">-- / --</div>
+            <div class="target-equipment">
+                <div class="target-equipment-title">Equipment</div>
+                <div id="targetEquipmentList">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
         <!-- Detailed Mech Cockpit Frame -->
         <div id="cockpitFrame">
             <!-- Frame struts with distressed metal -->
@@ -1392,7 +1507,13 @@
             maxYaw: 1.2,             // Max horizontal rotation (radians, ~69 degrees)
             maxPitch: 0.5,           // Max vertical rotation (radians, ~29 degrees)
             pitchSensitivity: 1.8,   // Multiplier for vertical sensitivity
-            defaultPitch: -0.15      // Default pitch offset (negative = look down)
+            defaultPitch: -0.15,     // Default pitch offset (negative = look down)
+            // Target tracking
+            currentTarget: null,     // Currently tracked enemy mech
+            pendingTarget: null,     // Target we're switching to
+            targetSwitchTimer: 0,    // Time until target switch completes
+            targetSwitchDelay: 500,  // ms delay before switching targets (prevent whiplash)
+            lastTargetUpdateTime: 0  // Throttle target updates
         };
 
         // Weapon cooldowns per mech (keyed by mech name)
@@ -9004,6 +9125,12 @@
             document.getElementById('cockpitCrosshair').classList.add('active');
             document.getElementById('cockpitFrame').classList.add('active');
             document.getElementById('pilotingInstruction').classList.add('active');
+            document.getElementById('targetPanel').classList.add('active');
+
+            // Reset target tracking
+            pilotingState.currentTarget = null;
+            pilotingState.pendingTarget = null;
+            pilotingState.targetSwitchTimer = 0;
 
             // Hide the instruction after 5 seconds
             setTimeout(() => {
@@ -9049,6 +9176,166 @@
 
             // Initial weapon indicator render
             renderWeaponIndicators();
+
+            // Initial target update
+            updateTargetFromCrosshair();
+        }
+
+        // ============================================
+        // TARGET TRACKING SYSTEM
+        // ============================================
+
+        // Get the enemy mech closest to the crosshair ray
+        function getEnemyNearCrosshair() {
+            if (!scene || !camera) return null;
+
+            const canvas = document.getElementById('renderCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Create a ray from the camera through the crosshair
+            const ray = scene.createPickingRay(centerX, centerY, BABYLON.Matrix.Identity(), camera);
+
+            let closestEnemy = null;
+            let closestDist = Infinity;
+            const maxRayDist = 5.0;  // How close to the ray the mech needs to be
+
+            enemyMechs.forEach(enemy => {
+                if (!enemy || enemy.isDestroyed || !enemy.torso) return;
+
+                // Get distance from enemy torso to the ray
+                const enemyPos = enemy.torso.getAbsolutePosition();
+                const rayPoint = ray.origin.add(ray.direction.scale(
+                    BABYLON.Vector3.Dot(enemyPos.subtract(ray.origin), ray.direction)
+                ));
+                const distToRay = BABYLON.Vector3.Distance(enemyPos, rayPoint);
+
+                // Also consider distance from camera (prefer closer targets when tied)
+                const distFromCamera = BABYLON.Vector3.Distance(ray.origin, enemyPos);
+
+                if (distToRay < maxRayDist && distToRay < closestDist) {
+                    closestDist = distToRay;
+                    closestEnemy = enemy;
+                }
+            });
+
+            return closestEnemy;
+        }
+
+        // Update current target with delay to prevent whiplash
+        function updateTargetFromCrosshair() {
+            if (!pilotingModeActive) return;
+
+            const now = performance.now();
+
+            // Throttle updates to every 100ms
+            if (now - pilotingState.lastTargetUpdateTime < 100) return;
+            pilotingState.lastTargetUpdateTime = now;
+
+            const nearestEnemy = getEnemyNearCrosshair();
+
+            // If target is destroyed, clear it immediately
+            if (pilotingState.currentTarget && pilotingState.currentTarget.isDestroyed) {
+                pilotingState.currentTarget = null;
+                pilotingState.pendingTarget = null;
+                pilotingState.targetSwitchTimer = 0;
+            }
+
+            // Check if we need to switch targets
+            if (nearestEnemy !== pilotingState.currentTarget) {
+                // Different target detected
+                if (nearestEnemy === pilotingState.pendingTarget) {
+                    // Already pending, continue timer
+                    pilotingState.targetSwitchTimer -= 100;
+                    if (pilotingState.targetSwitchTimer <= 0) {
+                        // Timer expired, switch to new target
+                        pilotingState.currentTarget = nearestEnemy;
+                        pilotingState.pendingTarget = null;
+                        pilotingState.targetSwitchTimer = 0;
+                    }
+                } else {
+                    // New pending target, start timer
+                    pilotingState.pendingTarget = nearestEnemy;
+                    pilotingState.targetSwitchTimer = pilotingState.targetSwitchDelay;
+                }
+            } else {
+                // Same target, clear any pending switch
+                pilotingState.pendingTarget = null;
+                pilotingState.targetSwitchTimer = 0;
+            }
+
+            // Update UI
+            updateTargetPanel();
+        }
+
+        // Update the target panel UI
+        function updateTargetPanel() {
+            const panel = document.getElementById('targetPanel');
+            const nameElem = document.getElementById('targetName');
+            const levelElem = document.getElementById('targetLevel');
+            const hpFill = document.getElementById('targetHPFill');
+            const hpText = document.getElementById('targetHPText');
+            const equipList = document.getElementById('targetEquipmentList');
+
+            const target = pilotingState.currentTarget;
+
+            if (!target || target.isDestroyed) {
+                nameElem.textContent = 'No Target';
+                levelElem.textContent = 'Lv.?';
+                hpFill.style.width = '0%';
+                hpText.textContent = '-- / --';
+                equipList.innerHTML = '<div style="color: #555; font-size: 10px;">--</div>';
+                return;
+            }
+
+            // Update name and level
+            nameElem.textContent = target.displayName || target.name || 'Unknown';
+            levelElem.textContent = `Lv.${target.level || '?'}`;
+
+            // Update HP bar
+            const currentHP = Math.max(0, target.currentHP);
+            const maxHP = target.maxHP || 1;
+            const hpPercent = (currentHP / maxHP) * 100;
+            hpFill.style.width = `${hpPercent}%`;
+            hpText.textContent = `${Math.round(currentHP)} / ${Math.round(maxHP)}`;
+
+            // Color HP bar based on percentage
+            if (hpPercent > 50) {
+                hpFill.style.background = 'linear-gradient(90deg, #44aa44, #88cc44)';
+            } else if (hpPercent > 25) {
+                hpFill.style.background = 'linear-gradient(90deg, #aaaa44, #cccc44)';
+            } else {
+                hpFill.style.background = 'linear-gradient(90deg, #aa4444, #cc6644)';
+            }
+
+            // Update equipment list
+            const equipment = target.equipment || [];
+            if (equipment.length === 0) {
+                equipList.innerHTML = '<div style="color: #555; font-size: 10px;">No equipment</div>';
+            } else {
+                let html = '';
+                equipment.forEach(eq => {
+                    const item = eq.item || window.ITEM_DATABASE?.[eq.itemId];
+                    if (item) {
+                        const rarity = item.rarity || 'common';
+                        const rarityColors = {
+                            common: '#aaa',
+                            uncommon: '#44ff44',
+                            rare: '#4488ff',
+                            epic: '#aa44ff',
+                            legendary: '#ffaa00'
+                        };
+                        const color = rarityColors[rarity] || '#aaa';
+                        const bodyPart = eq.bodyPart || '';
+                        html += `<div class="target-item">
+                            <span class="target-item-name" style="color: ${color};">${item.icon || '?'} ${item.name}</span>
+                            <span class="target-item-location">${bodyPart}</span>
+                        </div>`;
+                    }
+                });
+                equipList.innerHTML = html || '<div style="color: #555; font-size: 10px;">Unknown</div>';
+            }
         }
 
         function handlePilotingZoom(event) {
@@ -9682,12 +9969,16 @@
         function updateCockpitCamera(dt) {
             if (!pilotingModeActive) return;
 
+            // Update target tracking from crosshair
+            updateTargetFromCrosshair();
+
             const playerMech = playerMechs.find(m => m && !m.isDestroyed);
             if (!playerMech) {
                 // Player mech destroyed - switch to spectate mode
                 pilotingModeActive = false;
                 document.getElementById('cockpitCrosshair').classList.remove('active');
                 document.getElementById('cockpitFrame').classList.remove('active');
+                document.getElementById('targetPanel').classList.remove('active');
 
                 // Re-enable DOF
                 if (scene.miniaturePipeline) {

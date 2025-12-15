@@ -4213,13 +4213,29 @@
             comboChance: 0.15,     // 15% chance for combo items (synergize)
             damagedChance: 0.9,    // 90% of salvage is damaged
             damagedLevelReduction: [1, 2],  // Damaged items lose 1-2 levels of effectiveness
-            // Rarity rates by mission difficulty
+            // Rarity rates by mission difficulty (any rarity possible at any level)
             rarityRates: {
-                Easy: { common: 0.75, uncommon: 0.20, rare: 0.05, epic: 0, legendary: 0 },
-                Medium: { common: 0.60, uncommon: 0.30, rare: 0.08, epic: 0.02, legendary: 0 },
-                Hard: { common: 0.45, uncommon: 0.35, rare: 0.12, epic: 0.06, legendary: 0.02 }
+                Easy: { common: 0.70, uncommon: 0.20, rare: 0.07, epic: 0.025, legendary: 0.005 },
+                Medium: { common: 0.55, uncommon: 0.28, rare: 0.12, epic: 0.04, legendary: 0.01 },
+                Hard: { common: 0.40, uncommon: 0.32, rare: 0.18, epic: 0.07, legendary: 0.03 }
             }
         };
+
+        // Roll for item rarity based on mission risk (1=Easy, 2=Medium, 3=Hard)
+        function rollItemRarity(missionRisk = 1) {
+            const difficultyKey = missionRisk <= 1 ? 'Easy' : (missionRisk === 2 ? 'Medium' : 'Hard');
+            const rates = SALVAGE.rarityRates[difficultyKey];
+            const roll = Math.random();
+
+            let cumulative = 0;
+            for (const [rarity, chance] of Object.entries(rates)) {
+                cumulative += chance;
+                if (roll < cumulative) {
+                    return rarity;
+                }
+            }
+            return 'common';
+        }
 
         // Item combos that synergize
         const ITEM_COMBOS = {
@@ -4345,7 +4361,7 @@
         }
 
         // Generate a single enemy mech
-        function generateEnemy(level, budget) {
+        function generateEnemy(level, budget, missionRisk = 1) {
             // Select chassis based on budget and level
             const chassisIndex = Math.min(
                 ENEMY_GENERATION.chassisTypes.length - 1,
@@ -4405,7 +4421,9 @@
 
             for (let i = 0; i < weaponCount && i < weaponBodyParts.length; i++) {
                 const template = weightedWeapons[Math.floor(Math.random() * weightedWeapons.length)] || 'railgun';
-                const weapon = generateComponent(template, level, 'common', { variantChance: 0 });
+                // Roll rarity for each weapon based on mission risk
+                const rarity = rollItemRarity(missionRisk);
+                const weapon = generateComponent(template, level, rarity, { variantChance: rarity !== 'common' ? 0.3 : 0 });
                 if (weapon) {
                     weapon.id = `enemy_${template}_${Date.now()}_${i}`;
                     registerGeneratedComponent(weapon);
@@ -4421,7 +4439,8 @@
 
             // Add armor to torso if high enough level
             if (level >= 2 && baseArmor > 20) {
-                const armor = generateComponent('ballistic_plating', level, 'common', { variantChance: 0 });
+                const armorRarity = rollItemRarity(missionRisk);
+                const armor = generateComponent('ballistic_plating', level, armorRarity, { variantChance: armorRarity !== 'common' ? 0.3 : 0 });
                 if (armor) {
                     armor.id = `enemy_armor_${Date.now()}`;
                     registerGeneratedComponent(armor);
@@ -4437,7 +4456,8 @@
 
             // Add reactor to torso for energy
             if (weaponCount >= 2) {
-                const reactor = generateComponent('power_cell', level, 'common', { variantChance: 0 });
+                const reactorRarity = rollItemRarity(missionRisk);
+                const reactor = generateComponent('power_cell', level, reactorRarity, { variantChance: reactorRarity !== 'common' ? 0.3 : 0 });
                 if (reactor) {
                     reactor.id = `enemy_reactor_${Date.now()}`;
                     registerGeneratedComponent(reactor);
@@ -4493,7 +4513,7 @@
                 const levelVariance = missionTemplate.enemyCount > 1 ? Math.floor(Math.random() * 2) - 1 : 0;
                 const individualLevel = Math.max(1, enemyLevel + levelVariance);
 
-                enemies.push(generateEnemy(individualLevel, enemyBudget));
+                enemies.push(generateEnemy(individualLevel, enemyBudget, missionTemplate.risk));
             }
 
             return enemies;
@@ -7078,10 +7098,25 @@
                 const totalHP = mission.enemyMechs.reduce((sum, e) => sum + e.maxHealth, 0);
                 const totalDMG = mission.enemyMechs.reduce((sum, e) => sum + e.stats.damage, 0);
 
-                // Build enemy list HTML
+                // Build enemy list HTML with equipment
                 let enemiesHTML = '';
                 mission.enemyMechs.forEach((enemy, i) => {
-                    enemiesHTML += `<div style="margin: 2px 0;">⚠️ ${enemy.name} - HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>`;
+                    let equipList = enemy.equipment.map(eq => {
+                        const item = eq.item || ITEM_DATABASE[eq.itemId];
+                        if (!item) return '';
+                        const rarity = item.rarity || 'common';
+                        const rarityColor = COMPONENT_GENERATION.rarityColors[rarity] || '#aaa';
+                        return `<span style="color: ${rarityColor}; font-size: 9px;">${item.icon}</span>`;
+                    }).filter(x => x).join(' ');
+
+                    enemiesHTML += `<div style="margin: 4px 0; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 3px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>⚠️ ${enemy.name}</span>
+                            <span style="font-size: 10px; color: #888;">Lv.${enemy.level}</span>
+                        </div>
+                        <div style="font-size: 10px; color: #888;">HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>
+                        <div style="margin-top: 2px;">${equipList || '<span style="color: #555; font-size: 9px;">No equipment</span>'}</div>
+                    </div>`;
                 });
 
                 // Build salvage rarity rates display for mobile
@@ -7217,9 +7252,12 @@
                 mission.enemyMechs.forEach((enemy, idx) => {
                     let equipmentHTML = '';
                     enemy.equipment.forEach(eq => {
-                        const item = ITEM_DATABASE[eq.itemId];
+                        const item = eq.item || ITEM_DATABASE[eq.itemId];
                         if (item) {
-                            equipmentHTML += `<div style="font-size: 10px; color: #888;">${item.icon} ${item.name}</div>`;
+                            const rarity = item.rarity || 'common';
+                            const rarityColor = COMPONENT_GENERATION.rarityColors[rarity] || '#aaa';
+                            const bodyPartLabel = eq.bodyPart ? ` <span style="color: #555;">(${eq.bodyPart})</span>` : '';
+                            equipmentHTML += `<div style="font-size: 10px; color: ${rarityColor};">${item.icon} ${item.name}${bodyPartLabel}</div>`;
                         }
                     });
 
@@ -7239,8 +7277,9 @@
                                 <div>🛡️ ${enemy.stats.armor} ARM</div>
                                 <div>⚡ ${enemy.stats.energy} EN</div>
                             </div>
-                            <div class="enemy-equipment" style="margin-top: 5px;">
-                                ${equipmentHTML}
+                            <div class="enemy-equipment" style="margin-top: 8px; border-top: 1px solid #333; padding-top: 6px;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 3px; text-transform: uppercase;">Equipment:</div>
+                                ${equipmentHTML || '<div style="font-size: 10px; color: #555;">None</div>'}
                             </div>
                         </div>
                     `;

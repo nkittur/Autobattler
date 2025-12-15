@@ -8810,14 +8810,6 @@
             const missionEnemyLevel = lastBattleMission ? lastBattleMission.averageLevel : Math.floor(currentEnemyLevel);
             const missionDifficulty = lastBattleMission ? lastBattleMission.difficulty : 'Easy';
 
-            // Generate salvage options using the mission's enemy level and difficulty
-            // Pass enemy damage data for body-part-based salvage calculation
-            const salvageOptions = generateSalvageOptions(result, missionEnemyLevel, missionDifficulty, enemyDamageData);
-
-            // Calculate skip salvage gold bonus (highest original level of salvage)
-            const skipGoldBonus = salvageOptions.length > 0 ?
-                Math.max(...salvageOptions.map(opt => opt.originalLevel || opt.level || 1)) : 0;
-
             // Get max picks allowed
             const maxPicks = getSalvagePicks(result);
 
@@ -9006,6 +8998,10 @@
 
             // Use actual salvageable items from enemies instead of random generation
             const salvageOptions = salvagableItems.length > 0 ? salvagableItems : generateSalvageOptions(result, missionEnemyLevel, missionDifficulty, enemyDamageData);
+
+            // Calculate skip salvage gold bonus (highest original level of salvage)
+            const skipGoldBonus = salvageOptions.length > 0 ?
+                Math.max(...salvageOptions.map(opt => opt.originalLevel || opt.level || 1)) : 0;
 
             // Calculate sell prices for each salvage option
             function getSellPrice(comp) {

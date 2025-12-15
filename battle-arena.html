@@ -2330,13 +2330,9 @@
                 mesh.material.albedoColor = orig.albedoColor.scale(darkenFactor);
             }
 
-            // Add red emissive tint when heavily damaged
-            if (damageRatio > 0.5 && mesh.material.emissiveColor !== undefined) {
-                mesh.material.emissiveColor = new BABYLON.Color3(
-                    0.15 * (damageRatio - 0.5) * 2,
-                    0,
-                    0
-                );
+            // No emissive glow - just pure darkening to black
+            if (mesh.material.emissiveColor !== undefined) {
+                mesh.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
             }
         }
 
@@ -2378,10 +2374,10 @@
                 mesh.scaling = newScaling;
             }
 
-            // PROGRESSIVE DARKENING - starts immediately, gets very dark at low HP
-            // damageRatio 0% = no darkening, 50% = 35% darker, 100% = 70% darker
+            // PROGRESSIVE DARKENING - starts immediately, goes completely black when destroyed
+            // damageRatio 0% = no darkening, 50% = 60% darker, 100% = completely black
             if (damageRatio > 0) {
-                const darkenFactor = 1 - damageRatio * 0.7;  // More aggressive darkening
+                const darkenFactor = Math.max(0, 1 - damageRatio * 1.2);  // Goes to black at ~83% damage
 
                 // Darken the main mesh
                 darkenMaterial(mesh, darkenFactor, damageRatio, bodyPart, 'main');
@@ -8763,6 +8759,27 @@
                 const enemyDamageData = enemyMechs.map(mech => {
                     if (!mech) return null;
 
+                    // Initialize body parts if not already done (in case mech died without taking damage)
+                    if (!mech.bodyParts) {
+                        mech.bodyParts = initializeBodyParts(mech.maxHP);
+                    }
+
+                    // Check if torso is specifically destroyed
+                    // If torso is destroyed (HP <= 0), all equipment is scrapped
+                    const torsoHP = mech.bodyParts?.torso?.currentHP || 0;
+                    const torsoMaxHP = mech.bodyParts?.torso?.maxHP || 1;
+                    const torsoDestroyed = mech.bodyParts?.torso?.destroyed || (torsoHP <= 0);
+
+                    console.log(`[SALVAGE DEBUG] ${mech.displayName || mech.name}:`);
+                    console.log(`  - isDestroyed=${mech.isDestroyed}, torsoHP=${torsoHP}/${torsoMaxHP}, torsoDestroyed=${torsoDestroyed}`);
+                    if (mech.bodyParts) {
+                        Object.entries(mech.bodyParts).forEach(([part, data]) => {
+                            if (data && typeof data === 'object' && 'currentHP' in data) {
+                                console.log(`  - ${part}: ${data.currentHP}/${data.maxHP} (destroyed=${data.destroyed})`);
+                            }
+                        });
+                    }
+
                     // Calculate equipment survival based on body part status
                     const equipmentStatus = (mech.equipment || []).map(eq => {
                         const bodyPart = eq.bodyPart || 'torso';
@@ -8770,15 +8787,23 @@
                         const isBodyPartDestroyed = bp?.destroyed || false;
                         const bodyPartHPPercent = bp ? (bp.currentHP / bp.maxHP) : 1.0;
 
-                        // Item is destroyed if body part is destroyed, or severely damaged (random chance)
-                        const damageChance = isBodyPartDestroyed ? 1.0 : (1.0 - bodyPartHPPercent) * 0.8;
-                        const isDestroyed = Math.random() < damageChance;
+                        // Item is destroyed if:
+                        // 1. Mech is destroyed (torso catastrophically damaged)
+                        // 2. Body part is destroyed
+                        // 3. Body part severely damaged (random chance based on damage)
+                        let isDestroyed = torsoDestroyed;  // If mech/torso destroyed, all items destroyed
+                        if (!isDestroyed) {
+                            const damageChance = isBodyPartDestroyed ? 1.0 : (1.0 - bodyPartHPPercent) * 0.8;
+                            isDestroyed = Math.random() < damageChance;
+                            console.log(`[SALVAGE DEBUG] ${eq.item?.name || eq.itemId}: bodyPart=${bodyPart}, HP%=${(bodyPartHPPercent*100).toFixed(1)}%, damageChance=${(damageChance*100).toFixed(1)}%, destroyed=${isDestroyed}`);
+                        }
 
                         return {
                             ...eq,
                             bodyPart: bodyPart,
                             isDestroyed: isDestroyed,
-                            bodyPartHPPercent: bodyPartHPPercent
+                            bodyPartHPPercent: bodyPartHPPercent,
+                            torsoDestroyed: torsoDestroyed
                         };
                     });
 

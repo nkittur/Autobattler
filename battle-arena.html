@@ -2309,37 +2309,38 @@
 
             const damageRatio = 1 - (bodyPart.currentHP / bodyPart.maxHP);
 
-            // Only deform if significantly damaged (>30%)
-            if (damageRatio < 0.3) return;
-
             // Store original scaling if not already stored
             if (!bodyPart.originalScaling) {
                 bodyPart.originalScaling = mesh.scaling.clone();
             }
 
-            // Apply asymmetric scaling to simulate dents/damage
-            // More damage = more deformation
-            const deformAmount = (damageRatio - 0.3) * 0.15;  // 0 to ~0.1 deformation
+            // Only deform if significantly damaged (>30%)
+            if (damageRatio >= 0.3) {
+                // Apply asymmetric scaling to simulate dents/damage
+                // More damage = more deformation
+                const deformAmount = (damageRatio - 0.3) * 0.15;  // 0 to ~0.1 deformation
 
-            // Random but consistent deformation per part
-            if (!bodyPart.deformSeed) {
-                bodyPart.deformSeed = {
-                    x: (Math.random() - 0.5) * 2,
-                    y: (Math.random() - 0.5) * 2,
-                    z: (Math.random() - 0.5) * 2
-                };
+                // Random but consistent deformation per part
+                if (!bodyPart.deformSeed) {
+                    bodyPart.deformSeed = {
+                        x: (Math.random() - 0.5) * 2,
+                        y: (Math.random() - 0.5) * 2,
+                        z: (Math.random() - 0.5) * 2
+                    };
+                }
+
+                const newScaling = bodyPart.originalScaling.clone();
+                newScaling.x *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.x);
+                newScaling.y *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.y) * 0.5;  // Less vertical deform
+                newScaling.z *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.z);
+
+                mesh.scaling = newScaling;
             }
 
-            const newScaling = bodyPart.originalScaling.clone();
-            newScaling.x *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.x);
-            newScaling.y *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.y) * 0.5;  // Less vertical deform
-            newScaling.z *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.z);
-
-            mesh.scaling = newScaling;
-
-            // Darken the material slightly to show battle wear
-            if (mesh.material && mesh.material.diffuseColor) {
-                const darkenFactor = 1 - damageRatio * 0.3;
+            // PROGRESSIVE DARKENING - starts immediately, gets very dark at low HP
+            // damageRatio 0% = no darkening, 50% = 35% darker, 100% = 70% darker
+            if (mesh.material && mesh.material.diffuseColor && damageRatio > 0) {
+                const darkenFactor = 1 - damageRatio * 0.7;  // More aggressive darkening
                 // Don't modify original material - create a clone if needed
                 if (!bodyPart.originalMaterial) {
                     bodyPart.originalMaterial = mesh.material;
@@ -2347,6 +2348,15 @@
                     mesh.material = damagedMat;
                 }
                 mesh.material.diffuseColor = bodyPart.originalMaterial.diffuseColor.scale(darkenFactor);
+
+                // Add slight red tint to show damage
+                if (damageRatio > 0.5) {
+                    mesh.material.emissiveColor = new BABYLON.Color3(
+                        0.1 * (damageRatio - 0.5) * 2,  // Red increases from 50% damage
+                        0,
+                        0
+                    );
+                }
             }
         }
 
@@ -8722,7 +8732,7 @@
                         const bodyPart = eq.bodyPart || 'torso';
                         const bp = mech.bodyParts?.[bodyPart];
                         const isBodyPartDestroyed = bp?.destroyed || false;
-                        const bodyPartHPPercent = bp ? (bp.current / bp.max) : 1.0;
+                        const bodyPartHPPercent = bp ? (bp.currentHP / bp.maxHP) : 1.0;
 
                         // Item is destroyed if body part is destroyed, or severely damaged (random chance)
                         const damageChance = isBodyPartDestroyed ? 1.0 : (1.0 - bodyPartHPPercent) * 0.8;
@@ -8743,8 +8753,8 @@
                             const bp = mech.bodyParts[part];
                             if (bp) {
                                 bodyPartHP[part] = {
-                                    current: bp.current,
-                                    max: bp.max,
+                                    current: bp.currentHP,
+                                    max: bp.maxHP,
                                     destroyed: bp.destroyed || false
                                 };
                             }

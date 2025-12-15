@@ -8875,16 +8875,26 @@
                         head: '🎯', torso: '💪', leftArm: '🦾', rightArm: '🦾', leftLeg: '🦵', rightLeg: '🦵'
                     };
 
+                    // Helper function to build HP bar
+                    const buildHPBar = (current, max, destroyed) => {
+                        const hpPercent = (max > 0 && !isNaN(current) && !isNaN(max)) ? Math.max(0, Math.min(1, current / max)) : 0;
+                        const hpColor = destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
+                        const barWidth = destroyed ? 0 : Math.round(hpPercent * 100);
+                        return `<div style="width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden; margin-top: 2px;">
+                            <div style="width: ${barWidth}%; height: 100%; background: ${hpColor}; transition: width 0.3s;"></div>
+                        </div>`;
+                    };
+
                     let bodyPartsHTML = '<div style="display: grid; grid-template-columns: auto auto auto; gap: 3px; justify-content: center; align-items: center;">';
                     // Row 1: Head (centered)
                     bodyPartsHTML += '<div></div>';
                     const head = bodyPartHP.head;
                     if (head) {
-                        const hpPercent = Math.max(0, head.current / head.max);
+                        const hpPercent = (head.max > 0 && !isNaN(head.current)) ? Math.max(0, head.current / head.max) : 0;
                         const hpColor = head.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
-                        bodyPartsHTML += `<div style="background: ${head.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px;">
+                        bodyPartsHTML += `<div style="background: ${head.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px; min-width: 45px;">
                             <div style="color: #888;">Head</div>
-                            <div style="color: ${hpColor}; font-weight: bold;">${head.destroyed ? 'X' : Math.round(hpPercent * 100) + '%'}</div>
+                            ${head.destroyed ? '<div style="color: #ff4444; font-weight: bold;">X</div>' : buildHPBar(head.current, head.max, head.destroyed)}
                         </div>`;
                     } else {
                         bodyPartsHTML += '<div></div>';
@@ -8895,32 +8905,33 @@
                     ['leftArm', 'torso', 'rightArm'].forEach(part => {
                         const bp = bodyPartHP[part];
                         if (bp) {
-                            const hpPercent = Math.max(0, bp.current / bp.max);
+                            const hpPercent = (bp.max > 0 && !isNaN(bp.current)) ? Math.max(0, bp.current / bp.max) : 0;
                             const hpColor = bp.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
-                            bodyPartsHTML += `<div style="background: ${bp.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px;">
+                            bodyPartsHTML += `<div style="background: ${bp.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px; min-width: 45px;">
                                 <div style="color: #888;">${bodyPartNames[part]}</div>
-                                <div style="color: ${hpColor}; font-weight: bold;">${bp.destroyed ? 'X' : Math.round(hpPercent * 100) + '%'}</div>
+                                ${bp.destroyed ? '<div style="color: #ff4444; font-weight: bold;">X</div>' : buildHPBar(bp.current, bp.max, bp.destroyed)}
                             </div>`;
                         } else {
                             bodyPartsHTML += '<div></div>';
                         }
                     });
 
-                    // Row 3: Legs
+                    // Row 3: Legs (centered under torso)
                     bodyPartsHTML += '<div></div>';
-                    ['leftLeg', 'rightLeg'].forEach(part => {
+                    const legsHTML = ['leftLeg', 'rightLeg'].map(part => {
                         const bp = bodyPartHP[part];
                         if (bp) {
-                            const hpPercent = Math.max(0, bp.current / bp.max);
+                            const hpPercent = (bp.max > 0 && !isNaN(bp.current)) ? Math.max(0, bp.current / bp.max) : 0;
                             const hpColor = bp.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
-                            bodyPartsHTML += `<div style="background: ${bp.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px; ${part === 'leftLeg' ? 'grid-column: span 1;' : ''}">
+                            return `<div style="background: ${bp.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px; min-width: 40px;">
                                 <div style="color: #888;">${bodyPartNames[part]}</div>
-                                <div style="color: ${hpColor}; font-weight: bold;">${bp.destroyed ? 'X' : Math.round(hpPercent * 100) + '%'}</div>
+                                ${bp.destroyed ? '<div style="color: #ff4444; font-weight: bold;">X</div>' : buildHPBar(bp.current, bp.max, bp.destroyed)}
                             </div>`;
                         }
-                    });
-                    // Fix grid for legs (they span middle columns)
-                    bodyPartsHTML = bodyPartsHTML.replace('leftLeg', 'L.Leg').replace('rightLeg', 'R.Leg');
+                        return '';
+                    }).join('');
+                    bodyPartsHTML += `<div style="display: flex; gap: 3px; justify-content: center;">${legsHTML}</div>`;
+                    bodyPartsHTML += '<div></div>';
                     bodyPartsHTML += '</div>';
 
                     // Build equipment list with salvage status

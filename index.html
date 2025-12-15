@@ -4237,6 +4237,77 @@
             return 'common';
         }
 
+        // ============================================
+        // THREAT SCORE SYSTEM
+        // ============================================
+        // Calculates effective difficulty of a mission considering:
+        // - Total enemy HP and DPS
+        // - Action economy (multiple enemies = more initial DPS)
+        // - BUT: killing enemies reduces threat quickly, so bonus is moderate
+        const THREAT_CONFIG = {
+            // Weights for threat calculation
+            hpWeight: 1.0,       // HP contributes directly
+            dpsWeight: 8.0,      // DPS is weighted higher (damage is dangerous)
+
+            // Action economy bonus per additional enemy
+            // Kept moderate because eliminating enemies rapidly reduces threat
+            // 2 enemies: +12% threat, 3 enemies: +22% threat (diminishing)
+            actionEconomyBase: 0.12,
+            actionEconomyDiminish: 0.9,  // Each additional enemy adds slightly less
+
+            // Threat thresholds for difficulty labels
+            thresholds: {
+                Easy: { min: 0, max: 85 },
+                Medium: { min: 85, max: 140 },
+                Hard: { min: 140, max: Infinity }
+            }
+        };
+
+        // Calculate threat score for a set of enemies
+        function calculateThreatScore(enemies) {
+            if (!enemies || enemies.length === 0) return 0;
+
+            let totalHP = 0;
+            let totalDPS = 0;
+
+            enemies.forEach(enemy => {
+                totalHP += enemy.maxHealth || 0;
+                totalDPS += enemy.stats?.damage || 0;
+            });
+
+            // Base threat from raw stats
+            const baseThreat = (totalHP * THREAT_CONFIG.hpWeight) +
+                              (totalDPS * THREAT_CONFIG.dpsWeight);
+
+            // Action economy multiplier (diminishing returns)
+            // 1 enemy: 1.0x, 2 enemies: 1.12x, 3 enemies: 1.22x, etc.
+            let actionMultiplier = 1.0;
+            for (let i = 1; i < enemies.length; i++) {
+                actionMultiplier += THREAT_CONFIG.actionEconomyBase *
+                    Math.pow(THREAT_CONFIG.actionEconomyDiminish, i - 1);
+            }
+
+            return Math.round(baseThreat * actionMultiplier);
+        }
+
+        // Get difficulty label based on threat score
+        function getThreatDifficulty(threatScore) {
+            if (threatScore <= THREAT_CONFIG.thresholds.Easy.max) return 'Easy';
+            if (threatScore <= THREAT_CONFIG.thresholds.Medium.max) return 'Medium';
+            return 'Hard';
+        }
+
+        // Get threat level description
+        function getThreatDescription(threatScore) {
+            if (threatScore < 50) return 'Minimal';
+            if (threatScore < 85) return 'Low';
+            if (threatScore < 110) return 'Moderate';
+            if (threatScore < 140) return 'Significant';
+            if (threatScore < 180) return 'High';
+            if (threatScore < 220) return 'Severe';
+            return 'Extreme';
+        }
+
         // Item combos that synergize
         const ITEM_COMBOS = {
             laser_set: {
@@ -4267,13 +4338,16 @@
 
         // Mission templates (base structure, enemies generated dynamically)
         // baseBudgetMult is TOTAL budget for the mission, divided among all enemies
+        // Budgets are balanced accounting for action economy:
+        // - Multiple enemies get ~12% threat bonus per extra enemy (diminishing)
+        // - So multi-enemy missions have lower raw budgets to compensate
         const MISSION_TEMPLATES = {
             patrol: {
                 id: 'patrol',
                 name: 'Border Patrol',
                 difficulty: 'Easy',
                 risk: 1,
-                baseBudgetMult: 0.6,    // 60% of standard budget (1 enemy)
+                baseBudgetMult: 0.6,    // 60% budget (1 enemy) - baseline Easy
                 enemyCount: 1,
                 description: 'Light recon mission. Expect minimal resistance.',
                 rewardMult: 1.0
@@ -4283,7 +4357,7 @@
                 name: 'Skirmish Zone',
                 difficulty: 'Easy',
                 risk: 1,
-                baseBudgetMult: 0.8,    // 80% total budget, split among 2 enemies
+                baseBudgetMult: 0.55,   // Reduced from 0.8 - 2 enemies get +12% action economy
                 enemyCount: 2,
                 description: 'Light engagement. Two weak hostiles detected.',
                 rewardMult: 1.2
@@ -4293,7 +4367,7 @@
                 name: 'Convoy Assault',
                 difficulty: 'Medium',
                 risk: 2,
-                baseBudgetMult: 1.0,    // 100% budget (1 enemy)
+                baseBudgetMult: 1.0,    // 100% budget (1 enemy) - baseline Medium
                 enemyCount: 1,
                 description: 'Intercept enemy supply convoy. Medium resistance expected.',
                 rewardMult: 1.5
@@ -4303,7 +4377,7 @@
                 name: 'Ambush Site',
                 difficulty: 'Medium',
                 risk: 2,
-                baseBudgetMult: 1.4,    // 140% total budget, split among 2 enemies
+                baseBudgetMult: 0.95,   // Reduced from 1.4 - balanced with convoy via action economy
                 enemyCount: 2,
                 description: 'Clear hostile ambush. Two medium threats detected.',
                 rewardMult: 1.8
@@ -4313,7 +4387,7 @@
                 name: 'Fortress Breach',
                 difficulty: 'Hard',
                 risk: 3,
-                baseBudgetMult: 1.5,    // 150% budget (1 strong enemy)
+                baseBudgetMult: 1.5,    // 150% budget (1 strong enemy) - baseline Hard
                 enemyCount: 1,
                 description: 'Assault heavily defended position. Prepare for heavy combat.',
                 rewardMult: 2.5
@@ -4323,7 +4397,7 @@
                 name: 'Active Warzone',
                 difficulty: 'Hard',
                 risk: 3,
-                baseBudgetMult: 2.1,    // 210% total budget, split among 3 enemies
+                baseBudgetMult: 1.35,   // Reduced from 2.1 - 3 enemies get +22% action economy
                 enemyCount: 3,
                 description: 'Enter active combat zone. Three hostiles incoming.',
                 rewardMult: 3.0
@@ -4532,6 +4606,11 @@
                 const enemies = generateMissionEnemies(template);
                 const avgLevel = Math.round(enemies.reduce((sum, e) => sum + e.level, 0) / enemies.length);
 
+                // Calculate threat score for this mission
+                const threatScore = calculateThreatScore(enemies);
+                const actualDifficulty = getThreatDifficulty(threatScore);
+                const threatLevel = getThreatDescription(threatScore);
+
                 // Scale rewards with level
                 const levelMult = 1 + (avgLevel - 1) * 0.15;
                 const baseCredits = [300, 500, 800, 1200, 2000, 3500][template.risk + Math.floor(avgLevel / 2) - 1] || 500;
@@ -4541,6 +4620,9 @@
                     ...template,
                     enemyMechs: enemies,
                     averageLevel: avgLevel,
+                    threatScore: threatScore,
+                    threatLevel: threatLevel,
+                    actualDifficulty: actualDifficulty,  // Calculated from threat score
                     reward: {
                         credits: Math.round(baseCredits * template.rewardMult * levelMult),
                         xp: Math.round(baseXP * template.rewardMult * levelMult)
@@ -7129,13 +7211,22 @@
                     })
                     .join(' • ');
 
+                // Threat level color for mobile
+                const threatColor = mission.threatScore < 85 ? '#88ff88' :
+                                   mission.threatScore < 140 ? '#ffcc44' : '#ff6644';
+
                 card.innerHTML = `
                     <div class="mission-card-header">
                         <span class="mission-name">${mission.name}</span>
-                        <span class="mission-difficulty ${mission.difficulty.toLowerCase()}">${mission.difficulty}</span>
+                        <span class="mission-difficulty ${mission.actualDifficulty.toLowerCase()}">${mission.actualDifficulty}</span>
                     </div>
                     <div class="mission-desc">${mission.description}</div>
                     <div class="mission-details">
+                        <div class="mission-threat" style="margin-bottom: 6px; font-size: 11px;">
+                            <span style="color: #888;">⚡ Threat:</span>
+                            <span style="color: ${threatColor}; font-weight: bold;">${mission.threatLevel}</span>
+                            <span style="color: #555; font-size: 9px;">(${mission.threatScore})</span>
+                        </div>
                         <div class="mission-reward">
                             <span>💰 ${mission.reward.credits} Credits</span>
                             <span>⭐ ${mission.reward.xp} XP</span>
@@ -7295,14 +7386,24 @@
                     })
                     .join(' • ');
 
+                // Threat level color
+                const threatColor = mission.threatScore < 85 ? '#88ff88' :
+                                   mission.threatScore < 140 ? '#ffcc44' : '#ff6644';
+
                 card.innerHTML = `
                     <div class="mission-header">
                         <span class="mission-name">${mission.name}</span>
-                        <span class="mission-difficulty ${mission.difficulty.toLowerCase()}">${mission.difficulty}</span>
+                        <span class="mission-difficulty ${mission.actualDifficulty.toLowerCase()}">${mission.actualDifficulty}</span>
                     </div>
                     <div class="mission-desc">${mission.description}</div>
                     <div class="mission-enemies" style="margin: 8px 0; font-size: 12px;">
                         ${enemySummary}
+                    </div>
+                    <div class="mission-threat" style="margin: 6px 0; font-size: 11px; display: flex; align-items: center; gap: 6px;">
+                        <span style="color: #888;">⚡ Threat:</span>
+                        <span style="color: ${threatColor}; font-weight: bold;">${mission.threatLevel}</span>
+                        <span style="color: #555; font-size: 9px;">(${mission.threatScore})</span>
+                        ${enemyCount > 1 ? `<span style="color: #666; font-size: 9px; margin-left: auto;">+${Math.round((enemyCount - 1) * 12)}% action</span>` : ''}
                     </div>
                     <div class="mission-reward">
                         <span>💰 ${mission.reward.credits}</span>

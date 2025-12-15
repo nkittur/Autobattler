@@ -2299,6 +2299,47 @@
             }
         }
 
+        // Helper to darken a single material
+        function darkenMaterial(mesh, darkenFactor, damageRatio, storageObj, storageKey) {
+            if (!mesh.material) return;
+
+            const mat = mesh.material;
+            const key = storageKey || mesh.name;
+
+            // Store original material if not already stored
+            if (!storageObj.originalMaterials) storageObj.originalMaterials = {};
+            if (!storageObj.originalMaterials[key]) {
+                storageObj.originalMaterials[key] = {
+                    material: mat,
+                    diffuseColor: mat.diffuseColor ? mat.diffuseColor.clone() : null,
+                    albedoColor: mat.albedoColor ? mat.albedoColor.clone() : null
+                };
+                // Clone material so we don't affect others using same material
+                const damagedMat = mat.clone(mat.name + '_damaged_' + key);
+                mesh.material = damagedMat;
+            }
+
+            const orig = storageObj.originalMaterials[key];
+
+            // Handle StandardMaterial (diffuseColor)
+            if (orig.diffuseColor && mesh.material.diffuseColor) {
+                mesh.material.diffuseColor = orig.diffuseColor.scale(darkenFactor);
+            }
+            // Handle PBRMaterial (albedoColor)
+            if (orig.albedoColor && mesh.material.albedoColor) {
+                mesh.material.albedoColor = orig.albedoColor.scale(darkenFactor);
+            }
+
+            // Add red emissive tint when heavily damaged
+            if (damageRatio > 0.5 && mesh.material.emissiveColor !== undefined) {
+                mesh.material.emissiveColor = new BABYLON.Color3(
+                    0.15 * (damageRatio - 0.5) * 2,
+                    0,
+                    0
+                );
+            }
+        }
+
         // Apply geometry deformation to damaged parts
         function applyDamageDeformation(mech, bodyPartName) {
             const bodyPart = mech.bodyParts?.[bodyPartName];
@@ -2339,24 +2380,19 @@
 
             // PROGRESSIVE DARKENING - starts immediately, gets very dark at low HP
             // damageRatio 0% = no darkening, 50% = 35% darker, 100% = 70% darker
-            if (mesh.material && mesh.material.diffuseColor && damageRatio > 0) {
+            if (damageRatio > 0) {
                 const darkenFactor = 1 - damageRatio * 0.7;  // More aggressive darkening
-                // Don't modify original material - create a clone if needed
-                if (!bodyPart.originalMaterial) {
-                    bodyPart.originalMaterial = mesh.material;
-                    const damagedMat = mesh.material.clone(mesh.material.name + '_damaged');
-                    mesh.material = damagedMat;
-                }
-                mesh.material.diffuseColor = bodyPart.originalMaterial.diffuseColor.scale(darkenFactor);
 
-                // Add slight red tint to show damage
-                if (damageRatio > 0.5) {
-                    mesh.material.emissiveColor = new BABYLON.Color3(
-                        0.1 * (damageRatio - 0.5) * 2,  // Red increases from 50% damage
-                        0,
-                        0
-                    );
-                }
+                // Darken the main mesh
+                darkenMaterial(mesh, darkenFactor, damageRatio, bodyPart, 'main');
+
+                // Also darken child meshes (many body parts have children)
+                const children = mesh.getChildMeshes ? mesh.getChildMeshes(false) : [];
+                children.forEach((child, idx) => {
+                    if (child.material) {
+                        darkenMaterial(child, darkenFactor, damageRatio, bodyPart, 'child_' + idx);
+                    }
+                });
             }
         }
 
@@ -7962,7 +7998,7 @@
                             p.mesh.position.copyFrom(currentPos);
 
                             // Update mesh rotation to face target
-                            p.mesh.lookAt(targetPos);
+                            p.mesh.lookAt(p.spreadTarget);
                             p.mesh.rotation.x += Math.PI / 2;  // Adjust for cylinder orientation
                         }
 

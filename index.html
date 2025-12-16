@@ -2264,7 +2264,7 @@
         const MECH_CHASSIS = {
             id: 'starter_chassis',
             name: 'Timber Wolf Chassis',
-            maxWeight: 6,
+            maxWeight: 4,
             baseEnergy: 2,
             // Unified mech-shaped grid (7 cols x 7 rows) - slimmed down ~30%
             // 1 = valid cell, 0 = empty/invalid
@@ -2331,6 +2331,9 @@
         // ============================================
 
         const COMPONENT_GENERATION = {
+            // Feature flags
+            useRandomShapes: true,  // Generate random shapes instead of template shapes (same cell count)
+
             // Master budget exchange rates
             // Positive = earns budget, Negative = costs budget
             budgetRates: {
@@ -2446,6 +2449,35 @@
                         description: '+1 DR',
                         appliesTo: ['ARMOR'],
                         effect: { drBonus: 1 }
+                    },
+                    // === POSITIONAL MODIFIERS (Cost 1) ===
+                    {
+                        id: 'top_mounted',
+                        name: 'Top Mounted',
+                        description: '+2 damage when in top row (head area)',
+                        appliesTo: ['WEAPON'],
+                        effect: { topRowDamageBonus: 2 }
+                    },
+                    {
+                        id: 'grounded',
+                        name: 'Grounded',
+                        description: '+3 HP when in bottom row (leg area)',
+                        appliesTo: ['ARMOR'],
+                        effect: { bottomRowHPBonus: 3 }
+                    },
+                    {
+                        id: 'flanker',
+                        name: 'Flanker',
+                        description: '+1 damage when on left or right edge',
+                        appliesTo: ['WEAPON'],
+                        effect: { edgeDamageBonus: 1 }
+                    },
+                    {
+                        id: 'compact',
+                        name: 'Compact',
+                        description: '+1 energy when in center (not on edge)',
+                        appliesTo: ['REACTOR'],
+                        effect: { centralEnergyBonus: 1 }
                     }
                 ],
 
@@ -2486,6 +2518,56 @@
                         description: '+1 energy provided',
                         appliesTo: ['REACTOR'],
                         effect: { energyProvidedBonus: 1 }
+                    },
+                    // === POSITIONAL MODIFIERS (Cost 2) ===
+                    {
+                        id: 'weapon_array',
+                        name: 'Weapon Array',
+                        description: '+0.5 damage per adjacent weapon',
+                        appliesTo: ['WEAPON'],
+                        effect: { damagePerAdjacentWeapon: 0.5 }
+                    },
+                    {
+                        id: 'armor_mesh',
+                        name: 'Armor Mesh',
+                        description: '+2 HP per adjacent armor piece',
+                        appliesTo: ['ARMOR'],
+                        effect: { hpPerAdjacentArmor: 2 }
+                    },
+                    {
+                        id: 'power_grid',
+                        name: 'Power Grid',
+                        description: '+0.5 energy per adjacent reactor',
+                        appliesTo: ['REACTOR'],
+                        effect: { energyPerAdjacentReactor: 0.5 }
+                    },
+                    {
+                        id: 'lone_wolf',
+                        name: 'Lone Wolf',
+                        description: '+3 damage when not adjacent to any other items',
+                        appliesTo: ['WEAPON'],
+                        effect: { isolationDamageBonus: 3 }
+                    },
+                    {
+                        id: 'hermit_plating',
+                        name: 'Hermit Plating',
+                        description: '+5 HP when not adjacent to any other items',
+                        appliesTo: ['ARMOR'],
+                        effect: { isolationHPBonus: 5 }
+                    },
+                    {
+                        id: 'corner_pocket',
+                        name: 'Corner Pocket',
+                        description: '+2 damage when in a corner position',
+                        appliesTo: ['WEAPON'],
+                        effect: { cornerDamageBonus: 2 }
+                    },
+                    {
+                        id: 'symmetry_bonus',
+                        name: 'Mirror Match',
+                        description: '+2 HP if same item type on opposite side',
+                        appliesTo: ['ARMOR'],
+                        effect: { symmetryHPBonus: 2 }
                     }
                 ],
 
@@ -2526,8 +2608,94 @@
                         description: '+1 damage to all adjacent weapons',
                         appliesTo: ['SYSTEM'],
                         effect: { adjacentDamageBonus: 1 }
+                    },
+                    // === POSITIONAL MODIFIERS (Cost 3) ===
+                    {
+                        id: 'weapon_chain',
+                        name: 'Weapon Chain',
+                        description: '+1 damage per weapon in longest connected chain',
+                        appliesTo: ['WEAPON'],
+                        effect: { damagePerChainWeapon: 1 }
+                    },
+                    {
+                        id: 'armor_chain',
+                        name: 'Armor Chain',
+                        description: '+2 HP per armor in longest connected chain',
+                        appliesTo: ['ARMOR'],
+                        effect: { hpPerChainArmor: 2 }
+                    },
+                    {
+                        id: 'row_complete',
+                        name: 'Row Dominator',
+                        description: '+3 damage if any row is completely filled',
+                        appliesTo: ['WEAPON'],
+                        effect: { rowCompleteDamageBonus: 3 }
+                    },
+                    {
+                        id: 'column_complete',
+                        name: 'Column Master',
+                        description: '+5 HP if any column is completely filled',
+                        appliesTo: ['ARMOR'],
+                        effect: { columnCompleteHPBonus: 5 }
                     }
                 ]
+            },
+
+            // === POSITIONAL MODIFIER CONFIGURATION ===
+            // These modifiers give bonuses based on item placement
+            positionalModifiers: {
+                // Position checks use the mech grid coordinate system
+                // Grid is typically 7 cols x 7 rows (MECH_CHASSIS.gridCols/gridRows)
+
+                // Budget 1: Simple position checks
+                topRowBonus: {
+                    description: 'Bonus when item occupies top row (row 0)',
+                    checkFn: 'isInTopRow'
+                },
+                bottomRowBonus: {
+                    description: 'Bonus when item occupies bottom row',
+                    checkFn: 'isInBottomRow'
+                },
+                edgeBonus: {
+                    description: 'Bonus when item is on left or right edge',
+                    checkFn: 'isOnEdge'
+                },
+
+                // Budget 2: Adjacency counts
+                adjacentWeaponCount: {
+                    description: 'Bonus per adjacent weapon',
+                    checkFn: 'countAdjacentWeapons'
+                },
+                adjacentArmorCount: {
+                    description: 'Bonus per adjacent armor',
+                    checkFn: 'countAdjacentArmor'
+                },
+                adjacentReactorCount: {
+                    description: 'Bonus per adjacent reactor',
+                    checkFn: 'countAdjacentReactors'
+                },
+                isolationBonus: {
+                    description: 'Bonus when not adjacent to any other items',
+                    checkFn: 'isIsolated'
+                },
+                centralBonus: {
+                    description: 'Bonus when not touching any edge',
+                    checkFn: 'isCentral'
+                },
+
+                // Budget 3: Complex chain/completion checks
+                chainLength: {
+                    description: 'Bonus per item in longest connected chain of same type',
+                    checkFn: 'getLongestChainOfType'
+                },
+                rowComplete: {
+                    description: 'Bonus if any row is completely filled',
+                    checkFn: 'hasCompleteRow'
+                },
+                columnComplete: {
+                    description: 'Bonus if any column is completely filled',
+                    checkFn: 'hasCompleteColumn'
+                }
             }
         };
 
@@ -2731,9 +2899,9 @@
                 baseShape: [[1, 0], [1, 1]],  // L-shape (3 squares)
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
-                    weight: 0,
+                    weight: 2,  // DR is powerful, requires weight investment
                     energyDraw: 0,
-                    damageReduction: 2  // -2 damage from each ballistic/missile hit
+                    damageReduction: 2  // -2 damage from each hit (highest only)
                 },
                 statWeights: { damageReduction: 1.0 }
             },
@@ -2747,41 +2915,108 @@
                 baseShape: [[1, 1], [1, 0]],  // L-shape (3 squares)
                 validSlots: ['torso'],
                 baseStats: {
-                    weight: 0,
+                    weight: 2,  // DR is powerful, requires weight investment
                     energyDraw: 1,
-                    damageReduction: 3  // -3 damage from each ballistic/missile hit
+                    damageReduction: 3  // -3 damage from each hit (highest only)
                 },
                 statWeights: { damageReduction: 1.0 }
             },
-            // Hull Armor - adds raw HP
-            hull_armor: {
+            // HULL ARMOR - HP bonus scales with size: cells × 3 + (cells-1) × 1
+            // 1 cell = 3 HP, 2 cells = 7 HP, 3 cells = 11 HP, 4 cells = 15 HP, etc.
+
+            // Small Armor - 1 cell, 3 HP
+            armor_small: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🔘',
+                namePrefix: ['Tiny', 'Small', 'Mini', 'Compact'],
+                nameSuffix: ['Plate', 'Guard', 'Patch', 'Cover'],
+                baseShape: [[1]],  // 1 cell
+                validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'head'],
+                baseStats: {
+                    weight: 0,
+                    energyDraw: 0,
+                    hpBonus: 3  // 1×3 + 0×1 = 3 HP
+                },
+                statWeights: { hpBonus: 1.0 }
+            },
+            // Light Armor - 2 cells, 7 HP
+            armor_light: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🛡️',
+                namePrefix: ['Light', 'Thin', 'Basic', 'Simple'],
+                nameSuffix: ['Armor', 'Plating', 'Shell', 'Guard'],
+                baseShape: [[1, 1]],  // 2 cells
+                validSlots: ['torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'],
+                baseStats: {
+                    weight: 0,
+                    energyDraw: 0,
+                    hpBonus: 7  // 2×3 + 1×1 = 7 HP
+                },
+                statWeights: { hpBonus: 1.0 }
+            },
+            // Medium Armor - 3 cells, 11 HP
+            armor_medium: {
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '❤️',
-                namePrefix: ['Reinforced', 'Thick', 'Dense', 'Layered'],
-                nameSuffix: ['Hull', 'Frame', 'Structure', 'Bulkhead'],
-                baseShape: [[1, 1, 1]],  // 3x1 (3 squares)
+                namePrefix: ['Standard', 'Medium', 'Regular', 'Solid'],
+                nameSuffix: ['Hull', 'Frame', 'Armor', 'Plating'],
+                baseShape: [[1, 1, 1]],  // 3 cells
                 validSlots: ['torso', 'leftLeg', 'rightLeg'],
                 baseStats: {
                     weight: 1,
                     energyDraw: 0,
-                    hpBonus: 10  // 4 cost × 2.5 HP = 10 HP
+                    hpBonus: 11  // 3×3 + 2×1 = 11 HP
                 },
                 statWeights: { hpBonus: 1.0 }
             },
-            // Heavy Hull - more HP, compact shape
-            heavy_hull: {
+            // Heavy Armor - 4 cells, 15 HP
+            armor_heavy: {
                 type: 'ARMOR',
                 category: 'armor',
                 icon: '💪',
-                namePrefix: ['Heavy', 'Massive', 'Fortified', 'Titan'],
+                namePrefix: ['Heavy', 'Thick', 'Dense', 'Reinforced'],
                 nameSuffix: ['Hull', 'Bulkhead', 'Plating', 'Chassis'],
-                baseShape: [[1, 1], [1, 1]],  // 2x2 (4 squares)
+                baseShape: [[1, 1], [1, 1]],  // 4 cells
+                validSlots: ['torso', 'leftLeg', 'rightLeg'],
+                baseStats: {
+                    weight: 1,
+                    energyDraw: 0,
+                    hpBonus: 15  // 4×3 + 3×1 = 15 HP
+                },
+                statWeights: { hpBonus: 1.0 }
+            },
+            // Reinforced Armor - 5 cells, 19 HP
+            armor_reinforced: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🏋️',
+                namePrefix: ['Reinforced', 'Fortified', 'Hardened', 'Layered'],
+                nameSuffix: ['Plating', 'Armor', 'Shell', 'Carapace'],
+                baseShape: [[1, 1, 1], [1, 1, 0]],  // 5 cells (L-shape)
                 validSlots: ['torso'],
                 baseStats: {
                     weight: 2,
                     energyDraw: 0,
-                    hpBonus: 15  // 6 cost × 2.5 HP = 15 HP
+                    hpBonus: 19  // 5×3 + 4×1 = 19 HP
+                },
+                statWeights: { hpBonus: 1.0 }
+            },
+            // Titan Armor - 6 cells, 23 HP
+            armor_titan: {
+                type: 'ARMOR',
+                category: 'armor',
+                icon: '🦾',
+                namePrefix: ['Titan', 'Massive', 'Juggernaut', 'Colossal'],
+                nameSuffix: ['Hull', 'Frame', 'Bulwark', 'Fortress'],
+                baseShape: [[1, 1, 1], [1, 1, 1]],  // 6 cells (2x3)
+                validSlots: ['torso'],
+                baseStats: {
+                    weight: 2,
+                    energyDraw: 0,
+                    hpBonus: 23  // 6×3 + 5×1 = 23 HP
                 },
                 statWeights: { hpBonus: 1.0 }
             },
@@ -2960,7 +3195,7 @@
             armor_linkage: {
                 type: 'SYSTEM',
                 category: 'system',
-                icon: '🔗',
+                icon: '🛡️',
                 namePrefix: ['Reactive', 'Adaptive', 'Linked', 'Network'],
                 nameSuffix: ['Linkage', 'Matrix', 'Network', 'Grid'],
                 baseShape: [[1, 1, 1, 1]],  // 4x1 horizontal (4 squares)
@@ -3104,6 +3339,81 @@
                 }
             }
             return cells;
+        }
+
+        // Generate a random connected shape with the specified number of cells
+        // All cells are guaranteed to be adjacent to at least one other cell
+        // Algorithm picks a random existing cell to expand from, creating varied shapes
+        function generateRandomShape(cellCount) {
+            if (cellCount <= 0) return [[1]];
+            if (cellCount === 1) return [[1]];
+
+            // Start with a larger grid to allow growth in any direction
+            const maxSize = Math.max(5, Math.ceil(Math.sqrt(cellCount) * 2.5));
+            const grid = Array(maxSize).fill(null).map(() => Array(maxSize).fill(0));
+
+            // Start in the center
+            const centerX = Math.floor(maxSize / 2);
+            const centerY = Math.floor(maxSize / 2);
+            grid[centerY][centerX] = 1;
+
+            const filled = [{x: centerX, y: centerY}];
+            const directions = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+
+            // Grow the shape by randomly picking an existing cell and expanding from it
+            while (filled.length < cellCount) {
+                // Shuffle filled cells to try them in random order
+                const shuffled = [...filled].sort(() => Math.random() - 0.5);
+                let foundCandidate = false;
+
+                for (const cell of shuffled) {
+                    // Find valid expansion points from THIS cell only
+                    const candidates = [];
+                    for (const dir of directions) {
+                        const nx = cell.x + dir.dx;
+                        const ny = cell.y + dir.dy;
+                        if (nx >= 0 && nx < maxSize && ny >= 0 && ny < maxSize && grid[ny][nx] === 0) {
+                            candidates.push({x: nx, y: ny});
+                        }
+                    }
+
+                    if (candidates.length > 0) {
+                        // Pick a random direction from this cell
+                        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                        grid[chosen.y][chosen.x] = 1;
+                        filled.push(chosen);
+                        foundCandidate = true;
+                        break;  // Successfully added a cell, continue to next iteration
+                    }
+                }
+
+                if (!foundCandidate) break;  // No more room to grow anywhere
+            }
+
+            // Trim the grid to remove empty rows/columns
+            let minX = maxSize, maxX = 0, minY = maxSize, maxY = 0;
+            for (let y = 0; y < maxSize; y++) {
+                for (let x = 0; x < maxSize; x++) {
+                    if (grid[y][x] === 1) {
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+
+            // Extract the trimmed shape
+            const trimmed = [];
+            for (let y = minY; y <= maxY; y++) {
+                const row = [];
+                for (let x = minX; x <= maxX; x++) {
+                    row.push(grid[y][x]);
+                }
+                trimmed.push(row);
+            }
+
+            return trimmed.length > 0 ? trimmed : [[1]];
         }
 
         // ============================================
@@ -3272,8 +3582,16 @@
                 return null;
             }
 
-            // Clone base shape
-            let shape = template.baseShape.map(row => [...row]);
+            // Generate shape - either random or from template
+            let shape;
+            if (COMPONENT_GENERATION.useRandomShapes) {
+                // Generate random connected shape with same cell count as template
+                const cellCount = countShapeCells(template.baseShape);
+                shape = generateRandomShape(cellCount);
+            } else {
+                // Clone base shape from template
+                shape = template.baseShape.map(row => [...row]);
+            }
 
             // Variants disabled in new budget system
             let appliedVariants = [];
@@ -3401,30 +3719,29 @@
             }
 
             // ============================================
-            // MODIFIER SYSTEM (uncommon+ only)
+            // MODIFIER SYSTEM
             // ============================================
             let appliedModifier = null;
 
-            if (rarity !== 'common') {
-                const modifierChance = getModifierChance(level);
-                if (Math.random() < modifierChance) {
-                    const maxModBudget = COMPONENT_GENERATION.maxModifierBudget[rarity] || 1;
-                    appliedModifier = selectModifier(template.type, maxModBudget);
+            // Uncommon+ always get modifiers, common has 30% chance
+            const shouldGetModifier = rarity !== 'common' || Math.random() < 0.3;
+            if (shouldGetModifier) {
+                const maxModBudget = COMPONENT_GENERATION.maxModifierBudget[rarity] || 1;
+                appliedModifier = selectModifier(template.type, maxModBudget);
 
-                    if (appliedModifier) {
-                        // Apply modifier effects to stats
-                        const effect = appliedModifier.effect;
-                        if (effect.weightBonus) stats.weight = Math.max(0, stats.weight + effect.weightBonus);
-                        if (effect.energyBonus) stats.energyDraw = Math.max(0, stats.energyDraw + effect.energyBonus);
-                        if (effect.drBonus) stats.damageReduction = (stats.damageReduction || 0) + effect.drBonus;
-                        if (effect.hpBonus) stats.hpBonus = (stats.hpBonus || 0) + effect.hpBonus;
-                        if (effect.energyProvidedBonus) stats.energyDraw = (stats.energyDraw || 0) - effect.energyProvidedBonus;
-                        if (effect.adjacentDamageBonus) stats.adjacentDamageBonus = (stats.adjacentDamageBonus || 0) + effect.adjacentDamageBonus;
+                if (appliedModifier) {
+                    // Apply modifier effects to stats
+                    const effect = appliedModifier.effect;
+                    if (effect.weightBonus) stats.weight = Math.max(0, stats.weight + effect.weightBonus);
+                    if (effect.energyBonus) stats.energyDraw = Math.max(0, stats.energyDraw + effect.energyBonus);
+                    if (effect.drBonus) stats.damageReduction = (stats.damageReduction || 0) + effect.drBonus;
+                    if (effect.hpBonus) stats.hpBonus = (stats.hpBonus || 0) + effect.hpBonus;
+                    if (effect.energyProvidedBonus) stats.energyDraw = (stats.energyDraw || 0) - effect.energyProvidedBonus;
+                    if (effect.adjacentDamageBonus) stats.adjacentDamageBonus = (stats.adjacentDamageBonus || 0) + effect.adjacentDamageBonus;
 
-                        // Store battle-related modifier effects for combat resolution
-                        if (effect.firstShotMultiplier || effect.damagePerReactor || effect.damagePerWeapon) {
-                            stats.modifier = appliedModifier;
-                        }
+                    // Store battle-related modifier effects for combat resolution
+                    if (effect.firstShotMultiplier || effect.damagePerReactor || effect.damagePerWeapon) {
+                        stats.modifier = appliedModifier;
                     }
                 }
             }
@@ -3533,11 +3850,74 @@
             return 'common';
         }
 
+        // Body part salvage penalty configuration (mirrors battle-arena.html)
+        const BODY_PART_SALVAGE = {
+            penalties: {
+                torso: 1.0,      // Full penalty for torso damage
+                head: 0.0,       // No penalty for head damage - preserves salvage
+                leftArm: 1.0,    // Full penalty
+                rightArm: 1.0,
+                leftLeg: 0.3,    // Only 30% penalty for leg damage
+                rightLeg: 0.3
+            },
+            baseScrapChance: 0.5  // Even perfect kills have 50% chance per component to become scrap
+        };
+
+        // Calculate salvage quality based on body part damage
+        // Returns a value from 0 (all scrap) to 1 (perfect salvage)
+        function calculateSalvageQuality(enemyDamageData) {
+            if (!enemyDamageData || enemyDamageData.length === 0) {
+                return 0.5; // Default moderate quality if no data
+            }
+
+            let totalPenalty = 0;
+            let enemyCount = 0;
+
+            enemyDamageData.forEach(enemy => {
+                if (!enemy.bodyParts || !enemy.isDestroyed) return;
+                enemyCount++;
+
+                const dmg = enemy.bodyParts.totalDamageReceived || {};
+                const destroyed = enemy.bodyParts.destroyed || {};
+
+                // Calculate penalty based on damage received to each part
+                // More damage = more penalty (scaled by part's penalty multiplier)
+                Object.keys(BODY_PART_SALVAGE.penalties).forEach(part => {
+                    const partDamage = dmg[part] || 0;
+                    const penalty = BODY_PART_SALVAGE.penalties[part];
+
+                    // Destroyed parts add full penalty, damage adds proportional penalty
+                    if (destroyed[part]) {
+                        totalPenalty += penalty * 0.5; // 50% penalty for destroyed part
+                    } else if (partDamage > 0) {
+                        // Scale damage penalty (max 0.3 per part)
+                        totalPenalty += Math.min(0.3, partDamage / 100) * penalty;
+                    }
+                });
+            });
+
+            if (enemyCount === 0) return 0.5;
+
+            // Average penalty across enemies
+            const avgPenalty = totalPenalty / enemyCount;
+
+            // Convert to quality (0 = worst, 1 = best)
+            // Penalty of 0 = quality 1, penalty of 3 (max) = quality 0
+            const quality = Math.max(0, 1 - avgPenalty / 3);
+
+            console.log(`Salvage quality: ${(quality * 100).toFixed(0)}% (penalty: ${avgPenalty.toFixed(2)})`);
+            return quality;
+        }
+
         // Generate salvage components after battle
-        function generateSalvageOptions(result, enemyLevel = 1, missionDifficulty = 'Easy') {
+        // enemyDamageData contains body part damage info for salvage calculation
+        function generateSalvageOptions(result, enemyLevel = 1, missionDifficulty = 'Easy', enemyDamageData = null) {
             const options = [];
             const round = gameProgression.round;
             const isBoss = DIFFICULTY.isBossRound(round);
+
+            // Calculate salvage quality based on body part damage
+            const salvageQuality = calculateSalvageQuality(enemyDamageData);
 
             // Determine number of options based on result and boss status
             let numOptions;
@@ -3555,10 +3935,14 @@
                 machinegun: 2,          // 1×2 = 2 DPR, cheap multi-hit
                 minigun: 1,             // 1×8 = 8 DPR, rare synergy weapon
                 pulse_laser: 1,         // 1×5 = 5 DPR, rare energy multi-hit
-                ballistic_plating: 2,   // Damage reduction armor
+                ballistic_plating: 2,   // Damage reduction armor (weight 2)
                 reactive_plating: 1,    // Better damage reduction, rarer
-                hull_armor: 2,          // HP boost armor
-                heavy_hull: 1,          // More HP, rarer
+                armor_small: 2,         // 1 cell, 3 HP
+                armor_light: 2,         // 2 cells, 7 HP
+                armor_medium: 2,        // 3 cells, 11 HP
+                armor_heavy: 1.5,       // 4 cells, 15 HP
+                armor_reinforced: 1,    // 5 cells, 19 HP
+                armor_titan: 0.5,       // 6 cells, 23 HP (rare)
                 energy_shield: 1.5,     // Energy weapon defense
                 reactor: 0.5,           // Much less common
                 power_cell: 0.5,        // Much less common
@@ -3596,6 +3980,9 @@
                 }
             }
 
+            // Generate components (may become scrap based on salvage quality)
+            const generatedComponents = [];
+
             for (let i = 0; i < numOptions; i++) {
                 // Pick weighted random template
                 const templateType = weightedTemplates[Math.floor(Math.random() * weightedTemplates.length)];
@@ -3628,6 +4015,14 @@
                     component.isDamaged = isDamaged;
                     component.originalLevel = originalLevel;
 
+                    // Estimate component value for scrap priority
+                    const estimatedValue = (component.stats.damage || 0) * 10 +
+                                          (component.stats.damageReduction || 0) * 15 +
+                                          (component.stats.hpBonus || 0) * 2 +
+                                          (component.stats.energyShieldHP || 0) * 3 +
+                                          Math.abs(component.stats.energyDraw || 0) * 20;
+                    component._estimatedValue = estimatedValue;
+
                     // Damaged items have reduced stats (20-40% penalty) and 0 sell value
                     if (isDamaged) {
                         component.sellValue = 0;
@@ -3657,8 +4052,42 @@
                         component.isHighValue = true;
                         component.resaleBonus = 0.5;  // 50% extra sell value
                     }
+
+                    generatedComponents.push(component);
+                }
+            }
+
+            // BODY PART SALVAGE SYSTEM: Convert some components to scrap based on salvage quality
+            // Sort by value (most valuable first) - these get converted to scrap first
+            generatedComponents.sort((a, b) => (b._estimatedValue || 0) - (a._estimatedValue || 0));
+
+            // Calculate how many components become scrap
+            // Base 50% scrap chance + additional based on salvage quality
+            // salvageQuality 1.0 = only base 50% scrap, quality 0.0 = 100% scrap
+            const scrapChance = BODY_PART_SALVAGE.baseScrapChance + (1 - salvageQuality) * 0.5;
+
+            let scrapGold = 0;
+            generatedComponents.forEach(component => {
+                // Most valuable components have highest chance to become scrap when salvage quality is low
+                const valueBonus = Math.min(0.2, (component._estimatedValue || 0) / 500);
+                const finalScrapChance = Math.min(0.95, scrapChance + valueBonus * (1 - salvageQuality));
+
+                if (Math.random() < finalScrapChance) {
+                    // Convert to scrap - add gold instead
+                    const scrapValue = Math.floor(5 + (component._estimatedValue || 10) / 5);
+                    scrapGold += scrapValue;
+                    console.log(`Component ${component.name} -> SCRAP (${scrapValue} gold)`);
+                } else {
+                    // Keep as salvage option
+                    delete component._estimatedValue; // Clean up internal value
                     options.push(component);
                 }
+            });
+
+            // Add scrap gold to player (will be shown in salvage screen)
+            if (scrapGold > 0) {
+                console.log(`Total scrap gold from body damage: ${scrapGold}`);
+                playerResources.gold += scrapGold;
             }
 
             return options;
@@ -3784,13 +4213,100 @@
             comboChance: 0.15,     // 15% chance for combo items (synergize)
             damagedChance: 0.9,    // 90% of salvage is damaged
             damagedLevelReduction: [1, 2],  // Damaged items lose 1-2 levels of effectiveness
-            // Rarity rates by mission difficulty
+            // Rarity rates by mission difficulty (any rarity possible at any level)
             rarityRates: {
-                Easy: { common: 0.75, uncommon: 0.20, rare: 0.05, epic: 0, legendary: 0 },
-                Medium: { common: 0.60, uncommon: 0.30, rare: 0.08, epic: 0.02, legendary: 0 },
-                Hard: { common: 0.45, uncommon: 0.35, rare: 0.12, epic: 0.06, legendary: 0.02 }
+                Easy: { common: 0.70, uncommon: 0.20, rare: 0.07, epic: 0.025, legendary: 0.005 },
+                Medium: { common: 0.55, uncommon: 0.28, rare: 0.12, epic: 0.04, legendary: 0.01 },
+                Hard: { common: 0.40, uncommon: 0.32, rare: 0.18, epic: 0.07, legendary: 0.03 }
             }
         };
+
+        // Roll for item rarity based on mission risk (1=Easy, 2=Medium, 3=Hard)
+        function rollItemRarity(missionRisk = 1) {
+            const difficultyKey = missionRisk <= 1 ? 'Easy' : (missionRisk === 2 ? 'Medium' : 'Hard');
+            const rates = SALVAGE.rarityRates[difficultyKey];
+            const roll = Math.random();
+
+            let cumulative = 0;
+            for (const [rarity, chance] of Object.entries(rates)) {
+                cumulative += chance;
+                if (roll < cumulative) {
+                    return rarity;
+                }
+            }
+            return 'common';
+        }
+
+        // ============================================
+        // THREAT SCORE SYSTEM
+        // ============================================
+        // Calculates effective difficulty of a mission considering:
+        // - Total enemy HP and DPS
+        // - Action economy (multiple enemies = more initial DPS)
+        // - BUT: killing enemies reduces threat quickly, so bonus is moderate
+        const THREAT_CONFIG = {
+            // Weights for threat calculation
+            hpWeight: 1.0,       // HP contributes directly
+            dpsWeight: 8.0,      // DPS is weighted higher (damage is dangerous)
+
+            // Action economy bonus per additional enemy
+            // Kept moderate because eliminating enemies rapidly reduces threat
+            // 2 enemies: +12% threat, 3 enemies: +22% threat (diminishing)
+            actionEconomyBase: 0.12,
+            actionEconomyDiminish: 0.9,  // Each additional enemy adds slightly less
+
+            // Threat thresholds for difficulty labels
+            thresholds: {
+                Easy: { min: 0, max: 85 },
+                Medium: { min: 85, max: 140 },
+                Hard: { min: 140, max: Infinity }
+            }
+        };
+
+        // Calculate threat score for a set of enemies
+        function calculateThreatScore(enemies) {
+            if (!enemies || enemies.length === 0) return 0;
+
+            let totalHP = 0;
+            let totalDPS = 0;
+
+            enemies.forEach(enemy => {
+                totalHP += enemy.maxHealth || 0;
+                totalDPS += enemy.stats?.damage || 0;
+            });
+
+            // Base threat from raw stats
+            const baseThreat = (totalHP * THREAT_CONFIG.hpWeight) +
+                              (totalDPS * THREAT_CONFIG.dpsWeight);
+
+            // Action economy multiplier (diminishing returns)
+            // 1 enemy: 1.0x, 2 enemies: 1.12x, 3 enemies: 1.22x, etc.
+            let actionMultiplier = 1.0;
+            for (let i = 1; i < enemies.length; i++) {
+                actionMultiplier += THREAT_CONFIG.actionEconomyBase *
+                    Math.pow(THREAT_CONFIG.actionEconomyDiminish, i - 1);
+            }
+
+            return Math.round(baseThreat * actionMultiplier);
+        }
+
+        // Get difficulty label based on threat score
+        function getThreatDifficulty(threatScore) {
+            if (threatScore <= THREAT_CONFIG.thresholds.Easy.max) return 'Easy';
+            if (threatScore <= THREAT_CONFIG.thresholds.Medium.max) return 'Medium';
+            return 'Hard';
+        }
+
+        // Get threat level description
+        function getThreatDescription(threatScore) {
+            if (threatScore < 50) return 'Minimal';
+            if (threatScore < 85) return 'Low';
+            if (threatScore < 110) return 'Moderate';
+            if (threatScore < 140) return 'Significant';
+            if (threatScore < 180) return 'High';
+            if (threatScore < 220) return 'Severe';
+            return 'Extreme';
+        }
 
         // Item combos that synergize
         const ITEM_COMBOS = {
@@ -3822,13 +4338,16 @@
 
         // Mission templates (base structure, enemies generated dynamically)
         // baseBudgetMult is TOTAL budget for the mission, divided among all enemies
+        // Budgets are balanced accounting for action economy:
+        // - Multiple enemies get ~12% threat bonus per extra enemy (diminishing)
+        // - So multi-enemy missions have lower raw budgets to compensate
         const MISSION_TEMPLATES = {
             patrol: {
                 id: 'patrol',
                 name: 'Border Patrol',
                 difficulty: 'Easy',
                 risk: 1,
-                baseBudgetMult: 0.6,    // 60% of standard budget (1 enemy)
+                baseBudgetMult: 0.6,    // 60% budget (1 enemy) - baseline Easy
                 enemyCount: 1,
                 description: 'Light recon mission. Expect minimal resistance.',
                 rewardMult: 1.0
@@ -3838,7 +4357,7 @@
                 name: 'Skirmish Zone',
                 difficulty: 'Easy',
                 risk: 1,
-                baseBudgetMult: 0.8,    // 80% total budget, split among 2 enemies
+                baseBudgetMult: 0.55,   // Reduced from 0.8 - 2 enemies get +12% action economy
                 enemyCount: 2,
                 description: 'Light engagement. Two weak hostiles detected.',
                 rewardMult: 1.2
@@ -3848,7 +4367,7 @@
                 name: 'Convoy Assault',
                 difficulty: 'Medium',
                 risk: 2,
-                baseBudgetMult: 1.0,    // 100% budget (1 enemy)
+                baseBudgetMult: 1.0,    // 100% budget (1 enemy) - baseline Medium
                 enemyCount: 1,
                 description: 'Intercept enemy supply convoy. Medium resistance expected.',
                 rewardMult: 1.5
@@ -3858,7 +4377,7 @@
                 name: 'Ambush Site',
                 difficulty: 'Medium',
                 risk: 2,
-                baseBudgetMult: 1.4,    // 140% total budget, split among 2 enemies
+                baseBudgetMult: 0.95,   // Reduced from 1.4 - balanced with convoy via action economy
                 enemyCount: 2,
                 description: 'Clear hostile ambush. Two medium threats detected.',
                 rewardMult: 1.8
@@ -3868,7 +4387,7 @@
                 name: 'Fortress Breach',
                 difficulty: 'Hard',
                 risk: 3,
-                baseBudgetMult: 1.5,    // 150% budget (1 strong enemy)
+                baseBudgetMult: 1.5,    // 150% budget (1 strong enemy) - baseline Hard
                 enemyCount: 1,
                 description: 'Assault heavily defended position. Prepare for heavy combat.',
                 rewardMult: 2.5
@@ -3878,7 +4397,7 @@
                 name: 'Active Warzone',
                 difficulty: 'Hard',
                 risk: 3,
-                baseBudgetMult: 2.1,    // 210% total budget, split among 3 enemies
+                baseBudgetMult: 1.35,   // Reduced from 2.1 - 3 enemies get +22% action economy
                 enemyCount: 3,
                 description: 'Enter active combat zone. Three hostiles incoming.',
                 rewardMult: 3.0
@@ -3916,7 +4435,7 @@
         }
 
         // Generate a single enemy mech
-        function generateEnemy(level, budget) {
+        function generateEnemy(level, budget, missionRisk = 1) {
             // Select chassis based on budget and level
             const chassisIndex = Math.min(
                 ENEMY_GENERATION.chassisTypes.length - 1,
@@ -3938,9 +4457,18 @@
             // Determine weapon count
             const weaponCount = Math.max(1, Math.min(3, Math.floor(weaponBudget / ENEMY_GENERATION.rates.weaponBudget) + 1));
 
-            // Generate equipment using templates
+            // Generate equipment using templates - with body part assignments
             const equipment = [];
-            const weaponSlots = ['rightArm', 'leftArm', 'torso'];
+
+            // Body part to item slot mapping for enemies
+            const bodyPartSlots = {
+                rightArm: 'rightArm',
+                leftArm: 'leftArm',
+                torso: 'torso',
+                head: 'head',
+                leftLeg: 'leftLeg',
+                rightLeg: 'rightLeg'
+            };
 
             // Weapon templates with their weights - filtered by minLevel
             const minLevels = getMinLevelCache();
@@ -3962,42 +4490,55 @@
                 }
             }
 
-            for (let i = 0; i < weaponCount && i < weaponSlots.length; i++) {
+            // Weapon slots assigned to body parts
+            const weaponBodyParts = ['rightArm', 'leftArm', 'torso'];
+
+            for (let i = 0; i < weaponCount && i < weaponBodyParts.length; i++) {
                 const template = weightedWeapons[Math.floor(Math.random() * weightedWeapons.length)] || 'railgun';
-                const weapon = generateComponent(template, level, 'common', { variantChance: 0 });
+                // Roll rarity for each weapon based on mission risk
+                const rarity = rollItemRarity(missionRisk);
+                const weapon = generateComponent(template, level, rarity, { variantChance: rarity !== 'common' ? 0.3 : 0 });
                 if (weapon) {
                     weapon.id = `enemy_${template}_${Date.now()}_${i}`;
                     registerGeneratedComponent(weapon);
                     equipment.push({
                         itemId: weapon.id,
-                        slot: weaponSlots[i],
+                        item: weapon,  // Store full item data
+                        bodyPart: weaponBodyParts[i],  // Which body part this item is on
+                        slot: weaponBodyParts[i],
                         position: { x: 0, y: 0 }
                     });
                 }
             }
 
-            // Add armor if high enough level
+            // Add armor to torso if high enough level
             if (level >= 2 && baseArmor > 20) {
-                const armor = generateComponent('ballistic_plating', level, 'common', { variantChance: 0 });
+                const armorRarity = rollItemRarity(missionRisk);
+                const armor = generateComponent('ballistic_plating', level, armorRarity, { variantChance: armorRarity !== 'common' ? 0.3 : 0 });
                 if (armor) {
                     armor.id = `enemy_armor_${Date.now()}`;
                     registerGeneratedComponent(armor);
                     equipment.push({
                         itemId: armor.id,
+                        item: armor,
+                        bodyPart: 'torso',  // Armor on torso
                         slot: 'torso',
                         position: { x: 0, y: 0 }
                     });
                 }
             }
 
-            // Add reactor for energy
+            // Add reactor to torso for energy
             if (weaponCount >= 2) {
-                const reactor = generateComponent('power_cell', level, 'common', { variantChance: 0 });
+                const reactorRarity = rollItemRarity(missionRisk);
+                const reactor = generateComponent('power_cell', level, reactorRarity, { variantChance: reactorRarity !== 'common' ? 0.3 : 0 });
                 if (reactor) {
                     reactor.id = `enemy_reactor_${Date.now()}`;
                     registerGeneratedComponent(reactor);
                     equipment.push({
                         itemId: reactor.id,
+                        item: reactor,
+                        bodyPart: 'torso',  // Reactor in torso
                         slot: 'torso',
                         position: { x: 2, y: 0 }
                     });
@@ -4046,7 +4587,7 @@
                 const levelVariance = missionTemplate.enemyCount > 1 ? Math.floor(Math.random() * 2) - 1 : 0;
                 const individualLevel = Math.max(1, enemyLevel + levelVariance);
 
-                enemies.push(generateEnemy(individualLevel, enemyBudget));
+                enemies.push(generateEnemy(individualLevel, enemyBudget, missionTemplate.risk));
             }
 
             return enemies;
@@ -4065,6 +4606,11 @@
                 const enemies = generateMissionEnemies(template);
                 const avgLevel = Math.round(enemies.reduce((sum, e) => sum + e.level, 0) / enemies.length);
 
+                // Calculate threat score for this mission
+                const threatScore = calculateThreatScore(enemies);
+                const actualDifficulty = getThreatDifficulty(threatScore);
+                const threatLevel = getThreatDescription(threatScore);
+
                 // Scale rewards with level
                 const levelMult = 1 + (avgLevel - 1) * 0.15;
                 const baseCredits = [300, 500, 800, 1200, 2000, 3500][template.risk + Math.floor(avgLevel / 2) - 1] || 500;
@@ -4074,6 +4620,9 @@
                     ...template,
                     enemyMechs: enemies,
                     averageLevel: avgLevel,
+                    threatScore: threatScore,
+                    threatLevel: threatLevel,
+                    actualDifficulty: actualDifficulty,  // Calculated from threat score
                     reward: {
                         credits: Math.round(baseCredits * template.rewardMult * levelMult),
                         xp: Math.round(baseXP * template.rewardMult * levelMult)
@@ -5920,13 +6469,15 @@
                     el.style.borderColor = rarityColor;
                 }
 
+                const modLine = item.modifier ?
+                    `<div style="font-size: 9px; color: #ffaa00;">⚡ ${item.modifier.name}</div>` : '';
                 el.innerHTML = `
                     <div class="rotate-btn" title="Rotate (R)">↻</div>
                     <span class="item-icon">${item.icon}</span>
                     <div class="item-info">
                         <div class="item-name" style="${isGenerated ? `color: ${rarityColor};` : ''}">${item.name}</div>
+                        ${modLine}
                         ${buildItemStatIcons(item)}
-                        ${buildSynergyTags(item)}
                         <div class="item-bottom-row">
                             ${buildItemSecondaryStats(item)}
                             ${buildInlineShapePreview(item, 8)}
@@ -6004,8 +6555,9 @@
                 }
             });
 
-            // Calculate adjacency bonuses for visual display
+            // Calculate adjacency bonuses and positional bonuses for visual display
             const adjacencyBonuses = calculateAdjacencyBonuses();
+            const positionalBonuses = calculatePositionalBonuses();
 
             // Render placed items
             loadoutState.equipment.forEach(eq => {
@@ -6016,8 +6568,10 @@
                 const w = shape[0].length;
                 const h = shape.length;
 
-                // Get adjacency bonus for this item (if it's a weapon)
+                // Get total bonus for this item (adjacency + positional)
                 const adjBonus = adjacencyBonuses[eq.instanceId] || 0;
+                const posBonus = positionalBonuses[eq.instanceId] || { damage: 0, hp: 0, energy: 0 };
+                const totalBonus = adjBonus + posBonus.damage;
 
                 // Create a container for the item that spans the bounding box
                 const placedEl = document.createElement('div');
@@ -6033,8 +6587,8 @@
                 placedEl.style.background = 'transparent';
                 placedEl.style.border = 'none';
 
-                // Add glow effect if receiving adjacency bonus
-                if (adjBonus > 0) {
+                // Add glow effect if receiving any bonus (adjacency or positional)
+                if (totalBonus > 0) {
                     placedEl.style.filter = 'drop-shadow(0 0 6px #ffcc00)';
                 }
 
@@ -6046,7 +6600,7 @@
                             const cellLeft = dx * (cellSize + gap);
                             const cellTop = dy * (cellSize + gap);
                             // Add golden border if receiving bonus
-                            const bonusBorder = adjBonus > 0 ? 'box-shadow: 0 0 8px #ffcc00, inset 0 0 4px rgba(255,204,0,0.3);' : '';
+                            const bonusBorder = totalBonus > 0 ? 'box-shadow: 0 0 8px #ffcc00, inset 0 0 4px rgba(255,204,0,0.3);' : '';
                             shapeCellsHtml += `<div class="item-shape-cell" style="
                                 position: absolute;
                                 left: ${cellLeft}px;
@@ -6081,7 +6635,7 @@
                 const iconTop = centerY * (cellSize + gap) + cellSize / 2;
 
                 // Build tooltip HTML with adjacency bonus info
-                const tooltipHtml = buildItemTooltipHtmlWithBonus(item, adjBonus);
+                const tooltipHtml = buildItemTooltipHtmlWithBonus(item, totalBonus);
 
                 // Build direction indicator for directional damage items
                 let directionHtml = '';
@@ -6227,7 +6781,7 @@
 
             // Adjacent armor bonus
             if (stats.adjacentArmorBonus) {
-                html += `<span class="item-stat" style="color: #88ccff;"><span class="item-stat-icon">🔗</span><span class="item-stat-value">+${stats.adjacentArmorBonus} adj</span></span>`;
+                html += `<span class="item-stat" style="color: #88ccff;"><span class="item-stat-icon">🛡️</span><span class="item-stat-value">+${stats.adjacentArmorBonus} adj</span></span>`;
             }
 
             // Adjacent energy bonus
@@ -6311,17 +6865,25 @@
         }
 
         // Build inline shape preview (always visible, not a tooltip)
+        // Colors match the slot colors used on the mech grid
+        const SLOT_TYPE_COLORS = {
+            weapon: '#ff6644',
+            armor: '#888888',
+            reactor: '#44ddff',
+            system: '#aa44ff',
+            cooling: '#44ddff'
+        };
+
         function buildInlineShapePreview(item, cellSize = 8) {
             const shape = item.gridShape || [[1]];
-            const rarityColor = (item.isGenerated && COMPONENT_GENERATION) ?
-                (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00aa66') : '#00aa66';
+            const slotColor = SLOT_TYPE_COLORS[item.category] || '#00aa66';
 
             const cols = shape[0].length;
             let html = `<div style="display: inline-grid; gap: 2px; grid-template-columns: repeat(${cols}, ${cellSize}px);">`;
             for (let row of shape) {
                 for (let cell of row) {
                     if (cell === 1) {
-                        html += `<div style="width: ${cellSize}px; height: ${cellSize}px; background: ${rarityColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 1px;"></div>`;
+                        html += `<div style="width: ${cellSize}px; height: ${cellSize}px; background: ${slotColor}; border: 1px solid rgba(255,255,255,0.3); border-radius: 1px;"></div>`;
                     } else {
                         html += `<div style="width: ${cellSize}px; height: ${cellSize}px;"></div>`;
                     }
@@ -6342,21 +6904,18 @@
                 const shotsPerRound = battle.shotsPerRound || 1;
                 if (shotsPerRound > 1) {
                     const totalDmg = stats.damage * shotsPerRound;
-                    // Calculate what damage would be with a +2 flat bonus to show synergy potential
-                    const withBonus = (stats.damage + 2) * shotsPerRound;
                     statsHtml += `<div style="color: #ff8844; font-weight: bold;">💥 ${stats.damage} × ${shotsPerRound} = ${totalDmg} dmg/round</div>`;
-                    statsHtml += `<div style="color: #ffcc00; font-size: 10px;">↳ With +2 bonus: ${stats.damage + 2} × ${shotsPerRound} = ${withBonus} (+${withBonus - totalDmg}!)</div>`;
                 } else {
                     statsHtml += `<div>💥 Damage: ${stats.damage}</div>`;
                 }
             }
             if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
             if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
-            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction}</div>`;
+            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction} <span style="color: #888; font-size: 10px;">(highest only)</span></div>`;
             if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
             if (stats.energyShieldHP) statsHtml += `<div>🔵 Energy Shield: ${stats.energyShieldHP} HP</div>`;
             if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
-            if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: -${stats.energyDraw}</div>`;
+            if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: ${stats.energyDraw}</div>`;
             if (stats.weight) statsHtml += `<div>⚖️ Weight: ${stats.weight}</div>`;
             if (stats.heatCapacity) statsHtml += `<div>🌡️ Heat Cap: +${stats.heatCapacity}</div>`;
 
@@ -6385,6 +6944,13 @@
                 statsHtml += `✨ Rarity bonus: ${stats.rarityBonuses.join(', ')}</div>`;
             }
 
+            // Show modifier if present
+            if (item.modifier) {
+                const modColor = '#ffaa00';
+                statsHtml += `<div style="color: ${modColor}; font-size: 11px; margin-top: 4px; border-top: 1px solid ${modColor}33; padding-top: 4px;">`;
+                statsHtml += `⚡ <b>${item.modifier.name}</b>: ${item.modifier.description}</div>`;
+            }
+
             let specialHtml = '';
             if (item.special) {
                 if (item.special.damageBoost) specialHtml += `+${Math.round((item.special.damageBoost - 1) * 100)}% damage to adjacent weapons<br>`;
@@ -6393,34 +6959,6 @@
             }
             if (item.description) {
                 specialHtml += item.description;
-            }
-
-            // Show synergy tags
-            let synergyHtml = '';
-            if (item.synergies && item.synergies.length > 0) {
-                const tagColors = {
-                    'multi-hit': '#ff8844',
-                    'multi-hit-synergy': '#ffcc00',
-                    'kinetic': '#888',
-                    'energy': '#4488ff',
-                    'explosive': '#ff4444',
-                    'precision': '#44ff88',
-                    'alpha-strike': '#ff44ff',
-                    'amplifier': '#ffcc00',
-                    'shredder': '#ff6600'
-                };
-                synergyHtml = '<div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px;">';
-                item.synergies.forEach(tag => {
-                    const color = tagColors[tag] || '#666';
-                    synergyHtml += `<span style="background: ${color}33; color: ${color}; padding: 1px 4px; border-radius: 3px; font-size: 9px; border: 1px solid ${color};">${tag}</span>`;
-                });
-                synergyHtml += '</div>';
-            }
-
-            // Show synergy description
-            let synergyDescHtml = '';
-            if (item.synergyDescription) {
-                synergyDescHtml = `<div style="margin-top: 4px; color: #ffcc00; font-size: 10px; font-style: italic; border-left: 2px solid #ffcc00; padding-left: 6px;">${item.synergyDescription}</div>`;
             }
 
             const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
@@ -6446,8 +6984,6 @@
                     <div class="tooltip-name" style="color: ${rarityColor};">${item.name}</div>
                     <div class="tooltip-stats">${statsHtml}</div>
                     ${specialHtml ? `<div class="tooltip-special">${specialHtml}</div>` : ''}
-                    ${synergyHtml}
-                    ${synergyDescHtml}
                     <div class="tooltip-shape" style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 6px;">
                         <span style="font-size: 9px; color: #888;">Shape:</span>
                         ${shapeHtml}
@@ -6473,20 +7009,13 @@
                     const boostedTotalDmg = totalDamage * shotsPerRound;
 
                     if (adjBonus > 0) {
-                        // Show boosted damage prominently
                         statsHtml += `<div style="color: #ffcc00; font-weight: bold; font-size: 12px;">💥 ${baseDamage}+${adjBonus} × ${shotsPerRound} = ${boostedTotalDmg} dmg</div>`;
-                        statsHtml += `<div style="color: #888; font-size: 10px; text-decoration: line-through;">Base: ${baseDamage} × ${shotsPerRound} = ${baseTotalDmg}</div>`;
-                        statsHtml += `<div style="color: #00ff88; font-size: 10px;">🎯 SYNERGY ACTIVE: +${adjBonus * shotsPerRound} total damage!</div>`;
                     } else {
-                        // Show potential synergy
-                        const withBonus = (baseDamage + 2) * shotsPerRound;
                         statsHtml += `<div style="color: #ff8844; font-weight: bold;">💥 ${baseDamage} × ${shotsPerRound} = ${baseTotalDmg} dmg/round</div>`;
-                        statsHtml += `<div style="color: #666; font-size: 10px;">↳ With +2 bonus: ${baseDamage + 2} × ${shotsPerRound} = ${withBonus} (+${withBonus - baseTotalDmg}!)</div>`;
                     }
                 } else {
                     if (adjBonus > 0) {
                         statsHtml += `<div style="color: #ffcc00; font-weight: bold;">💥 ${baseDamage}+${adjBonus} = ${totalDamage} damage</div>`;
-                        statsHtml += `<div style="color: #00ff88; font-size: 10px;">🎯 SYNERGY ACTIVE!</div>`;
                     } else {
                         statsHtml += `<div>💥 Damage: ${baseDamage}</div>`;
                     }
@@ -6495,11 +7024,11 @@
 
             if (stats.accuracy) statsHtml += `<div>🎯 Accuracy: ${stats.accuracy}%</div>`;
             if (stats.armorBonus) statsHtml += `<div>🛡️ Armor: +${stats.armorBonus}</div>`;
-            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction}</div>`;
+            if (stats.damageReduction) statsHtml += `<div>🛡️ Damage Reduction: -${stats.damageReduction} <span style="color: #888; font-size: 10px;">(highest only)</span></div>`;
             if (stats.hpBonus) statsHtml += `<div>❤️ HP: +${stats.hpBonus}</div>`;
             if (stats.energyShieldHP) statsHtml += `<div>🔵 Energy Shield: ${stats.energyShieldHP} HP</div>`;
             if (stats.energyDraw < 0) statsHtml += `<div>⚡ Energy: +${-stats.energyDraw}</div>`;
-            if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: -${stats.energyDraw}</div>`;
+            if (stats.energyDraw > 0) statsHtml += `<div>⚡ Energy: ${stats.energyDraw}</div>`;
             if (stats.weight) statsHtml += `<div>⚖️ Weight: ${stats.weight}</div>`;
             if (stats.heatCapacity) statsHtml += `<div>🌡️ Heat Cap: +${stats.heatCapacity}</div>`;
 
@@ -6513,28 +7042,6 @@
                 statsHtml += `<div style="color: #ff8844;">🎯 +${stats.directionalDamageBonus} dmg ${arrow} direction</div>`;
             }
 
-            // Show synergy tags
-            let synergyHtml = '';
-            if (item.synergies && item.synergies.length > 0) {
-                const tagColors = {
-                    'multi-hit': '#ff8844',
-                    'multi-hit-synergy': '#ffcc00',
-                    'kinetic': '#888',
-                    'energy': '#4488ff',
-                    'explosive': '#ff4444',
-                    'precision': '#44ff88',
-                    'alpha-strike': '#ff44ff',
-                    'amplifier': '#ffcc00',
-                    'shredder': '#ff6600'
-                };
-                synergyHtml = '<div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px;">';
-                item.synergies.forEach(tag => {
-                    const color = tagColors[tag] || '#666';
-                    synergyHtml += `<span style="background: ${color}33; color: ${color}; padding: 1px 4px; border-radius: 3px; font-size: 9px; border: 1px solid ${color};">${tag}</span>`;
-                });
-                synergyHtml += '</div>';
-            }
-
             const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
                 (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
 
@@ -6542,7 +7049,6 @@
                 <div class="item-tooltip">
                     <div class="tooltip-name" style="color: ${rarityColor};">${item.name}${adjBonus > 0 ? ' <span style="color: #ffcc00;">★</span>' : ''}</div>
                     <div class="tooltip-stats">${statsHtml}</div>
-                    ${synergyHtml}
                 </div>
             `;
         }
@@ -6586,33 +7092,6 @@
 
             tooltip.style.left = Math.min(x, maxX) + 'px';
             tooltip.style.top = Math.min(y, maxY) + 'px';
-        }
-
-        // Build synergy tags HTML for compact display
-        function buildSynergyTags(item) {
-            if (!item.synergies || item.synergies.length === 0) return '';
-
-            const tagColors = {
-                'multi-hit': '#ff8844',
-                'multi-hit-synergy': '#ffcc00',
-                'kinetic': '#888',
-                'energy': '#4488ff',
-                'explosive': '#ff4444',
-                'precision': '#44ff88',
-                'alpha-strike': '#ff44ff',
-                'amplifier': '#ffcc00',
-                'shredder': '#ff6600',
-                'knockback': '#aa88ff',
-                'sustained': '#88ff88'
-            };
-
-            let html = '<div style="display: flex; flex-wrap: wrap; gap: 2px; margin-top: 4px;">';
-            item.synergies.forEach(tag => {
-                const color = tagColors[tag] || '#666';
-                html += `<span style="background: ${color}33; color: ${color}; padding: 1px 3px; border-radius: 2px; font-size: 8px; border: 1px solid ${color};">${tag}</span>`;
-            });
-            html += '</div>';
-            return html;
         }
 
         // ============================================
@@ -6701,10 +7180,25 @@
                 const totalHP = mission.enemyMechs.reduce((sum, e) => sum + e.maxHealth, 0);
                 const totalDMG = mission.enemyMechs.reduce((sum, e) => sum + e.stats.damage, 0);
 
-                // Build enemy list HTML
+                // Build enemy list HTML with equipment
                 let enemiesHTML = '';
                 mission.enemyMechs.forEach((enemy, i) => {
-                    enemiesHTML += `<div style="margin: 2px 0;">⚠️ ${enemy.name} - HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>`;
+                    let equipList = enemy.equipment.map(eq => {
+                        const item = eq.item || ITEM_DATABASE[eq.itemId];
+                        if (!item) return '';
+                        const rarity = item.rarity || 'common';
+                        const rarityColor = COMPONENT_GENERATION.rarityColors[rarity] || '#aaa';
+                        return `<span style="color: ${rarityColor}; font-size: 9px;">${item.icon}</span>`;
+                    }).filter(x => x).join(' ');
+
+                    enemiesHTML += `<div style="margin: 4px 0; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 3px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>⚠️ ${enemy.name}</span>
+                            <span style="font-size: 10px; color: #888;">Lv.${enemy.level}</span>
+                        </div>
+                        <div style="font-size: 10px; color: #888;">HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>
+                        <div style="margin-top: 2px;">${equipList || '<span style="color: #555; font-size: 9px;">No equipment</span>'}</div>
+                    </div>`;
                 });
 
                 // Build salvage rarity rates display for mobile
@@ -6717,13 +7211,22 @@
                     })
                     .join(' • ');
 
+                // Threat level color for mobile
+                const threatColor = mission.threatScore < 85 ? '#88ff88' :
+                                   mission.threatScore < 140 ? '#ffcc44' : '#ff6644';
+
                 card.innerHTML = `
                     <div class="mission-card-header">
                         <span class="mission-name">${mission.name}</span>
-                        <span class="mission-difficulty ${mission.difficulty.toLowerCase()}">${mission.difficulty}</span>
+                        <span class="mission-difficulty ${mission.actualDifficulty.toLowerCase()}">${mission.actualDifficulty}</span>
                     </div>
                     <div class="mission-desc">${mission.description}</div>
                     <div class="mission-details">
+                        <div class="mission-threat" style="margin-bottom: 6px; font-size: 11px;">
+                            <span style="color: #888;">⚡ Threat:</span>
+                            <span style="color: ${threatColor}; font-weight: bold;">${mission.threatLevel}</span>
+                            <span style="color: #555; font-size: 9px;">(${mission.threatScore})</span>
+                        </div>
                         <div class="mission-reward">
                             <span>💰 ${mission.reward.credits} Credits</span>
                             <span>⭐ ${mission.reward.xp} XP</span>
@@ -6840,9 +7343,12 @@
                 mission.enemyMechs.forEach((enemy, idx) => {
                     let equipmentHTML = '';
                     enemy.equipment.forEach(eq => {
-                        const item = ITEM_DATABASE[eq.itemId];
+                        const item = eq.item || ITEM_DATABASE[eq.itemId];
                         if (item) {
-                            equipmentHTML += `<div style="font-size: 10px; color: #888;">${item.icon} ${item.name}</div>`;
+                            const rarity = item.rarity || 'common';
+                            const rarityColor = COMPONENT_GENERATION.rarityColors[rarity] || '#aaa';
+                            const bodyPartLabel = eq.bodyPart ? ` <span style="color: #555;">(${eq.bodyPart})</span>` : '';
+                            equipmentHTML += `<div style="font-size: 10px; color: ${rarityColor};">${item.icon} ${item.name}${bodyPartLabel}</div>`;
                         }
                     });
 
@@ -6862,8 +7368,9 @@
                                 <div>🛡️ ${enemy.stats.armor} ARM</div>
                                 <div>⚡ ${enemy.stats.energy} EN</div>
                             </div>
-                            <div class="enemy-equipment" style="margin-top: 5px;">
-                                ${equipmentHTML}
+                            <div class="enemy-equipment" style="margin-top: 8px; border-top: 1px solid #333; padding-top: 6px;">
+                                <div style="font-size: 9px; color: #666; margin-bottom: 3px; text-transform: uppercase;">Equipment:</div>
+                                ${equipmentHTML || '<div style="font-size: 10px; color: #555;">None</div>'}
                             </div>
                         </div>
                     `;
@@ -6879,14 +7386,24 @@
                     })
                     .join(' • ');
 
+                // Threat level color
+                const threatColor = mission.threatScore < 85 ? '#88ff88' :
+                                   mission.threatScore < 140 ? '#ffcc44' : '#ff6644';
+
                 card.innerHTML = `
                     <div class="mission-header">
                         <span class="mission-name">${mission.name}</span>
-                        <span class="mission-difficulty ${mission.difficulty.toLowerCase()}">${mission.difficulty}</span>
+                        <span class="mission-difficulty ${mission.actualDifficulty.toLowerCase()}">${mission.actualDifficulty}</span>
                     </div>
                     <div class="mission-desc">${mission.description}</div>
                     <div class="mission-enemies" style="margin: 8px 0; font-size: 12px;">
                         ${enemySummary}
+                    </div>
+                    <div class="mission-threat" style="margin: 6px 0; font-size: 11px; display: flex; align-items: center; gap: 6px;">
+                        <span style="color: #888;">⚡ Threat:</span>
+                        <span style="color: ${threatColor}; font-weight: bold;">${mission.threatLevel}</span>
+                        <span style="color: #555; font-size: 9px;">(${mission.threatScore})</span>
+                        ${enemyCount > 1 ? `<span style="color: #666; font-size: 9px; margin-left: auto;">+${Math.round((enemyCount - 1) * 12)}% action</span>` : ''}
                     </div>
                     <div class="mission-reward">
                         <span>💰 ${mission.reward.credits}</span>
@@ -7007,6 +7524,9 @@
                         const bargainBadge = shopItem.isBargain ?
                             `<div style="position: absolute; top: -8px; left: -8px; background: #ff6600; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold;">BARGAIN!</div>` : '';
 
+                        const modifierLine = item.modifier ?
+                            `<div style="font-size: 9px; color: #ffaa00; margin-top: 2px;">⚡ ${item.modifier.name}</div>` : '';
+
                         card.innerHTML = `
                             ${bargainBadge}
                             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -7017,8 +7537,8 @@
                                 </div>
                             </div>
                             <div style="font-size: 11px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
+                            ${modifierLine}
                             ${buildItemStatIcons(item)}
-                            ${buildSynergyTags(item)}
                             <div class="item-bottom-row">
                                 ${buildItemSecondaryStats(item)}
                                 ${buildInlineShapePreview(item, 8)}
@@ -7143,10 +7663,13 @@
                         const el = document.createElement('div');
                         el.className = `shop-sell-item ${item.category}`;
                         el.style.borderColor = '#ffaa00';
+                        const modLine = item.modifier ?
+                            `<div style="font-size: 9px; color: #ffaa00;">⚡ ${item.modifier.name}</div>` : '';
                         el.innerHTML = `
                             <span class="item-icon">${item.icon}</span>
                             <div class="item-info">
                                 <div class="item-name" style="color: ${rarityColor};">${item.name}</div>
+                                ${modLine}
                                 ${buildItemStatIcons(item)}
                                 <div style="margin-top: 4px; color: #ffaa00; font-size: 10px;">🔄 Buyback: 1g</div>
                             </div>
@@ -7168,11 +7691,14 @@
             const rarityColor = item.isGenerated && COMPONENT_GENERATION ?
                 (COMPONENT_GENERATION.rarityColors[item.rarity] || '#00ff88') : '#00ff88';
 
+            const modLine = item.modifier ?
+                `<div style="font-size: 9px; color: #ffaa00;">⚡ ${item.modifier.name}</div>` : '';
             el.innerHTML = `
                 ${buildItemShapePreview(item)}
                 <span class="item-icon">${item.icon}</span>
                 <div class="item-info">
                     <div class="item-name" style="color: ${rarityColor};">${item.name}</div>
+                    ${modLine}
                     ${buildItemStatIcons(item)}
                     <div class="item-sell-price" style="margin-top: 4px;">💰 Sell: ${sellPrice}g</div>
                 </div>
@@ -7434,17 +7960,17 @@
             let totalArmor = 0;
             let accuracyBonus = 0;
             let hpBonus = 0;
-            let damageReduction = 0;
+            let damageReduction = 0;  // Takes highest value, doesn't stack
             let energyShieldHP = 0;
 
             loadoutState.equipment.forEach(eq => {
-                const item = ITEM_DATABASE[eq.itemId];
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
                 if (item && item.stats) {
                     totalWeight += item.stats.weight || 0;
                     totalArmor += item.stats.armorBonus || 0;
                     accuracyBonus += item.stats.accuracyBonus || 0;
                     hpBonus += item.stats.hpBonus || 0;
-                    damageReduction += item.stats.damageReduction || 0;
+                    damageReduction = Math.max(damageReduction, item.stats.damageReduction || 0);  // Highest only
                     energyShieldHP += item.stats.energyShieldHP || 0;
                     const draw = item.stats.energyDraw || 0;
                     if (draw > 0) {
@@ -7961,32 +8487,260 @@
             return bonusMap;
         }
 
+        // ============================================
+        // POSITIONAL MODIFIER CALCULATION
+        // Evaluates positional bonuses for items with special modifiers
+        // ============================================
+        function calculatePositionalBonuses() {
+            const bonuses = {};  // instanceId -> { damage: 0, hp: 0, energy: 0 }
+
+            if (!unifiedGridOccupation || !unifiedGridOccupation.cells) return bonuses;
+
+            // Build a map of all occupied cells and their item types
+            const cellMap = {};  // "x,y" -> { instanceId, type, category }
+            const itemPositions = {};  // instanceId -> [{x, y}, ...]
+
+            loadoutState.equipment.forEach(eq => {
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
+                if (!item || !eq.position) return;
+
+                itemPositions[eq.instanceId] = [];
+                const shape = item.gridShape;
+                if (shape) {
+                    for (let dy = 0; dy < shape.length; dy++) {
+                        for (let dx = 0; dx < shape[0].length; dx++) {
+                            if (shape[dy][dx] === 1) {
+                                const x = eq.position.x + dx;
+                                const y = eq.position.y + dy;
+                                const key = `${x},${y}`;
+                                cellMap[key] = {
+                                    instanceId: eq.instanceId,
+                                    type: item.type,
+                                    category: item.category
+                                };
+                                itemPositions[eq.instanceId].push({ x, y });
+                            }
+                        }
+                    }
+                }
+
+                // Initialize bonus tracking
+                bonuses[eq.instanceId] = { damage: 0, hp: 0, energy: 0 };
+            });
+
+            // Helper functions for position checks
+            const isInTopRow = (positions) => positions.some(p => p.y === 0);
+            const isInBottomRow = (positions) => positions.some(p => p.y === MECH_CHASSIS.gridRows - 1);
+            const isOnLeftEdge = (positions) => positions.some(p => p.x === 0);
+            const isOnRightEdge = (positions) => positions.some(p => p.x === MECH_CHASSIS.gridCols - 1);
+            const isOnEdge = (positions) => isOnLeftEdge(positions) || isOnRightEdge(positions);
+            const isInCorner = (positions) => positions.some(p =>
+                (p.x === 0 || p.x === MECH_CHASSIS.gridCols - 1) &&
+                (p.y === 0 || p.y === MECH_CHASSIS.gridRows - 1)
+            );
+            const isCentral = (positions) => !positions.some(p =>
+                p.x === 0 || p.x === MECH_CHASSIS.gridCols - 1 ||
+                p.y === 0 || p.y === MECH_CHASSIS.gridRows - 1
+            );
+
+            // Count adjacent items of a specific type
+            const countAdjacentOfType = (positions, targetType, excludeInstanceId) => {
+                const offsets = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+                const counted = new Set();
+                positions.forEach(p => {
+                    offsets.forEach(({dx, dy}) => {
+                        const key = `${p.x + dx},${p.y + dy}`;
+                        if (cellMap[key] && cellMap[key].type === targetType &&
+                            cellMap[key].instanceId !== excludeInstanceId) {
+                            counted.add(cellMap[key].instanceId);
+                        }
+                    });
+                });
+                return counted.size;
+            };
+
+            // Check if item is isolated (no adjacent items)
+            const isIsolated = (positions, instanceId) => {
+                const offsets = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+                for (const p of positions) {
+                    for (const {dx, dy} of offsets) {
+                        const key = `${p.x + dx},${p.y + dy}`;
+                        if (cellMap[key] && cellMap[key].instanceId !== instanceId) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            };
+
+            // Calculate longest chain of connected items of same type
+            const getLongestChain = (startInstanceId, targetType) => {
+                const visited = new Set();
+                const queue = [startInstanceId];
+                visited.add(startInstanceId);
+
+                while (queue.length > 0) {
+                    const currentId = queue.shift();
+                    const positions = itemPositions[currentId] || [];
+                    const offsets = [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}];
+
+                    positions.forEach(p => {
+                        offsets.forEach(({dx, dy}) => {
+                            const key = `${p.x + dx},${p.y + dy}`;
+                            if (cellMap[key] && cellMap[key].type === targetType &&
+                                !visited.has(cellMap[key].instanceId)) {
+                                visited.add(cellMap[key].instanceId);
+                                queue.push(cellMap[key].instanceId);
+                            }
+                        });
+                    });
+                }
+                return visited.size;
+            };
+
+            // Check if any row is completely filled
+            const hasCompleteRow = () => {
+                for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
+                    let rowFilled = true;
+                    for (let x = 0; x < MECH_CHASSIS.gridCols; x++) {
+                        // Only check valid cells in the mech shape
+                        if (MECH_CHASSIS.gridShape[y]?.[x] === 1 && !cellMap[`${x},${y}`]) {
+                            rowFilled = false;
+                            break;
+                        }
+                    }
+                    // Count valid cells in row
+                    const validCells = MECH_CHASSIS.gridShape[y]?.filter(c => c === 1).length || 0;
+                    if (validCells > 0 && rowFilled) return true;
+                }
+                return false;
+            };
+
+            // Check if any column is completely filled
+            const hasCompleteColumn = () => {
+                for (let x = 0; x < MECH_CHASSIS.gridCols; x++) {
+                    let colFilled = true;
+                    let validCells = 0;
+                    for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
+                        if (MECH_CHASSIS.gridShape[y]?.[x] === 1) {
+                            validCells++;
+                            if (!cellMap[`${x},${y}`]) {
+                                colFilled = false;
+                            }
+                        }
+                    }
+                    if (validCells > 0 && colFilled) return true;
+                }
+                return false;
+            };
+
+            // Now evaluate each item's modifiers
+            loadoutState.equipment.forEach(eq => {
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
+                if (!item || !eq.position) return;
+
+                const positions = itemPositions[eq.instanceId];
+                const modifier = item.modifier;
+                if (!modifier || !modifier.effect) return;
+
+                const effect = modifier.effect;
+
+                // Position-based bonuses (Cost 1)
+                if (effect.topRowDamageBonus && isInTopRow(positions)) {
+                    bonuses[eq.instanceId].damage += effect.topRowDamageBonus;
+                }
+                if (effect.bottomRowHPBonus && isInBottomRow(positions)) {
+                    bonuses[eq.instanceId].hp += effect.bottomRowHPBonus;
+                }
+                if (effect.edgeDamageBonus && isOnEdge(positions)) {
+                    bonuses[eq.instanceId].damage += effect.edgeDamageBonus;
+                }
+                if (effect.centralEnergyBonus && isCentral(positions)) {
+                    bonuses[eq.instanceId].energy += effect.centralEnergyBonus;
+                }
+
+                // Adjacency count bonuses (Cost 2)
+                if (effect.damagePerAdjacentWeapon) {
+                    const count = countAdjacentOfType(positions, 'WEAPON', eq.instanceId);
+                    bonuses[eq.instanceId].damage += effect.damagePerAdjacentWeapon * count;
+                }
+                if (effect.hpPerAdjacentArmor) {
+                    const count = countAdjacentOfType(positions, 'ARMOR', eq.instanceId);
+                    bonuses[eq.instanceId].hp += effect.hpPerAdjacentArmor * count;
+                }
+                if (effect.energyPerAdjacentReactor) {
+                    const count = countAdjacentOfType(positions, 'REACTOR', eq.instanceId);
+                    bonuses[eq.instanceId].energy += effect.energyPerAdjacentReactor * count;
+                }
+
+                // Isolation bonuses (Cost 2)
+                if (effect.isolationDamageBonus && isIsolated(positions, eq.instanceId)) {
+                    bonuses[eq.instanceId].damage += effect.isolationDamageBonus;
+                }
+                if (effect.isolationHPBonus && isIsolated(positions, eq.instanceId)) {
+                    bonuses[eq.instanceId].hp += effect.isolationHPBonus;
+                }
+
+                // Corner bonus (Cost 2)
+                if (effect.cornerDamageBonus && isInCorner(positions)) {
+                    bonuses[eq.instanceId].damage += effect.cornerDamageBonus;
+                }
+
+                // Chain bonuses (Cost 3)
+                if (effect.damagePerChainWeapon) {
+                    const chainLength = getLongestChain(eq.instanceId, 'WEAPON');
+                    bonuses[eq.instanceId].damage += effect.damagePerChainWeapon * (chainLength - 1);  // -1 to not count self
+                }
+                if (effect.hpPerChainArmor) {
+                    const chainLength = getLongestChain(eq.instanceId, 'ARMOR');
+                    bonuses[eq.instanceId].hp += effect.hpPerChainArmor * (chainLength - 1);
+                }
+
+                // Row/Column completion bonuses (Cost 3)
+                if (effect.rowCompleteDamageBonus && hasCompleteRow()) {
+                    bonuses[eq.instanceId].damage += effect.rowCompleteDamageBonus;
+                }
+                if (effect.columnCompleteHPBonus && hasCompleteColumn()) {
+                    bonuses[eq.instanceId].hp += effect.columnCompleteHPBonus;
+                }
+            });
+
+            return bonuses;
+        }
+
         function calculatePlayerStats() {
             let totalDamage = 0;
             let totalArmor = 0;
             let totalWeight = 0;
             let hpBonus = 0;
-            let damageReduction = 0;
+            let damageReduction = 0;  // Takes highest value, doesn't stack
             let energyShieldHP = 0;
             let weapons = [];
 
-            // Calculate adjacency bonuses FIRST
+            // Calculate adjacency bonuses and positional bonuses
             const adjacencyBonuses = calculateAdjacencyBonuses();
+            const positionalBonuses = calculatePositionalBonuses();
 
             loadoutState.equipment.forEach(eq => {
-                const item = ITEM_DATABASE[eq.itemId];
+                const item = eq.item || ITEM_DATABASE[eq.itemId];
                 if (item && item.stats) {
                     totalWeight += item.stats.weight || 0;
                     totalDamage += item.stats.damage || 0;
                     totalArmor += item.stats.armorBonus || 0;
                     hpBonus += item.stats.hpBonus || 0;
-                    damageReduction += item.stats.damageReduction || 0;
+                    damageReduction = Math.max(damageReduction, item.stats.damageReduction || 0);  // Highest only
                     energyShieldHP += item.stats.energyShieldHP || 0;
+
+                    // Add positional HP bonus if present
+                    const posBonuses = positionalBonuses[eq.instanceId] || { damage: 0, hp: 0, energy: 0 };
+                    hpBonus += posBonuses.hp;
+
                     if (item.type === 'WEAPON') {
                         // Get adjacency bonus for this weapon
                         const adjBonus = adjacencyBonuses[eq.instanceId] || 0;
                         const baseDamage = item.stats.damage || 0;
-                        const totalWeaponDamage = baseDamage + adjBonus;
+                        // Include positional damage bonus
+                        const totalWeaponDamage = baseDamage + adjBonus + posBonuses.damage;
 
                         // Pass full weapon info for battle simulation
                         weapons.push({
@@ -7994,27 +8748,30 @@
                             instanceId: eq.instanceId,
                             slot: eq.slot,
                             name: item.name,
-                            damage: totalWeaponDamage,  // Base + adjacency bonus!
+                            damage: totalWeaponDamage,  // Base + adjacency + positional!
                             baseDamage: baseDamage,
                             adjacencyBonus: adjBonus,
+                            positionalBonus: posBonuses.damage,
                             battle: item.battle || {},
                             synergies: item.synergies || [],
                             synergyDescription: item.synergyDescription || ''
                         });
 
                         // Log synergy activation
-                        if (adjBonus > 0) {
+                        const totalBonus = adjBonus + posBonuses.damage;
+                        if (totalBonus > 0) {
                             const shots = item.battle?.shotsPerRound || 1;
-                            console.log(`🎯 SYNERGY! ${item.name}: ${baseDamage}+${adjBonus}=${totalWeaponDamage} damage x${shots} shots = ${totalWeaponDamage * shots} total (was ${baseDamage * shots})`);
+                            console.log(`🎯 BONUS! ${item.name}: ${baseDamage}+${totalBonus}=${totalWeaponDamage} damage x${shots} shots = ${totalWeaponDamage * shots} total`);
                         }
                     }
                 }
             });
 
             // Use mech's base HP + hpBonus from armor
+            // Player gets 2x health advantage
             const mech = getActiveMech();
             const baseHealth = mech.baseHP || 25;
-            const totalHealth = baseHealth + hpBonus;
+            const totalHealth = (baseHealth + hpBonus) * 2;
 
             return {
                 maxHealth: totalHealth,
@@ -8126,7 +8883,8 @@
             if (event.data && event.data.type === 'battleEnd') {
                 const result = event.data.result || 'victory';
                 const rewards = event.data.rewards || { xp: 0, scrap: 0, components: [] };
-                showSalvageScreen(result, rewards);
+                const enemyDamageData = event.data.enemyDamageData || null;
+                showSalvageScreen(result, rewards, enemyDamageData);
             }
         });
 
@@ -8153,7 +8911,7 @@
             if (stats.energyDraw < 0) statsLines.push(`⚡ +${Math.abs(stats.energyDraw)}`);
             if (stats.energyReduction) statsLines.push(`COOL: -${stats.energyReduction}`);
             if (stats.adjacentDamageBonus) statsLines.push(`⚔️ +${stats.adjacentDamageBonus} adj wpn`);
-            if (stats.adjacentArmorBonus) statsLines.push(`🔗 +${stats.adjacentArmorBonus} adj arm`);
+            if (stats.adjacentArmorBonus) statsLines.push(`🛡️ +${stats.adjacentArmorBonus} adj arm`);
             if (stats.adjacentEnergyBonus) statsLines.push(`⚡ +${stats.adjacentEnergyBonus} adj pwr`);
             if (stats.heatCapacity) statsLines.push(`HEAT: ${stats.heatCapacity}`);
             if (battle.knockback) statsLines.push(`KB: ${battle.knockback}`);
@@ -8182,7 +8940,7 @@
             return html;
         }
 
-        function showSalvageScreen(result, rewards) {
+        function showSalvageScreen(result, rewards, enemyDamageData) {
             // Hide battle iframe
             const battleFrame = document.getElementById('battleFrame');
             battleFrame.style.display = 'none';
@@ -8191,13 +8949,6 @@
             // Get enemy level and difficulty from the mission we just fought
             const missionEnemyLevel = lastBattleMission ? lastBattleMission.averageLevel : Math.floor(currentEnemyLevel);
             const missionDifficulty = lastBattleMission ? lastBattleMission.difficulty : 'Easy';
-
-            // Generate salvage options using the mission's enemy level and difficulty
-            const salvageOptions = generateSalvageOptions(result, missionEnemyLevel, missionDifficulty);
-
-            // Calculate skip salvage gold bonus (highest original level of salvage)
-            const skipGoldBonus = salvageOptions.length > 0 ?
-                Math.max(...salvageOptions.map(opt => opt.originalLevel || opt.level || 1)) : 0;
 
             // Get max picks allowed
             const maxPicks = getSalvagePicks(result);
@@ -8240,6 +8991,171 @@
             const resultText = result === 'victory' ?
                 (isBoss ? 'BOSS DEFEATED!' : 'MISSION COMPLETE') :
                 'MISSION FAILED';
+
+            // Build enemy mech component view HTML
+            let enemyMechsHTML = '';
+            let totalScrap = 0;
+            const salvagableItems = [];  // Items that survived and can be salvaged
+
+            if (enemyDamageData && enemyDamageData.length > 0) {
+                enemyMechsHTML = '<div style="margin-top: 20px; width: 100%; max-width: 1200px;">';
+                enemyMechsHTML += '<div style="font-size: 16px; color: #ff6644; margin-bottom: 15px; text-align: center; letter-spacing: 2px;">ENEMY MECHS STATUS</div>';
+                enemyMechsHTML += '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">';
+
+                enemyDamageData.forEach((enemy, mechIndex) => {
+                    const bodyPartHP = enemy.bodyPartHP || {};
+                    const equipment = enemy.equipment || [];
+
+                    // Build body part HP display (mech silhouette style)
+                    const bodyPartOrder = ['head', 'leftArm', 'torso', 'rightArm', 'leftLeg', 'rightLeg'];
+                    const bodyPartNames = {
+                        head: 'Head', torso: 'Torso', leftArm: 'L.Arm', rightArm: 'R.Arm', leftLeg: 'L.Leg', rightLeg: 'R.Leg'
+                    };
+                    const bodyPartIcons = {
+                        head: '🎯', torso: '💪', leftArm: '🦾', rightArm: '🦾', leftLeg: '🦵', rightLeg: '🦵'
+                    };
+
+                    // Helper function to build HP bar with numbers
+                    const buildHPBar = (current, max, destroyed) => {
+                        const safeMax = max > 0 ? max : 1;
+                        const safeCurrent = (!isNaN(current) && current >= 0) ? current : 0;
+                        const hpPercent = Math.max(0, Math.min(1, safeCurrent / safeMax));
+                        const hpColor = destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
+                        const barWidth = destroyed ? 0 : Math.round(hpPercent * 100);
+                        return `<div style="width: 100%; height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px; overflow: hidden; margin-top: 2px;">
+                            <div style="width: ${barWidth}%; height: 100%; background: ${hpColor}; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="font-size: 7px; color: #666; margin-top: 1px;">${Math.round(safeCurrent)}/${Math.round(safeMax)}</div>`;
+                    };
+
+                    let bodyPartsHTML = '<div style="display: grid; grid-template-columns: auto auto auto; gap: 3px; justify-content: center; align-items: center;">';
+                    // Row 1: Head (centered)
+                    bodyPartsHTML += '<div></div>';
+                    const head = bodyPartHP.head;
+                    if (head) {
+                        const hpPercent = (head.max > 0 && !isNaN(head.current)) ? Math.max(0, head.current / head.max) : 0;
+                        const hpColor = head.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
+                        bodyPartsHTML += `<div style="background: ${head.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px; min-width: 45px;">
+                            <div style="color: #888;">Head</div>
+                            ${head.destroyed ? '<div style="color: #ff4444; font-weight: bold;">X</div>' : buildHPBar(head.current, head.max, head.destroyed)}
+                        </div>`;
+                    } else {
+                        bodyPartsHTML += '<div></div>';
+                    }
+                    bodyPartsHTML += '<div></div>';
+
+                    // Row 2: Arms + Torso
+                    ['leftArm', 'torso', 'rightArm'].forEach(part => {
+                        const bp = bodyPartHP[part];
+                        if (bp) {
+                            const hpPercent = (bp.max > 0 && !isNaN(bp.current)) ? Math.max(0, bp.current / bp.max) : 0;
+                            const hpColor = bp.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
+                            bodyPartsHTML += `<div style="background: ${bp.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px; min-width: 45px;">
+                                <div style="color: #888;">${bodyPartNames[part]}</div>
+                                ${bp.destroyed ? '<div style="color: #ff4444; font-weight: bold;">X</div>' : buildHPBar(bp.current, bp.max, bp.destroyed)}
+                            </div>`;
+                        } else {
+                            bodyPartsHTML += '<div></div>';
+                        }
+                    });
+
+                    // Row 3: Legs (centered under torso)
+                    bodyPartsHTML += '<div></div>';
+                    const legsHTML = ['leftLeg', 'rightLeg'].map(part => {
+                        const bp = bodyPartHP[part];
+                        if (bp) {
+                            const hpPercent = (bp.max > 0 && !isNaN(bp.current)) ? Math.max(0, bp.current / bp.max) : 0;
+                            const hpColor = bp.destroyed ? '#ff4444' : (hpPercent > 0.5 ? '#00ff88' : (hpPercent > 0.25 ? '#ffaa00' : '#ff6644'));
+                            return `<div style="background: ${bp.destroyed ? 'rgba(255,68,68,0.3)' : 'rgba(0,0,0,0.4)'}; border: 1px solid ${hpColor}; padding: 4px 6px; border-radius: 4px; text-align: center; font-size: 9px; min-width: 40px;">
+                                <div style="color: #888;">${bodyPartNames[part]}</div>
+                                ${bp.destroyed ? '<div style="color: #ff4444; font-weight: bold;">X</div>' : buildHPBar(bp.current, bp.max, bp.destroyed)}
+                            </div>`;
+                        }
+                        return '';
+                    }).join('');
+                    bodyPartsHTML += `<div style="display: flex; gap: 3px; justify-content: center;">${legsHTML}</div>`;
+                    bodyPartsHTML += '<div></div>';
+                    bodyPartsHTML += '</div>';
+
+                    // Build equipment list with salvage status
+                    let equipmentHTML = '<div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 8px;">';
+                    equipmentHTML += '<div style="font-size: 10px; color: #888; margin-bottom: 6px;">Equipment:</div>';
+
+                    let mechScrap = 0;
+                    equipment.forEach(eq => {
+                        const item = eq.item || ITEM_DATABASE[eq.itemId];
+                        if (!item) return;
+
+                        const rarityColor = COMPONENT_GENERATION.rarityColors[item.rarity] || '#aaa';
+                        const isDestroyed = eq.isDestroyed;
+                        const bodyPart = eq.bodyPart || 'torso';
+
+                        if (isDestroyed) {
+                            // Item destroyed - becomes scrap
+                            const scrapValue = Math.ceil((item.stats?.damage || 1) + (item.level || 1));
+                            mechScrap += scrapValue;
+                            equipmentHTML += `<div style="display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: rgba(255,68,68,0.15); border-radius: 3px; margin-bottom: 3px; opacity: 0.7;">
+                                <span style="font-size: 14px;">${item.icon || '📦'}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 10px; color: #ff4444; text-decoration: line-through;">${item.name}</div>
+                                    <div style="font-size: 8px; color: #666;">${bodyPartNames[bodyPart] || bodyPart} - DESTROYED</div>
+                                </div>
+                                <div style="font-size: 9px; color: #888;">+${scrapValue}🔩</div>
+                            </div>`;
+                        } else {
+                            // Item survived - can be salvaged
+                            salvagableItems.push({
+                                ...item,
+                                mechIndex: mechIndex,
+                                mechName: enemy.name,
+                                bodyPart: bodyPart,
+                                isDamaged: (eq.bodyPartHPPercent || 1) < 0.5,  // Damaged if body part was below 50%
+                                originalLevel: item.level || 1
+                            });
+                            equipmentHTML += `<div style="display: flex; align-items: center; gap: 6px; padding: 3px 6px; background: rgba(0,255,136,0.15); border-radius: 3px; margin-bottom: 3px;">
+                                <span style="font-size: 14px;">${item.icon || '📦'}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 10px; color: ${rarityColor};">${item.name}</div>
+                                    <div style="font-size: 8px; color: #666;">${bodyPartNames[bodyPart] || bodyPart}</div>
+                                </div>
+                                <div style="font-size: 9px; color: #00ff88;">✓ Salvage</div>
+                            </div>`;
+                        }
+                    });
+
+                    totalScrap += mechScrap;
+                    equipmentHTML += '</div>';
+
+                    // Mech card
+                    enemyMechsHTML += `
+                        <div style="background: rgba(0,0,0,0.5); border: 2px solid #ff6644; border-radius: 8px; padding: 12px; width: 220px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="font-size: 12px; color: #ff6644; font-weight: bold;">${enemy.name}</div>
+                                <div style="font-size: 10px; color: #666;">Lv.${enemy.level || 1}</div>
+                            </div>
+                            ${bodyPartsHTML}
+                            ${equipmentHTML}
+                            <div style="margin-top: 8px; text-align: center; font-size: 10px; color: #888;">
+                                Scrap: <span style="color: #ffcc00;">+${mechScrap}🔩</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                enemyMechsHTML += '</div>';
+                enemyMechsHTML += `<div style="margin-top: 15px; text-align: center; font-size: 14px; color: #ffcc00;">Total Scrap Collected: +${totalScrap}🔩</div>`;
+                enemyMechsHTML += '</div>';
+
+                // Award scrap as gold
+                playerResources.gold += totalScrap;
+            }
+
+            // Use actual salvageable items from enemies instead of random generation
+            const salvageOptions = salvagableItems.length > 0 ? salvagableItems : generateSalvageOptions(result, missionEnemyLevel, missionDifficulty, enemyDamageData);
+
+            // Calculate skip salvage gold bonus (highest original level of salvage)
+            const skipGoldBonus = salvageOptions.length > 0 ?
+                Math.max(...salvageOptions.map(opt => opt.originalLevel || opt.level || 1)) : 0;
 
             // Calculate sell prices for each salvage option
             function getSellPrice(comp) {
@@ -8302,7 +9218,6 @@
                                             ${comp.name}
                                         </div>
                                         ${buildItemStatIcons(comp)}
-                                        ${buildSynergyTags(comp)}
                                         <div class="item-bottom-row" style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
                                             ${buildItemSecondaryStats(comp)}
                                             ${buildInlineShapePreview(comp, 8)}
@@ -8360,8 +9275,13 @@
                             <div style="font-size: 28px; color: #88aaff;">+${rewards.xp}</div>
                             <div style="font-size: 10px; color: #888;">EXPERIENCE</div>
                         </div>
+                        ${totalScrap > 0 ? `<div style="text-align: center;">
+                            <div style="font-size: 28px; color: #aa8844;">+${totalScrap}</div>
+                            <div style="font-size: 10px; color: #888;">SCRAP</div>
+                        </div>` : ''}
                     </div>
                 </div>
+                ${enemyMechsHTML}
                 ${salvageHTML}
                 <div style="display: flex; gap: 15px; margin-top: 25px; margin-bottom: 20px;">
                     <button id="skipSalvageBtn" style="
@@ -8750,10 +9670,10 @@
 
             // Test 8: Armor HP scaling
             console.log('\n--- Test 8: Armor HP Scaling ---');
-            const hull1 = generateComponent('hull_armor', 1, 'common');
-            const hull5 = generateComponent('hull_armor', 5, 'common');
-            assert(hull1.stats.hpBonus === 10, 'Hull Armor L1 HP = 10 (prototype)', `Got: ${hull1.stats.hpBonus}`);
-            assert(hull5.stats.hpBonus > hull1.stats.hpBonus, 'Hull Armor L5 HP > L1 HP', `L5: ${hull5.stats.hpBonus}, L1: ${hull1.stats.hpBonus}`);
+            const armor1 = generateComponent('armor_medium', 1, 'common');
+            const armor5 = generateComponent('armor_medium', 5, 'common');
+            assert(armor1.stats.hpBonus === 11, 'Medium Armor L1 HP = 11 (prototype)', `Got: ${armor1.stats.hpBonus}`);
+            assert(armor5.stats.hpBonus > armor1.stats.hpBonus, 'Medium Armor L5 HP > L1 HP', `L5: ${armor5.stats.hpBonus}, L1: ${armor1.stats.hpBonus}`);
 
             // Test 9: Minimum Level System
             console.log('\n--- Test 9: Minimum Level Calculation ---');
@@ -8780,7 +9700,7 @@
             // Test 10: Budget Balance Sanity Check
             console.log('\n--- Test 10: Budget Balance Values ---');
             const templates = ['railgun', 'laser', 'missile', 'machinegun', 'minigun', 'pulse_laser',
-                              'ballistic_plating', 'hull_armor', 'reactor', 'targeting_hub'];
+                              'ballistic_plating', 'armor_medium', 'reactor', 'targeting_hub'];
             for (const key of templates) {
                 if (ITEM_TEMPLATES[key]) {
                     const balance = calculateTemplateBudgetBalance(ITEM_TEMPLATES[key]);

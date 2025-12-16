@@ -112,6 +112,45 @@
         }
         .hp-fill.player { background: linear-gradient(90deg, #00aa55, #00ff88); }
         .hp-fill.enemy { background: linear-gradient(90deg, #aa2222, #ff4444); }
+        .body-parts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            margin-top: 4px;
+            font-size: 9px;
+        }
+        .body-part {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 4px;
+            border-radius: 2px;
+            text-align: center;
+        }
+        .body-part.destroyed {
+            background: rgba(100,0,0,0.5);
+            color: #ff4444;
+            text-decoration: line-through;
+        }
+        .body-part.damaged {
+            background: rgba(100,50,0,0.4);
+            color: #ffaa00;
+        }
+        .body-part.healthy {
+            background: rgba(0,50,0,0.3);
+            color: #00ff88;
+        }
+        .body-part-bar {
+            height: 3px;
+            background: #222;
+            border-radius: 1px;
+            margin-top: 1px;
+        }
+        .body-part-fill {
+            height: 100%;
+            border-radius: 1px;
+            transition: width 0.2s;
+        }
+        .body-part-fill.player { background: #00ff88; }
+        .body-part-fill.enemy { background: #ff4444; }
         #polyCount {
             text-align: center;
             font-size: 10px;
@@ -498,6 +537,103 @@
             top: -3px;
             left: -3px;
             background: transparent;
+        }
+
+        /* ============================================
+           TARGET INFO PANEL
+           ============================================ */
+        #targetPanel {
+            display: none;
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 220px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(255, 100, 100, 0.6);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #targetPanel.active {
+            display: block;
+        }
+
+        #targetPanel .target-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 100, 100, 0.4);
+        }
+
+        #targetPanel .target-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff6666;
+        }
+
+        #targetPanel .target-level {
+            font-size: 11px;
+            background: rgba(255, 100, 100, 0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        #targetPanel .target-hp-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        #targetPanel .target-hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ff8844);
+            transition: width 0.3s ease;
+        }
+
+        #targetPanel .target-hp-text {
+            font-size: 10px;
+            color: #aaa;
+            text-align: center;
+            margin-top: -10px;
+            margin-bottom: 6px;
+            position: relative;
+        }
+
+        #targetPanel .target-equipment {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 8px;
+        }
+
+        #targetPanel .target-equipment-title {
+            font-size: 9px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        #targetPanel .target-item {
+            font-size: 11px;
+            padding: 2px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #targetPanel .target-item-name {
+            flex: 1;
+        }
+
+        #targetPanel .target-item-location {
+            font-size: 9px;
+            color: #666;
         }
 
         /* ============================================
@@ -1101,6 +1237,24 @@
             <div class="crosshair-center"></div>
         </div>
 
+        <!-- Target Info Panel -->
+        <div id="targetPanel">
+            <div class="target-header">
+                <span class="target-name" id="targetName">No Target</span>
+                <span class="target-level" id="targetLevel">Lv.?</span>
+            </div>
+            <div class="target-hp-bar">
+                <div class="target-hp-fill" id="targetHPFill" style="width: 100%;"></div>
+            </div>
+            <div class="target-hp-text" id="targetHPText">-- / --</div>
+            <div class="target-equipment">
+                <div class="target-equipment-title">Equipment</div>
+                <div id="targetEquipmentList">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
         <!-- Detailed Mech Cockpit Frame -->
         <div id="cockpitFrame">
             <!-- Frame struts with distressed metal -->
@@ -1213,12 +1367,28 @@
                 <div class="hp-bar"><div class="hp-fill player" id="playerHP" style="width: 100%"></div></div>
                 <div id="playerHPText">HP: 150/150</div>
                 <div id="playerState">Idle</div>
+                <div class="body-parts" id="playerBodyParts">
+                    <div class="body-part healthy" id="player_leftArm">L.Arm<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_head">Head<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_rightArm">R.Arm<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_leftLeg">L.Leg<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_torso">Torso<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="player_rightLeg">R.Leg<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
+                </div>
             </div>
             <div class="mech-info enemy">
                 <strong style="color: #ff4444;">DIRE WOLF (Daishi)</strong>
                 <div class="hp-bar"><div class="hp-fill enemy" id="enemyHP" style="width: 100%"></div></div>
                 <div id="enemyHPText">HP: 200/200</div>
                 <div id="enemyState">Idle</div>
+                <div class="body-parts" id="enemyBodyParts">
+                    <div class="body-part healthy" id="enemy_leftArm">L.Arm<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_head">Head<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_rightArm">R.Arm<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_leftLeg">L.Leg<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_torso">Torso<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                    <div class="body-part healthy" id="enemy_rightLeg">R.Leg<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1337,7 +1507,13 @@
             maxYaw: 1.2,             // Max horizontal rotation (radians, ~69 degrees)
             maxPitch: 0.5,           // Max vertical rotation (radians, ~29 degrees)
             pitchSensitivity: 1.8,   // Multiplier for vertical sensitivity
-            defaultPitch: -0.15      // Default pitch offset (negative = look down)
+            defaultPitch: -0.15,     // Default pitch offset (negative = look down)
+            // Target tracking
+            currentTarget: null,     // Currently tracked enemy mech
+            pendingTarget: null,     // Target we're switching to
+            targetSwitchTimer: 0,    // Time until target switch completes
+            targetSwitchDelay: 500,  // ms delay before switching targets (prevent whiplash)
+            lastTargetUpdateTime: 0  // Throttle target updates
         };
 
         // Weapon cooldowns per mech (keyed by mech name)
@@ -1802,6 +1978,718 @@
             minZ: -8,
             maxZ: 8
         };
+
+        // ============================================
+        // BODY PART DAMAGE SYSTEM
+        // Each body part has separate HP. Mech destroyed if head, torso, or both legs destroyed.
+        // ============================================
+        const BODY_PART_CONFIG = {
+            // HP distribution ratios (relative to base unit)
+            // Torso is 2x to make it the toughest part
+            hpRatios: {
+                torso: 2.0,      // Double HP - main body, hardest to destroy
+                head: 0.75,      // 75% of base - smaller but critical
+                leftArm: 0.5,    // 50% of base - easiest to destroy
+                rightArm: 0.5,
+                leftLeg: 0.75,   // 75% of base
+                rightLeg: 0.75
+            },
+            // Total ratio = 2.0 + 0.75 + 0.5 + 0.5 + 0.75 + 0.75 = 5.25
+            // So baseHP = totalHP / 5.25, then torsoHP = baseHP * 2.0
+
+            // Stability multiplier for leg hits
+            legStabilityMultiplier: 2.0,
+
+            // Damage reduction when arms are destroyed
+            firstArmDamageReduction: 0.5,    // 50% less damage with one arm gone
+            secondArmDamageReduction: 0.25,  // Additional 25% (75% total) with both gone
+
+            // Salvage penalties by body part (how much salvage quality decreases)
+            salvagePenalty: {
+                torso: 1.0,      // Full penalty
+                head: 0.0,       // No penalty - head shots preserve salvage
+                leftArm: 1.0,    // Full penalty
+                rightArm: 1.0,
+                leftLeg: 0.3,    // Only 30% penalty
+                rightLeg: 0.3
+            },
+
+            // Base scrap chance (even perfect kills have 50% chance per component)
+            baseScrapChance: 0.5
+        };
+
+        // Initialize body part health for a mech based on its total HP
+        function initializeBodyParts(totalHP) {
+            // Calculate base HP unit: totalHP = baseHP * 5.25 (sum of all ratios)
+            const baseHP = Math.round(totalHP / 5.25);
+            const torsoHP = Math.round(baseHP * BODY_PART_CONFIG.hpRatios.torso);
+
+            return {
+                torso: {
+                    maxHP: torsoHP,
+                    currentHP: torsoHP,
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                head: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.head),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.head),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                leftArm: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftArm),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftArm),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                rightArm: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightArm),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightArm),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                leftLeg: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftLeg),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftLeg),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                rightLeg: {
+                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightLeg),
+                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightLeg),
+                    destroyed: false,
+                    damageOverlay: null
+                },
+                // Track total damage to each part for salvage calculation
+                totalDamageReceived: {
+                    torso: 0,
+                    head: 0,
+                    leftArm: 0,
+                    rightArm: 0,
+                    leftLeg: 0,
+                    rightLeg: 0
+                }
+            };
+        }
+
+        // Check if mech should be destroyed based on body part status
+        function checkMechDestruction(mech) {
+            if (!mech.bodyParts) return false;
+
+            const bp = mech.bodyParts;
+
+            // Destroyed if head is gone
+            if (bp.head.destroyed) {
+                return { destroyed: true, reason: 'HEAD DESTROYED' };
+            }
+
+            // Destroyed if torso is gone
+            if (bp.torso.destroyed) {
+                return { destroyed: true, reason: 'TORSO DESTROYED' };
+            }
+
+            // Destroyed if BOTH legs are gone
+            if (bp.leftLeg.destroyed && bp.rightLeg.destroyed) {
+                return { destroyed: true, reason: 'LEGS DESTROYED' };
+            }
+
+            return { destroyed: false, reason: null };
+        }
+
+        // Calculate damage output multiplier based on destroyed arms
+        function getArmDamageMultiplier(mech) {
+            if (!mech.bodyParts) return 1.0;
+
+            const leftDestroyed = mech.bodyParts.leftArm.destroyed;
+            const rightDestroyed = mech.bodyParts.rightArm.destroyed;
+
+            if (leftDestroyed && rightDestroyed) {
+                // Both arms gone: 75% reduction (only 25% damage)
+                return 1.0 - BODY_PART_CONFIG.firstArmDamageReduction - BODY_PART_CONFIG.secondArmDamageReduction;
+            } else if (leftDestroyed || rightDestroyed) {
+                // One arm gone: 50% reduction
+                return 1.0 - BODY_PART_CONFIG.firstArmDamageReduction;
+            }
+
+            return 1.0;
+        }
+
+        // Determine which body part was hit based on impact position
+        function getHitBodyPart(mech, impactPosition) {
+            if (!mech || !impactPosition) return 'torso';
+
+            // Get positions of each body part (using meshes if available)
+            const pelvisPos = mech.pelvis ? mech.pelvis.getAbsolutePosition() : null;
+            if (!pelvisPos) return 'torso';
+
+            // Calculate relative height from pelvis
+            const relativeY = impactPosition.y - pelvisPos.y;
+            const relativeX = impactPosition.x - pelvisPos.x;
+            const mechFacing = mech.pelvis.rotationQuaternion ?
+                mech.pelvis.rotationQuaternion.toEulerAngles().y : 0;
+
+            // Rotate relative position to local coordinates
+            const cosY = Math.cos(-mechFacing);
+            const sinY = Math.sin(-mechFacing);
+            const localX = relativeX * cosY - (impactPosition.z - pelvisPos.z) * sinY;
+
+            // Height thresholds based on mech structure (scaled)
+            const scale = mech.scale || 1.0;
+            const headMinY = 2.0 * scale;     // Head is above this
+            const torsoMinY = 0.3 * scale;    // Torso is between leg and head
+            const legMaxY = 0.3 * scale;      // Legs are below this
+
+            // Width threshold for arms vs torso
+            const armThreshold = 0.6 * scale;
+
+            let hitPart = 'torso';
+
+            // Determine hit location
+            if (relativeY > headMinY) {
+                hitPart = 'head';
+            } else if (relativeY > torsoMinY) {
+                // Upper body - could be torso or arms
+                if (Math.abs(localX) > armThreshold) {
+                    hitPart = localX > 0 ? 'rightArm' : 'leftArm';
+                } else {
+                    hitPart = 'torso';
+                }
+            } else {
+                // Lower body - legs
+                hitPart = localX > 0 ? 'rightLeg' : 'leftLeg';
+            }
+
+            // Debug: Log hit detection details
+            console.log(`[HIT] ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} ${hitPart} | relY=${relativeY.toFixed(2)} localX=${localX.toFixed(2)} | thresholds: head>${headMinY.toFixed(2)}, torso>${torsoMinY.toFixed(2)}, arm>${armThreshold.toFixed(2)}`);
+
+            return hitPart;
+        }
+
+        // ============================================
+        // DAMAGE VISUAL SYSTEM - Sparks, Decals, Deformation
+        // ============================================
+
+        // Cache for damage decal textures
+        let damageDecalTextures = null;
+
+        // Create procedural damage/scorch textures
+        function createDamageTextures() {
+            if (damageDecalTextures) return damageDecalTextures;
+
+            damageDecalTextures = [];
+
+            // Create several variations of damage decals
+            for (let variant = 0; variant < 3; variant++) {
+                const size = 128;
+                const texture = new BABYLON.DynamicTexture('damageDecal_' + variant, size, scene, false);
+                const ctx = texture.getContext();
+
+                // Clear with transparency
+                ctx.clearRect(0, 0, size, size);
+
+                // Draw scorch/damage pattern
+                const centerX = size / 2;
+                const centerY = size / 2;
+                const maxRadius = size / 2 - 4;
+
+                // Outer scorch ring
+                const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+                gradient.addColorStop(0, 'rgba(20, 20, 20, 0.9)');
+                gradient.addColorStop(0.3, 'rgba(40, 30, 20, 0.8)');
+                gradient.addColorStop(0.6, 'rgba(60, 40, 30, 0.5)');
+                gradient.addColorStop(0.85, 'rgba(80, 50, 30, 0.2)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Add some random burn marks/cracks
+                ctx.strokeStyle = 'rgba(10, 10, 10, 0.7)';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 5 + variant * 2; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const len = maxRadius * (0.3 + Math.random() * 0.5);
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(
+                        centerX + Math.cos(angle) * len,
+                        centerY + Math.sin(angle) * len
+                    );
+                    ctx.stroke();
+                }
+
+                // Add some orange/hot spots near center for fresh damage look
+                if (variant === 0) {
+                    const hotGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius * 0.3);
+                    hotGradient.addColorStop(0, 'rgba(255, 150, 50, 0.4)');
+                    hotGradient.addColorStop(0.5, 'rgba(255, 100, 30, 0.2)');
+                    hotGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = hotGradient;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, maxRadius * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                texture.update();
+                texture.hasAlpha = true;
+                damageDecalTextures.push(texture);
+            }
+
+            return damageDecalTextures;
+        }
+
+        // Get the mesh for a body part
+        function getBodyPartMesh(mech, bodyPartName) {
+            switch (bodyPartName) {
+                case 'head': return mech.head;
+                case 'torso': return mech.torso;
+                case 'leftArm': return mech.leftArm?.weaponPod || mech.leftArm?.arm || mech.leftArm;
+                case 'rightArm': return mech.rightArm?.weaponPod || mech.rightArm?.arm || mech.rightArm;
+                case 'leftLeg': return mech.leftLeg?.upperLeg || mech.leftLeg;
+                case 'rightLeg': return mech.rightLeg?.upperLeg || mech.rightLeg;
+                default: return null;
+            }
+        }
+
+        // Create a damage decal at impact point
+        function createDamageDecal(mech, bodyPartName, impactPosition, impactDirection, damage) {
+            const mesh = getBodyPartMesh(mech, bodyPartName);
+            if (!mesh) return;
+
+            // Initialize decal tracking on body part
+            const bodyPart = mech.bodyParts?.[bodyPartName];
+            if (!bodyPart) return;
+            if (!bodyPart.decals) bodyPart.decals = [];
+
+            // Limit decals per body part for performance
+            const maxDecals = 5;
+            if (bodyPart.decals.length >= maxDecals) {
+                // Remove oldest decal
+                const oldDecal = bodyPart.decals.shift();
+                if (oldDecal) oldDecal.dispose();
+            }
+
+            // Get damage textures
+            const textures = createDamageTextures();
+            const textureIndex = Math.floor(Math.random() * textures.length);
+
+            // Calculate decal size based on damage (larger damage = larger scorch)
+            const baseSize = 0.3 + (damage / 30) * 0.4;  // 0.3 to 0.7 based on damage
+            const size = Math.min(baseSize, 1.0) * mech.scale;
+
+            // Calculate normal from impact direction (facing outward from hit)
+            const normal = impactDirection.normalize().scale(-1);
+
+            try {
+                // Create decal projected onto the mesh
+                const decal = BABYLON.MeshBuilder.CreateDecal('damageDecal', mesh, {
+                    position: impactPosition,
+                    normal: normal,
+                    size: new BABYLON.Vector3(size, size, size),
+                    angle: Math.random() * Math.PI * 2
+                });
+
+                if (decal) {
+                    // Create material for the decal
+                    const decalMat = new BABYLON.StandardMaterial('decalMat_' + Date.now(), scene);
+                    decalMat.diffuseTexture = textures[textureIndex];
+                    decalMat.diffuseTexture.hasAlpha = true;
+                    decalMat.useAlphaFromDiffuseTexture = true;
+                    decalMat.zOffset = -2;  // Render slightly in front to avoid z-fighting
+                    decalMat.backFaceCulling = false;
+                    decalMat.emissiveColor = new BABYLON.Color3(0.1, 0.05, 0);  // Slight glow
+                    decal.material = decalMat;
+
+                    // Parent to the body part so it moves with the mech
+                    decal.parent = mesh;
+
+                    bodyPart.decals.push(decal);
+                }
+            } catch (e) {
+                // Decal creation can fail on complex meshes - that's okay
+                console.log('Decal creation failed (expected for some mesh types):', e.message);
+            }
+        }
+
+        // Enhanced impact sparks with metal debris
+        function createDamageSparksBurst(position, direction, intensity) {
+            const sparkCount = Math.floor(8 + intensity * 12);  // 8-20 sparks based on intensity
+
+            for (let i = 0; i < sparkCount; i++) {
+                // Mix of bright sparks and darker debris
+                const isSpark = Math.random() > 0.3;
+
+                const particle = BABYLON.MeshBuilder.CreateSphere('spark', {
+                    diameter: isSpark ? 0.06 : 0.1
+                }, scene);
+                particle.position = position.clone();
+
+                const mat = new BABYLON.StandardMaterial('sparkMat', scene);
+                if (isSpark) {
+                    // Bright orange/yellow spark
+                    mat.emissiveColor = new BABYLON.Color3(1, 0.6 + Math.random() * 0.4, 0.1);
+                } else {
+                    // Dark metal debris
+                    mat.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                    mat.emissiveColor = new BABYLON.Color3(0.3, 0.15, 0.05);
+                }
+                mat.disableLighting = isSpark;
+                particle.material = mat;
+
+                // Random velocity - sparks fly faster than debris
+                const speed = isSpark ? 6 : 3;
+                const vel = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * speed + direction.x * 2,
+                    Math.random() * 4 + 1,
+                    (Math.random() - 0.5) * speed + direction.z * 2
+                );
+
+                let age = 0;
+                const lifetime = isSpark ? 400 : 600;
+                const updateInterval = setInterval(() => {
+                    age += 30;
+                    if (age > lifetime) {
+                        clearInterval(updateInterval);
+                        particle.dispose();
+                        mat.dispose();
+                        return;
+                    }
+
+                    particle.position.addInPlace(vel.scale(0.03));
+                    vel.y -= isSpark ? 0.4 : 0.5;  // Gravity
+
+                    // Fade out
+                    mat.alpha = 1 - (age / lifetime);
+
+                    // Sparks flicker
+                    if (isSpark && Math.random() > 0.7) {
+                        mat.emissiveColor = new BABYLON.Color3(
+                            0.8 + Math.random() * 0.2,
+                            0.4 + Math.random() * 0.4,
+                            0.1
+                        );
+                    }
+                }, 30);
+            }
+        }
+
+        // Create smoke puff at impact
+        function createImpactSmoke(position, intensity) {
+            const smokeCount = Math.floor(3 + intensity * 4);
+
+            for (let i = 0; i < smokeCount; i++) {
+                const smoke = BABYLON.MeshBuilder.CreateSphere('smoke', {
+                    diameter: 0.3 + Math.random() * 0.3
+                }, scene);
+                smoke.position = position.clone().add(new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 0.3,
+                    Math.random() * 0.2,
+                    (Math.random() - 0.5) * 0.3
+                ));
+
+                const smokeMat = new BABYLON.StandardMaterial('smokeMat', scene);
+                smokeMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+                smokeMat.alpha = 0.4;
+                smokeMat.backFaceCulling = false;
+                smoke.material = smokeMat;
+
+                let age = 0;
+                const lifetime = 800 + Math.random() * 400;
+                const riseSpeed = 0.5 + Math.random() * 0.5;
+                const expandRate = 1.02;
+
+                const updateInterval = setInterval(() => {
+                    age += 30;
+                    if (age > lifetime) {
+                        clearInterval(updateInterval);
+                        smoke.dispose();
+                        smokeMat.dispose();
+                        return;
+                    }
+
+                    // Rise and expand
+                    smoke.position.y += riseSpeed * 0.03;
+                    smoke.scaling.scaleInPlace(expandRate);
+
+                    // Fade out
+                    smokeMat.alpha = 0.4 * (1 - age / lifetime);
+                }, 30);
+            }
+        }
+
+        // Helper to darken a single material
+        function darkenMaterial(mesh, darkenFactor, damageRatio, storageObj, storageKey) {
+            if (!mesh.material) return;
+
+            const mat = mesh.material;
+            const key = storageKey || mesh.name;
+
+            // Store original material if not already stored
+            if (!storageObj.originalMaterials) storageObj.originalMaterials = {};
+            if (!storageObj.originalMaterials[key]) {
+                storageObj.originalMaterials[key] = {
+                    material: mat,
+                    diffuseColor: mat.diffuseColor ? mat.diffuseColor.clone() : null,
+                    albedoColor: mat.albedoColor ? mat.albedoColor.clone() : null
+                };
+                // Clone material so we don't affect others using same material
+                const damagedMat = mat.clone(mat.name + '_damaged_' + key);
+                mesh.material = damagedMat;
+            }
+
+            const orig = storageObj.originalMaterials[key];
+
+            // Handle StandardMaterial (diffuseColor)
+            if (orig.diffuseColor && mesh.material.diffuseColor) {
+                mesh.material.diffuseColor = orig.diffuseColor.scale(darkenFactor);
+            }
+            // Handle PBRMaterial (albedoColor)
+            if (orig.albedoColor && mesh.material.albedoColor) {
+                mesh.material.albedoColor = orig.albedoColor.scale(darkenFactor);
+            }
+
+            // No emissive glow - just pure darkening to black
+            if (mesh.material.emissiveColor !== undefined) {
+                mesh.material.emissiveColor = new BABYLON.Color3(0, 0, 0);
+            }
+        }
+
+        // Apply geometry deformation to damaged parts
+        function applyDamageDeformation(mech, bodyPartName) {
+            const bodyPart = mech.bodyParts?.[bodyPartName];
+            if (!bodyPart) return;
+
+            const mesh = getBodyPartMesh(mech, bodyPartName);
+            if (!mesh) return;
+
+            const damageRatio = 1 - (bodyPart.currentHP / bodyPart.maxHP);
+
+            // Store original scaling if not already stored
+            if (!bodyPart.originalScaling) {
+                bodyPart.originalScaling = mesh.scaling.clone();
+            }
+
+            // Only deform if significantly damaged (>30%)
+            if (damageRatio >= 0.3) {
+                // Apply asymmetric scaling to simulate dents/damage
+                // More damage = more deformation
+                const deformAmount = (damageRatio - 0.3) * 0.15;  // 0 to ~0.1 deformation
+
+                // Random but consistent deformation per part
+                if (!bodyPart.deformSeed) {
+                    bodyPart.deformSeed = {
+                        x: (Math.random() - 0.5) * 2,
+                        y: (Math.random() - 0.5) * 2,
+                        z: (Math.random() - 0.5) * 2
+                    };
+                }
+
+                const newScaling = bodyPart.originalScaling.clone();
+                newScaling.x *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.x);
+                newScaling.y *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.y) * 0.5;  // Less vertical deform
+                newScaling.z *= 1 - deformAmount * Math.abs(bodyPart.deformSeed.z);
+
+                mesh.scaling = newScaling;
+            }
+
+            // PROGRESSIVE DARKENING - starts immediately, goes completely black when destroyed
+            // damageRatio 0% = no darkening, 50% = 60% darker, 100% = completely black
+            if (damageRatio > 0) {
+                const darkenFactor = Math.max(0, 1 - damageRatio * 1.2);  // Goes to black at ~83% damage
+
+                // Darken the main mesh
+                darkenMaterial(mesh, darkenFactor, damageRatio, bodyPart, 'main');
+
+                // Also darken child meshes (many body parts have children)
+                const children = mesh.getChildMeshes ? mesh.getChildMeshes(false) : [];
+                children.forEach((child, idx) => {
+                    if (child.material) {
+                        darkenMaterial(child, darkenFactor, damageRatio, bodyPart, 'child_' + idx);
+                    }
+                });
+            }
+        }
+
+        // Handle destroyed body part visuals
+        function applyDestructionVisuals(mech, bodyPartName) {
+            const mesh = getBodyPartMesh(mech, bodyPartName);
+            if (!mesh) return;
+
+            // Make the part semi-transparent and very dark
+            if (mesh.material) {
+                if (!mesh.material._isDestroyedMaterial) {
+                    const destroyedMat = mesh.material.clone(mesh.material.name + '_destroyed');
+                    destroyedMat.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.15);
+                    destroyedMat.emissiveColor = new BABYLON.Color3(0, 0, 0);
+                    destroyedMat.alpha = 0.6;
+                    destroyedMat._isDestroyedMaterial = true;
+                    mesh.material = destroyedMat;
+                }
+            }
+
+            // Significant deformation for destroyed parts
+            const bodyPart = mech.bodyParts?.[bodyPartName];
+            if (bodyPart && !bodyPart.originalScaling) {
+                bodyPart.originalScaling = mesh.scaling.clone();
+            }
+            if (bodyPart) {
+                mesh.scaling = bodyPart.originalScaling.scale(0.7);  // Crushed/compacted look
+            }
+
+            // Spawn debris
+            createDestructionDebris(mesh.getAbsolutePosition(), mech.scale);
+        }
+
+        // Spawn debris when a part is destroyed
+        function createDestructionDebris(position, scale) {
+            const debrisCount = 8 + Math.floor(Math.random() * 6);
+
+            for (let i = 0; i < debrisCount; i++) {
+                // Create angular debris pieces
+                const debris = BABYLON.MeshBuilder.CreateBox('debris', {
+                    width: 0.1 + Math.random() * 0.15,
+                    height: 0.05 + Math.random() * 0.1,
+                    depth: 0.08 + Math.random() * 0.12
+                }, scene);
+                debris.position = position.clone();
+                debris.scaling.scaleInPlace(scale);
+
+                const debrisMat = new BABYLON.StandardMaterial('debrisMat', scene);
+                debrisMat.diffuseColor = new BABYLON.Color3(0.3, 0.3, 0.35);
+                debrisMat.emissiveColor = new BABYLON.Color3(0.1, 0.05, 0);
+                debris.material = debrisMat;
+
+                // Random velocity - explosion outward
+                const vel = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 8,
+                    Math.random() * 6 + 2,
+                    (Math.random() - 0.5) * 8
+                );
+                const angularVel = new BABYLON.Vector3(
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10,
+                    (Math.random() - 0.5) * 10
+                );
+
+                let age = 0;
+                const lifetime = 1500 + Math.random() * 500;
+
+                const updateInterval = setInterval(() => {
+                    age += 30;
+                    if (age > lifetime) {
+                        clearInterval(updateInterval);
+                        debris.dispose();
+                        debrisMat.dispose();
+                        return;
+                    }
+
+                    // Physics
+                    debris.position.addInPlace(vel.scale(0.03));
+                    vel.y -= 0.5;  // Gravity
+
+                    // Rotation
+                    debris.rotation.addInPlace(angularVel.scale(0.03));
+
+                    // Fade out in last 30%
+                    if (age > lifetime * 0.7) {
+                        debrisMat.alpha = 1 - (age - lifetime * 0.7) / (lifetime * 0.3);
+                    }
+
+                    // Stop when hitting ground
+                    if (debris.position.y < 0.1) {
+                        debris.position.y = 0.1;
+                        vel.y = 0;
+                        vel.x *= 0.8;
+                        vel.z *= 0.8;
+                        angularVel.scaleInPlace(0.9);
+                    }
+                }, 30);
+            }
+        }
+
+        // Main function to apply all damage visuals
+        function applyDamageVisuals(mech, bodyPartName, impactPosition, impactDirection, damage) {
+            if (!mech.bodyParts || !mech.bodyParts[bodyPartName]) return;
+
+            const bodyPart = mech.bodyParts[bodyPartName];
+            const damageRatio = 1 - (bodyPart.currentHP / bodyPart.maxHP);
+            const intensity = Math.min(1, damage / 20);  // Normalize damage to 0-1
+
+            // 1. Always create sparks at impact
+            if (impactPosition && impactDirection) {
+                createDamageSparksBurst(impactPosition, impactDirection, intensity);
+
+                // Add smoke for heavier hits
+                if (intensity > 0.3) {
+                    createImpactSmoke(impactPosition, intensity);
+                }
+
+                // 2. Add damage decal at impact point
+                createDamageDecal(mech, bodyPartName, impactPosition, impactDirection, damage);
+            }
+
+            // 3. Apply geometry deformation for accumulated damage
+            applyDamageDeformation(mech, bodyPartName);
+
+            // 4. If destroyed, apply destruction visuals
+            if (bodyPart.destroyed) {
+                applyDestructionVisuals(mech, bodyPartName);
+            }
+        }
+
+        // Legacy function - now redirects to new system
+        function updateDamageOverlay(mech, bodyPartName, impactPosition, impactDirection, damage) {
+            // Redirect to new damage visual system
+            applyDamageVisuals(mech, bodyPartName, impactPosition, impactDirection, damage || 10);
+        }
+
+        // Handle body part destruction effects
+        function destroyBodyPart(mech, bodyPartName) {
+            if (!mech.bodyParts || !mech.bodyParts[bodyPartName]) return;
+
+            const bodyPart = mech.bodyParts[bodyPartName];
+            bodyPart.destroyed = true;
+            bodyPart.currentHP = 0;
+
+            log(`${mech.name}: ${bodyPartName.toUpperCase()} DESTROYED!`, 'error');
+
+            // Get the destroyed part's position for effects
+            const partMesh = getBodyPartMesh(mech, bodyPartName);
+            const pos = partMesh ? partMesh.getAbsolutePosition() : mech.pelvis.getAbsolutePosition();
+            const explosionDir = new BABYLON.Vector3(
+                (Math.random() - 0.5) * 2,
+                1,
+                (Math.random() - 0.5) * 2
+            ).normalize();
+
+            // Apply destruction visuals (debris, darkening, deformation)
+            applyDamageVisuals(mech, bodyPartName, pos, explosionDir, 50);
+
+            // Extra destruction effects
+            createDamageSparksBurst(pos, explosionDir, 1.0);
+            createImpactSmoke(pos, 1.0);
+            triggerCameraShake(0.4, 0.25);
+
+            // Special effects for leg destruction - major stability hit
+            if (bodyPartName === 'leftLeg' || bodyPartName === 'rightLeg') {
+                mech.stability -= 50;
+                if (mech.stability < 0) mech.stability = 0;
+
+                // Trigger ragdoll if one leg destroyed - use strong force to ensure actual fall
+                if (mech.mechState === MechState.WALKING) {
+                    const hitForce = new BABYLON.Vector3(
+                        bodyPartName === 'leftLeg' ? 20 : -20,  // Strong sideways force
+                        15,  // Significant upward lift
+                        (Math.random() - 0.5) * 10  // Some random Z variation
+                    );
+                    triggerRagdoll(mech, hitForce);
+                    log(`${mech.name} collapses from leg damage!`, 'warn');
+                }
+            }
+        }
 
         // ============================================
         // SHADOW & QUALITY CONFIGURATION
@@ -2288,9 +3176,14 @@
                         }
                         // Use weapons from ITEM_DATABASE
                         enemyMech.loadoutWeapons = enemyData.weapons || [];
+                        // Store full equipment data (items with body part assignments)
+                        enemyMech.equipment = enemyData.equipment || [];
                         // Store enemy name for UI
                         enemyMech.displayName = enemyData.name || `Enemy ${index + 1}`;
+                        // Store enemy level for salvage calculations
+                        enemyMech.level = enemyData.level || 1;
                         console.log(`Enemy ${index + 1} (${enemyMech.displayName}) weapons:`, enemyMech.loadoutWeapons);
+                        console.log(`Enemy ${index + 1} equipment:`, enemyMech.equipment);
                     }
 
                     enemyMechs.push(enemyMech);
@@ -5291,10 +6184,12 @@
         function triggerRagdoll(mech, hitForce) {
             if (mech.mechState === MechState.RAGDOLL) return;  // Already ragdolling
 
-            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RAGDOLL triggered!`, 'warn');
+            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RAGDOLL triggered! Force: ${hitForce.length().toFixed(1)}`, 'warn');
 
             mech.mechState = MechState.RAGDOLL;
             mech.ragdollSettleTimer = 0;
+            mech.ragdollTotalTime = 0;  // Track total time in ragdoll
+            mech.ragdollStartY = mech.pelvis.getAbsolutePosition().y;  // Remember starting height
             mech.isWalking = false;
 
             const body = mech.pelvisAggregate.body;
@@ -5321,14 +6216,17 @@
             scaledHitForce.y = Math.max(scaledHitForce.y, hitForce.length() * 0.5);
 
             body.applyImpulse(scaledHitForce, pos);
+            dbg(`Applied impulse: ${scaledHitForce.x.toFixed(1)}, ${scaledHitForce.y.toFixed(1)}, ${scaledHitForce.z.toFixed(1)}`, 'phys');
 
             // 5. Strong angular impulse for dramatic spin/tumble
             const hitDir = hitForce.normalizeToNew();
-            body.applyAngularImpulse(new BABYLON.Vector3(
+            const angularImpulse = new BABYLON.Vector3(
                 hitDir.z * hitForce.length() * 0.3,  // Pitch based on Z hit direction
                 (Math.random() - 0.5) * hitForce.length() * 0.1,  // Random yaw spin
                 -hitDir.x * hitForce.length() * 0.3  // Roll based on X hit direction
-            ));
+            );
+            body.applyAngularImpulse(angularImpulse);
+            dbg(`Applied angular impulse: ${angularImpulse.x.toFixed(1)}, ${angularImpulse.y.toFixed(1)}, ${angularImpulse.z.toFixed(1)}`, 'phys');
 
             // 6. DRAMATIC LIMB FLINGING - arms and legs fly outward on impact
             flingLimbs(mech, hitForce);
@@ -5508,7 +6406,15 @@
         function updateRagdoll(mech, dt) {
             const body = mech.pelvisAggregate.body;
             const velocity = body.getLinearVelocity();
+            const angularVel = body.getAngularVelocity();
             const speed = velocity.length();
+            const angularSpeed = angularVel.length();
+            const pos = mech.pelvis.getAbsolutePosition();
+            const quat = body.transformNode.rotationQuaternion;
+
+            // Track total time in ragdoll state
+            if (!mech.ragdollTotalTime) mech.ragdollTotalTime = 0;
+            mech.ragdollTotalTime += dt;
 
             // Handle destroyed mechs differently - they don't recover, but need friction
             if (mech.isDestroyed) {
@@ -5530,7 +6436,6 @@
                 }
 
                 // Keep feet somewhat level during ragdoll for visual consistency
-                const quat = body.transformNode.rotationQuaternion;
                 if (quat && mech.leftLeg.footGroup) {
                     const euler = quat.toEulerAngles();
                     mech.leftLeg.footGroup.rotation.x = -euler.x * 0.5;
@@ -5539,23 +6444,71 @@
                 return;  // Destroyed mechs don't recover
             }
 
-            // Check if mech has settled (low velocity)
-            if (speed < STABILITY_CONFIG.ragdollSettleVelocity) {
+            // ROBUST SETTLE DETECTION
+            // Require multiple conditions before recovery can start:
+
+            // 1. MINIMUM TIME IN RAGDOLL - must stay down for at least this long
+            //    This ensures mech stays fallen for a noticeable duration
+            const minRagdollTime = 5.0;  // 5 seconds down before can start recovery
+
+            // 2. MAXIMUM RAGDOLL TIMEOUT - don't stay in ragdoll forever
+            //    After this time, force recovery regardless of other conditions
+            const maxRagdollTime = 8.0;
+            if (mech.ragdollTotalTime > maxRagdollTime) {
+                dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Ragdoll timeout - forcing recovery after ${mech.ragdollTotalTime.toFixed(2)}s`, 'ai');
+                startRecovery(mech);
+                return;
+            }
+
+            if (mech.ragdollTotalTime < minRagdollTime) {
+                // Still in initial ragdoll phase - don't even check for settle
+                if (quat && mech.leftLeg.footGroup) {
+                    const euler = quat.toEulerAngles();
+                    mech.leftLeg.footGroup.rotation.x = -euler.x * 0.5;
+                    mech.rightLeg.footGroup.rotation.x = -euler.x * 0.5;
+                }
+                return;
+            }
+
+            // 3. CHECK IF MECH HAS ACTUALLY FALLEN (becomes less strict over time)
+            const standingY = mech.standingHeight || 3.0;
+            const timeFactor = Math.min(1.0, (mech.ragdollTotalTime - minRagdollTime) / 1.5);  // 0 to 1 over 1.5s
+
+            // Height check becomes more lenient over time (70% → 95%)
+            const heightThreshold = standingY * (0.7 + 0.25 * timeFactor);
+            const hasFallen = pos.y < heightThreshold;
+
+            // Tilt check becomes more lenient over time (0.5 → 0.15 radians)
+            const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
+            const tiltAmount = Math.abs(euler.x) + Math.abs(euler.z);
+            const tiltThreshold = 0.5 - (0.35 * timeFactor);  // 0.5 → 0.15
+            const isRotatedOver = tiltAmount > tiltThreshold;
+
+            // After enough time, always consider "fallen" (mech might just be wobbling in place)
+            const hasActuallyFallen = hasFallen || isRotatedOver || timeFactor > 0.8;
+
+            // 4. CHECK VELOCITY (both linear and angular must be low)
+            const isLinearSettled = speed < STABILITY_CONFIG.ragdollSettleVelocity;
+            const isAngularSettled = angularSpeed < 0.5;
+            const isSettled = isLinearSettled && isAngularSettled;
+
+            // 5. ACCUMULATE SETTLE TIME (with all conditions met)
+            if (isSettled && hasActuallyFallen) {
                 mech.ragdollSettleTimer += dt;
 
                 // If settled for long enough, start recovery
                 if (mech.ragdollSettleTimer > STABILITY_CONFIG.ragdollSettleTime) {
+                    dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Settle conditions met - starting recovery. TotalTime: ${mech.ragdollTotalTime.toFixed(2)}s, Y: ${pos.y.toFixed(1)}, Tilt: ${tiltAmount.toFixed(2)}`, 'ai');
                     startRecovery(mech);
+                    return;
                 }
             } else {
-                // Still moving - reset settle timer
+                // Not settled yet - reset settle timer
                 mech.ragdollSettleTimer = 0;
             }
 
             // Keep feet somewhat level during ragdoll for visual consistency
-            const quat = body.transformNode.rotationQuaternion;
             if (quat && mech.leftLeg.footGroup) {
-                const euler = quat.toEulerAngles();
                 mech.leftLeg.footGroup.rotation.x = -euler.x * 0.5;
                 mech.rightLeg.footGroup.rotation.x = -euler.x * 0.5;
             }
@@ -5576,66 +6529,79 @@
             const quat = body.transformNode.rotationQuaternion;
             const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
 
-            // Check if face down (torso pointing to ground)
-            const forward = new BABYLON.Vector3(0, 0, 1);
-            if (quat) {
-                const rotMatrix = new BABYLON.Matrix();
-                quat.toRotationMatrix(rotMatrix);
-                forward.copyFrom(BABYLON.Vector3.TransformNormal(new BABYLON.Vector3(0, 1, 0), rotMatrix));
-            }
-            mech.isFaceDown = forward.y < 0;
+            // Switch to ANIMATED mode immediately
+            body.setMotionType(BABYLON.PhysicsMotionType.ANIMATED);
 
-            // Stop all motion before recovery
+            // Stop all motion
             body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
             body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
+
+            // Store the current position for the lift animation
+            const pos = mech.pelvis.getAbsolutePosition();
+            mech.recoveryStartX = pos.x;
+            mech.recoveryStartY = pos.y;
+            mech.recoveryStartZ = pos.z;
+
+            // IMMEDIATELY snap to upright rotation (preserve yaw/facing direction)
+            // Must use setTargetTransform for ANIMATED physics bodies!
+            const uprightQuat = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
+            mech.recoveryUprightQuat = uprightQuat;  // Store for use in updateRecovery
+            body.setTargetTransform(pos, uprightQuat);
+
+            // Reset legs to default pose
+            dampLegs(mech, 1.0);
         }
 
         function updateRecovery(mech, dt) {
             mech.recoveryTimer += dt;
             const body = mech.pelvisAggregate.body;
             const pos = mech.pelvis.getAbsolutePosition();
-            const quat = body.transformNode.rotationQuaternion;
-            const euler = quat ? quat.toEulerAngles() : new BABYLON.Vector3(0, 0, 0);
 
-            const blendTime = STABILITY_CONFIG.recoveryBlendTime;
+            // Recovery timing - use setTargetTransform to animate from fallen to standing
+            const liftTime = 0.6;  // Time to lift to standing
+            const standingY = 3.5 * mech.scale;
+            const uprightQuat = mech.recoveryUprightQuat || BABYLON.Quaternion.Identity();
 
-            if (mech.recoveryTimer < blendTime) {
-                // Phase 1: Blend rotation to upright
-                const t = mech.recoveryTimer / blendTime;
-                const easeT = t * t * (3 - 2 * t);  // Smoothstep for nice easing
+            if (mech.recoveryTimer < liftTime) {
+                // Lift phase: Interpolate position from start to standing height
+                const t = mech.recoveryTimer / liftTime;
+                const easeT = t * t * (3 - 2 * t);  // Smoothstep easing
 
-                // Blend to upright (keep Y rotation for facing)
-                const targetQuat = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
-                const blendedQuat = BABYLON.Quaternion.Slerp(quat, targetQuat, easeT);
-                body.transformNode.rotationQuaternion = blendedQuat;
+                const startX = mech.recoveryStartX || pos.x;
+                const startY = mech.recoveryStartY || pos.y;
+                const startZ = mech.recoveryStartZ || pos.z;
 
-                // Also lift to standing height
-                const standingY = 3.5 * mech.scale;
-                const targetY = Math.max(pos.y, standingY);
-                mech.pelvis.position.y = BABYLON.Scalar.Lerp(pos.y, targetY, easeT);
+                // Interpolate Y position from fallen to standing
+                const currentY = startY + (standingY - startY) * easeT;
+                const targetPos = new BABYLON.Vector3(startX, currentY, startZ);
 
-                // Reset leg positions during blend
+                // Use setTargetTransform to maintain upright rotation while lifting
+                body.setTargetTransform(targetPos, uprightQuat);
+
+                // Keep legs in default pose during lift
                 dampLegs(mech, dt * 3);
 
-            } else if (mech.recoveryTimer < blendTime + 0.3) {
-                // Phase 2: Switch back to kinematic and stabilize
-                if (body.getMotionType() !== BABYLON.PhysicsMotionType.ANIMATED) {
-                    body.setMotionType(BABYLON.PhysicsMotionType.ANIMATED);
-                    body.setLinearVelocity(new BABYLON.Vector3(0, 0, 0));
-                    body.setAngularVelocity(new BABYLON.Vector3(0, 0, 0));
-
-                    // Make sure we're upright
-                    body.transformNode.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(0, euler.y, 0);
-
-                    dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Switched back to ANIMATED`, 'ai');
-                }
-
             } else {
-                // Phase 3: Recovery complete - back to walking state
-                mech.mechState = MechState.WALKING;
-                mech.stability = STABILITY_CONFIG.maxStability * 0.5;  // Partial stability after recovery
+                // Recovery complete - ensure final standing position
+                const finalPos = new BABYLON.Vector3(
+                    mech.recoveryStartX || pos.x,
+                    standingY,
+                    mech.recoveryStartZ || pos.z
+                );
+                body.setTargetTransform(finalPos, uprightQuat);
 
-                dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RECOVERED! Back to WALKING`, 'ai');
+                // Back to walking state
+                mech.mechState = MechState.WALKING;
+
+                // STABILITY DOUBLING: After getting up, stability cap is doubled
+                // This makes it harder to knock them down again
+                if (!mech.stabilityMultiplier) mech.stabilityMultiplier = 1.0;
+                mech.stabilityMultiplier *= 2.0;
+                const newMaxStability = STABILITY_CONFIG.maxStability * mech.stabilityMultiplier;
+                mech.stability = newMaxStability;  // Full stability at new cap
+
+                dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: RECOVERED! Back to WALKING (stability cap now ${newMaxStability})`, 'ai');
+                log(`${mech.name} gets up! (harder to knock down now: ${mech.stabilityMultiplier}x stability)`, 'info');
             }
         }
 
@@ -6196,8 +7162,10 @@
             // ============================================
             // WEAPON FIRING (separate from movement)
             // Skip AI weapon firing for player mech when in piloting mode (user controls weapons)
+            // Also skip if mech is ragdolled or recovering - can't fire while fallen!
             // ============================================
-            const skipWeaponFiring = mech.isPlayer && pilotingModeActive;
+            const isIncapacitated = mech.mechState === MechState.RAGDOLL || mech.mechState === MechState.RECOVERING;
+            const skipWeaponFiring = (mech.isPlayer && pilotingModeActive) || isIncapacitated;
             if (!skipWeaponFiring && gameTime - mech.ai.lastDecision > AI_CONFIG.decisionInterval) {
                 mech.ai.lastDecision = gameTime;
 
@@ -6291,10 +7259,19 @@
 
                 log(`[FIRE] ${from.name} attempting ${type}...`);
 
-                const weapon = WEAPONS[type];
-                if (!weapon) {
+                const baseWeapon = WEAPONS[type];
+                if (!baseWeapon) {
                     log(`[ERROR] Unknown weapon type: ${type}`, 'error');
                     return;
+                }
+
+                // Apply arm damage reduction if arms are destroyed
+                const armMultiplier = getArmDamageMultiplier(from);
+                const weapon = { ...baseWeapon };
+                weapon.damage = Math.round(baseWeapon.damage * armMultiplier);
+
+                if (armMultiplier < 1) {
+                    log(`${from.name}'s damaged arms reduce damage to ${weapon.damage}!`, 'warn');
                 }
 
                 from.recoilRecovery = weapon.recoil;
@@ -6378,7 +7355,11 @@
                 const wpnName = loadoutWeapon.name || loadoutWeapon.itemId;
                 const battleProps = loadoutWeapon.battle || {};
                 const baseDamage = loadoutWeapon.damage || 10;
-                const finalDamage = Math.round(baseDamage * damageMultiplier);
+
+                // Apply arm damage reduction if arms are destroyed
+                const armMultiplier = getArmDamageMultiplier(from);
+                const combinedMultiplier = damageMultiplier * armMultiplier;
+                const finalDamage = Math.round(baseDamage * combinedMultiplier);
 
                 if (damageMultiplier !== 1.0) {
                     log(`[LOADOUT FIRE] ${from.name} fires ${wpnName} (${baseDamage} × ${damageMultiplier} = ${finalDamage} damage)`);
@@ -6460,17 +7441,20 @@
 
                 const start = arm.weaponPod.getAbsolutePosition();
                 start.z += 0.5;
-                const target = to.torso.getAbsolutePosition();
-                target.x += (Math.random() - 0.5) * 0.4;
-                target.y += (Math.random() - 0.5) * 0.4;
+                const torsoPos = to.torso.getAbsolutePosition();
+                // Spread fire across entire mech body (head to legs, side to side)
+                const spreadTarget = torsoPos.clone();
+                spreadTarget.x += (Math.random() - 0.5) * 1.8;   // Reach arms on sides
+                spreadTarget.y += (Math.random() - 0.5) * 3.5;   // Head to legs spread
+                spreadTarget.z += (Math.random() - 0.5) * 0.8;   // Depth variance
 
                 // Validate positions
-                if (isNaN(start.x) || isNaN(target.x)) {
-                    log(`[ERROR] NaN position: start=${start} target=${target}`, 'error');
+                if (isNaN(start.x) || isNaN(spreadTarget.x)) {
+                    log(`[ERROR] NaN position: start=${start} spreadTarget=${spreadTarget}`, 'error');
                     return;
                 }
 
-                const dir = target.subtract(start).normalize();
+                const dir = spreadTarget.subtract(start).normalize();
                 const projSize = weapon.projectileSize || 0.1;
 
                 // Determine projectile type based on weapon characteristics
@@ -6478,7 +7462,7 @@
                 const isBallistic = weapon.projectileSpeed > 40 || (weapon.name && (weapon.name.toLowerCase().includes('railgun') || weapon.name.toLowerCase().includes('cannon') || weapon.name.toLowerCase().includes('gun')));
 
                 let proj;
-                let projectileData = { weapon, target: to, firedAt: Date.now() };
+                let projectileData = { weapon, target: to, spreadTarget: spreadTarget.clone(), firedAt: Date.now() };
 
                 if (isMissileWeapon) {
                     // MISSILE: Long narrow tube with nose cone and engine
@@ -6529,7 +7513,7 @@
                     engineGlow.material = glowMat;
 
                     // Orient missile toward target
-                    proj.lookAt(target);
+                    proj.lookAt(spreadTarget);
                     proj.rotation.x += Math.PI / 2;  // Point forward
 
                     // Store body mesh for physics (we'll attach aggregate to body)
@@ -6548,7 +7532,7 @@
                         height: 0.25, diameter: 0.04, tessellation: 6
                     }, scene);
                     proj.position = start.clone();
-                    proj.lookAt(target);
+                    proj.lookAt(spreadTarget);
                     proj.rotation.x += Math.PI / 2;
 
                     const mat = new BABYLON.StandardMaterial('bulletMat' + Date.now(), scene);
@@ -6646,7 +7630,12 @@
 
                 const start = arm.weaponPod.getAbsolutePosition();
                 start.z += 0.6;
-                const end = to.torso.getAbsolutePosition();
+                // Spread beam endpoint across mech body
+                const torsoPos = to.torso.getAbsolutePosition();
+                const end = torsoPos.clone();
+                end.x += (Math.random() - 0.5) * 1.8;   // Reach arms on sides
+                end.y += (Math.random() - 0.5) * 3.5;   // Head to legs spread
+                end.z += (Math.random() - 0.5) * 0.8;   // Depth variance
 
                 // Validate positions and check for degenerate path
                 if (isNaN(start.x) || isNaN(end.x)) {
@@ -6697,7 +7686,7 @@
                     halo: beamHalo, haloMat: haloMat,
                     createdAt: Date.now(), duration: weapon.beamDuration
                 });
-                applyDamage(to, weapon, from.isPlayer ? 1 : -1);
+                applyDamage(to, weapon, from.isPlayer ? 1 : -1, end.clone());
                 createImpact(end.clone(), weapon.color);
                 log(`[BEAM] Beam created successfully`);
             } catch (e) {
@@ -6781,7 +7770,7 @@
                     projectiles.push({
                         mesh: missile, aggregate: agg,
                         weapon: { ...weapon, damage: weapon.damage / weapon.clusterCount },
-                        target: to, firedAt: Date.now(), isMissile: true
+                        target: to, spreadTarget: spread.clone(), firedAt: Date.now(), isMissile: true
                     });
 
                     // Create small muzzle flash at each tube
@@ -6837,7 +7826,7 @@
                 }, 30);
 
                 // Apply damage with massive knockback
-                applyDamage(to, weapon, from.isPlayer ? 1 : -1);
+                applyDamage(to, weapon, from.isPlayer ? 1 : -1, swingEnd.clone());
 
                 // Extra knockback for melee
                 const knockDir = toPos.subtract(fromPos).normalize();
@@ -6857,7 +7846,7 @@
             }
         }
 
-        function applyDamage(mech, weapon, dirSign) {
+        function applyDamage(mech, weapon, dirSign, impactPosition) {
             // Skip if mech is already destroyed or recovering
             if (mech.isDestroyed) return;
             if (mech.mechState === MechState.RECOVERING) return;  // Don't damage during recovery
@@ -6888,17 +7877,69 @@
                 }
             }
 
+            // BODY PART DAMAGE SYSTEM
+            // Determine which body part was hit
+            const hitPart = impactPosition ? getHitBodyPart(mech, impactPosition) : 'torso';
+
+            // Initialize body parts if not already done
+            if (!mech.bodyParts) {
+                mech.bodyParts = initializeBodyParts(mech.maxHP);
+            }
+
+            const bodyPart = mech.bodyParts[hitPart];
+
+            // Calculate impact direction for visual effects
+            const impactDir = new BABYLON.Vector3(dirSign, 0, 0);
+
+            // Skip if this body part is already destroyed
+            if (bodyPart && bodyPart.destroyed) {
+                // Damage goes to torso instead if part is already gone
+                const fallbackPart = mech.bodyParts.torso;
+                if (!fallbackPart.destroyed) {
+                    fallbackPart.currentHP -= actualDamage;
+                    mech.bodyParts.totalDamageReceived.torso += actualDamage;
+                    // Get torso position for effects
+                    const torsoPos = mech.torso ? mech.torso.getAbsolutePosition() : impactPosition;
+                    applyDamageVisuals(mech, 'torso', torsoPos, impactDir, actualDamage);
+                    if (fallbackPart.currentHP <= 0) {
+                        destroyBodyPart(mech, 'torso');
+                    }
+                }
+            } else if (bodyPart) {
+                // Apply damage to the hit body part
+                bodyPart.currentHP -= actualDamage;
+                mech.bodyParts.totalDamageReceived[hitPart] += actualDamage;
+
+                // Apply damage visual effects (sparks, decals, deformation)
+                applyDamageVisuals(mech, hitPart, impactPosition, impactDir, actualDamage);
+
+                log(`${mech.name}: ${hitPart} hit for ${actualDamage} damage (${bodyPart.currentHP}/${bodyPart.maxHP})`, 'warn');
+
+                // Check if body part is destroyed
+                if (bodyPart.currentHP <= 0) {
+                    destroyBodyPart(mech, hitPart);
+                }
+            }
+
+            // Also track total HP for backwards compatibility
             mech.currentHP -= actualDamage;
             if (mech.currentHP < 0) mech.currentHP = 0;
 
             const knockback = weapon.knockback;
-            const impactDir = new BABYLON.Vector3(dirSign, 0, 0);
             mech.impactDirection = impactDir;
 
             // Trigger cinematic camera to track damaged mech
             triggerCinematicAction(mech, 'damage');
 
-            // Check for destruction first
+            // Check for mech destruction based on body parts
+            const destructionCheck = checkMechDestruction(mech);
+            if (destructionCheck.destroyed && !mech.isDestroyed) {
+                log(`${mech.name} DESTROYED! (${destructionCheck.reason})`, 'error');
+                triggerDestruction(mech);
+                return;
+            }
+
+            // Legacy destruction check (fallback if no body parts)
             if (mech.currentHP <= 0 && !mech.isDestroyed) {
                 log(`${mech.name} DESTROYED!`, 'error');
                 triggerDestruction(mech);
@@ -6908,10 +7949,16 @@
             // HYBRID DAMAGE SYSTEM: Determine flinch vs ragdoll based on knockback and stability
 
             // Reduce stability based on knockback
-            mech.stability -= knockback * 0.8;
+            // LEG HITS DO 2X STABILITY DAMAGE
+            let stabilityDamage = knockback * 0.8;
+            if (hitPart === 'leftLeg' || hitPart === 'rightLeg') {
+                stabilityDamage *= BODY_PART_CONFIG.legStabilityMultiplier;
+                log(`${mech.name} leg hit - extra stability damage!`, 'warn');
+            }
+            mech.stability -= stabilityDamage;
             if (mech.stability < 0) mech.stability = 0;
 
-            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: Hit! KB=${knockback} Stability=${mech.stability.toFixed(0)}`, 'phys');
+            dbg(`${mech.isPlayer ? 'P' : 'E'} ${mech.name}: ${hitPart} hit! KB=${knockback} Stability=${mech.stability.toFixed(0)}`, 'phys');
 
             // Case 1: Massive hit - immediate ragdoll regardless of stability
             if (knockback >= STABILITY_CONFIG.knockdownThreshold) {
@@ -6945,7 +7992,8 @@
             }
 
             // Visual flash effect for any hit
-            createImpactSparks(mech.torso.getAbsolutePosition(), impactDir);
+            const sparkPos = impactPosition || mech.torso.getAbsolutePosition();
+            createImpactSparks(sparkPos, impactDir);
         }
 
         function updateProjectiles(dt) {
@@ -6990,7 +8038,7 @@
                             if (!enemy.torso) continue;
                             const dist = BABYLON.Vector3.Distance(projPos, enemy.torso.getAbsolutePosition());
                             if (dist < 2.0) {  // Slightly larger hitbox for piloting mode
-                                applyDamage(enemy, p.weapon, enemy.isPlayer ? -1 : 1);
+                                applyDamage(enemy, p.weapon, enemy.isPlayer ? -1 : 1, projPos.clone());
                                 log(`[PILOT HIT] ${enemy.name} -${p.weapon.damage} (${enemy.currentHP}/${enemy.maxHP})`, 'warn');
                                 createImpact(projPos.clone(), p.weapon.color);
                                 disposeProjectile();
@@ -7025,7 +8073,7 @@
 
                     const dist = BABYLON.Vector3.Distance(projPos, p.target.torso.getAbsolutePosition());
                     if (dist < 1.6) {
-                        applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1);
+                        applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1, projPos.clone());
                         log(`HIT! ${p.target.name} -${p.weapon.damage} (${p.target.currentHP}/${p.target.maxHP})`, 'warn');
                         createImpact(projPos.clone(), p.weapon.color);
                         disposeProjectile();
@@ -7055,20 +8103,19 @@
                             if (p.currentSpeed > p.maxSpeed) p.currentSpeed = p.maxSpeed;
                         }
 
-                        // Update velocity to fly straight toward target
-                        if (p.aggregate && p.aggregate.body && p.target && p.target.torso && p.missileBody) {
-                            const targetPos = p.target.torso.getAbsolutePosition();
+                        // Update velocity to fly straight toward spread target (NOT torso center)
+                        if (p.aggregate && p.aggregate.body && p.spreadTarget && p.missileBody) {
                             const currentPos = p.missileBody.getAbsolutePosition();
-                            const dirToTarget = targetPos.subtract(currentPos).normalize();
+                            const dirToTarget = p.spreadTarget.subtract(currentPos).normalize();
 
-                            // Set velocity directly toward target
+                            // Set velocity directly toward spread target
                             p.aggregate.body.setLinearVelocity(dirToTarget.scale(p.currentSpeed));
 
                             // Sync TransformNode position with physics body
                             p.mesh.position.copyFrom(currentPos);
 
                             // Update mesh rotation to face target
-                            p.mesh.lookAt(targetPos);
+                            p.mesh.lookAt(p.spreadTarget);
                             p.mesh.rotation.x += Math.PI / 2;  // Adjust for cylinder orientation
                         }
 
@@ -7829,16 +8876,105 @@
                 // Generate salvage rewards
                 const rewards = generateSalvageRewards(playerWon);
 
-                // Send to parent with rewards
+                // Collect body part damage data from all enemy mechs for salvage calculation
+                const enemyDamageData = enemyMechs.map(mech => {
+                    if (!mech) return null;
+
+                    // Initialize body parts if not already done (in case mech died without taking damage)
+                    if (!mech.bodyParts) {
+                        mech.bodyParts = initializeBodyParts(mech.maxHP);
+                    }
+
+                    // Check if torso is specifically destroyed
+                    // If torso is destroyed (HP <= 0), all equipment is scrapped
+                    const torsoHP = mech.bodyParts?.torso?.currentHP || 0;
+                    const torsoMaxHP = mech.bodyParts?.torso?.maxHP || 1;
+                    const torsoDestroyed = mech.bodyParts?.torso?.destroyed || (torsoHP <= 0);
+
+                    console.log(`[SALVAGE DEBUG] ${mech.displayName || mech.name}:`);
+                    console.log(`  - isDestroyed=${mech.isDestroyed}, torsoHP=${torsoHP}/${torsoMaxHP}, torsoDestroyed=${torsoDestroyed}`);
+                    if (mech.bodyParts) {
+                        Object.entries(mech.bodyParts).forEach(([part, data]) => {
+                            if (data && typeof data === 'object' && 'currentHP' in data) {
+                                console.log(`  - ${part}: ${data.currentHP}/${data.maxHP} (destroyed=${data.destroyed})`);
+                            }
+                        });
+                    }
+
+                    // Calculate equipment survival based on body part status
+                    const equipmentStatus = (mech.equipment || []).map(eq => {
+                        const bodyPart = eq.bodyPart || 'torso';
+                        const bp = mech.bodyParts?.[bodyPart];
+                        const isBodyPartDestroyed = bp?.destroyed || false;
+                        const bodyPartHPPercent = bp ? (bp.currentHP / bp.maxHP) : 1.0;
+
+                        // Item is destroyed if:
+                        // 1. Mech is destroyed (torso catastrophically damaged)
+                        // 2. Body part is destroyed
+                        // 3. Body part severely damaged (random chance based on damage)
+                        let isDestroyed = torsoDestroyed;  // If mech/torso destroyed, all items destroyed
+                        if (!isDestroyed) {
+                            const damageChance = isBodyPartDestroyed ? 1.0 : (1.0 - bodyPartHPPercent) * 0.8;
+                            isDestroyed = Math.random() < damageChance;
+                            console.log(`[SALVAGE DEBUG] ${eq.item?.name || eq.itemId}: bodyPart=${bodyPart}, HP%=${(bodyPartHPPercent*100).toFixed(1)}%, damageChance=${(damageChance*100).toFixed(1)}%, destroyed=${isDestroyed}`);
+                        }
+
+                        return {
+                            ...eq,
+                            bodyPart: bodyPart,
+                            isDestroyed: isDestroyed,
+                            bodyPartHPPercent: bodyPartHPPercent,
+                            torsoDestroyed: torsoDestroyed
+                        };
+                    });
+
+                    // Build body part HP data
+                    const bodyPartHP = {};
+                    if (mech.bodyParts) {
+                        ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'].forEach(part => {
+                            const bp = mech.bodyParts[part];
+                            if (bp) {
+                                bodyPartHP[part] = {
+                                    current: bp.currentHP,
+                                    max: bp.maxHP,
+                                    destroyed: bp.destroyed || false
+                                };
+                            }
+                        });
+                    }
+
+                    return {
+                        name: mech.displayName || mech.name,
+                        level: mech.level || 1,
+                        equipment: equipmentStatus,
+                        bodyPartHP: bodyPartHP,
+                        bodyParts: mech.bodyParts ? {
+                            totalDamageReceived: mech.bodyParts.totalDamageReceived,
+                            destroyed: {
+                                head: mech.bodyParts.head?.destroyed || false,
+                                torso: mech.bodyParts.torso?.destroyed || false,
+                                leftArm: mech.bodyParts.leftArm?.destroyed || false,
+                                rightArm: mech.bodyParts.rightArm?.destroyed || false,
+                                leftLeg: mech.bodyParts.leftLeg?.destroyed || false,
+                                rightLeg: mech.bodyParts.rightLeg?.destroyed || false
+                            }
+                        } : null,
+                        isDestroyed: mech.isDestroyed
+                    };
+                }).filter(d => d !== null);
+
+                // Send to parent with rewards and damage data
                 if (window.parent !== window) {
                     window.parent.postMessage({
                         type: 'battleEnd',
                         result: playerWon ? 'victory' : 'defeat',
-                        rewards: rewards
+                        rewards: rewards,
+                        enemyDamageData: enemyDamageData
                     }, '*');
                 } else {
                     // Standalone mode
                     localStorage.setItem('battleRewards', JSON.stringify(rewards));
+                    localStorage.setItem('enemyDamageData', JSON.stringify(enemyDamageData));
                     window.location.href = 'index.html';
                 }
             });
@@ -7913,6 +9049,61 @@
                 let stateText = enemyAlive === 0 ? 'ELIMINATED' : `${enemyAlive} mechs fighting`;
                 document.getElementById('enemyState').textContent = stateText;
             }
+
+            // Update body part UI for first player and enemy mech
+            if (playerMechs.length > 0) {
+                updateBodyPartUI(playerMechs[0], 'player');
+            }
+            if (enemyMechs.length > 0) {
+                updateBodyPartUI(enemyMechs[0], 'enemy');
+            }
+        }
+
+        // Update body part UI display for a mech
+        function updateBodyPartUI(mech, prefix) {
+            if (!mech || !mech.bodyParts) return;
+
+            const parts = ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'];
+            const partNames = {
+                head: 'Head',
+                torso: 'Torso',
+                leftArm: 'L.Arm',
+                rightArm: 'R.Arm',
+                leftLeg: 'L.Leg',
+                rightLeg: 'R.Leg'
+            };
+
+            parts.forEach(part => {
+                const elem = document.getElementById(`${prefix}_${part}`);
+                if (!elem) return;
+
+                const bp = mech.bodyParts[part];
+                if (!bp) return;
+
+                const hpPct = Math.max(0, bp.currentHP / bp.maxHP) * 100;
+                const fillBar = elem.querySelector('.body-part-fill');
+
+                // Update health bar width
+                if (fillBar) {
+                    fillBar.style.width = hpPct + '%';
+                }
+
+                // Update class for styling
+                elem.classList.remove('healthy', 'damaged', 'destroyed');
+                if (bp.destroyed) {
+                    elem.classList.add('destroyed');
+                } else if (hpPct < 50) {
+                    elem.classList.add('damaged');
+                } else {
+                    elem.classList.add('healthy');
+                }
+
+                // Update text to show HP
+                const textNode = elem.childNodes[0];
+                if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                    textNode.textContent = bp.destroyed ? `${partNames[part]}✗` : `${partNames[part]}`;
+                }
+            });
         }
 
         // ============================================
@@ -7934,6 +9125,12 @@
             document.getElementById('cockpitCrosshair').classList.add('active');
             document.getElementById('cockpitFrame').classList.add('active');
             document.getElementById('pilotingInstruction').classList.add('active');
+            document.getElementById('targetPanel').classList.add('active');
+
+            // Reset target tracking
+            pilotingState.currentTarget = null;
+            pilotingState.pendingTarget = null;
+            pilotingState.targetSwitchTimer = 0;
 
             // Hide the instruction after 5 seconds
             setTimeout(() => {
@@ -7979,6 +9176,166 @@
 
             // Initial weapon indicator render
             renderWeaponIndicators();
+
+            // Initial target update
+            updateTargetFromCrosshair();
+        }
+
+        // ============================================
+        // TARGET TRACKING SYSTEM
+        // ============================================
+
+        // Get the enemy mech closest to the crosshair ray
+        function getEnemyNearCrosshair() {
+            if (!scene || !camera) return null;
+
+            const canvas = document.getElementById('renderCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Create a ray from the camera through the crosshair
+            const ray = scene.createPickingRay(centerX, centerY, BABYLON.Matrix.Identity(), camera);
+
+            let closestEnemy = null;
+            let closestDist = Infinity;
+            const maxRayDist = 5.0;  // How close to the ray the mech needs to be
+
+            enemyMechs.forEach(enemy => {
+                if (!enemy || enemy.isDestroyed || !enemy.torso) return;
+
+                // Get distance from enemy torso to the ray
+                const enemyPos = enemy.torso.getAbsolutePosition();
+                const rayPoint = ray.origin.add(ray.direction.scale(
+                    BABYLON.Vector3.Dot(enemyPos.subtract(ray.origin), ray.direction)
+                ));
+                const distToRay = BABYLON.Vector3.Distance(enemyPos, rayPoint);
+
+                // Also consider distance from camera (prefer closer targets when tied)
+                const distFromCamera = BABYLON.Vector3.Distance(ray.origin, enemyPos);
+
+                if (distToRay < maxRayDist && distToRay < closestDist) {
+                    closestDist = distToRay;
+                    closestEnemy = enemy;
+                }
+            });
+
+            return closestEnemy;
+        }
+
+        // Update current target with delay to prevent whiplash
+        function updateTargetFromCrosshair() {
+            if (!pilotingModeActive) return;
+
+            const now = performance.now();
+
+            // Throttle updates to every 100ms
+            if (now - pilotingState.lastTargetUpdateTime < 100) return;
+            pilotingState.lastTargetUpdateTime = now;
+
+            const nearestEnemy = getEnemyNearCrosshair();
+
+            // If target is destroyed, clear it immediately
+            if (pilotingState.currentTarget && pilotingState.currentTarget.isDestroyed) {
+                pilotingState.currentTarget = null;
+                pilotingState.pendingTarget = null;
+                pilotingState.targetSwitchTimer = 0;
+            }
+
+            // Check if we need to switch targets
+            if (nearestEnemy !== pilotingState.currentTarget) {
+                // Different target detected
+                if (nearestEnemy === pilotingState.pendingTarget) {
+                    // Already pending, continue timer
+                    pilotingState.targetSwitchTimer -= 100;
+                    if (pilotingState.targetSwitchTimer <= 0) {
+                        // Timer expired, switch to new target
+                        pilotingState.currentTarget = nearestEnemy;
+                        pilotingState.pendingTarget = null;
+                        pilotingState.targetSwitchTimer = 0;
+                    }
+                } else {
+                    // New pending target, start timer
+                    pilotingState.pendingTarget = nearestEnemy;
+                    pilotingState.targetSwitchTimer = pilotingState.targetSwitchDelay;
+                }
+            } else {
+                // Same target, clear any pending switch
+                pilotingState.pendingTarget = null;
+                pilotingState.targetSwitchTimer = 0;
+            }
+
+            // Update UI
+            updateTargetPanel();
+        }
+
+        // Update the target panel UI
+        function updateTargetPanel() {
+            const panel = document.getElementById('targetPanel');
+            const nameElem = document.getElementById('targetName');
+            const levelElem = document.getElementById('targetLevel');
+            const hpFill = document.getElementById('targetHPFill');
+            const hpText = document.getElementById('targetHPText');
+            const equipList = document.getElementById('targetEquipmentList');
+
+            const target = pilotingState.currentTarget;
+
+            if (!target || target.isDestroyed) {
+                nameElem.textContent = 'No Target';
+                levelElem.textContent = 'Lv.?';
+                hpFill.style.width = '0%';
+                hpText.textContent = '-- / --';
+                equipList.innerHTML = '<div style="color: #555; font-size: 10px;">--</div>';
+                return;
+            }
+
+            // Update name and level
+            nameElem.textContent = target.displayName || target.name || 'Unknown';
+            levelElem.textContent = `Lv.${target.level || '?'}`;
+
+            // Update HP bar
+            const currentHP = Math.max(0, target.currentHP);
+            const maxHP = target.maxHP || 1;
+            const hpPercent = (currentHP / maxHP) * 100;
+            hpFill.style.width = `${hpPercent}%`;
+            hpText.textContent = `${Math.round(currentHP)} / ${Math.round(maxHP)}`;
+
+            // Color HP bar based on percentage
+            if (hpPercent > 50) {
+                hpFill.style.background = 'linear-gradient(90deg, #44aa44, #88cc44)';
+            } else if (hpPercent > 25) {
+                hpFill.style.background = 'linear-gradient(90deg, #aaaa44, #cccc44)';
+            } else {
+                hpFill.style.background = 'linear-gradient(90deg, #aa4444, #cc6644)';
+            }
+
+            // Update equipment list
+            const equipment = target.equipment || [];
+            if (equipment.length === 0) {
+                equipList.innerHTML = '<div style="color: #555; font-size: 10px;">No equipment</div>';
+            } else {
+                let html = '';
+                equipment.forEach(eq => {
+                    const item = eq.item || window.ITEM_DATABASE?.[eq.itemId];
+                    if (item) {
+                        const rarity = item.rarity || 'common';
+                        const rarityColors = {
+                            common: '#aaa',
+                            uncommon: '#44ff44',
+                            rare: '#4488ff',
+                            epic: '#aa44ff',
+                            legendary: '#ffaa00'
+                        };
+                        const color = rarityColors[rarity] || '#aaa';
+                        const bodyPart = eq.bodyPart || '';
+                        html += `<div class="target-item">
+                            <span class="target-item-name" style="color: ${color};">${item.icon || '?'} ${item.name}</span>
+                            <span class="target-item-location">${bodyPart}</span>
+                        </div>`;
+                    }
+                });
+                equipList.innerHTML = html || '<div style="color: #555; font-size: 10px;">Unknown</div>';
+            }
         }
 
         function handlePilotingZoom(event) {
@@ -8129,6 +9486,11 @@
         function firePlayerWeaponsAtScreenPosition(screenX, screenY) {
             const playerMech = playerMechs.find(m => m && !m.isDestroyed);
             if (!playerMech || !playerMech.loadoutWeapons) return;
+
+            // Can't fire while fallen or recovering
+            if (playerMech.mechState === MechState.RAGDOLL || playerMech.mechState === MechState.RECOVERING) {
+                return;
+            }
 
             // Convert client coordinates to canvas-relative coordinates
             const canvas = document.getElementById('renderCanvas');
@@ -8281,7 +9643,7 @@
                 owner: from,
                 weapon: weapon,
                 targetPosition: targetPos,
-                spawnTime: performance.now(),
+                firedAt: Date.now(),  // Use Date.now() to match updateProjectiles timeout check
                 timeout: 3500
             });
         }
@@ -8353,7 +9715,7 @@
 
             // Apply damage if we hit an enemy
             if (hitEnemy) {
-                applyDamage(hitEnemy, weapon, from.isPlayer ? 1 : -1);
+                applyDamage(hitEnemy, weapon, from.isPlayer ? 1 : -1, hitPoint.clone());
                 log(`[PILOT BEAM HIT] ${hitEnemy.name} -${weapon.damage} (${hitEnemy.currentHP}/${hitEnemy.maxHP})`, 'warn');
                 createImpact(hitPoint.clone(), weapon.color || new BABYLON.Color3(0, 1, 0.5));
             }
@@ -8607,12 +9969,16 @@
         function updateCockpitCamera(dt) {
             if (!pilotingModeActive) return;
 
+            // Update target tracking from crosshair
+            updateTargetFromCrosshair();
+
             const playerMech = playerMechs.find(m => m && !m.isDestroyed);
             if (!playerMech) {
                 // Player mech destroyed - switch to spectate mode
                 pilotingModeActive = false;
                 document.getElementById('cockpitCrosshair').classList.remove('active');
                 document.getElementById('cockpitFrame').classList.remove('active');
+                document.getElementById('targetPanel').classList.remove('active');
 
                 // Re-enable DOF
                 if (scene.miniaturePipeline) {

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>BattleTech Arena - MechBuilder</title>
+    <!-- Pixel fonts for retro-futuristic look -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
@@ -11,12 +13,52 @@
         body {
             margin: 0;
             padding: 0;
-            background: #0a0a12;
-            font-family: 'Courier New', monospace;
-            color: #00ff88;
+            background: #0d0f0e;
+            font-family: 'VT323', 'Courier New', monospace;
+            color: #c4c8c5;
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* ============================================
+           RETRO-FUTURISTIC INDUSTRIAL COLOR PALETTE
+           ============================================ */
+        :root {
+            /* Primary colors - muted, industrial */
+            --bg-darkest: #0d0f0e;
+            --bg-dark: #1a1e1c;
+            --bg-medium: #2a302d;
+            --bg-light: #3a423e;
+            /* Accent colors - worn, desaturated */
+            --accent-primary: #4a7c59;
+            --accent-secondary: #7c8b6e;
+            --accent-highlight: #8fb174;
+            --accent-glow: #5fa34c;
+            /* Item type colors - muted industrial */
+            --weapon-color: #b85a3a;
+            --weapon-glow: #d4724e;
+            --armor-color: #4a6a8c;
+            --armor-glow: #6a8aac;
+            --reactor-color: #c4a03a;
+            --reactor-glow: #e4c05a;
+            --system-color: #7a4a8c;
+            --system-glow: #9a6aac;
+            --cooling-color: #3a7a8c;
+            --cooling-glow: #5a9aac;
+            /* UI colors */
+            --text-primary: #c4c8c5;
+            --text-secondary: #8a908c;
+            --text-dim: #5a605c;
+            --border-color: #4a524e;
+            --border-highlight: #6a726e;
+            /* Danger/warning */
+            --danger-color: #a04040;
+            --warning-color: #a08040;
+            --success-color: #40a060;
         }
 
         /* ============================================
@@ -56,9 +98,34 @@
             justify-content: space-between;
             align-items: center;
             padding: 10px 20px;
-            background: linear-gradient(180deg, rgba(0,20,10,0.95) 0%, rgba(0,20,10,0.7) 100%);
-            border-bottom: 2px solid #00ff88;
-            box-shadow: 0 0 20px rgba(0,255,136,0.3);
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 3px),
+                linear-gradient(180deg, #2a302d 0%, #1a1e1c 50%, #0d0f0e 100%);
+            border-bottom: 4px solid #4a524e;
+            border-top: 2px solid #5a625e;
+            box-shadow:
+                inset 0 2px 0 rgba(255,255,255,0.05),
+                inset 0 -2px 0 rgba(0,0,0,0.3),
+                0 4px 8px rgba(0,0,0,0.5);
+        }
+
+        /* CRT Scanline overlay for entire UI */
+        #mechBuilderUI::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 9999;
         }
 
         #statsPanel .nav-spacer {
@@ -68,34 +135,50 @@
         .header-nav-btn {
             pointer-events: auto;
             padding: 10px 20px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 2px solid #00ff88;
-            color: #00ff88;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
+            background: linear-gradient(180deg, #5a6a60 0%, #4a5a50 30%, #3a4a40 70%, #2a3a30 100%);
+            border: 3px solid #6a7a70;
+            border-bottom-color: #2a3a30;
+            border-right-color: #3a4a40;
+            color: var(--text-primary);
+            font-family: 'VT323', monospace;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s ease;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.1s ease;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         .header-nav-btn:hover:not(:disabled) {
-            background: rgba(0, 255, 136, 0.4);
-            box-shadow: 0 0 20px rgba(0,255,136,0.5);
+            background: linear-gradient(180deg, #6a7a70 0%, #5a6a60 30%, #4a5a50 70%, #3a4a40 100%);
+            border-color: #7a8a80;
+        }
+
+        .header-nav-btn:active:not(:disabled) {
+            background: linear-gradient(180deg, #3a4a40 0%, #4a5a50 100%);
+            border-top-color: #2a3a30;
+            border-left-color: #2a3a30;
+            border-bottom-color: #5a6a60;
+            border-right-color: #5a6a60;
+            box-shadow: inset 2px 2px 0 rgba(0,0,0,0.2);
+            transform: translate(1px, 1px);
         }
 
         .header-nav-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            border-color: #555;
-            color: #555;
+            background: linear-gradient(180deg, #3a4340 0%, #2a3330 100%);
+            border-color: #3a4340;
+            color: #5a5a5a;
         }
 
         .header-nav-btn.warning {
-            border-color: #ff4444;
-            color: #ff4444;
+            background: linear-gradient(180deg, #8a4040 0%, #6a3030 30%, #5a2020 70%, #4a1010 100%);
+            border-color: #aa5050;
+            border-bottom-color: #3a1010;
+            color: #ffaaaa;
         }
 
         /* Mech Stats (above grid) */
@@ -105,6 +188,7 @@
             gap: 30px;
             padding: 10px;
             pointer-events: auto;
+            background: linear-gradient(180deg, rgba(26,30,28,0.9) 0%, rgba(13,15,14,0.9) 100%);
         }
 
         .stat-item {
@@ -114,37 +198,60 @@
         }
 
         .stat-label {
-            font-size: 10px;
-            color: #00aa66;
+            font-size: 14px;
+            font-family: 'VT323', monospace;
+            color: var(--accent-secondary);
             text-transform: uppercase;
             letter-spacing: 1px;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
         }
 
         .stat-bar {
             width: 150px;
-            height: 16px;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid #00ff88;
-            border-radius: 2px;
+            height: 20px;
+            background: linear-gradient(180deg, #1a2420 0%, #0a1410 50%, #1a2420 100%);
+            border: 3px solid #3a4a40;
+            border-top-color: #2a3a30;
+            border-left-color: #2a3a30;
             overflow: hidden;
             position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .stat-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(90deg, transparent 0px, transparent 8px, rgba(0,0,0,0.3) 8px, rgba(0,0,0,0.3) 10px);
+            pointer-events: none;
+            z-index: 1;
         }
 
         .stat-fill {
             height: 100%;
             transition: width 0.3s ease;
+            background-image: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 30%, transparent 50%, rgba(0,0,0,0.2) 100%);
         }
 
         .stat-fill.weight {
-            background: linear-gradient(90deg, #666666, #999999);
+            background-color: #5a6a60;
         }
 
         .stat-fill.energy {
-            background: linear-gradient(90deg, #00aaff, #88ddff);
+            background-color: var(--reactor-color);
         }
 
         .stat-fill.over-limit {
-            background: linear-gradient(90deg, #ff4444, #ff8888);
+            background-color: var(--danger-color);
+            animation: blink-warning 0.5s infinite;
+        }
+
+        @keyframes blink-warning {
+            0%, 49%, 100% { opacity: 1; }
+            50%, 99% { opacity: 0.6; }
         }
 
         .stat-text {
@@ -152,21 +259,23 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 10px;
+            font-size: 14px;
+            font-family: 'VT323', monospace;
             color: #fff;
-            text-shadow: 0 0 4px #000;
+            text-shadow: 1px 1px 0 #000, -1px -1px 0 #000;
+            z-index: 2;
         }
 
         .stat-fill.hp {
-            background: linear-gradient(90deg, #ff4444, #ff8888);
+            background-color: var(--danger-color);
         }
 
         .stat-fill.armor {
-            background: linear-gradient(90deg, #888888, #aaaaaa);
+            background-color: var(--armor-color);
         }
 
         .stat-fill.accuracy {
-            background: linear-gradient(90deg, #ffaa00, #ffcc44);
+            background-color: var(--reactor-color);
         }
 
         /* Loadout Main Layout - Bench on left, Mech Grid on right */
@@ -181,30 +290,37 @@
         #benchPanel {
             width: 200px;
             min-width: 200px;
-            background: linear-gradient(90deg, rgba(0,20,10,0.95) 0%, rgba(0,20,10,0.8) 100%);
-            border-right: 2px solid #00ff88;
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 3px),
+                linear-gradient(90deg, #1a1e1c 0%, #0d0f0e 100%);
+            border-right: 4px solid #3a4a40;
             display: flex;
             flex-direction: column;
             pointer-events: auto;
+            box-shadow: inset -4px 0 8px rgba(0,0,0,0.3);
         }
 
         #benchHeader {
             padding: 15px;
-            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+            border-bottom: 3px solid #3a4a40;
             text-align: center;
+            background: linear-gradient(180deg, #2a302d 0%, #1a1e1c 100%);
         }
 
         #benchTitle {
-            font-size: 14px;
-            color: #00ff88;
+            font-size: 18px;
+            font-family: 'VT323', monospace;
+            color: var(--accent-highlight);
             text-transform: uppercase;
             letter-spacing: 2px;
             margin-bottom: 5px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
         }
 
         #benchSubtitle {
-            font-size: 10px;
-            color: #00aa66;
+            font-size: 14px;
+            font-family: 'VT323', monospace;
+            color: var(--text-secondary);
         }
 
         #benchScroll {
@@ -218,24 +334,30 @@
             width: 100%;
             padding: 10px;
             margin-bottom: 8px;
-            background: rgba(0, 40, 20, 0.6);
-            border: 2px solid #00aa66;
-            border-radius: 6px;
+            background: linear-gradient(180deg, #2a302d 0%, #1a1e1c 100%);
+            border: 3px solid #4a524e;
+            border-top-color: #5a625e;
+            border-left-color: #5a625e;
+            border-bottom-color: #3a423e;
+            border-right-color: #3a423e;
             cursor: grab;
-            transition: all 0.2s;
+            transition: all 0.15s;
             display: flex;
             align-items: center;
             gap: 10px;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05);
         }
 
         .bench-item-vertical:hover {
-            background: rgba(0, 60, 30, 0.8);
-            border-color: #00ff88;
+            background: linear-gradient(180deg, #3a423e 0%, #2a302d 100%);
+            border-color: #6a726e;
             transform: translateX(3px);
+            box-shadow: 3px 3px 0 rgba(0,0,0,0.4), inset 1px 1px 0 rgba(255,255,255,0.08);
         }
 
         .bench-item-vertical:active {
             cursor: grabbing;
+            transform: translate(1px, 1px);
         }
 
         .bench-item-vertical.dragging {
@@ -243,8 +365,10 @@
         }
 
         .bench-item-vertical .item-icon {
-            font-size: 24px;
+            width: 32px;
+            height: 32px;
             flex-shrink: 0;
+            image-rendering: pixelated;
         }
 
         .bench-item-vertical .item-info {
@@ -253,16 +377,19 @@
         }
 
         .bench-item-vertical .item-name {
-            font-size: 11px;
-            color: #00ff88;
+            font-size: 14px;
+            font-family: 'VT323', monospace;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
         }
 
         .bench-item-vertical .item-stats {
-            font-size: 9px;
-            color: #00aa66;
+            font-size: 12px;
+            font-family: 'VT323', monospace;
+            color: var(--text-secondary);
         }
 
         /* Item stat icons row */
@@ -366,16 +493,31 @@
             background: transparent;
         }
 
-        .bench-item-vertical.weapon { border-color: #ff6644; }
-        .bench-item-vertical.weapon .item-icon { color: #ff6644; }
-        .bench-item-vertical.armor { border-color: #4488ff; }
-        .bench-item-vertical.armor .item-icon { color: #4488ff; }
-        .bench-item-vertical.reactor { border-color: #ffaa00; }
-        .bench-item-vertical.reactor .item-icon { color: #ffaa00; }
-        .bench-item-vertical.system { border-color: #aa44ff; }
-        .bench-item-vertical.system .item-icon { color: #aa44ff; }
-        .bench-item-vertical.cooling { border-color: #44ddff; }
-        .bench-item-vertical.cooling .item-icon { color: #44ddff; }
+        .bench-item-vertical.weapon {
+            border-color: var(--weapon-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(184,90,58,0.2);
+        }
+        .bench-item-vertical.weapon .item-icon { color: var(--weapon-color); }
+        .bench-item-vertical.armor {
+            border-color: var(--armor-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(74,106,140,0.2);
+        }
+        .bench-item-vertical.armor .item-icon { color: var(--armor-color); }
+        .bench-item-vertical.reactor {
+            border-color: var(--reactor-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(196,160,58,0.2);
+        }
+        .bench-item-vertical.reactor .item-icon { color: var(--reactor-color); }
+        .bench-item-vertical.system {
+            border-color: var(--system-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(122,74,140,0.2);
+        }
+        .bench-item-vertical.system .item-icon { color: var(--system-color); }
+        .bench-item-vertical.cooling {
+            border-color: var(--cooling-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(58,122,140,0.2);
+        }
+        .bench-item-vertical.cooling .item-icon { color: var(--cooling-color); }
 
         #benchEmpty {
             text-align: center;
@@ -403,51 +545,77 @@
         /* Unified Mech Grid */
         #unifiedMechGrid {
             display: grid;
-            gap: 2px;
-            padding: 10px;
-            background: rgba(0, 20, 10, 0.9);
-            border: 2px solid rgba(0, 255, 136, 0.6);
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            gap: 3px;
+            padding: 15px;
+            background:
+                repeating-linear-gradient(90deg, transparent 0px, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 3px),
+                linear-gradient(180deg, #1a1e1c 0%, #0d0f0e 100%);
+            border: 4px solid #4a524e;
+            border-top-color: #3a423e;
+            border-left-color: #3a423e;
+            border-right-color: #5a625e;
+            border-bottom-color: #5a625e;
+            box-shadow:
+                inset 0 0 30px rgba(0,0,0,0.5),
+                4px 4px 8px rgba(0,0,0,0.4),
+                0 0 20px rgba(74,124,89,0.1);
             pointer-events: auto;
-            position: relative;  /* Required for absolute positioned placed items */
+            position: relative;
+        }
+
+        /* Grid frame decoration */
+        #unifiedMechGrid::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+            border: 2px solid #3a4a40;
+            pointer-events: none;
+            z-index: 0;
         }
 
         .mech-cell {
             width: 45px;
             height: 45px;
-            background: rgba(0, 255, 136, 0.15);
-            border: 1px solid rgba(0, 255, 136, 0.5);
-            border-radius: 3px;
-            transition: all 0.2s ease;
+            background: linear-gradient(180deg, rgba(30,40,35,0.8) 0%, rgba(20,30,25,0.8) 100%);
+            border: 2px solid #3a4a40;
+            border-top-color: #2a3a30;
+            border-left-color: #2a3a30;
+            border-right-color: #4a5a50;
+            border-bottom-color: #4a5a50;
+            transition: all 0.15s ease;
             position: relative;
+            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.3);
         }
 
         .mech-cell.invalid {
             background: transparent;
             border-color: transparent;
             pointer-events: none;
+            box-shadow: none;
         }
 
         .mech-cell:not(.invalid):hover {
-            background: rgba(0, 255, 136, 0.25);
-            border-color: #00ff88;
+            background: linear-gradient(180deg, rgba(74,124,89,0.4) 0%, rgba(50,100,65,0.4) 100%);
+            border-color: var(--accent-primary);
         }
 
         .mech-cell.valid-drop {
-            background: rgba(0, 255, 136, 0.4);
-            border-color: #00ff88;
-            box-shadow: 0 0 10px rgba(0,255,136,0.5);
+            background: linear-gradient(180deg, rgba(74,124,89,0.6) 0%, rgba(50,100,65,0.6) 100%);
+            border-color: var(--accent-highlight);
+            box-shadow: inset 2px 2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(143,177,116,0.4);
         }
 
         .mech-cell.invalid-drop {
-            background: rgba(255, 68, 68, 0.4);
-            border-color: #ff4444;
+            background: linear-gradient(180deg, rgba(160,64,64,0.6) 0%, rgba(120,40,40,0.6) 100%);
+            border-color: var(--danger-color);
         }
 
         .mech-cell.occupied {
-            background: rgba(0, 170, 255, 0.3);
-            border-color: #00aaff;
+            background: linear-gradient(180deg, rgba(74,106,140,0.4) 0%, rgba(50,80,110,0.4) 100%);
+            border-color: var(--armor-color);
         }
 
         /* Placed items in unified grid */
@@ -542,24 +710,31 @@
             position: relative;
             display: flex;
             align-items: center;
-            padding: 8px 10px;
-            margin-bottom: 6px;
-            background: rgba(0, 40, 20, 0.6);
-            border: 2px solid #00aa66;
-            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            background: linear-gradient(180deg, #2a302d 0%, #1a1e1c 100%);
+            border: 3px solid #4a524e;
+            border-top-color: #5a625e;
+            border-left-color: #5a625e;
+            border-bottom-color: #3a423e;
+            border-right-color: #3a423e;
             cursor: pointer;
-            transition: all 0.2s;
-            gap: 8px;
+            transition: all 0.15s;
+            gap: 10px;
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05);
         }
 
         .shop-sell-item:hover {
-            background: rgba(255, 170, 0, 0.2);
-            border-color: #ffaa00;
+            background: linear-gradient(180deg, #3a423e 0%, #2a302d 100%);
+            border-color: var(--reactor-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), 0 0 10px rgba(196,160,58,0.3);
         }
 
         .shop-sell-item .item-icon {
-            font-size: 18px;
+            width: 24px;
+            height: 24px;
             flex-shrink: 0;
+            image-rendering: pixelated;
         }
 
         .shop-sell-item .item-info {
@@ -568,29 +743,48 @@
         }
 
         .shop-sell-item .item-name {
-            font-size: 10px;
-            color: #00ff88;
+            font-size: 14px;
+            font-family: 'VT323', monospace;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
         }
 
         .shop-sell-item .item-sell-price {
-            font-size: 10px;
-            color: #ffaa00;
+            font-size: 14px;
+            font-family: 'VT323', monospace;
+            color: var(--reactor-color);
             font-weight: bold;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
         }
 
-        .shop-sell-item.weapon { border-color: #ff6644; }
-        .shop-sell-item.weapon .item-icon { color: #ff6644; }
-        .shop-sell-item.armor { border-color: #4488ff; }
-        .shop-sell-item.armor .item-icon { color: #4488ff; }
-        .shop-sell-item.reactor { border-color: #ffaa00; }
-        .shop-sell-item.reactor .item-icon { color: #ffaa00; }
-        .shop-sell-item.system { border-color: #aa44ff; }
-        .shop-sell-item.system .item-icon { color: #aa44ff; }
-        .shop-sell-item.cooling { border-color: #44ddff; }
-        .shop-sell-item.cooling .item-icon { color: #44ddff; }
+        .shop-sell-item.weapon {
+            border-color: var(--weapon-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(184,90,58,0.2);
+        }
+        .shop-sell-item.weapon .item-icon { color: var(--weapon-color); }
+        .shop-sell-item.armor {
+            border-color: var(--armor-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(74,106,140,0.2);
+        }
+        .shop-sell-item.armor .item-icon { color: var(--armor-color); }
+        .shop-sell-item.reactor {
+            border-color: var(--reactor-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(196,160,58,0.2);
+        }
+        .shop-sell-item.reactor .item-icon { color: var(--reactor-color); }
+        .shop-sell-item.system {
+            border-color: var(--system-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(122,74,140,0.2);
+        }
+        .shop-sell-item.system .item-icon { color: var(--system-color); }
+        .shop-sell-item.cooling {
+            border-color: var(--cooling-color);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 8px rgba(58,122,140,0.2);
+        }
+        .shop-sell-item.cooling .item-icon { color: var(--cooling-color); }
 
         .shop-empty-msg {
             text-align: center;
@@ -611,10 +805,11 @@
         }
 
         #gameTitle {
-            font-size: 18px;
+            font-size: 24px;
+            font-family: 'Press Start 2P', 'VT323', monospace;
             font-weight: bold;
-            color: #00ff88;
-            text-shadow: 0 0 10px #00ff88;
+            color: var(--accent-highlight);
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.8), 0 0 20px rgba(143,177,116,0.3);
             letter-spacing: 2px;
         }
 
@@ -1432,30 +1627,44 @@
         }
 
         .tab-nav-header .nav-btn {
-            padding: 8px 16px;
-            background: rgba(0, 255, 136, 0.2);
-            border: 2px solid #00ff88;
-            color: #00ff88;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
+            padding: 10px 18px;
+            background: linear-gradient(180deg, #5a6a60 0%, #4a5a50 30%, #3a4a40 70%, #2a3a30 100%);
+            border: 3px solid #6a7a70;
+            border-bottom-color: #2a3a30;
+            border-right-color: #3a4a40;
+            color: var(--text-primary);
+            font-family: 'VT323', monospace;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.2s ease;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.1s ease;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
         .tab-nav-header .nav-btn:hover:not(:disabled) {
-            background: rgba(0, 255, 136, 0.4);
-            box-shadow: 0 0 15px rgba(0,255,136,0.4);
+            background: linear-gradient(180deg, #6a7a70 0%, #5a6a60 30%, #4a5a50 70%, #3a4a40 100%);
+            border-color: #7a8a80;
+        }
+
+        .tab-nav-header .nav-btn:active:not(:disabled) {
+            background: linear-gradient(180deg, #3a4a40 0%, #4a5a50 100%);
+            border-top-color: #2a3a30;
+            border-left-color: #2a3a30;
+            border-bottom-color: #5a6a60;
+            border-right-color: #5a6a60;
+            box-shadow: inset 2px 2px 0 rgba(0,0,0,0.2);
+            transform: translate(1px, 1px);
         }
 
         .tab-nav-header .nav-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            border-color: #555;
-            color: #555;
+            background: linear-gradient(180deg, #3a4340 0%, #2a3330 100%);
+            border-color: #3a4340;
+            color: #5a5a5a;
         }
 
         .tab-nav-header .nav-btn.primary {
@@ -1940,6 +2149,48 @@
                 max-height: 100%;
             }
         }
+
+        /* ============================================
+           CUSTOM SCROLLBAR STYLING
+           ============================================ */
+        ::-webkit-scrollbar {
+            width: 14px;
+            height: 14px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1e1c;
+            border: 2px solid #3a4a40;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #5a6a60 0%, #3a4a40 100%);
+            border: 2px solid #4a5a50;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #6a7a70 0%, #4a5a50 100%);
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: #1a1e1c;
+        }
+
+        /* Firefox scrollbar */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #4a5a50 #1a1e1c;
+        }
+
+        /* ============================================
+           PIXEL ART ICON CLASSES
+           ============================================ */
+        .pixel-icon {
+            display: inline-block;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
     </style>
 </head>
 <body>
@@ -1948,15 +2199,19 @@
         display: none;
         position: fixed;
         z-index: 10000;
-        background: rgba(0, 10, 5, 0.95);
-        border: 2px solid #00ff88;
-        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(42,48,45,0.98) 0%, rgba(26,30,28,0.98) 100%);
+        border: 3px solid #5a6a60;
+        border-top-color: #6a7a70;
+        border-left-color: #6a7a70;
+        border-right-color: #4a5a50;
+        border-bottom-color: #3a4a40;
         padding: 12px;
         max-width: 280px;
-        font-size: 11px;
-        color: #00ff88;
+        font-size: 14px;
+        font-family: 'VT323', monospace;
+        color: #c4c8c5;
         pointer-events: none;
-        box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+        box-shadow: 4px 4px 8px rgba(0,0,0,0.6), inset 1px 1px 0 rgba(255,255,255,0.05);
     "></div>
     <div id="gameContainer">
         <canvas id="renderCanvas"></canvas>
@@ -1965,14 +2220,14 @@
         <div id="mechBuilderUI">
             <!-- Header Panel -->
             <div id="statsPanel">
-                <div id="gameTitle">Loadout</div>
+                <div id="gameTitle">LOADOUT</div>
                 <div id="headerInfo" style="display: flex; gap: 20px; align-items: center;">
-                    <div id="roundDisplay" style="color: #00aa66; font-size: 12px;">Round <span id="roundNum">1</span></div>
-                    <div id="goldDisplay" style="color: #ffcc00; font-size: 14px; font-weight: bold;">💰 <span id="goldAmount">10</span></div>
+                    <div id="roundDisplay" style="color: #8fb174; font-size: 16px; font-family: 'VT323', monospace; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">Round <span id="roundNum">1</span></div>
+                    <div id="goldDisplay" style="background: linear-gradient(180deg, #c4a03a 0%, #a08030 100%); color: #1a1a10; font-size: 18px; font-family: 'VT323', monospace; font-weight: bold; padding: 4px 12px; border: 2px solid #e4c05a; box-shadow: 2px 2px 0 rgba(0,0,0,0.3);"><span id="goldAmount">10</span>g</div>
                 </div>
                 <div class="nav-spacer"></div>
-                <button id="goToShopBtn" class="header-nav-btn" style="margin-right: 10px;">Shop</button>
-                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Battle →</button>
+                <button id="goToShopBtn" class="header-nav-btn" style="margin-right: 10px;">SHOP</button>
+                <button id="goToMissionsBtn" class="header-nav-btn" disabled>BATTLE</button>
             </div>
 
             <!-- Loadout Tab Content -->
@@ -2085,37 +2340,41 @@
             </div>
 
             <!-- Shop Tab Content (solid background to hide 3D mech) -->
-            <div id="shopTab" class="tab-content" style="background: linear-gradient(180deg, #0a1a0f 0%, #051008 100%); position: relative; z-index: 100;">
-                <div class="tab-nav-header" style="pointer-events: auto;">
-                    <button class="nav-btn" onclick="switchTab('loadout')">← Back to Loadout</button>
+            <div id="shopTab" class="tab-content" style="background: linear-gradient(180deg, #1a1e1c 0%, #0d0f0e 100%); background-image: url('assets/textures/command-center-bg.svg'); background-size: cover; background-position: center; position: relative; z-index: 100;">
+                <!-- Grime overlay -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse 30% 20% at 15% 25%, rgba(139,69,19,0.15) 0%, transparent 70%), radial-gradient(ellipse 40% 25% at 80% 75%, rgba(160,82,45,0.12) 0%, transparent 70%); pointer-events: none; z-index: 1;"></div>
+                <!-- Warning stripes top -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; height: 8px; background: repeating-linear-gradient(-45deg, #8a7040 0px, #8a7040 10px, #2a2a20 10px, #2a2a20 20px); z-index: 2;"></div>
+                <div class="tab-nav-header" style="pointer-events: auto; position: relative; z-index: 10;">
+                    <button class="nav-btn" onclick="switchTab('loadout')">BACK TO LOADOUT</button>
                     <div class="nav-spacer"></div>
-                    <div style="color: #ffcc00; font-size: 16px; font-weight: bold;">💰 <span id="shopGoldDisplay">10</span> Gold</div>
+                    <div style="background: linear-gradient(180deg, #c4a03a 0%, #a08030 100%); color: #1a1a10; font-family: 'VT323', monospace; font-size: 20px; font-weight: bold; padding: 6px 16px; border: 3px solid #e4c05a; box-shadow: 3px 3px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.2);"><span id="shopGoldDisplay">10</span>g</div>
                 </div>
-                <div class="shop-layout" style="display: flex; flex: 1; overflow: hidden; pointer-events: auto;">
+                <div class="shop-layout" style="display: flex; flex: 1; overflow: hidden; pointer-events: auto; position: relative; z-index: 10;">
                     <!-- Left Panel: Your Inventory -->
-                    <div class="shop-inventory-panel" style="width: 250px; min-width: 250px; background: rgba(0,20,10,0.95); border-right: 2px solid #00aa66; display: flex; flex-direction: column;">
-                        <div style="padding: 15px; border-bottom: 1px solid rgba(0,255,136,0.3); text-align: center;">
-                            <div style="font-size: 14px; color: #ffaa00; letter-spacing: 2px;">YOUR ITEMS</div>
-                            <div style="font-size: 10px; color: #888; margin-top: 5px;">Click to sell</div>
+                    <div class="shop-inventory-panel" style="width: 260px; min-width: 260px; background: linear-gradient(90deg, #1a1e1c 0%, #0d0f0e 100%); border-right: 4px solid #4a524e; display: flex; flex-direction: column; box-shadow: inset -4px 0 8px rgba(0,0,0,0.3);">
+                        <div style="padding: 15px; border-bottom: 3px solid #3a4a40; text-align: center; background: linear-gradient(180deg, #2a302d 0%, #1a1e1c 100%);">
+                            <div style="font-size: 20px; font-family: 'VT323', monospace; color: #c4a03a; letter-spacing: 2px; text-shadow: 2px 2px 0 rgba(0,0,0,0.5);">YOUR ITEMS</div>
+                            <div style="font-size: 13px; font-family: 'VT323', monospace; color: #8a908c; margin-top: 5px;">Click to sell</div>
                         </div>
                         <div id="shopInventoryScroll" style="flex: 1; overflow-y: auto; padding: 10px;">
                             <!-- Equipped Items Section -->
                             <div style="margin-bottom: 15px;">
-                                <div style="font-size: 11px; color: #00aa66; margin-bottom: 8px; letter-spacing: 1px;">EQUIPPED</div>
+                                <div style="font-size: 15px; font-family: 'VT323', monospace; color: #8fb174; margin-bottom: 8px; letter-spacing: 1px; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">EQUIPPED</div>
                                 <div id="shopEquippedItems">
                                     <!-- Populated by JS -->
                                 </div>
                             </div>
                             <!-- Bench Items Section -->
                             <div style="margin-bottom: 15px;">
-                                <div style="font-size: 11px; color: #00aa66; margin-bottom: 8px; letter-spacing: 1px;">BENCH</div>
+                                <div style="font-size: 15px; font-family: 'VT323', monospace; color: #8fb174; margin-bottom: 8px; letter-spacing: 1px; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">BENCH</div>
                                 <div id="shopBenchItems">
                                     <!-- Populated by JS -->
                                 </div>
                             </div>
                             <!-- Buyback Section -->
                             <div>
-                                <div style="font-size: 11px; color: #ffaa00; margin-bottom: 8px; letter-spacing: 1px;">🔄 BUYBACK (1g)</div>
+                                <div style="font-size: 15px; font-family: 'VT323', monospace; color: #c4a03a; margin-bottom: 8px; letter-spacing: 1px; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">BUYBACK (1g)</div>
                                 <div id="shopBuybackItems">
                                     <!-- Populated by JS -->
                                 </div>
@@ -2124,37 +2383,37 @@
                     </div>
 
                     <!-- Right Panel: Shop Items for Sale -->
-                    <div class="shop-content" style="flex: 1; padding: 20px; overflow-y: auto; background: rgba(0,10,5,0.95);">
-                        <div style="text-align: center; margin-bottom: 20px;">
-                            <div style="font-size: 24px; color: #00ff88; letter-spacing: 3px;">SHOP</div>
-                            <div style="font-size: 12px; color: #666;">Buy mechs and weapons to strengthen your arsenal</div>
+                    <div class="shop-content" style="flex: 1; padding: 25px; overflow-y: auto; background: linear-gradient(180deg, rgba(13,15,14,0.95) 0%, rgba(10,12,11,0.98) 100%);">
+                        <div style="text-align: center; margin-bottom: 25px;">
+                            <div style="font-size: 36px; font-family: 'Press Start 2P', 'VT323', monospace; color: #8fb174; letter-spacing: 4px; text-shadow: 3px 3px 0 rgba(0,0,0,0.8), 0 0 20px rgba(143,177,116,0.3);">SHOP</div>
+                            <div style="font-size: 16px; font-family: 'VT323', monospace; color: #5a605c; margin-top: 8px;">Buy mechs and weapons to strengthen your arsenal</div>
                         </div>
 
                         <!-- Mechs Section -->
-                        <div style="margin-bottom: 30px;">
-                            <div style="font-size: 14px; color: #00aa66; margin-bottom: 15px; letter-spacing: 2px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">MECHS FOR SALE</div>
-                            <div id="shopMechsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                        <div style="margin-bottom: 35px;">
+                            <div style="font-size: 20px; font-family: 'VT323', monospace; color: #8fb174; margin-bottom: 18px; letter-spacing: 2px; border-bottom: 3px solid #3a4a40; padding-bottom: 8px; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">MECHS FOR SALE</div>
+                            <div id="shopMechsContainer" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
                                 <!-- Populated by JS -->
                             </div>
                         </div>
 
                         <!-- Weapons Section -->
-                        <div style="margin-bottom: 30px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">
-                                <div style="font-size: 14px; color: #00aa66; letter-spacing: 2px;">WEAPONS FOR SALE</div>
-                                <button id="refreshShopBtn" onclick="handleRefreshShop()" style="padding: 6px 15px; background: rgba(255, 170, 0, 0.2); border: 1px solid #ffaa00; color: #ffaa00; cursor: pointer; border-radius: 4px; font-family: monospace; font-size: 11px;">
+                        <div style="margin-bottom: 35px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 3px solid #3a4a40; padding-bottom: 8px;">
+                                <div style="font-size: 20px; font-family: 'VT323', monospace; color: #8fb174; letter-spacing: 2px; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">WEAPONS FOR SALE</div>
+                                <button id="refreshShopBtn" onclick="handleRefreshShop()" style="padding: 8px 18px; background: linear-gradient(180deg, #8a7040 0%, #6a5030 30%, #5a4020 70%, #4a3010 100%); border: 3px solid #aa8050; border-bottom-color: #3a2010; color: #fff; cursor: pointer; font-family: 'VT323', monospace; font-size: 16px; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); box-shadow: 2px 2px 0 rgba(0,0,0,0.3), inset 1px 1px 0 rgba(255,255,255,0.1);">
                                     Refresh (2g)
                                 </button>
                             </div>
-                            <div id="shopWeaponsContainer" style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+                            <div id="shopWeaponsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
                                 <!-- Populated by JS -->
                             </div>
                         </div>
 
                         <!-- Owned Mechs Section -->
                         <div>
-                            <div style="font-size: 14px; color: #00aa66; margin-bottom: 15px; letter-spacing: 2px; border-bottom: 1px solid #00aa66; padding-bottom: 5px;">YOUR MECHS</div>
-                            <div id="ownedMechsContainer" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                            <div style="font-size: 20px; font-family: 'VT323', monospace; color: #8fb174; margin-bottom: 18px; letter-spacing: 2px; border-bottom: 3px solid #3a4a40; padding-bottom: 8px; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">YOUR MECHS</div>
+                            <div id="ownedMechsContainer" style="display: flex; flex-wrap: wrap; gap: 18px; justify-content: center;">
                                 <!-- Populated by JS -->
                             </div>
                         </div>
@@ -2229,9 +2488,9 @@
             </div>
 
             <!-- Battle Result Overlay -->
-            <div id="battleResultOverlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; flex-direction: column; pointer-events: auto;">
-                <div id="battleResult" style="font-size: 64px; font-weight: bold; text-shadow: 0 0 30px currentColor;">VICTORY!</div>
-                <button onclick="returnToLoadout()" style="margin-top: 30px; padding: 15px 40px; font-size: 18px; background: rgba(0, 255, 136, 0.2); border: 2px solid #00ff88; color: #00ff88; cursor: pointer; border-radius: 5px;">Return to Loadout</button>
+            <div id="battleResultOverlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; flex-direction: column; pointer-events: auto;">
+                <div id="battleResult" style="font-size: 48px; font-family: 'Press Start 2P', 'VT323', monospace; font-weight: bold; text-shadow: 4px 4px 0 rgba(0,0,0,0.8), 0 0 40px currentColor;">VICTORY!</div>
+                <button onclick="returnToLoadout()" style="margin-top: 30px; padding: 15px 40px; font-size: 20px; font-family: 'VT323', monospace; background: linear-gradient(180deg, #5a6a60 0%, #4a5a50 30%, #3a4a40 70%, #2a3a30 100%); border: 3px solid #6a7a70; border-bottom-color: #2a3a30; color: #c4c8c5; cursor: pointer; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); box-shadow: 3px 3px 0 rgba(0,0,0,0.4), inset 1px 1px 0 rgba(255,255,255,0.1);">Return to Loadout</button>
             </div>
         </div>
 
@@ -2241,6 +2500,7 @@
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="assets/icons/pixel-icons.js"></script>
 
     <script>
         // ============================================
@@ -7460,26 +7720,29 @@
                         const card = document.createElement('div');
                         card.className = 'shop-mech-card';
                         card.style.cssText = `
-                            background: rgba(0, 0, 0, 0.5);
-                            border: 2px solid ${rarityColor};
-                            border-radius: 8px;
+                            background: linear-gradient(180deg, #2a302d 0%, #1a1e1c 100%);
+                            border: 4px solid ${rarityColor};
+                            border-top-color: ${rarityColor};
                             padding: 15px;
                             width: 200px;
                             cursor: ${canAfford ? 'pointer' : 'not-allowed'};
                             opacity: ${canAfford ? '1' : '0.6'};
-                            transition: all 0.2s;
+                            transition: all 0.15s;
+                            box-shadow: 3px 3px 0 rgba(0,0,0,0.4), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 15px ${rarityColor}33;
+                            font-family: 'VT323', monospace;
+                            position: relative;
                         `;
                         card.innerHTML = `
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <span style="font-size: 28px;">${mech.icon}</span>
-                                <span style="color: #ffcc00; font-weight: bold;">${mech.price}g</span>
+                            <div style="position: absolute; top: -10px; right: 10px; background: linear-gradient(180deg, #c4a03a 0%, #a08030 100%); color: #1a1a10; font-family: 'VT323', monospace; font-size: 16px; padding: 4px 10px; border: 2px solid #e4c05a; box-shadow: 2px 2px 0 rgba(0,0,0,0.3);">${mech.price}g</div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <span style="font-size: 36px; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5));">${mech.icon}</span>
                             </div>
-                            <div style="font-size: 14px; color: ${rarityColor}; font-weight: bold;">${mech.name}</div>
-                            <div style="font-size: 10px; color: #888; text-transform: uppercase; margin: 4px 0;">${mech.class} CLASS</div>
-                            <div style="font-size: 11px; color: #aaa; margin-top: 8px;">
-                                <div>❤️ ${mech.baseHP} HP | 🛡️ ${mech.baseArmor} ARM</div>
-                                <div>⚖️ ${mech.tonnage}t | 📦 ${mech.modSpace} slots</div>
-                                <div style="color: #00ff88; margin-top: 5px;">${mech.specialDesc}</div>
+                            <div style="font-size: 18px; color: ${rarityColor}; font-weight: bold; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">${mech.name}</div>
+                            <div style="font-size: 14px; color: #8a908c; text-transform: uppercase; margin: 4px 0; letter-spacing: 1px;">${mech.class} CLASS</div>
+                            <div style="font-size: 14px; color: #c4c8c5; margin-top: 10px; border-top: 2px solid #3a4a40; padding-top: 8px;">
+                                <div style="color: #a04040;">HP ${mech.baseHP} | ARM ${mech.baseArmor}</div>
+                                <div style="color: #5a6a60;">WT ${mech.tonnage}t | SL ${mech.modSpace}</div>
+                                <div style="color: #8fb174; margin-top: 6px; font-size: 13px;">${mech.specialDesc}</div>
                             </div>
                         `;
 
@@ -7509,34 +7772,43 @@
 
                         const card = document.createElement('div');
                         card.className = 'shop-weapon-card';
+                        // Get category color for border
+                        const categoryColors = {
+                            weapon: '#b85a3a',
+                            armor: '#4a6a8c',
+                            reactor: '#c4a03a',
+                            system: '#7a4a8c',
+                            cooling: '#3a7a8c'
+                        };
+                        const categoryColor = categoryColors[item.category] || rarityColor;
                         card.style.cssText = `
-                            background: rgba(0, 0, 0, 0.5);
-                            border: 2px solid ${rarityColor};
-                            border-radius: 8px;
+                            background: linear-gradient(180deg, #2a302d 0%, #1a1e1c 100%);
+                            border: 3px solid ${categoryColor};
                             padding: 12px;
                             width: 160px;
                             cursor: ${canAfford ? 'pointer' : 'not-allowed'};
                             opacity: ${canAfford ? '1' : '0.6'};
                             position: relative;
-                            transition: all 0.2s;
+                            transition: all 0.15s;
+                            box-shadow: 3px 3px 0 rgba(0,0,0,0.4), inset 1px 1px 0 rgba(255,255,255,0.05), 0 0 10px ${categoryColor}33;
+                            font-family: 'VT323', monospace;
                         `;
 
                         const bargainBadge = shopItem.isBargain ?
-                            `<div style="position: absolute; top: -8px; left: -8px; background: #ff6600; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold;">BARGAIN!</div>` : '';
+                            `<div style="position: absolute; top: -10px; left: -10px; background: linear-gradient(180deg, #ff6600 0%, #cc4400 100%); color: #fff; font-size: 12px; padding: 3px 8px; border: 2px solid #ff8833; font-weight: bold; box-shadow: 2px 2px 0 rgba(0,0,0,0.3);">BARGAIN!</div>` : '';
 
                         const modifierLine = item.modifier ?
-                            `<div style="font-size: 9px; color: #ffaa00; margin-top: 2px;">⚡ ${item.modifier.name}</div>` : '';
+                            `<div style="font-size: 13px; color: #c4a03a; margin-top: 4px;">+ ${item.modifier.name}</div>` : '';
 
                         card.innerHTML = `
                             ${bargainBadge}
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <span style="font-size: 22px;">${item.icon}</span>
-                                <div style="text-align: right;">
-                                    ${shopItem.isBargain ? `<div style="font-size: 9px; color: #666; text-decoration: line-through;">${shopItem.originalPrice}g</div>` : ''}
-                                    <div style="color: #ffcc00; font-weight: bold; font-size: 14px;">${shopItem.price}g</div>
-                                </div>
+                            <div style="position: absolute; top: -8px; right: 8px; background: linear-gradient(180deg, #c4a03a 0%, #a08030 100%); color: #1a1a10; font-family: 'VT323', monospace; font-size: 14px; padding: 3px 8px; border: 2px solid #e4c05a; box-shadow: 2px 2px 0 rgba(0,0,0,0.3);">
+                                ${shopItem.isBargain ? `<span style="text-decoration: line-through; opacity: 0.6; margin-right: 4px;">${shopItem.originalPrice}</span>` : ''}${shopItem.price}g
                             </div>
-                            <div style="font-size: 11px; color: ${rarityColor}; font-weight: bold; margin: 6px 0;">${item.name}</div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                                <span style="font-size: 28px; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5));">${item.icon}</span>
+                            </div>
+                            <div style="font-size: 14px; color: ${rarityColor}; font-weight: bold; margin: 8px 0 4px 0; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">${item.name}</div>
                             ${modifierLine}
                             ${buildItemStatIcons(item)}
                             <div class="item-bottom-row">
@@ -7577,22 +7849,23 @@
 
                     const card = document.createElement('div');
                     card.className = 'owned-mech-card';
+                    const activeColor = '#8fb174';
                     card.style.cssText = `
-                        background: rgba(0, 0, 0, 0.5);
-                        border: 2px solid ${isActive ? '#00ff88' : rarityColor};
-                        border-radius: 8px;
+                        background: linear-gradient(180deg, #2a302d 0%, #1a1e1c 100%);
+                        border: 3px solid ${isActive ? activeColor : rarityColor};
                         padding: 12px;
                         width: 150px;
                         cursor: pointer;
-                        transition: all 0.2s;
-                        ${isActive ? 'box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);' : ''}
+                        transition: all 0.15s;
+                        box-shadow: 3px 3px 0 rgba(0,0,0,0.4), inset 1px 1px 0 rgba(255,255,255,0.05)${isActive ? `, 0 0 15px ${activeColor}44` : ''};
+                        font-family: 'VT323', monospace;
                     `;
                     card.innerHTML = `
                         <div style="text-align: center;">
-                            <div style="font-size: 24px;">${mech.icon}</div>
-                            <div style="font-size: 12px; color: ${isActive ? '#00ff88' : rarityColor}; font-weight: bold; margin-top: 5px;">${mech.name}</div>
-                            <div style="font-size: 10px; color: #888;">${mech.class}</div>
-                            ${isActive ? '<div style="font-size: 10px; color: #00ff88; margin-top: 5px;">✓ ACTIVE</div>' : '<div style="font-size: 10px; color: #666; margin-top: 5px;">Click to select</div>'}
+                            <div style="font-size: 32px; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.5));">${mech.icon}</div>
+                            <div style="font-size: 16px; color: ${isActive ? activeColor : rarityColor}; font-weight: bold; margin-top: 8px; text-shadow: 1px 1px 0 rgba(0,0,0,0.5);">${mech.name}</div>
+                            <div style="font-size: 13px; color: #8a908c; text-transform: uppercase;">${mech.class}</div>
+                            ${isActive ? `<div style="font-size: 13px; color: ${activeColor}; margin-top: 6px; border-top: 2px solid #3a4a40; padding-top: 6px;">ACTIVE</div>` : '<div style="font-size: 12px; color: #5a605c; margin-top: 6px; border-top: 2px solid #3a4a40; padding-top: 6px;">Click to select</div>'}
                         </div>
                     `;
 

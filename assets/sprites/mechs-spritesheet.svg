@@ -1,0 +1,255 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 128" width="256" height="128" style="image-rendering: pixelated;">
+  <!-- 48x48 mech sprites arranged in rows -->
+
+  <!-- Scout Mech (Light) - Green/Tan -->
+  <g id="mech-scout" transform="translate(0, 0)">
+    <!-- Head -->
+    <rect x="20" y="2" width="8" height="6" fill="#4a6a4a"/>
+    <rect x="21" y="3" width="6" height="4" fill="#5a7a5a"/>
+    <!-- Visor -->
+    <rect x="22" y="4" width="2" height="2" fill="#44ff44"/>
+    <rect x="25" y="4" width="2" height="2" fill="#44ff44"/>
+    <!-- Torso -->
+    <rect x="16" y="8" width="16" height="14" fill="#5a7a5a"/>
+    <rect x="17" y="9" width="14" height="12" fill="#6a8a6a"/>
+    <!-- Cockpit window -->
+    <rect x="20" y="10" width="8" height="4" fill="#224422"/>
+    <rect x="21" y="11" width="6" height="2" fill="#44aa44"/>
+    <!-- Chest detail -->
+    <rect x="18" y="15" width="4" height="3" fill="#4a6a4a"/>
+    <rect x="26" y="15" width="4" height="3" fill="#4a6a4a"/>
+    <!-- Arms -->
+    <rect x="10" y="10" width="6" height="10" fill="#5a7a5a"/>
+    <rect x="11" y="11" width="4" height="8" fill="#6a8a6a"/>
+    <rect x="32" y="10" width="6" height="10" fill="#5a7a5a"/>
+    <rect x="33" y="11" width="4" height="8" fill="#6a8a6a"/>
+    <!-- Arm weapons (small lasers) -->
+    <rect x="6" y="12" width="6" height="4" fill="#4a5a4a"/>
+    <rect x="4" y="13" width="3" height="2" fill="#aa4444"/>
+    <rect x="36" y="12" width="6" height="4" fill="#4a5a4a"/>
+    <rect x="41" y="13" width="3" height="2" fill="#aa4444"/>
+    <!-- Waist -->
+    <rect x="18" y="22" width="12" height="4" fill="#4a6a4a"/>
+    <!-- Legs -->
+    <rect x="16" y="26" width="6" height="12" fill="#5a7a5a"/>
+    <rect x="17" y="27" width="4" height="10" fill="#6a8a6a"/>
+    <rect x="26" y="26" width="6" height="12" fill="#5a7a5a"/>
+    <rect x="27" y="27" width="4" height="10" fill="#6a8a6a"/>
+    <!-- Knee joints -->
+    <rect x="17" y="32" width="4" height="2" fill="#4a6a4a"/>
+    <rect x="27" y="32" width="4" height="2" fill="#4a6a4a"/>
+    <!-- Feet -->
+    <rect x="14" y="38" width="8" height="4" fill="#4a6a4a"/>
+    <rect x="26" y="38" width="8" height="4" fill="#4a6a4a"/>
+    <!-- Jump jets (on back) -->
+    <rect x="18" y="6" width="3" height="4" fill="#3a4a3a"/>
+    <rect x="27" y="6" width="3" height="4" fill="#3a4a3a"/>
+  </g>
+
+  <!-- Warrior Mech (Medium) - Gray/Blue -->
+  <g id="mech-warrior" transform="translate(48, 0)">
+    <!-- Head -->
+    <rect x="18" y="0" width="12" height="8" fill="#4a5a6a"/>
+    <rect x="19" y="1" width="10" height="6" fill="#5a6a7a"/>
+    <!-- Visor -->
+    <rect x="20" y="2" width="3" height="3" fill="#4488ff"/>
+    <rect x="25" y="2" width="3" height="3" fill="#4488ff"/>
+    <!-- Antenna -->
+    <rect x="28" y="0" width="2" height="4" fill="#3a4a5a"/>
+    <!-- Torso -->
+    <rect x="14" y="8" width="20" height="16" fill="#5a6a7a"/>
+    <rect x="15" y="9" width="18" height="14" fill="#6a7a8a"/>
+    <!-- Cockpit -->
+    <rect x="19" y="10" width="10" height="5" fill="#223344"/>
+    <rect x="20" y="11" width="8" height="3" fill="#4488aa"/>
+    <!-- Chest vents -->
+    <rect x="15" y="16" width="3" height="4" fill="#3a4a5a"/>
+    <rect x="30" y="16" width="3" height="4" fill="#3a4a5a"/>
+    <!-- Arms (heavier) -->
+    <rect x="8" y="10" width="8" height="12" fill="#5a6a7a"/>
+    <rect x="9" y="11" width="6" height="10" fill="#6a7a8a"/>
+    <rect x="32" y="10" width="8" height="12" fill="#5a6a7a"/>
+    <rect x="33" y="11" width="6" height="10" fill="#6a7a8a"/>
+    <!-- Arm weapons (medium lasers) -->
+    <rect x="2" y="12" width="8" height="6" fill="#4a5a6a"/>
+    <rect x="0" y="13" width="4" height="4" fill="#aa4444"/>
+    <rect x="38" y="12" width="8" height="6" fill="#4a5a6a"/>
+    <rect x="44" y="13" width="4" height="4" fill="#aa4444"/>
+    <!-- Shoulder missiles -->
+    <rect x="10" y="6" width="6" height="5" fill="#3a4a5a"/>
+    <rect x="11" y="7" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="13" y="7" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="32" y="6" width="6" height="5" fill="#3a4a5a"/>
+    <rect x="33" y="7" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="35" y="7" width="2" height="2" fill="#aa3a3a"/>
+    <!-- Waist -->
+    <rect x="16" y="24" width="16" height="4" fill="#4a5a6a"/>
+    <!-- Legs -->
+    <rect x="14" y="28" width="8" height="14" fill="#5a6a7a"/>
+    <rect x="15" y="29" width="6" height="12" fill="#6a7a8a"/>
+    <rect x="26" y="28" width="8" height="14" fill="#5a6a7a"/>
+    <rect x="27" y="29" width="6" height="12" fill="#6a7a8a"/>
+    <!-- Knee armor -->
+    <rect x="14" y="34" width="8" height="3" fill="#4a5a6a"/>
+    <rect x="26" y="34" width="8" height="3" fill="#4a5a6a"/>
+    <!-- Feet -->
+    <rect x="12" y="42" width="10" height="4" fill="#4a5a6a"/>
+    <rect x="26" y="42" width="10" height="4" fill="#4a5a6a"/>
+  </g>
+
+  <!-- Striker Mech (Medium-Heavy) - Red/Gray -->
+  <g id="mech-striker" transform="translate(96, 0)">
+    <!-- Head -->
+    <rect x="18" y="0" width="12" height="7" fill="#5a4a4a"/>
+    <rect x="19" y="1" width="10" height="5" fill="#6a5a5a"/>
+    <!-- Visor (angry) -->
+    <rect x="20" y="2" width="8" height="2" fill="#ff4444"/>
+    <rect x="20" y="4" width="2" height="1" fill="#ff6666"/>
+    <rect x="26" y="4" width="2" height="1" fill="#ff6666"/>
+    <!-- Torso (bulky) -->
+    <rect x="12" y="7" width="24" height="18" fill="#6a5a5a"/>
+    <rect x="13" y="8" width="22" height="16" fill="#7a6a6a"/>
+    <!-- Cockpit -->
+    <rect x="18" y="9" width="12" height="6" fill="#332222"/>
+    <rect x="19" y="10" width="10" height="4" fill="#884444"/>
+    <!-- Chest weapons -->
+    <rect x="14" y="16" width="4" height="4" fill="#4a3a3a"/>
+    <rect x="15" y="17" width="2" height="2" fill="#aa4444"/>
+    <rect x="30" y="16" width="4" height="4" fill="#4a3a3a"/>
+    <rect x="31" y="17" width="2" height="2" fill="#aa4444"/>
+    <!-- Arms (heavy) -->
+    <rect x="4" y="9" width="10" height="14" fill="#6a5a5a"/>
+    <rect x="5" y="10" width="8" height="12" fill="#7a6a6a"/>
+    <rect x="34" y="9" width="10" height="14" fill="#6a5a5a"/>
+    <rect x="35" y="10" width="8" height="12" fill="#7a6a6a"/>
+    <!-- Arm weapons (autocannons) -->
+    <rect x="0" y="10" width="6" height="8" fill="#4a4a4a"/>
+    <rect x="0" y="12" width="2" height="4" fill="#3a3a3a"/>
+    <rect x="42" y="10" width="6" height="8" fill="#4a4a4a"/>
+    <rect x="46" y="12" width="2" height="4" fill="#3a3a3a"/>
+    <!-- Shoulder armor -->
+    <rect x="6" y="5" width="8" height="6" fill="#5a4a4a"/>
+    <rect x="34" y="5" width="8" height="6" fill="#5a4a4a"/>
+    <!-- Waist -->
+    <rect x="14" y="25" width="20" height="4" fill="#5a4a4a"/>
+    <!-- Legs (heavy) -->
+    <rect x="12" y="29" width="10" height="14" fill="#6a5a5a"/>
+    <rect x="13" y="30" width="8" height="12" fill="#7a6a6a"/>
+    <rect x="26" y="29" width="10" height="14" fill="#6a5a5a"/>
+    <rect x="27" y="30" width="8" height="12" fill="#7a6a6a"/>
+    <!-- Knee spikes -->
+    <rect x="12" y="35" width="10" height="4" fill="#5a4a4a"/>
+    <rect x="14" y="33" width="2" height="3" fill="#4a3a3a"/>
+    <rect x="26" y="35" width="10" height="4" fill="#5a4a4a"/>
+    <rect x="32" y="33" width="2" height="3" fill="#4a3a3a"/>
+    <!-- Feet -->
+    <rect x="10" y="43" width="12" height="4" fill="#5a4a4a"/>
+    <rect x="26" y="43" width="12" height="4" fill="#5a4a4a"/>
+  </g>
+
+  <!-- Heavy Mech (Assault) - Dark Gray/Yellow -->
+  <g id="mech-heavy" transform="translate(144, 0)">
+    <!-- Head (armored) -->
+    <rect x="16" y="0" width="16" height="8" fill="#4a4a3a"/>
+    <rect x="17" y="1" width="14" height="6" fill="#5a5a4a"/>
+    <!-- Visor slit -->
+    <rect x="18" y="3" width="12" height="2" fill="#aaaa44"/>
+    <!-- Torso (massive) -->
+    <rect x="10" y="8" width="28" height="20" fill="#5a5a4a"/>
+    <rect x="11" y="9" width="26" height="18" fill="#6a6a5a"/>
+    <!-- Cockpit (recessed) -->
+    <rect x="17" y="10" width="14" height="7" fill="#333322"/>
+    <rect x="18" y="11" width="12" height="5" fill="#666644"/>
+    <!-- Chest missile pods -->
+    <rect x="12" y="18" width="6" height="6" fill="#4a4a3a"/>
+    <rect x="13" y="19" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="15" y="19" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="13" y="22" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="15" y="22" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="30" y="18" width="6" height="6" fill="#4a4a3a"/>
+    <rect x="31" y="19" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="33" y="19" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="31" y="22" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="33" y="22" width="2" height="2" fill="#aa3a3a"/>
+    <!-- Arms -->
+    <rect x="2" y="10" width="10" height="16" fill="#5a5a4a"/>
+    <rect x="3" y="11" width="8" height="14" fill="#6a6a5a"/>
+    <rect x="36" y="10" width="10" height="16" fill="#5a5a4a"/>
+    <rect x="37" y="11" width="8" height="14" fill="#6a6a5a"/>
+    <!-- Arm weapons (PPC) -->
+    <rect x="0" y="12" width="4" height="10" fill="#4a4a5a"/>
+    <rect x="0" y="14" width="2" height="6" fill="#4488ff"/>
+    <rect x="44" y="12" width="4" height="10" fill="#4a4a5a"/>
+    <rect x="46" y="14" width="2" height="6" fill="#4488ff"/>
+    <!-- Shoulder pods -->
+    <rect x="4" y="4" width="10" height="8" fill="#4a4a3a"/>
+    <rect x="34" y="4" width="10" height="8" fill="#4a4a3a"/>
+    <!-- Waist -->
+    <rect x="12" y="28" width="24" height="4" fill="#4a4a3a"/>
+    <!-- Legs (massive) -->
+    <rect x="10" y="32" width="12" height="12" fill="#5a5a4a"/>
+    <rect x="11" y="33" width="10" height="10" fill="#6a6a5a"/>
+    <rect x="26" y="32" width="12" height="12" fill="#5a5a4a"/>
+    <rect x="27" y="33" width="10" height="10" fill="#6a6a5a"/>
+    <!-- Feet (wide) -->
+    <rect x="8" y="44" width="14" height="4" fill="#4a4a3a"/>
+    <rect x="26" y="44" width="14" height="4" fill="#4a4a3a"/>
+  </g>
+
+  <!-- Assault Mech (Titan) - Black/Red -->
+  <g id="mech-assault" transform="translate(192, 0)">
+    <!-- Head (heavily armored) -->
+    <rect x="14" y="0" width="20" height="10" fill="#3a2a2a"/>
+    <rect x="15" y="1" width="18" height="8" fill="#4a3a3a"/>
+    <!-- Visor (narrow slit) -->
+    <rect x="17" y="4" width="14" height="2" fill="#ff2222"/>
+    <!-- Torso (fortress) -->
+    <rect x="8" y="10" width="32" height="22" fill="#4a3a3a"/>
+    <rect x="9" y="11" width="30" height="20" fill="#5a4a4a"/>
+    <!-- Cockpit (bunker style) -->
+    <rect x="16" y="12" width="16" height="8" fill="#221111"/>
+    <rect x="17" y="13" width="14" height="6" fill="#442222"/>
+    <rect x="19" y="14" width="10" height="4" fill="#662222"/>
+    <!-- Heavy chest weapons -->
+    <rect x="10" y="21" width="8" height="8" fill="#3a2a2a"/>
+    <rect x="11" y="22" width="3" height="3" fill="#aa2222"/>
+    <rect x="14" y="22" width="3" height="3" fill="#aa2222"/>
+    <rect x="11" y="25" width="3" height="3" fill="#aa2222"/>
+    <rect x="14" y="25" width="3" height="3" fill="#aa2222"/>
+    <rect x="30" y="21" width="8" height="8" fill="#3a2a2a"/>
+    <rect x="31" y="22" width="3" height="3" fill="#aa2222"/>
+    <rect x="34" y="22" width="3" height="3" fill="#aa2222"/>
+    <rect x="31" y="25" width="3" height="3" fill="#aa2222"/>
+    <rect x="34" y="25" width="3" height="3" fill="#aa2222"/>
+    <!-- Arms (massive) -->
+    <rect x="0" y="12" width="10" height="18" fill="#4a3a3a"/>
+    <rect x="1" y="13" width="8" height="16" fill="#5a4a4a"/>
+    <rect x="38" y="12" width="10" height="18" fill="#4a3a3a"/>
+    <rect x="39" y="13" width="8" height="16" fill="#5a4a4a"/>
+    <!-- Arm weapons (heavy) -->
+    <rect x="0" y="14" width="2" height="6" fill="#ff4444"/>
+    <rect x="0" y="22" width="2" height="6" fill="#ff4444"/>
+    <rect x="46" y="14" width="2" height="6" fill="#ff4444"/>
+    <rect x="46" y="22" width="2" height="6" fill="#ff4444"/>
+    <!-- Shoulder turrets -->
+    <rect x="2" y="4" width="12" height="10" fill="#3a2a2a"/>
+    <rect x="4" y="6" width="8" height="6" fill="#4a3a3a"/>
+    <rect x="5" y="2" width="3" height="5" fill="#2a1a1a"/>
+    <rect x="9" y="2" width="3" height="5" fill="#2a1a1a"/>
+    <rect x="34" y="4" width="12" height="10" fill="#3a2a2a"/>
+    <rect x="36" y="6" width="8" height="6" fill="#4a3a3a"/>
+    <rect x="37" y="2" width="3" height="5" fill="#2a1a1a"/>
+    <rect x="41" y="2" width="3" height="5" fill="#2a1a1a"/>
+    <!-- Waist -->
+    <rect x="10" y="32" width="28" height="4" fill="#3a2a2a"/>
+    <!-- Legs (titan) -->
+    <rect x="8" y="36" width="14" height="10" fill="#4a3a3a"/>
+    <rect x="9" y="37" width="12" height="8" fill="#5a4a4a"/>
+    <rect x="26" y="36" width="14" height="10" fill="#4a3a3a"/>
+    <rect x="27" y="37" width="12" height="8" fill="#5a4a4a"/>
+    <!-- Feet (platform) -->
+    <rect x="6" y="46" width="16" height="2" fill="#3a2a2a"/>
+    <rect x="26" y="46" width="16" height="2" fill="#3a2a2a"/>
+  </g>
+
+</svg>

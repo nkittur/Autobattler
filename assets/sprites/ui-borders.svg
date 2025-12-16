@@ -1,0 +1,399 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" style="image-rendering: pixelated;">
+  <!-- 9-Slice UI Border Components -->
+  <!-- Each piece is 16x16 for corners, edges are 16px wide/tall -->
+
+  <!-- ======================= -->
+  <!-- TECH CARD BORDER (Green) -->
+  <!-- ======================= -->
+
+  <!-- Top-Left Corner -->
+  <g id="tech-tl">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <!-- Outer frame -->
+    <rect x="0" y="4" width="4" height="12" fill="#2a4a3a"/>
+    <rect x="4" y="0" width="12" height="4" fill="#2a4a3a"/>
+    <!-- Corner notch -->
+    <rect x="0" y="0" width="6" height="6" fill="#1a2a22"/>
+    <rect x="2" y="2" width="2" height="2" fill="#4a8a6a"/>
+    <!-- Inner glow line -->
+    <rect x="4" y="4" width="12" height="2" fill="#3a6a5a"/>
+    <rect x="4" y="4" width="2" height="12" fill="#3a6a5a"/>
+    <!-- Highlight -->
+    <rect x="6" y="6" width="1" height="1" fill="#6aaa8a"/>
+  </g>
+
+  <!-- Top-Right Corner -->
+  <g id="tech-tr" transform="translate(16, 0)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <rect x="12" y="4" width="4" height="12" fill="#2a4a3a"/>
+    <rect x="0" y="0" width="12" height="4" fill="#2a4a3a"/>
+    <!-- Corner notch -->
+    <rect x="10" y="0" width="6" height="6" fill="#1a2a22"/>
+    <rect x="12" y="2" width="2" height="2" fill="#4a8a6a"/>
+    <!-- Inner glow -->
+    <rect x="0" y="4" width="12" height="2" fill="#3a6a5a"/>
+    <rect x="10" y="4" width="2" height="12" fill="#3a6a5a"/>
+    <rect x="9" y="6" width="1" height="1" fill="#6aaa8a"/>
+  </g>
+
+  <!-- Bottom-Left Corner -->
+  <g id="tech-bl" transform="translate(0, 16)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <rect x="0" y="0" width="4" height="12" fill="#2a4a3a"/>
+    <rect x="4" y="12" width="12" height="4" fill="#2a4a3a"/>
+    <!-- Corner notch -->
+    <rect x="0" y="10" width="6" height="6" fill="#1a2a22"/>
+    <rect x="2" y="12" width="2" height="2" fill="#4a8a6a"/>
+    <!-- Inner glow -->
+    <rect x="4" y="10" width="12" height="2" fill="#3a6a5a"/>
+    <rect x="4" y="0" width="2" height="12" fill="#3a6a5a"/>
+  </g>
+
+  <!-- Bottom-Right Corner -->
+  <g id="tech-br" transform="translate(16, 16)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <rect x="12" y="0" width="4" height="12" fill="#2a4a3a"/>
+    <rect x="0" y="12" width="12" height="4" fill="#2a4a3a"/>
+    <!-- Corner notch -->
+    <rect x="10" y="10" width="6" height="6" fill="#1a2a22"/>
+    <rect x="12" y="12" width="2" height="2" fill="#4a8a6a"/>
+    <!-- Inner glow -->
+    <rect x="0" y="10" width="12" height="2" fill="#3a6a5a"/>
+    <rect x="10" y="0" width="2" height="12" fill="#3a6a5a"/>
+  </g>
+
+  <!-- Top Edge (repeatable) -->
+  <g id="tech-t" transform="translate(32, 0)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <rect x="0" y="0" width="16" height="4" fill="#2a4a3a"/>
+    <rect x="0" y="4" width="16" height="2" fill="#3a6a5a"/>
+    <!-- Tech detail -->
+    <rect x="6" y="1" width="4" height="2" fill="#1a2a22"/>
+    <rect x="7" y="2" width="2" height="1" fill="#4a8a6a"/>
+  </g>
+
+  <!-- Bottom Edge -->
+  <g id="tech-b" transform="translate(48, 0)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <rect x="0" y="12" width="16" height="4" fill="#2a4a3a"/>
+    <rect x="0" y="10" width="16" height="2" fill="#3a6a5a"/>
+    <rect x="6" y="13" width="4" height="2" fill="#1a2a22"/>
+  </g>
+
+  <!-- Left Edge -->
+  <g id="tech-l" transform="translate(64, 0)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <rect x="0" y="0" width="4" height="16" fill="#2a4a3a"/>
+    <rect x="4" y="0" width="2" height="16" fill="#3a6a5a"/>
+    <rect x="1" y="6" width="2" height="4" fill="#1a2a22"/>
+  </g>
+
+  <!-- Right Edge -->
+  <g id="tech-r" transform="translate(80, 0)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <rect x="12" y="0" width="4" height="16" fill="#2a4a3a"/>
+    <rect x="10" y="0" width="2" height="16" fill="#3a6a5a"/>
+    <rect x="13" y="6" width="2" height="4" fill="#1a2a22"/>
+  </g>
+
+  <!-- Center Fill -->
+  <g id="tech-c" transform="translate(96, 0)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1210"/>
+    <!-- Subtle texture -->
+    <rect x="4" y="4" width="2" height="2" fill="#0c1412" opacity="0.5"/>
+    <rect x="10" y="10" width="2" height="2" fill="#0c1412" opacity="0.5"/>
+  </g>
+
+  <!-- ======================= -->
+  <!-- WEAPON CARD BORDER (Orange/Red) -->
+  <!-- ======================= -->
+
+  <!-- Top-Left -->
+  <g id="weapon-tl" transform="translate(0, 32)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+    <rect x="0" y="4" width="4" height="12" fill="#6a3a2a"/>
+    <rect x="4" y="0" width="12" height="4" fill="#6a3a2a"/>
+    <rect x="0" y="0" width="6" height="6" fill="#2a1a12"/>
+    <rect x="2" y="2" width="2" height="2" fill="#aa5a3a"/>
+    <rect x="4" y="4" width="12" height="2" fill="#8a4a3a"/>
+    <rect x="4" y="4" width="2" height="12" fill="#8a4a3a"/>
+    <rect x="6" y="6" width="1" height="1" fill="#cc7a5a"/>
+  </g>
+
+  <!-- Top-Right -->
+  <g id="weapon-tr" transform="translate(16, 32)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+    <rect x="12" y="4" width="4" height="12" fill="#6a3a2a"/>
+    <rect x="0" y="0" width="12" height="4" fill="#6a3a2a"/>
+    <rect x="10" y="0" width="6" height="6" fill="#2a1a12"/>
+    <rect x="12" y="2" width="2" height="2" fill="#aa5a3a"/>
+    <rect x="0" y="4" width="12" height="2" fill="#8a4a3a"/>
+    <rect x="10" y="4" width="2" height="12" fill="#8a4a3a"/>
+  </g>
+
+  <!-- Bottom-Left -->
+  <g id="weapon-bl" transform="translate(0, 48)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+    <rect x="0" y="0" width="4" height="12" fill="#6a3a2a"/>
+    <rect x="4" y="12" width="12" height="4" fill="#6a3a2a"/>
+    <rect x="0" y="10" width="6" height="6" fill="#2a1a12"/>
+    <rect x="2" y="12" width="2" height="2" fill="#aa5a3a"/>
+    <rect x="4" y="10" width="12" height="2" fill="#8a4a3a"/>
+    <rect x="4" y="0" width="2" height="12" fill="#8a4a3a"/>
+  </g>
+
+  <!-- Bottom-Right -->
+  <g id="weapon-br" transform="translate(16, 48)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+    <rect x="12" y="0" width="4" height="12" fill="#6a3a2a"/>
+    <rect x="0" y="12" width="12" height="4" fill="#6a3a2a"/>
+    <rect x="10" y="10" width="6" height="6" fill="#2a1a12"/>
+    <rect x="12" y="12" width="2" height="2" fill="#aa5a3a"/>
+    <rect x="0" y="10" width="12" height="2" fill="#8a4a3a"/>
+    <rect x="10" y="0" width="2" height="12" fill="#8a4a3a"/>
+  </g>
+
+  <!-- Weapon edges -->
+  <g id="weapon-t" transform="translate(32, 32)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+    <rect x="0" y="0" width="16" height="4" fill="#6a3a2a"/>
+    <rect x="0" y="4" width="16" height="2" fill="#8a4a3a"/>
+  </g>
+
+  <g id="weapon-b" transform="translate(48, 32)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+    <rect x="0" y="12" width="16" height="4" fill="#6a3a2a"/>
+    <rect x="0" y="10" width="16" height="2" fill="#8a4a3a"/>
+  </g>
+
+  <g id="weapon-l" transform="translate(64, 32)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+    <rect x="0" y="0" width="4" height="16" fill="#6a3a2a"/>
+    <rect x="4" y="0" width="2" height="16" fill="#8a4a3a"/>
+  </g>
+
+  <g id="weapon-r" transform="translate(80, 32)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+    <rect x="12" y="0" width="4" height="16" fill="#6a3a2a"/>
+    <rect x="10" y="0" width="2" height="16" fill="#8a4a3a"/>
+  </g>
+
+  <g id="weapon-c" transform="translate(96, 32)">
+    <rect x="0" y="0" width="16" height="16" fill="#12100a"/>
+  </g>
+
+  <!-- ======================= -->
+  <!-- ARMOR CARD BORDER (Blue) -->
+  <!-- ======================= -->
+
+  <g id="armor-tl" transform="translate(0, 64)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1016"/>
+    <rect x="0" y="4" width="4" height="12" fill="#2a4a6a"/>
+    <rect x="4" y="0" width="12" height="4" fill="#2a4a6a"/>
+    <rect x="0" y="0" width="6" height="6" fill="#122232"/>
+    <rect x="2" y="2" width="2" height="2" fill="#4a7aaa"/>
+    <rect x="4" y="4" width="12" height="2" fill="#3a6a8a"/>
+    <rect x="4" y="4" width="2" height="12" fill="#3a6a8a"/>
+  </g>
+
+  <g id="armor-tr" transform="translate(16, 64)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1016"/>
+    <rect x="12" y="4" width="4" height="12" fill="#2a4a6a"/>
+    <rect x="0" y="0" width="12" height="4" fill="#2a4a6a"/>
+    <rect x="10" y="0" width="6" height="6" fill="#122232"/>
+    <rect x="12" y="2" width="2" height="2" fill="#4a7aaa"/>
+    <rect x="0" y="4" width="12" height="2" fill="#3a6a8a"/>
+    <rect x="10" y="4" width="2" height="12" fill="#3a6a8a"/>
+  </g>
+
+  <g id="armor-bl" transform="translate(0, 80)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1016"/>
+    <rect x="0" y="0" width="4" height="12" fill="#2a4a6a"/>
+    <rect x="4" y="12" width="12" height="4" fill="#2a4a6a"/>
+    <rect x="0" y="10" width="6" height="6" fill="#122232"/>
+    <rect x="2" y="12" width="2" height="2" fill="#4a7aaa"/>
+    <rect x="4" y="10" width="12" height="2" fill="#3a6a8a"/>
+    <rect x="4" y="0" width="2" height="12" fill="#3a6a8a"/>
+  </g>
+
+  <g id="armor-br" transform="translate(16, 80)">
+    <rect x="0" y="0" width="16" height="16" fill="#0a1016"/>
+    <rect x="12" y="0" width="4" height="12" fill="#2a4a6a"/>
+    <rect x="0" y="12" width="12" height="4" fill="#2a4a6a"/>
+    <rect x="10" y="10" width="6" height="6" fill="#122232"/>
+    <rect x="12" y="12" width="2" height="2" fill="#4a7aaa"/>
+    <rect x="0" y="10" width="12" height="2" fill="#3a6a8a"/>
+    <rect x="10" y="0" width="2" height="12" fill="#3a6a8a"/>
+  </g>
+
+  <!-- ======================= -->
+  <!-- GOLD/CURRENCY BORDER -->
+  <!-- ======================= -->
+
+  <g id="gold-tl" transform="translate(0, 96)">
+    <rect x="0" y="0" width="16" height="16" fill="#161410"/>
+    <rect x="0" y="4" width="4" height="12" fill="#8a7a3a"/>
+    <rect x="4" y="0" width="12" height="4" fill="#8a7a3a"/>
+    <rect x="0" y="0" width="6" height="6" fill="#2a2618"/>
+    <rect x="2" y="2" width="2" height="2" fill="#ccaa44"/>
+    <rect x="4" y="4" width="12" height="2" fill="#aa9a4a"/>
+    <rect x="4" y="4" width="2" height="12" fill="#aa9a4a"/>
+  </g>
+
+  <g id="gold-tr" transform="translate(16, 96)">
+    <rect x="0" y="0" width="16" height="16" fill="#161410"/>
+    <rect x="12" y="4" width="4" height="12" fill="#8a7a3a"/>
+    <rect x="0" y="0" width="12" height="4" fill="#8a7a3a"/>
+    <rect x="10" y="0" width="6" height="6" fill="#2a2618"/>
+    <rect x="12" y="2" width="2" height="2" fill="#ccaa44"/>
+    <rect x="0" y="4" width="12" height="2" fill="#aa9a4a"/>
+    <rect x="10" y="4" width="2" height="12" fill="#aa9a4a"/>
+  </g>
+
+  <!-- ======================= -->
+  <!-- PANEL FRAME (for main UI sections) -->
+  <!-- ======================= -->
+
+  <g id="panel-tl" transform="translate(0, 128)">
+    <rect x="0" y="0" width="16" height="16" fill="#0c0e0d"/>
+    <!-- Heavy industrial border -->
+    <rect x="0" y="0" width="16" height="6" fill="#3a423e"/>
+    <rect x="0" y="0" width="6" height="16" fill="#3a423e"/>
+    <!-- Corner rivet -->
+    <rect x="2" y="2" width="4" height="4" fill="#2a302d"/>
+    <rect x="3" y="3" width="2" height="2" fill="#4a524e"/>
+    <!-- Inner edge -->
+    <rect x="6" y="6" width="10" height="2" fill="#2a302d"/>
+    <rect x="6" y="6" width="2" height="10" fill="#2a302d"/>
+  </g>
+
+  <g id="panel-tr" transform="translate(16, 128)">
+    <rect x="0" y="0" width="16" height="16" fill="#0c0e0d"/>
+    <rect x="0" y="0" width="16" height="6" fill="#3a423e"/>
+    <rect x="10" y="0" width="6" height="16" fill="#3a423e"/>
+    <rect x="10" y="2" width="4" height="4" fill="#2a302d"/>
+    <rect x="11" y="3" width="2" height="2" fill="#4a524e"/>
+    <rect x="0" y="6" width="10" height="2" fill="#2a302d"/>
+    <rect x="8" y="6" width="2" height="10" fill="#2a302d"/>
+  </g>
+
+  <g id="panel-bl" transform="translate(0, 144)">
+    <rect x="0" y="0" width="16" height="16" fill="#0c0e0d"/>
+    <rect x="0" y="10" width="16" height="6" fill="#3a423e"/>
+    <rect x="0" y="0" width="6" height="16" fill="#3a423e"/>
+    <rect x="2" y="10" width="4" height="4" fill="#2a302d"/>
+    <rect x="3" y="11" width="2" height="2" fill="#4a524e"/>
+    <rect x="6" y="8" width="10" height="2" fill="#2a302d"/>
+    <rect x="6" y="0" width="2" height="10" fill="#2a302d"/>
+  </g>
+
+  <g id="panel-br" transform="translate(16, 144)">
+    <rect x="0" y="0" width="16" height="16" fill="#0c0e0d"/>
+    <rect x="0" y="10" width="16" height="6" fill="#3a423e"/>
+    <rect x="10" y="0" width="6" height="16" fill="#3a423e"/>
+    <rect x="10" y="10" width="4" height="4" fill="#2a302d"/>
+    <rect x="11" y="11" width="2" height="2" fill="#4a524e"/>
+    <rect x="0" y="8" width="10" height="2" fill="#2a302d"/>
+    <rect x="8" y="0" width="2" height="10" fill="#2a302d"/>
+  </g>
+
+  <!-- ======================= -->
+  <!-- SCREEN FRAME (CRT monitor style) -->
+  <!-- ======================= -->
+
+  <g id="screen-tl" transform="translate(0, 160)">
+    <rect x="0" y="0" width="16" height="16" fill="#1a1e1c"/>
+    <!-- Outer bezel -->
+    <rect x="0" y="0" width="16" height="8" fill="#2a302d"/>
+    <rect x="0" y="0" width="8" height="16" fill="#2a302d"/>
+    <!-- Inner bezel -->
+    <rect x="4" y="4" width="12" height="4" fill="#1a1e1c"/>
+    <rect x="4" y="4" width="4" height="12" fill="#1a1e1c"/>
+    <!-- Screen edge glow -->
+    <rect x="8" y="8" width="8" height="1" fill="#3a4a40"/>
+    <rect x="8" y="8" width="1" height="8" fill="#3a4a40"/>
+    <!-- LED indicator -->
+    <rect x="2" y="2" width="2" height="2" fill="#44aa44"/>
+  </g>
+
+  <g id="screen-tr" transform="translate(16, 160)">
+    <rect x="0" y="0" width="16" height="16" fill="#1a1e1c"/>
+    <rect x="0" y="0" width="16" height="8" fill="#2a302d"/>
+    <rect x="8" y="0" width="8" height="16" fill="#2a302d"/>
+    <rect x="0" y="4" width="12" height="4" fill="#1a1e1c"/>
+    <rect x="8" y="4" width="4" height="12" fill="#1a1e1c"/>
+    <rect x="0" y="8" width="8" height="1" fill="#3a4a40"/>
+    <rect x="7" y="8" width="1" height="8" fill="#3a4a40"/>
+    <rect x="12" y="2" width="2" height="2" fill="#aa4444"/>
+  </g>
+
+  <g id="screen-bl" transform="translate(0, 176)">
+    <rect x="0" y="0" width="16" height="16" fill="#1a1e1c"/>
+    <rect x="0" y="8" width="16" height="8" fill="#2a302d"/>
+    <rect x="0" y="0" width="8" height="16" fill="#2a302d"/>
+    <rect x="4" y="0" width="12" height="8" fill="#1a1e1c"/>
+    <rect x="4" y="0" width="4" height="12" fill="#1a1e1c"/>
+    <rect x="8" y="7" width="8" height="1" fill="#3a4a40"/>
+    <rect x="8" y="0" width="1" height="8" fill="#3a4a40"/>
+  </g>
+
+  <g id="screen-br" transform="translate(16, 176)">
+    <rect x="0" y="0" width="16" height="16" fill="#1a1e1c"/>
+    <rect x="0" y="8" width="16" height="8" fill="#2a302d"/>
+    <rect x="8" y="0" width="8" height="16" fill="#2a302d"/>
+    <rect x="0" y="0" width="12" height="8" fill="#1a1e1c"/>
+    <rect x="8" y="0" width="4" height="12" fill="#1a1e1c"/>
+    <rect x="0" y="7" width="8" height="1" fill="#3a4a40"/>
+    <rect x="7" y="0" width="1" height="8" fill="#3a4a40"/>
+  </g>
+
+  <!-- ======================= -->
+  <!-- BUTTON SPRITES -->
+  <!-- ======================= -->
+
+  <!-- Normal button -->
+  <g id="btn-normal" transform="translate(128, 0)">
+    <rect x="0" y="0" width="32" height="16" fill="#2a302d"/>
+    <rect x="0" y="0" width="32" height="2" fill="#4a524e"/>
+    <rect x="0" y="0" width="2" height="16" fill="#4a524e"/>
+    <rect x="30" y="0" width="2" height="16" fill="#1a1e1c"/>
+    <rect x="0" y="14" width="32" height="2" fill="#1a1e1c"/>
+    <rect x="2" y="2" width="28" height="12" fill="#3a423e"/>
+    <!-- Highlight -->
+    <rect x="2" y="2" width="28" height="1" fill="#5a625e"/>
+  </g>
+
+  <!-- Pressed button -->
+  <g id="btn-pressed" transform="translate(128, 16)">
+    <rect x="0" y="0" width="32" height="16" fill="#1a1e1c"/>
+    <rect x="0" y="0" width="32" height="2" fill="#1a1e1c"/>
+    <rect x="0" y="0" width="2" height="16" fill="#1a1e1c"/>
+    <rect x="30" y="0" width="2" height="16" fill="#2a302d"/>
+    <rect x="0" y="14" width="32" height="2" fill="#2a302d"/>
+    <rect x="2" y="2" width="28" height="12" fill="#2a302d"/>
+  </g>
+
+  <!-- Hover button -->
+  <g id="btn-hover" transform="translate(128, 32)">
+    <rect x="0" y="0" width="32" height="16" fill="#3a423e"/>
+    <rect x="0" y="0" width="32" height="2" fill="#5a625e"/>
+    <rect x="0" y="0" width="2" height="16" fill="#5a625e"/>
+    <rect x="30" y="0" width="2" height="16" fill="#2a302d"/>
+    <rect x="0" y="14" width="32" height="2" fill="#2a302d"/>
+    <rect x="2" y="2" width="28" height="12" fill="#4a524e"/>
+    <rect x="2" y="2" width="28" height="1" fill="#6a726e"/>
+    <!-- Glow -->
+    <rect x="4" y="4" width="24" height="8" fill="#4a8a6a" opacity="0.3"/>
+  </g>
+
+  <!-- Danger button -->
+  <g id="btn-danger" transform="translate(128, 48)">
+    <rect x="0" y="0" width="32" height="16" fill="#4a2a2a"/>
+    <rect x="0" y="0" width="32" height="2" fill="#6a3a3a"/>
+    <rect x="0" y="0" width="2" height="16" fill="#6a3a3a"/>
+    <rect x="30" y="0" width="2" height="16" fill="#2a1a1a"/>
+    <rect x="0" y="14" width="32" height="2" fill="#2a1a1a"/>
+    <rect x="2" y="2" width="28" height="12" fill="#5a3a3a"/>
+  </g>
+
+</svg>

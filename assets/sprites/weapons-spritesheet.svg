@@ -1,0 +1,402 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 128" width="256" height="128" style="image-rendering: pixelated;">
+  <!-- 32x32 weapon sprites, 8 columns x 4 rows -->
+  <!-- Row 0: Laser weapons -->
+
+  <!-- 0,0: Medium Laser -->
+  <g id="medium-laser">
+    <!-- Barrel -->
+    <rect x="6" y="14" width="18" height="4" fill="#5a4a4a"/>
+    <rect x="7" y="15" width="16" height="2" fill="#7a6a6a"/>
+    <!-- Body -->
+    <rect x="2" y="12" width="6" height="8" fill="#4a3a3a"/>
+    <rect x="3" y="13" width="4" height="6" fill="#6a5a5a"/>
+    <!-- Heat vents -->
+    <rect x="10" y="12" width="2" height="1" fill="#3a2a2a"/>
+    <rect x="14" y="12" width="2" height="1" fill="#3a2a2a"/>
+    <rect x="18" y="12" width="2" height="1" fill="#3a2a2a"/>
+    <!-- Lens -->
+    <rect x="22" y="14" width="4" height="4" fill="#ff4444"/>
+    <rect x="23" y="15" width="2" height="2" fill="#ff8866"/>
+    <!-- Glow -->
+    <rect x="26" y="15" width="2" height="2" fill="#ff6644" opacity="0.7"/>
+  </g>
+
+  <!-- 1,0: Large Laser -->
+  <g id="large-laser" transform="translate(32, 0)">
+    <rect x="4" y="12" width="22" height="8" fill="#5a4a4a"/>
+    <rect x="5" y="13" width="20" height="6" fill="#6a5a5a"/>
+    <rect x="2" y="10" width="8" height="12" fill="#4a3a3a"/>
+    <rect x="3" y="11" width="6" height="10" fill="#5a4a4a"/>
+    <!-- Cooling fins -->
+    <rect x="12" y="10" width="3" height="2" fill="#3a2a2a"/>
+    <rect x="17" y="10" width="3" height="2" fill="#3a2a2a"/>
+    <rect x="12" y="20" width="3" height="2" fill="#3a2a2a"/>
+    <rect x="17" y="20" width="3" height="2" fill="#3a2a2a"/>
+    <!-- Lens array -->
+    <rect x="24" y="13" width="4" height="6" fill="#ff4444"/>
+    <rect x="25" y="14" width="2" height="4" fill="#ff8866"/>
+    <rect x="28" y="14" width="2" height="4" fill="#ff6644" opacity="0.6"/>
+  </g>
+
+  <!-- 2,0: Pulse Laser -->
+  <g id="pulse-laser" transform="translate(64, 0)">
+    <rect x="6" y="13" width="16" height="6" fill="#4a4a5a"/>
+    <rect x="7" y="14" width="14" height="4" fill="#5a5a6a"/>
+    <rect x="2" y="11" width="6" height="10" fill="#3a3a4a"/>
+    <rect x="3" y="12" width="4" height="8" fill="#4a4a5a"/>
+    <!-- Pulse chambers -->
+    <rect x="10" y="14" width="2" height="4" fill="#44ff44"/>
+    <rect x="14" y="14" width="2" height="4" fill="#44ff44"/>
+    <rect x="18" y="14" width="2" height="4" fill="#44ff44"/>
+    <!-- Emitter -->
+    <rect x="22" y="14" width="4" height="4" fill="#44ff44"/>
+    <rect x="23" y="15" width="2" height="2" fill="#88ff88"/>
+  </g>
+
+  <!-- 3,0: ER Laser -->
+  <g id="er-laser" transform="translate(96, 0)">
+    <rect x="4" y="13" width="20" height="6" fill="#5a4a5a"/>
+    <rect x="5" y="14" width="18" height="4" fill="#6a5a6a"/>
+    <rect x="2" y="10" width="8" height="12" fill="#4a3a4a"/>
+    <!-- Extended barrel -->
+    <rect x="22" y="14" width="6" height="4" fill="#5a4a5a"/>
+    <rect x="27" y="15" width="3" height="2" fill="#aa44ff"/>
+    <rect x="29" y="15" width="2" height="2" fill="#cc88ff" opacity="0.7"/>
+    <!-- Power coils -->
+    <rect x="10" y="11" width="2" height="2" fill="#aa44ff"/>
+    <rect x="14" y="11" width="2" height="2" fill="#aa44ff"/>
+    <rect x="18" y="11" width="2" height="2" fill="#aa44ff"/>
+  </g>
+
+  <!-- Row 1: Ballistic weapons -->
+
+  <!-- 0,1: Autocannon -->
+  <g id="autocannon" transform="translate(0, 32)">
+    <rect x="4" y="12" width="24" height="8" fill="#4a4a4a"/>
+    <rect x="5" y="13" width="22" height="6" fill="#5a5a5a"/>
+    <!-- Barrel -->
+    <rect x="26" y="14" width="4" height="4" fill="#3a3a3a"/>
+    <rect x="28" y="15" width="2" height="2" fill="#2a2a2a"/>
+    <!-- Magazine -->
+    <rect x="2" y="10" width="8" height="12" fill="#3a3a3a"/>
+    <rect x="3" y="11" width="6" height="10" fill="#4a4a4a"/>
+    <!-- Ammo belt -->
+    <rect x="6" y="20" width="4" height="4" fill="#6a5a3a"/>
+    <rect x="7" y="21" width="2" height="2" fill="#8a7a5a"/>
+    <!-- Details -->
+    <rect x="12" y="11" width="3" height="2" fill="#3a3a3a"/>
+    <rect x="18" y="11" width="3" height="2" fill="#3a3a3a"/>
+  </g>
+
+  <!-- 1,1: Machine Gun -->
+  <g id="machinegun" transform="translate(32, 32)">
+    <rect x="6" y="14" width="20" height="4" fill="#4a4a4a"/>
+    <rect x="7" y="15" width="18" height="2" fill="#5a5a5a"/>
+    <rect x="24" y="14" width="4" height="4" fill="#3a3a3a"/>
+    <rect x="26" y="15" width="2" height="2" fill="#2a2a2a"/>
+    <rect x="2" y="12" width="6" height="8" fill="#3a3a3a"/>
+    <rect x="3" y="13" width="4" height="6" fill="#4a4a4a"/>
+    <!-- Grip -->
+    <rect x="4" y="18" width="4" height="6" fill="#5a4a3a"/>
+    <!-- Perforations -->
+    <rect x="10" y="13" width="1" height="1" fill="#2a2a2a"/>
+    <rect x="13" y="13" width="1" height="1" fill="#2a2a2a"/>
+    <rect x="16" y="13" width="1" height="1" fill="#2a2a2a"/>
+    <rect x="19" y="13" width="1" height="1" fill="#2a2a2a"/>
+  </g>
+
+  <!-- 2,1: Gauss Rifle -->
+  <g id="gauss" transform="translate(64, 32)">
+    <rect x="2" y="10" width="26" height="12" fill="#4a5a6a"/>
+    <rect x="3" y="11" width="24" height="10" fill="#5a6a7a"/>
+    <!-- Magnetic coils -->
+    <rect x="6" y="8" width="4" height="4" fill="#3a4a5a"/>
+    <rect x="12" y="8" width="4" height="4" fill="#3a4a5a"/>
+    <rect x="18" y="8" width="4" height="4" fill="#3a4a5a"/>
+    <rect x="6" y="20" width="4" height="4" fill="#3a4a5a"/>
+    <rect x="12" y="20" width="4" height="4" fill="#3a4a5a"/>
+    <rect x="18" y="20" width="4" height="4" fill="#3a4a5a"/>
+    <!-- Barrel -->
+    <rect x="26" y="13" width="4" height="6" fill="#6a7a8a"/>
+    <rect x="28" y="14" width="2" height="4" fill="#4488ff"/>
+    <!-- Energy glow -->
+    <rect x="8" y="14" width="2" height="4" fill="#4488ff" opacity="0.5"/>
+    <rect x="14" y="14" width="2" height="4" fill="#4488ff" opacity="0.5"/>
+    <rect x="20" y="14" width="2" height="4" fill="#4488ff" opacity="0.5"/>
+  </g>
+
+  <!-- 3,1: Flamer -->
+  <g id="flamer" transform="translate(96, 32)">
+    <rect x="4" y="12" width="16" height="8" fill="#5a4a4a"/>
+    <rect x="5" y="13" width="14" height="6" fill="#6a5a5a"/>
+    <!-- Tank -->
+    <rect x="2" y="10" width="8" height="12" fill="#6a4a3a"/>
+    <rect x="3" y="11" width="6" height="10" fill="#7a5a4a"/>
+    <!-- Nozzle -->
+    <rect x="18" y="13" width="8" height="6" fill="#5a4a4a"/>
+    <rect x="24" y="14" width="4" height="4" fill="#ff6622"/>
+    <rect x="26" y="13" width="2" height="2" fill="#ff8844"/>
+    <rect x="28" y="14" width="2" height="4" fill="#ffaa44" opacity="0.7"/>
+    <!-- Pilot light -->
+    <rect x="22" y="11" width="2" height="2" fill="#ff4422"/>
+  </g>
+
+  <!-- Row 2: Missile weapons -->
+
+  <!-- 0,2: LRM -->
+  <g id="lrm" transform="translate(0, 64)">
+    <rect x="2" y="8" width="24" height="16" fill="#4a5a4a"/>
+    <rect x="3" y="9" width="22" height="14" fill="#5a6a5a"/>
+    <!-- Missile tubes (3x2 grid) -->
+    <rect x="6" y="10" width="4" height="4" fill="#2a2a2a"/>
+    <rect x="12" y="10" width="4" height="4" fill="#2a2a2a"/>
+    <rect x="18" y="10" width="4" height="4" fill="#2a2a2a"/>
+    <rect x="6" y="16" width="4" height="4" fill="#2a2a2a"/>
+    <rect x="12" y="16" width="4" height="4" fill="#2a2a2a"/>
+    <rect x="18" y="16" width="4" height="4" fill="#2a2a2a"/>
+    <!-- Missile tips visible -->
+    <rect x="7" y="11" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="13" y="11" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="19" y="11" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="7" y="17" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="13" y="17" width="2" height="2" fill="#aa3a3a"/>
+    <rect x="19" y="17" width="2" height="2" fill="#aa3a3a"/>
+    <!-- Targeting -->
+    <rect x="24" y="12" width="4" height="8" fill="#3a4a3a"/>
+    <rect x="26" y="14" width="2" height="4" fill="#44aa44"/>
+  </g>
+
+  <!-- 1,2: SRM -->
+  <g id="srm" transform="translate(32, 64)">
+    <rect x="4" y="10" width="20" height="12" fill="#5a4a4a"/>
+    <rect x="5" y="11" width="18" height="10" fill="#6a5a5a"/>
+    <!-- Missile tubes (2x2) -->
+    <rect x="8" y="12" width="5" height="4" fill="#2a2a2a"/>
+    <rect x="15" y="12" width="5" height="4" fill="#2a2a2a"/>
+    <rect x="8" y="18" width="5" height="4" fill="#2a2a2a"/>
+    <rect x="15" y="18" width="5" height="4" fill="#2a2a2a"/>
+    <!-- Missile warheads -->
+    <rect x="9" y="13" width="3" height="2" fill="#cc4444"/>
+    <rect x="16" y="13" width="3" height="2" fill="#cc4444"/>
+    <rect x="9" y="19" width="3" height="2" fill="#cc4444"/>
+    <rect x="16" y="19" width="3" height="2" fill="#cc4444"/>
+    <!-- Housing -->
+    <rect x="2" y="12" width="4" height="8" fill="#4a3a3a"/>
+    <rect x="22" y="12" width="4" height="8" fill="#4a3a3a"/>
+  </g>
+
+  <!-- 2,2: Streak SRM -->
+  <g id="streak-srm" transform="translate(64, 64)">
+    <rect x="4" y="10" width="22" height="12" fill="#5a5a6a"/>
+    <rect x="5" y="11" width="20" height="10" fill="#6a6a7a"/>
+    <!-- Tubes -->
+    <rect x="8" y="12" width="4" height="4" fill="#2a2a2a"/>
+    <rect x="14" y="12" width="4" height="4" fill="#2a2a2a"/>
+    <rect x="8" y="18" width="4" height="4" fill="#2a2a2a"/>
+    <rect x="14" y="18" width="4" height="4" fill="#2a2a2a"/>
+    <!-- Warheads -->
+    <rect x="9" y="13" width="2" height="2" fill="#dd5555"/>
+    <rect x="15" y="13" width="2" height="2" fill="#dd5555"/>
+    <rect x="9" y="19" width="2" height="2" fill="#dd5555"/>
+    <rect x="15" y="19" width="2" height="2" fill="#dd5555"/>
+    <!-- Targeting system -->
+    <rect x="20" y="11" width="6" height="10" fill="#4a4a5a"/>
+    <rect x="22" y="13" width="2" height="2" fill="#44ff44"/>
+    <rect x="22" y="17" width="2" height="2" fill="#44ff44"/>
+  </g>
+
+  <!-- 3,2: Narc Beacon -->
+  <g id="narc" transform="translate(96, 64)">
+    <rect x="6" y="12" width="16" height="8" fill="#6a5a6a"/>
+    <rect x="7" y="13" width="14" height="6" fill="#7a6a7a"/>
+    <rect x="2" y="10" width="6" height="12" fill="#5a4a5a"/>
+    <!-- Beacon pod -->
+    <rect x="20" y="10" width="8" height="12" fill="#5a6a5a"/>
+    <rect x="22" y="12" width="4" height="8" fill="#4a5a4a"/>
+    <!-- Blinking light -->
+    <rect x="23" y="14" width="2" height="2" fill="#ff4444"/>
+    <rect x="23" y="18" width="2" height="2" fill="#44ff44"/>
+    <!-- Antenna -->
+    <rect x="26" y="8" width="2" height="6" fill="#6a6a6a"/>
+    <rect x="25" y="6" width="4" height="2" fill="#7a7a7a"/>
+  </g>
+
+  <!-- Row 3: Energy weapons -->
+
+  <!-- 0,3: PPC -->
+  <g id="ppc" transform="translate(0, 96)">
+    <rect x="2" y="8" width="24" height="16" fill="#5a4a5a"/>
+    <rect x="3" y="9" width="22" height="14" fill="#6a5a6a"/>
+    <!-- Particle chamber -->
+    <rect x="6" y="10" width="10" height="12" fill="#4a3a4a"/>
+    <rect x="7" y="11" width="8" height="10" fill="#5a4a5a"/>
+    <!-- Accelerator coils -->
+    <rect x="4" y="6" width="4" height="4" fill="#3a2a3a"/>
+    <rect x="10" y="6" width="4" height="4" fill="#3a2a3a"/>
+    <rect x="4" y="22" width="4" height="4" fill="#3a2a3a"/>
+    <rect x="10" y="22" width="4" height="4" fill="#3a2a3a"/>
+    <!-- Barrel -->
+    <rect x="18" y="11" width="10" height="10" fill="#5a4a5a"/>
+    <rect x="26" y="13" width="4" height="6" fill="#4488ff"/>
+    <rect x="28" y="14" width="2" height="4" fill="#88bbff"/>
+    <!-- Energy -->
+    <rect x="8" y="13" width="6" height="6" fill="#4488ff" opacity="0.6"/>
+  </g>
+
+  <!-- 1,3: ER PPC -->
+  <g id="er-ppc" transform="translate(32, 96)">
+    <rect x="2" y="6" width="26" height="20" fill="#5a5a6a"/>
+    <rect x="3" y="7" width="24" height="18" fill="#6a6a7a"/>
+    <!-- Extended chamber -->
+    <rect x="5" y="8" width="12" height="16" fill="#4a4a5a"/>
+    <rect x="6" y="9" width="10" height="14" fill="#5a5a6a"/>
+    <!-- Heavy coils -->
+    <rect x="3" y="4" width="6" height="4" fill="#3a3a4a"/>
+    <rect x="11" y="4" width="6" height="4" fill="#3a3a4a"/>
+    <rect x="3" y="24" width="6" height="4" fill="#3a3a4a"/>
+    <rect x="11" y="24" width="6" height="4" fill="#3a3a4a"/>
+    <!-- Extended barrel -->
+    <rect x="18" y="10" width="12" height="12" fill="#5a5a6a"/>
+    <rect x="28" y="12" width="4" height="8" fill="#6688ff"/>
+    <rect x="30" y="13" width="2" height="6" fill="#99bbff"/>
+    <!-- Core -->
+    <rect x="7" y="11" width="8" height="10" fill="#6688ff" opacity="0.5"/>
+  </g>
+
+  <!-- 2,3: Small Laser -->
+  <g id="small-laser" transform="translate(64, 96)">
+    <rect x="8" y="14" width="12" height="4" fill="#5a4a4a"/>
+    <rect x="9" y="15" width="10" height="2" fill="#6a5a5a"/>
+    <rect x="4" y="12" width="6" height="8" fill="#4a3a3a"/>
+    <rect x="5" y="13" width="4" height="6" fill="#5a4a4a"/>
+    <!-- Lens -->
+    <rect x="18" y="14" width="4" height="4" fill="#ff4444"/>
+    <rect x="19" y="15" width="2" height="2" fill="#ff6666"/>
+    <rect x="22" y="15" width="1" height="2" fill="#ff4444" opacity="0.5"/>
+  </g>
+
+  <!-- 3,3: Plasma Cannon -->
+  <g id="plasma" transform="translate(96, 96)">
+    <rect x="2" y="8" width="22" height="16" fill="#6a5a4a"/>
+    <rect x="3" y="9" width="20" height="14" fill="#7a6a5a"/>
+    <!-- Plasma chamber -->
+    <rect x="5" y="10" width="10" height="12" fill="#5a4a3a"/>
+    <rect x="6" y="11" width="8" height="10" fill="#44aa44"/>
+    <rect x="7" y="12" width="6" height="8" fill="#66cc66"/>
+    <!-- Focusing array -->
+    <rect x="16" y="11" width="8" height="10" fill="#5a4a3a"/>
+    <rect x="22" y="13" width="6" height="6" fill="#44cc44"/>
+    <rect x="24" y="14" width="4" height="4" fill="#88ff88"/>
+    <!-- Vents -->
+    <rect x="3" y="6" width="3" height="3" fill="#4a3a2a"/>
+    <rect x="9" y="6" width="3" height="3" fill="#4a3a2a"/>
+    <rect x="3" y="23" width="3" height="3" fill="#4a3a2a"/>
+    <rect x="9" y="23" width="3" height="3" fill="#4a3a2a"/>
+  </g>
+
+  <!-- Additional weapons in remaining columns -->
+
+  <!-- 4,0: Rocket Launcher -->
+  <g id="rocket" transform="translate(128, 0)">
+    <rect x="4" y="10" width="20" height="12" fill="#5a5a5a"/>
+    <rect x="5" y="11" width="18" height="10" fill="#6a6a6a"/>
+    <!-- Single large tube -->
+    <rect x="8" y="12" width="12" height="8" fill="#3a3a3a"/>
+    <rect x="9" y="13" width="10" height="6" fill="#4a4a4a"/>
+    <!-- Rocket visible -->
+    <rect x="10" y="14" width="8" height="4" fill="#aa4444"/>
+    <rect x="16" y="15" width="2" height="2" fill="#cc6666"/>
+    <!-- Grip -->
+    <rect x="2" y="12" width="4" height="10" fill="#4a3a3a"/>
+    <!-- Sight -->
+    <rect x="10" y="8" width="4" height="3" fill="#3a3a3a"/>
+    <rect x="11" y="9" width="2" height="1" fill="#44ff44"/>
+  </g>
+
+  <!-- 5,0: Mortar -->
+  <g id="mortar" transform="translate(160, 0)">
+    <rect x="6" y="8" width="12" height="16" fill="#5a5a5a"/>
+    <rect x="7" y="9" width="10" height="14" fill="#6a6a6a"/>
+    <!-- Barrel opening -->
+    <rect x="8" y="6" width="8" height="4" fill="#3a3a3a"/>
+    <rect x="9" y="4" width="6" height="4" fill="#4a4a4a"/>
+    <!-- Shell visible -->
+    <rect x="10" y="10" width="4" height="8" fill="#8a6a4a"/>
+    <rect x="11" y="11" width="2" height="2" fill="#aa8a6a"/>
+    <!-- Base plate -->
+    <rect x="4" y="22" width="16" height="4" fill="#4a4a4a"/>
+    <!-- Legs -->
+    <rect x="2" y="16" width="4" height="8" fill="#5a5a5a"/>
+    <rect x="18" y="16" width="4" height="8" fill="#5a5a5a"/>
+  </g>
+
+  <!-- 6,0: Anti-Missile System -->
+  <g id="ams" transform="translate(192, 0)">
+    <rect x="6" y="10" width="16" height="12" fill="#4a5a4a"/>
+    <rect x="7" y="11" width="14" height="10" fill="#5a6a5a"/>
+    <!-- Rotating barrels -->
+    <rect x="20" y="12" width="8" height="8" fill="#3a4a3a"/>
+    <rect x="22" y="13" width="2" height="2" fill="#2a2a2a"/>
+    <rect x="24" y="15" width="2" height="2" fill="#2a2a2a"/>
+    <rect x="22" y="17" width="2" height="2" fill="#2a2a2a"/>
+    <!-- Radar -->
+    <rect x="8" y="6" width="6" height="5" fill="#3a4a3a"/>
+    <rect x="10" y="7" width="2" height="2" fill="#44ff44"/>
+    <!-- Ammo drum -->
+    <rect x="2" y="12" width="6" height="8" fill="#5a5a4a"/>
+  </g>
+
+  <!-- 7,0: TAG (Target Acquisition Gear) -->
+  <g id="tag" transform="translate(224, 0)">
+    <rect x="6" y="12" width="16" height="8" fill="#5a5a6a"/>
+    <rect x="7" y="13" width="14" height="6" fill="#6a6a7a"/>
+    <!-- Laser emitter -->
+    <rect x="20" y="13" width="6" height="6" fill="#4a4a5a"/>
+    <rect x="24" y="14" width="2" height="4" fill="#ff4444"/>
+    <rect x="26" y="15" width="2" height="2" fill="#ff6666" opacity="0.7"/>
+    <!-- Optics -->
+    <rect x="2" y="10" width="6" height="12" fill="#4a4a5a"/>
+    <rect x="3" y="12" width="4" height="8" fill="#3a3a4a"/>
+    <rect x="4" y="14" width="2" height="4" fill="#4488ff"/>
+    <!-- Antenna -->
+    <rect x="8" y="8" width="2" height="5" fill="#5a5a5a"/>
+    <rect x="7" y="6" width="4" height="2" fill="#6a6a6a"/>
+  </g>
+
+  <!-- More rows... -->
+  <!-- 4,1: Heavy Autocannon -->
+  <g id="heavy-ac" transform="translate(128, 32)">
+    <rect x="2" y="8" width="28" height="16" fill="#4a4a4a"/>
+    <rect x="3" y="9" width="26" height="14" fill="#5a5a5a"/>
+    <!-- Massive barrel -->
+    <rect x="26" y="11" width="6" height="10" fill="#3a3a3a"/>
+    <rect x="30" y="13" width="2" height="6" fill="#2a2a2a"/>
+    <!-- Magazine -->
+    <rect x="4" y="6" width="10" height="8" fill="#3a3a3a"/>
+    <rect x="5" y="7" width="8" height="6" fill="#4a4a4a"/>
+    <!-- Belt feed -->
+    <rect x="4" y="22" width="8" height="6" fill="#6a5a3a"/>
+    <rect x="10" y="20" width="4" height="4" fill="#5a4a2a"/>
+    <!-- Cooling jacket -->
+    <rect x="16" y="10" width="10" height="2" fill="#3a3a3a"/>
+    <rect x="16" y="20" width="10" height="2" fill="#3a3a3a"/>
+  </g>
+
+  <!-- 5,1: Ultra Autocannon -->
+  <g id="ultra-ac" transform="translate(160, 32)">
+    <rect x="2" y="8" width="26" height="16" fill="#4a4a5a"/>
+    <rect x="3" y="9" width="24" height="14" fill="#5a5a6a"/>
+    <!-- Twin barrels -->
+    <rect x="24" y="10" width="6" height="5" fill="#3a3a4a"/>
+    <rect x="24" y="17" width="6" height="5" fill="#3a3a4a"/>
+    <rect x="28" y="11" width="2" height="3" fill="#2a2a3a"/>
+    <rect x="28" y="18" width="2" height="3" fill="#2a2a3a"/>
+    <!-- Rotary mechanism -->
+    <rect x="18" y="11" width="6" height="10" fill="#4a4a5a"/>
+    <rect x="19" y="13" width="4" height="6" fill="#5a5a6a"/>
+    <!-- Magazine -->
+    <rect x="4" y="6" width="8" height="6" fill="#3a3a4a"/>
+    <rect x="4" y="20" width="8" height="6" fill="#3a3a4a"/>
+  </g>
+
+</svg>

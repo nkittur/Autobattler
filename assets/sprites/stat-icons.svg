@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 64" width="128" height="64" style="image-rendering: pixelated;">
+  <!-- 16x16 stat icons arranged in a row -->
+
+  <!-- Damage (sword/explosion) -->
+  <g id="icon-damage" transform="translate(0, 0)">
+    <rect x="7" y="2" width="2" height="2" fill="#ff4444"/>
+    <rect x="6" y="4" width="4" height="2" fill="#ff4444"/>
+    <rect x="5" y="6" width="6" height="2" fill="#ff6644"/>
+    <rect x="4" y="8" width="8" height="2" fill="#ff6644"/>
+    <rect x="3" y="10" width="10" height="2" fill="#ff8844"/>
+    <rect x="6" y="12" width="4" height="2" fill="#ffaa44"/>
+    <rect x="7" y="14" width="2" height="1" fill="#ffcc44"/>
+  </g>
+
+  <!-- Energy (lightning bolt) -->
+  <g id="icon-energy" transform="translate(16, 0)">
+    <rect x="8" y="1" width="4" height="2" fill="#ffcc44"/>
+    <rect x="6" y="3" width="4" height="2" fill="#ffcc44"/>
+    <rect x="4" y="5" width="6" height="2" fill="#ffaa44"/>
+    <rect x="6" y="7" width="6" height="2" fill="#ffaa44"/>
+    <rect x="8" y="9" width="4" height="2" fill="#ff8844"/>
+    <rect x="6" y="11" width="4" height="2" fill="#ff8844"/>
+    <rect x="4" y="13" width="4" height="2" fill="#ff6644"/>
+  </g>
+
+  <!-- Weight (anvil/block) -->
+  <g id="icon-weight" transform="translate(32, 0)">
+    <rect x="4" y="4" width="8" height="4" fill="#6a6a6a"/>
+    <rect x="5" y="5" width="6" height="2" fill="#8a8a8a"/>
+    <rect x="3" y="8" width="10" height="6" fill="#5a5a5a"/>
+    <rect x="4" y="9" width="8" height="4" fill="#7a7a7a"/>
+    <rect x="2" y="12" width="12" height="2" fill="#4a4a4a"/>
+  </g>
+
+  <!-- HP (heart) -->
+  <g id="icon-hp" transform="translate(48, 0)">
+    <rect x="3" y="4" width="4" height="4" fill="#cc3333"/>
+    <rect x="9" y="4" width="4" height="4" fill="#cc3333"/>
+    <rect x="2" y="5" width="6" height="4" fill="#aa2222"/>
+    <rect x="8" y="5" width="6" height="4" fill="#aa2222"/>
+    <rect x="3" y="8" width="10" height="4" fill="#aa2222"/>
+    <rect x="4" y="11" width="8" height="2" fill="#882222"/>
+    <rect x="6" y="13" width="4" height="2" fill="#662222"/>
+    <!-- Highlight -->
+    <rect x="4" y="5" width="2" height="2" fill="#dd5555"/>
+  </g>
+
+  <!-- Armor (shield) -->
+  <g id="icon-armor" transform="translate(64, 0)">
+    <rect x="4" y="2" width="8" height="2" fill="#5577aa"/>
+    <rect x="3" y="4" width="10" height="6" fill="#4466aa"/>
+    <rect x="4" y="10" width="8" height="2" fill="#3355aa"/>
+    <rect x="5" y="12" width="6" height="2" fill="#2244aa"/>
+    <rect x="6" y="14" width="4" height="1" fill="#1133aa"/>
+    <!-- Cross -->
+    <rect x="7" y="5" width="2" height="6" fill="#6699cc"/>
+    <rect x="5" y="7" width="6" height="2" fill="#6699cc"/>
+  </g>
+
+  <!-- Accuracy (crosshair) -->
+  <g id="icon-accuracy" transform="translate(80, 0)">
+    <!-- Outer ring -->
+    <rect x="5" y="2" width="6" height="2" fill="#aaaa44"/>
+    <rect x="5" y="12" width="6" height="2" fill="#aaaa44"/>
+    <rect x="2" y="5" width="2" height="6" fill="#aaaa44"/>
+    <rect x="12" y="5" width="2" height="6" fill="#aaaa44"/>
+    <!-- Crosshairs -->
+    <rect x="7" y="0" width="2" height="4" fill="#cccc66"/>
+    <rect x="7" y="12" width="2" height="4" fill="#cccc66"/>
+    <rect x="0" y="7" width="4" height="2" fill="#cccc66"/>
+    <rect x="12" y="7" width="4" height="2" fill="#cccc66"/>
+    <!-- Center dot -->
+    <rect x="7" y="7" width="2" height="2" fill="#ffff88"/>
+  </g>
+
+  <!-- Gold (coin) -->
+  <g id="icon-gold" transform="translate(96, 0)">
+    <rect x="4" y="3" width="8" height="2" fill="#aa8822"/>
+    <rect x="3" y="5" width="10" height="6" fill="#ccaa33"/>
+    <rect x="4" y="11" width="8" height="2" fill="#aa8822"/>
+    <!-- Shine -->
+    <rect x="5" y="4" width="2" height="2" fill="#eedd66"/>
+    <rect x="4" y="6" width="2" height="2" fill="#ddcc55"/>
+    <!-- Symbol -->
+    <rect x="6" y="6" width="4" height="4" fill="#aa8822"/>
+    <rect x="7" y="7" width="2" height="2" fill="#ccaa33"/>
+  </g>
+
+  <!-- Slots (grid) -->
+  <g id="icon-slots" transform="translate(112, 0)">
+    <rect x="2" y="2" width="5" height="5" fill="#3a5a4a"/>
+    <rect x="9" y="2" width="5" height="5" fill="#3a5a4a"/>
+    <rect x="2" y="9" width="5" height="5" fill="#3a5a4a"/>
+    <rect x="9" y="9" width="5" height="5" fill="#3a5a4a"/>
+    <!-- Inner -->
+    <rect x="3" y="3" width="3" height="3" fill="#4a7a6a"/>
+    <rect x="10" y="3" width="3" height="3" fill="#4a7a6a"/>
+    <rect x="3" y="10" width="3" height="3" fill="#4a7a6a"/>
+    <rect x="10" y="10" width="3" height="3" fill="#4a7a6a"/>
+  </g>
+
+  <!-- Row 2: Additional icons -->
+
+  <!-- Heat (flame) -->
+  <g id="icon-heat" transform="translate(0, 16)">
+    <rect x="7" y="2" width="2" height="2" fill="#ff6622"/>
+    <rect x="6" y="4" width="4" height="2" fill="#ff4411"/>
+    <rect x="5" y="6" width="6" height="2" fill="#ff6622"/>
+    <rect x="4" y="8" width="8" height="3" fill="#ff8833"/>
+    <rect x="5" y="11" width="6" height="2" fill="#ffaa44"/>
+    <rect x="6" y="13" width="4" height="2" fill="#ffcc66"/>
+  </g>
+
+  <!-- Coolant (snowflake/drop) -->
+  <g id="icon-coolant" transform="translate(16, 16)">
+    <rect x="7" y="2" width="2" height="2" fill="#44aacc"/>
+    <rect x="6" y="4" width="4" height="2" fill="#55bbdd"/>
+    <rect x="5" y="6" width="6" height="4" fill="#66ccee"/>
+    <rect x="4" y="10" width="8" height="2" fill="#55bbdd"/>
+    <rect x="5" y="12" width="6" height="2" fill="#44aacc"/>
+    <rect x="7" y="14" width="2" height="1" fill="#3399bb"/>
+    <!-- Highlight -->
+    <rect x="6" y="7" width="2" height="2" fill="#88eeff"/>
+  </g>
+
+  <!-- Range (arrow) -->
+  <g id="icon-range" transform="translate(32, 16)">
+    <rect x="2" y="7" width="10" height="2" fill="#88aa88"/>
+    <!-- Arrow head -->
+    <rect x="10" y="5" width="2" height="2" fill="#88aa88"/>
+    <rect x="10" y="9" width="2" height="2" fill="#88aa88"/>
+    <rect x="12" y="6" width="2" height="4" fill="#aacc88"/>
+    <rect x="14" y="7" width="1" height="2" fill="#ccee88"/>
+    <!-- Tail -->
+    <rect x="1" y="6" width="2" height="4" fill="#668866"/>
+  </g>
+
+  <!-- Ammo (bullet) -->
+  <g id="icon-ammo" transform="translate(48, 16)">
+    <rect x="6" y="2" width="4" height="3" fill="#aa8855"/>
+    <rect x="5" y="5" width="6" height="8" fill="#886633"/>
+    <rect x="6" y="6" width="4" height="6" fill="#aa8855"/>
+    <!-- Casing line -->
+    <rect x="5" y="9" width="6" height="1" fill="#665522"/>
+    <!-- Highlight -->
+    <rect x="7" y="6" width="1" height="5" fill="#ccaa77"/>
+  </g>
+
+  <!-- Speed (lightning/fast) -->
+  <g id="icon-speed" transform="translate(64, 16)">
+    <rect x="10" y="2" width="3" height="2" fill="#88ccff"/>
+    <rect x="8" y="4" width="4" height="2" fill="#88ccff"/>
+    <rect x="4" y="6" width="8" height="2" fill="#aaddff"/>
+    <rect x="2" y="8" width="6" height="2" fill="#aaddff"/>
+    <rect x="4" y="10" width="4" height="2" fill="#88ccff"/>
+    <rect x="6" y="12" width="3" height="2" fill="#88ccff"/>
+  </g>
+
+  <!-- Crit (star) -->
+  <g id="icon-crit" transform="translate(80, 16)">
+    <rect x="7" y="1" width="2" height="3" fill="#ffcc00"/>
+    <rect x="6" y="4" width="4" height="2" fill="#ffdd22"/>
+    <rect x="2" y="6" width="12" height="2" fill="#ffcc00"/>
+    <rect x="4" y="8" width="8" height="2" fill="#ffdd22"/>
+    <rect x="3" y="10" width="4" height="3" fill="#ffcc00"/>
+    <rect x="9" y="10" width="4" height="3" fill="#ffcc00"/>
+    <rect x="7" y="11" width="2" height="3" fill="#ffdd22"/>
+  </g>
+
+  <!-- Modifier (plus) -->
+  <g id="icon-modifier" transform="translate(96, 16)">
+    <rect x="6" y="3" width="4" height="10" fill="#aa66cc"/>
+    <rect x="3" y="6" width="10" height="4" fill="#aa66cc"/>
+    <!-- Inner -->
+    <rect x="7" y="4" width="2" height="8" fill="#cc88ee"/>
+    <rect x="4" y="7" width="8" height="2" fill="#cc88ee"/>
+  </g>
+
+  <!-- Lock (padlock) -->
+  <g id="icon-lock" transform="translate(112, 16)">
+    <!-- Shackle -->
+    <rect x="5" y="2" width="6" height="2" fill="#666666"/>
+    <rect x="4" y="4" width="2" height="4" fill="#666666"/>
+    <rect x="10" y="4" width="2" height="4" fill="#666666"/>
+    <!-- Body -->
+    <rect x="3" y="7" width="10" height="8" fill="#888888"/>
+    <rect x="4" y="8" width="8" height="6" fill="#aaaaaa"/>
+    <!-- Keyhole -->
+    <rect x="7" y="10" width="2" height="3" fill="#444444"/>
+    <rect x="6" y="9" width="4" height="2" fill="#444444"/>
+  </g>
+
+  <!-- Row 3: More stat icons -->
+
+  <!-- Tonnage (weight class) -->
+  <g id="icon-tonnage" transform="translate(0, 32)">
+    <rect x="3" y="10" width="10" height="4" fill="#5a5a5a"/>
+    <rect x="4" y="11" width="8" height="2" fill="#7a7a7a"/>
+    <rect x="5" y="6" width="6" height="5" fill="#4a4a4a"/>
+    <rect x="6" y="7" width="4" height="3" fill="#6a6a6a"/>
+    <rect x="2" y="4" width="4" height="3" fill="#5a5a5a"/>
+    <rect x="10" y="4" width="4" height="3" fill="#5a5a5a"/>
+    <rect x="7" y="2" width="2" height="3" fill="#4a4a4a"/>
+  </g>
+
+  <!-- Salvage (wrench) -->
+  <g id="icon-salvage" transform="translate(16, 32)">
+    <rect x="3" y="3" width="4" height="3" fill="#7a8a7a"/>
+    <rect x="4" y="6" width="2" height="6" fill="#6a7a6a"/>
+    <rect x="3" y="10" width="4" height="4" fill="#7a8a7a"/>
+    <rect x="9" y="3" width="4" height="3" fill="#7a8a7a"/>
+    <rect x="10" y="6" width="2" height="6" fill="#6a7a6a"/>
+    <rect x="9" y="10" width="4" height="4" fill="#7a8a7a"/>
+    <!-- Bolt in middle -->
+    <rect x="6" y="7" width="4" height="4" fill="#5a6a5a"/>
+    <rect x="7" y="8" width="2" height="2" fill="#8a9a8a"/>
+  </g>
+
+  <!-- XP (star badge) -->
+  <g id="icon-xp" transform="translate(32, 32)">
+    <rect x="4" y="4" width="8" height="8" fill="#aa8833"/>
+    <rect x="5" y="5" width="6" height="6" fill="#ccaa44"/>
+    <rect x="7" y="3" width="2" height="2" fill="#ddbb55"/>
+    <rect x="7" y="11" width="2" height="2" fill="#ddbb55"/>
+    <rect x="3" y="7" width="2" height="2" fill="#ddbb55"/>
+    <rect x="11" y="7" width="2" height="2" fill="#ddbb55"/>
+    <!-- Inner star -->
+    <rect x="7" y="6" width="2" height="4" fill="#eedd88"/>
+    <rect x="6" y="7" width="4" height="2" fill="#eedd88"/>
+  </g>
+
+  <!-- Round (timer) -->
+  <g id="icon-round" transform="translate(48, 32)">
+    <rect x="4" y="2" width="8" height="2" fill="#5a6a7a"/>
+    <rect x="2" y="4" width="2" height="8" fill="#5a6a7a"/>
+    <rect x="12" y="4" width="2" height="8" fill="#5a6a7a"/>
+    <rect x="4" y="12" width="8" height="2" fill="#5a6a7a"/>
+    <rect x="4" y="4" width="8" height="8" fill="#3a4a5a"/>
+    <!-- Clock hands -->
+    <rect x="7" y="5" width="2" height="4" fill="#aabbcc"/>
+    <rect x="7" y="7" width="4" height="2" fill="#aabbcc"/>
+  </g>
+
+</svg>

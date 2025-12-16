@@ -2116,54 +2116,103 @@
         }
 
         // Determine which body part was hit based on impact position
+        // Uses actual mesh positions for accurate hit detection
         function getHitBodyPart(mech, impactPosition) {
             if (!mech || !impactPosition) return 'torso';
 
-            // Get positions of each body part (using meshes if available)
-            const pelvisPos = mech.pelvis ? mech.pelvis.getAbsolutePosition() : null;
-            if (!pelvisPos) return 'torso';
-
-            // Calculate relative height from pelvis
-            const relativeY = impactPosition.y - pelvisPos.y;
-            const relativeX = impactPosition.x - pelvisPos.x;
-            const mechFacing = mech.pelvis.rotationQuaternion ?
-                mech.pelvis.rotationQuaternion.toEulerAngles().y : 0;
-
-            // Rotate relative position to local coordinates
-            const cosY = Math.cos(-mechFacing);
-            const sinY = Math.sin(-mechFacing);
-            const localX = relativeX * cosY - (impactPosition.z - pelvisPos.z) * sinY;
-
-            // Height thresholds based on mech structure (scaled)
+            // Build list of body parts with their positions and hitbox radii
+            const bodyParts = [];
             const scale = mech.scale || 1.0;
-            const headMinY = 2.0 * scale;     // Head is above this
-            const torsoMinY = 0.3 * scale;    // Torso is between leg and head
-            const legMaxY = 0.3 * scale;      // Legs are below this
 
-            // Width threshold for arms vs torso
-            const armThreshold = 0.6 * scale;
+            // Define hitbox sizes for each body part (radius for collision)
+            const hitboxSizes = {
+                head: 0.6 * scale,
+                torso: 1.2 * scale,
+                leftArm: 0.8 * scale,
+                rightArm: 0.8 * scale,
+                leftLeg: 1.0 * scale,
+                rightLeg: 1.0 * scale
+            };
 
-            let hitPart = 'torso';
+            // Get actual mesh positions for each body part
+            if (mech.head) {
+                bodyParts.push({
+                    name: 'head',
+                    position: mech.head.getAbsolutePosition(),
+                    radius: hitboxSizes.head
+                });
+            }
 
-            // Determine hit location
-            if (relativeY > headMinY) {
-                hitPart = 'head';
-            } else if (relativeY > torsoMinY) {
-                // Upper body - could be torso or arms
-                if (Math.abs(localX) > armThreshold) {
-                    hitPart = localX > 0 ? 'rightArm' : 'leftArm';
-                } else {
-                    hitPart = 'torso';
+            if (mech.torso) {
+                bodyParts.push({
+                    name: 'torso',
+                    position: mech.torso.getAbsolutePosition(),
+                    radius: hitboxSizes.torso
+                });
+            }
+
+            if (mech.leftArm) {
+                // Use elbow or arm position for better accuracy
+                const armPos = mech.leftArm.getAbsolutePosition();
+                bodyParts.push({
+                    name: 'leftArm',
+                    position: armPos,
+                    radius: hitboxSizes.leftArm
+                });
+            }
+
+            if (mech.rightArm) {
+                const armPos = mech.rightArm.getAbsolutePosition();
+                bodyParts.push({
+                    name: 'rightArm',
+                    position: armPos,
+                    radius: hitboxSizes.rightArm
+                });
+            }
+
+            // Legs - use shin or foot position for lower hits
+            if (mech.leftLeg) {
+                // Get lower leg position (shin/foot area)
+                const legPos = mech.leftLeg.getAbsolutePosition();
+                bodyParts.push({
+                    name: 'leftLeg',
+                    position: legPos,
+                    radius: hitboxSizes.leftLeg
+                });
+            }
+
+            if (mech.rightLeg) {
+                const legPos = mech.rightLeg.getAbsolutePosition();
+                bodyParts.push({
+                    name: 'rightLeg',
+                    position: legPos,
+                    radius: hitboxSizes.rightLeg
+                });
+            }
+
+            // If no body parts found, fall back to torso
+            if (bodyParts.length === 0) return 'torso';
+
+            // Find the closest body part to the impact position
+            // Use weighted distance (distance / radius) to account for hitbox sizes
+            let closestPart = 'torso';
+            let closestScore = Infinity;
+
+            for (const part of bodyParts) {
+                const distance = BABYLON.Vector3.Distance(impactPosition, part.position);
+                // Score = distance normalized by hitbox radius (smaller = better match)
+                const score = distance / part.radius;
+
+                if (score < closestScore) {
+                    closestScore = score;
+                    closestPart = part.name;
                 }
-            } else {
-                // Lower body - legs
-                hitPart = localX > 0 ? 'rightLeg' : 'leftLeg';
             }
 
             // Debug: Log hit detection details
-            console.log(`[HIT] ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} ${hitPart} | relY=${relativeY.toFixed(2)} localX=${localX.toFixed(2)} | thresholds: head>${headMinY.toFixed(2)}, torso>${torsoMinY.toFixed(2)}, arm>${armThreshold.toFixed(2)}`);
+            console.log(`[HIT] ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} ${closestPart} | score=${closestScore.toFixed(2)} | impact=${impactPosition.x.toFixed(1)},${impactPosition.y.toFixed(1)},${impactPosition.z.toFixed(1)}`);
 
-            return hitPart;
+            return closestPart;
         }
 
         // ============================================
@@ -8036,8 +8085,10 @@
                         const enemies = allMechs.filter(m => m && !m.isDestroyed && m !== p.owner && m.isPlayer !== p.owner.isPlayer);
                         for (const enemy of enemies) {
                             if (!enemy.torso) continue;
+                            // Check against general mech bounding area (larger for piloting mode)
                             const dist = BABYLON.Vector3.Distance(projPos, enemy.torso.getAbsolutePosition());
-                            if (dist < 2.0) {  // Slightly larger hitbox for piloting mode
+                            if (dist < 2.5) {
+                                // Use projectile position for accurate hit detection on intended body part
                                 applyDamage(enemy, p.weapon, enemy.isPlayer ? -1 : 1, projPos.clone());
                                 log(`[PILOT HIT] ${enemy.name} -${p.weapon.damage} (${enemy.currentHP}/${enemy.maxHP})`, 'warn');
                                 createImpact(projPos.clone(), p.weapon.color);
@@ -8071,11 +8122,20 @@
                         return false;
                     }
 
-                    const dist = BABYLON.Vector3.Distance(projPos, p.target.torso.getAbsolutePosition());
-                    if (dist < 1.6) {
-                        applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1, projPos.clone());
+                    // Check collision against the mech's bounding area
+                    // Use torso for primary collision check but larger radius
+                    const torsoPos = p.target.torso.getAbsolutePosition();
+                    const distToTorso = BABYLON.Vector3.Distance(projPos, torsoPos);
+
+                    // Hit if within mech's general bounding area (2.5 units from torso covers whole mech)
+                    if (distToTorso < 2.5) {
+                        // Use the intended spread target position for hit location determination
+                        // This ensures hits land where they were aimed (legs, arms, head, etc.)
+                        const impactPosition = p.spreadTarget ? p.spreadTarget.clone() : projPos.clone();
+
+                        applyDamage(p.target, p.weapon, p.target.isPlayer ? -1 : 1, impactPosition);
                         log(`HIT! ${p.target.name} -${p.weapon.damage} (${p.target.currentHP}/${p.target.maxHP})`, 'warn');
-                        createImpact(projPos.clone(), p.weapon.color);
+                        createImpact(impactPosition, p.weapon.color);
                         disposeProjectile();
                         return false;
                     }

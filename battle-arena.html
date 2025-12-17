@@ -151,6 +151,102 @@
         }
         .body-part-fill.player { background: #00ff88; }
         .body-part-fill.enemy { background: #ff4444; }
+
+        /* Mech Status Overlays on Canvas */
+        .mech-overlay {
+            position: absolute;
+            top: 10px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            z-index: 100;
+            font-family: monospace;
+            pointer-events: none;
+        }
+        .player-overlay {
+            left: 10px;
+            border-color: rgba(0, 255, 136, 0.5);
+        }
+        .enemy-overlay {
+            right: 10px;
+            border-color: rgba(255, 68, 68, 0.5);
+        }
+        .mech-overlay-title {
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+        .player-overlay .mech-overlay-title { color: #00ff88; }
+        .enemy-overlay .mech-overlay-title { color: #ff4444; }
+        .mech-silhouette {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .mech-row {
+            display: flex;
+            gap: 2px;
+            justify-content: center;
+        }
+        .mech-part {
+            width: 24px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: bold;
+            border-radius: 2px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .mech-part.mech-torso {
+            width: 28px;
+            height: 28px;
+            font-size: 10px;
+        }
+        .mech-row-head .mech-part {
+            width: 20px;
+            height: 16px;
+            border-radius: 4px 4px 2px 2px;
+        }
+        .mech-row-legs {
+            gap: 8px;
+        }
+        .mech-row-legs .mech-part {
+            height: 24px;
+            border-radius: 2px 2px 4px 4px;
+        }
+        /* Component health states */
+        .mech-part.status-healthy {
+            background: #22aa44;
+            color: #aaffaa;
+            box-shadow: 0 0 4px rgba(34, 170, 68, 0.5);
+        }
+        .mech-part.status-damaged {
+            background: #aaaa22;
+            color: #ffffaa;
+            box-shadow: 0 0 4px rgba(170, 170, 34, 0.5);
+        }
+        .mech-part.status-critical {
+            background: #aa2222;
+            color: #ffaaaa;
+            box-shadow: 0 0 6px rgba(170, 34, 34, 0.7);
+            animation: pulse-critical 0.5s ease-in-out infinite alternate;
+        }
+        .mech-part.status-destroyed {
+            background: #111;
+            color: #444;
+            box-shadow: none;
+        }
+        @keyframes pulse-critical {
+            from { opacity: 1; }
+            to { opacity: 0.6; }
+        }
+
         #polyCount {
             text-align: center;
             font-size: 10px;
@@ -1243,14 +1339,48 @@
                 <span class="target-name" id="targetName">No Target</span>
                 <span class="target-level" id="targetLevel">Lv.?</span>
             </div>
-            <div class="target-hp-bar">
-                <div class="target-hp-fill" id="targetHPFill" style="width: 100%;"></div>
-            </div>
-            <div class="target-hp-text" id="targetHPText">-- / --</div>
             <div class="target-equipment">
                 <div class="target-equipment-title">Equipment</div>
                 <div id="targetEquipmentList">
                     <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Player Mech Status Overlay (Top Left) -->
+        <div id="playerMechOverlay" class="mech-overlay player-overlay">
+            <div class="mech-overlay-title">PLAYER</div>
+            <div class="mech-silhouette">
+                <div class="mech-row mech-row-head">
+                    <div class="mech-part" id="overlay_player_head" data-part="head">HD</div>
+                </div>
+                <div class="mech-row mech-row-arms">
+                    <div class="mech-part" id="overlay_player_leftArm" data-part="leftArm">LA</div>
+                    <div class="mech-part mech-torso" id="overlay_player_torso" data-part="torso">T</div>
+                    <div class="mech-part" id="overlay_player_rightArm" data-part="rightArm">RA</div>
+                </div>
+                <div class="mech-row mech-row-legs">
+                    <div class="mech-part" id="overlay_player_leftLeg" data-part="leftLeg">LL</div>
+                    <div class="mech-part" id="overlay_player_rightLeg" data-part="rightLeg">RL</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enemy Mech Status Overlay (Top Right) -->
+        <div id="enemyMechOverlay" class="mech-overlay enemy-overlay">
+            <div class="mech-overlay-title" id="enemyOverlayTitle">TARGET</div>
+            <div class="mech-silhouette">
+                <div class="mech-row mech-row-head">
+                    <div class="mech-part" id="overlay_enemy_head" data-part="head">HD</div>
+                </div>
+                <div class="mech-row mech-row-arms">
+                    <div class="mech-part" id="overlay_enemy_leftArm" data-part="leftArm">LA</div>
+                    <div class="mech-part mech-torso" id="overlay_enemy_torso" data-part="torso">T</div>
+                    <div class="mech-part" id="overlay_enemy_rightArm" data-part="rightArm">RA</div>
+                </div>
+                <div class="mech-row mech-row-legs">
+                    <div class="mech-part" id="overlay_enemy_leftLeg" data-part="leftLeg">LL</div>
+                    <div class="mech-part" id="overlay_enemy_rightLeg" data-part="rightLeg">RL</div>
                 </div>
             </div>
         </div>
@@ -1364,8 +1494,6 @@
         <div id="mechStatus">
             <div class="mech-info player">
                 <strong style="color: #00ff88;">TIMBER WOLF (Mad Cat)</strong>
-                <div class="hp-bar"><div class="hp-fill player" id="playerHP" style="width: 100%"></div></div>
-                <div id="playerHPText">HP: 150/150</div>
                 <div id="playerState">Idle</div>
                 <div class="body-parts" id="playerBodyParts">
                     <div class="body-part healthy" id="player_leftArm">L.Arm<div class="body-part-bar"><div class="body-part-fill player" style="width:100%"></div></div></div>
@@ -1378,8 +1506,6 @@
             </div>
             <div class="mech-info enemy">
                 <strong style="color: #ff4444;">DIRE WOLF (Daishi)</strong>
-                <div class="hp-bar"><div class="hp-fill enemy" id="enemyHP" style="width: 100%"></div></div>
-                <div id="enemyHPText">HP: 200/200</div>
                 <div id="enemyState">Idle</div>
                 <div class="body-parts" id="enemyBodyParts">
                     <div class="body-part healthy" id="enemy_leftArm">L.Arm<div class="body-part-bar"><div class="body-part-fill enemy" style="width:100%"></div></div></div>
@@ -9386,18 +9512,12 @@
 
             // Player team status
             if (playerMaxHP > 0) {
-                document.getElementById('playerHP').style.width = (playerTotalHP / playerMaxHP * 100) + '%';
-                document.getElementById('playerHPText').textContent = `Team HP: ${playerTotalHP}/${playerMaxHP} (${playerAlive} alive)`;
-
                 let stateText = playerAlive === 0 ? 'ELIMINATED' : `${playerAlive} mechs fighting`;
                 document.getElementById('playerState').textContent = stateText;
             }
 
             // Enemy team status
             if (enemyMaxHP > 0) {
-                document.getElementById('enemyHP').style.width = (enemyTotalHP / enemyMaxHP * 100) + '%';
-                document.getElementById('enemyHPText').textContent = `Team HP: ${enemyTotalHP}/${enemyMaxHP} (${enemyAlive} alive)`;
-
                 let stateText = enemyAlive === 0 ? 'ELIMINATED' : `${enemyAlive} mechs fighting`;
                 document.getElementById('enemyState').textContent = stateText;
             }
@@ -9405,9 +9525,23 @@
             // Update body part UI for first player and enemy mech
             if (playerMechs.length > 0) {
                 updateBodyPartUI(playerMechs[0], 'player');
+                updateMechOverlay(playerMechs[0], true);
             }
-            if (enemyMechs.length > 0) {
-                updateBodyPartUI(enemyMechs[0], 'enemy');
+
+            // For enemy overlay, use current target or player's AI target or first enemy
+            let targetEnemy = null;
+            if (pilotingModeActive && pilotingState.currentTarget) {
+                targetEnemy = pilotingState.currentTarget;
+            } else if (playerMechs[0]?.ai?.target) {
+                targetEnemy = playerMechs[0].ai.target;
+            } else if (enemyMechs.length > 0) {
+                targetEnemy = enemyMechs.find(e => e && !e.isDestroyed) || enemyMechs[0];
+            }
+
+            if (targetEnemy) {
+                updateBodyPartUI(targetEnemy, 'enemy');
+                updateMechOverlay(targetEnemy, false);
+                currentOverlayEnemy = targetEnemy;
             }
         }
 
@@ -9457,6 +9591,61 @@
                 }
             });
         }
+
+        // Update mech overlay on canvas (visual body part status)
+        function updateMechOverlay(mech, isPlayer) {
+            if (!mech) return;
+
+            const prefix = isPlayer ? 'overlay_player' : 'overlay_enemy';
+            const parts = ['head', 'torso', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'];
+
+            // Update title for enemy
+            if (!isPlayer) {
+                const titleElem = document.getElementById('enemyOverlayTitle');
+                if (titleElem) {
+                    titleElem.textContent = mech.displayName || mech.name || 'TARGET';
+                }
+            }
+
+            // If no body parts initialized yet, show all as healthy
+            if (!mech.bodyParts) {
+                parts.forEach(part => {
+                    const elem = document.getElementById(`${prefix}_${part}`);
+                    if (elem) {
+                        elem.classList.remove('status-healthy', 'status-damaged', 'status-critical', 'status-destroyed');
+                        elem.classList.add('status-healthy');
+                    }
+                });
+                return;
+            }
+
+            parts.forEach(part => {
+                const elem = document.getElementById(`${prefix}_${part}`);
+                if (!elem) return;
+
+                const bp = mech.bodyParts[part];
+                if (!bp) return;
+
+                const hpPct = bp.maxHP > 0 ? (bp.currentHP / bp.maxHP) * 100 : 0;
+
+                // Remove all status classes
+                elem.classList.remove('status-healthy', 'status-damaged', 'status-critical', 'status-destroyed');
+
+                // Apply appropriate status class based on HP percentage
+                if (bp.destroyed || hpPct <= 0) {
+                    elem.classList.add('status-destroyed');
+                } else if (hpPct <= 25) {
+                    elem.classList.add('status-critical');
+                } else if (hpPct <= 50) {
+                    elem.classList.add('status-damaged');
+                } else {
+                    elem.classList.add('status-healthy');
+                }
+            });
+        }
+
+        // Track which enemy is displayed in overlay
+        let currentOverlayEnemy = null;
 
         // ============================================
         // USER PILOTING MODE SYSTEM
@@ -9626,8 +9815,6 @@
             const panel = document.getElementById('targetPanel');
             const nameElem = document.getElementById('targetName');
             const levelElem = document.getElementById('targetLevel');
-            const hpFill = document.getElementById('targetHPFill');
-            const hpText = document.getElementById('targetHPText');
             const equipList = document.getElementById('targetEquipmentList');
 
             const target = pilotingState.currentTarget;
@@ -9635,8 +9822,6 @@
             if (!target || target.isDestroyed) {
                 nameElem.textContent = 'No Target';
                 levelElem.textContent = 'Lv.?';
-                hpFill.style.width = '0%';
-                hpText.textContent = '-- / --';
                 equipList.innerHTML = '<div style="color: #555; font-size: 10px;">--</div>';
                 return;
             }
@@ -9644,22 +9829,6 @@
             // Update name and level
             nameElem.textContent = target.displayName || target.name || 'Unknown';
             levelElem.textContent = `Lv.${target.level || '?'}`;
-
-            // Update HP bar - use aggregate body part HP for accurate representation
-            const currentHP = target.bodyParts ? calculateTotalBodyPartHP(target) : Math.max(0, target.currentHP);
-            const maxHP = target.bodyParts ? calculateTotalBodyPartMaxHP(target) : (target.maxHP || 1);
-            const hpPercent = (currentHP / maxHP) * 100;
-            hpFill.style.width = `${hpPercent}%`;
-            hpText.textContent = `${Math.round(currentHP)} / ${Math.round(maxHP)}`;
-
-            // Color HP bar based on percentage
-            if (hpPercent > 50) {
-                hpFill.style.background = 'linear-gradient(90deg, #44aa44, #88cc44)';
-            } else if (hpPercent > 25) {
-                hpFill.style.background = 'linear-gradient(90deg, #aaaa44, #cccc44)';
-            } else {
-                hpFill.style.background = 'linear-gradient(90deg, #aa4444, #cc6644)';
-            }
 
             // Update equipment list
             const equipment = target.equipment || [];

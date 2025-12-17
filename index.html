@@ -7488,12 +7488,30 @@
                         return `<span style="color: ${rarityColor}; font-size: 9px;">${item.icon}</span>`;
                     }).filter(x => x).join(' ');
 
+                    // Build pilot info HTML
+                    let pilotHTML = '';
+                    if (enemy.pilot) {
+                        const pilot = enemy.pilot;
+                        const rankColor = pilot.level >= 4 ? '#ff6644' : pilot.level >= 3 ? '#ffcc44' : '#88aa88';
+                        const modifierIcons = pilot.modifiers.map(m => {
+                            if (m.isPositive) {
+                                return `<span style="color: #66ff66;" title="${m.name}: ${m.description}">▲</span>`;
+                            } else {
+                                return `<span style="color: #ff6666;" title="${m.name}: ${m.description}">▼</span>`;
+                            }
+                        }).join('');
+                        pilotHTML = `<div style="font-size: 9px; color: ${rankColor}; margin-top: 2px;">
+                            🎖️ ${pilot.fullName} ${modifierIcons}
+                        </div>`;
+                    }
+
                     enemiesHTML += `<div style="margin: 4px 0; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 3px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span>⚠️ ${enemy.name}</span>
                             <span style="font-size: 10px; color: #888;">Lv.${enemy.level}</span>
                         </div>
                         <div style="font-size: 10px; color: #888;">HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>
+                        ${pilotHTML}
                         <div style="margin-top: 2px;">${equipList || '<span style="color: #555; font-size: 9px;">No equipment</span>'}</div>
                     </div>`;
                 });
@@ -9422,6 +9440,25 @@
                     totalScrap += mechScrap;
                     equipmentHTML += '</div>';
 
+                    // Build pilot info for salvage screen
+                    let salvagePilotHTML = '';
+                    if (enemy.pilot) {
+                        const pilot = enemy.pilot;
+                        const rankColor = pilot.level >= 4 ? '#ff6644' : pilot.level >= 3 ? '#ffcc44' : '#88aa88';
+                        const modifiersList = pilot.modifiers.map(m => {
+                            const icon = m.isPositive ? '▲' : '▼';
+                            const color = m.isPositive ? '#66ff66' : '#ff6666';
+                            return `<div style="font-size: 8px; color: ${color};">${icon} ${m.name}</div>`;
+                        }).join('');
+                        salvagePilotHTML = `
+                            <div style="margin-bottom: 8px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border-left: 2px solid ${rankColor};">
+                                <div style="font-size: 9px; color: ${rankColor};">🎖️ ${pilot.fullName}</div>
+                                <div style="font-size: 8px; color: #666;">${pilot.rank} Pilot</div>
+                                <div style="margin-top: 4px;">${modifiersList}</div>
+                            </div>
+                        `;
+                    }
+
                     // Mech card
                     enemyMechsHTML += `
                         <div style="background: rgba(0,0,0,0.5); border: 2px solid #ff6644; border-radius: 8px; padding: 12px; width: 220px;">
@@ -9429,6 +9466,7 @@
                                 <div style="font-size: 12px; color: #ff6644; font-weight: bold;">${enemy.name}</div>
                                 <div style="font-size: 10px; color: #666;">Lv.${enemy.level || 1}</div>
                             </div>
+                            ${salvagePilotHTML}
                             ${bodyPartsHTML}
                             ${equipmentHTML}
                             <div style="margin-top: 8px; text-align: center; font-size: 10px; color: #888;">

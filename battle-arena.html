@@ -9276,6 +9276,7 @@
                     return {
                         name: mech.displayName || mech.name,
                         level: mech.level || 1,
+                        pilot: mech.pilot || null,  // Include pilot data for salvage screen
                         equipment: equipmentStatus,
                         bodyPartHP: bodyPartHP,
                         bodyParts: mech.bodyParts ? {

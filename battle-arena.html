@@ -2025,7 +2025,8 @@
 
         // Initialize body part health for a mech based on its total HP
         // hpMultiplier: optional override for componentHPMultiplier (for difficulty scaling)
-        function initializeBodyParts(totalHP, hpMultiplier) {
+        // pilotEffects: optional pilot modifier effects (from pilot.compiledEffects)
+        function initializeBodyParts(totalHP, hpMultiplier, pilotEffects) {
             // Use provided multiplier or fall back to config default
             const multiplier = hpMultiplier !== undefined ? hpMultiplier : BODY_PART_CONFIG.componentHPMultiplier;
 
@@ -2034,42 +2035,65 @@
             const baseHP = Math.round((totalHP / 5.25) * multiplier);
             const torsoHP = Math.round(baseHP * BODY_PART_CONFIG.hpRatios.torso);
 
+            // Get pilot HP multipliers (default to 1.0 if no pilot)
+            const pilotMults = pilotEffects || {};
+            const headMult = pilotMults.headHPMult || 1.0;
+            const torsoMult = pilotMults.torsoHPMult || 1.0;
+            const leftArmMult = pilotMults.leftArmHPMult || 1.0;
+            const rightArmMult = pilotMults.rightArmHPMult || 1.0;
+            const leftLegMult = pilotMults.leftLegHPMult || 1.0;
+            const rightLegMult = pilotMults.rightLegHPMult || 1.0;
+
+            // Calculate HP for each part, applying pilot modifiers
+            const finalTorsoHP = Math.round(torsoHP * torsoMult);
+            const finalHeadHP = Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.head * headMult);
+            const finalLeftArmHP = Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftArm * leftArmMult);
+            const finalRightArmHP = Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightArm * rightArmMult);
+            const finalLeftLegHP = Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftLeg * leftLegMult);
+            const finalRightLegHP = Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightLeg * rightLegMult);
+
             return {
                 torso: {
-                    maxHP: torsoHP,
-                    currentHP: torsoHP,
+                    maxHP: finalTorsoHP,
+                    currentHP: finalTorsoHP,
                     destroyed: false,
-                    damageOverlay: null
+                    damageOverlay: null,
+                    pilotMult: torsoMult  // Store for UI display
                 },
                 head: {
-                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.head),
-                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.head),
+                    maxHP: finalHeadHP,
+                    currentHP: finalHeadHP,
                     destroyed: false,
-                    damageOverlay: null
+                    damageOverlay: null,
+                    pilotMult: headMult
                 },
                 leftArm: {
-                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftArm),
-                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftArm),
+                    maxHP: finalLeftArmHP,
+                    currentHP: finalLeftArmHP,
                     destroyed: false,
-                    damageOverlay: null
+                    damageOverlay: null,
+                    pilotMult: leftArmMult
                 },
                 rightArm: {
-                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightArm),
-                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightArm),
+                    maxHP: finalRightArmHP,
+                    currentHP: finalRightArmHP,
                     destroyed: false,
-                    damageOverlay: null
+                    damageOverlay: null,
+                    pilotMult: rightArmMult
                 },
                 leftLeg: {
-                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftLeg),
-                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.leftLeg),
+                    maxHP: finalLeftLegHP,
+                    currentHP: finalLeftLegHP,
                     destroyed: false,
-                    damageOverlay: null
+                    damageOverlay: null,
+                    pilotMult: leftLegMult
                 },
                 rightLeg: {
-                    maxHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightLeg),
-                    currentHP: Math.round(torsoHP * BODY_PART_CONFIG.hpRatios.rightLeg),
+                    maxHP: finalRightLegHP,
+                    currentHP: finalRightLegHP,
                     destroyed: false,
-                    damageOverlay: null
+                    damageOverlay: null,
+                    pilotMult: rightLegMult
                 },
                 // Track total damage to each part for salvage calculation
                 totalDamageReceived: {
@@ -2272,6 +2296,137 @@
             console.log(`[HIT] ${mech.isPlayer ? 'PLAYER' : 'ENEMY'} ${closestPart} | score=${closestScore.toFixed(2)} | impact=${impactPosition.x.toFixed(1)},${impactPosition.y.toFixed(1)},${impactPosition.z.toFixed(1)}`);
 
             return closestPart;
+        }
+
+        // ============================================
+        // PILOT VISUAL EFFECTS - Weak Spots, Reinforced Parts
+        // ============================================
+
+        // Apply visual highlighting to body parts based on pilot modifiers
+        function applyPilotVisuals(mech) {
+            if (!mech.pilot || !mech.pilot.compiledEffects) return;
+
+            const effects = mech.pilot.compiledEffects;
+
+            // Apply weak spot highlights (pulsing red glow)
+            if (effects.weakSpots && effects.weakSpots.length > 0) {
+                effects.weakSpots.forEach(spot => {
+                    const mesh = getBodyPartMesh(mech, spot.part);
+                    if (mesh) {
+                        createWeakSpotHighlight(mech, mesh, spot.color);
+                    }
+                });
+            }
+
+            // Apply reinforced highlights (subtle blue glow)
+            if (effects.reinforcedParts && effects.reinforcedParts.length > 0) {
+                effects.reinforcedParts.forEach(reinforced => {
+                    const mesh = getBodyPartMesh(mech, reinforced.part);
+                    if (mesh) {
+                        createReinforcedHighlight(mech, mesh, reinforced.color);
+                    }
+                });
+            }
+        }
+
+        // Get the main mesh for a body part
+        function getBodyPartMesh(mech, partName) {
+            switch (partName) {
+                case 'head': return mech.head;
+                case 'torso': return mech.torso;
+                case 'leftArm':
+                    return mech.leftArm?.weaponPod || mech.leftArm?.upperArm || mech.leftArm?.armGroup;
+                case 'rightArm':
+                    return mech.rightArm?.weaponPod || mech.rightArm?.upperArm || mech.rightArm?.armGroup;
+                case 'leftLeg':
+                    return mech.leftLeg?.lowerLeg || mech.leftLeg?.legGroup;
+                case 'rightLeg':
+                    return mech.rightLeg?.lowerLeg || mech.rightLeg?.legGroup;
+                default: return null;
+            }
+        }
+
+        // Create pulsing weak spot highlight (red glow indicating vulnerability)
+        function createWeakSpotHighlight(mech, targetMesh, color) {
+            if (!targetMesh || !targetMesh.getAbsolutePosition) return;
+
+            // Create a glowing sphere that pulses around the weak spot
+            const pos = targetMesh.getAbsolutePosition();
+            const highlight = BABYLON.MeshBuilder.CreateSphere('weakspot_' + Date.now(), {
+                diameter: 1.5,
+                segments: 8
+            }, scene);
+            highlight.position = pos.clone();
+            highlight.parent = targetMesh;
+            highlight.position = BABYLON.Vector3.Zero();  // Center on parent
+
+            const mat = new BABYLON.StandardMaterial('weakspotMat_' + Date.now(), scene);
+            mat.emissiveColor = new BABYLON.Color3(color[0], color[1], color[2]);
+            mat.alpha = 0.25;
+            mat.wireframe = true;
+            mat.disableLighting = true;
+            highlight.material = mat;
+
+            // Store reference for cleanup
+            if (!mech.pilotVisuals) mech.pilotVisuals = [];
+            mech.pilotVisuals.push(highlight);
+
+            // Pulsing animation
+            let pulsePhase = Math.random() * Math.PI * 2;
+            const pulseInterval = setInterval(() => {
+                if (!highlight || highlight.isDisposed()) {
+                    clearInterval(pulseInterval);
+                    return;
+                }
+                pulsePhase += 0.15;
+                const pulse = 0.15 + Math.sin(pulsePhase) * 0.12;
+                mat.alpha = pulse;
+                const scale = 1.0 + Math.sin(pulsePhase * 0.5) * 0.1;
+                highlight.scaling = new BABYLON.Vector3(scale, scale, scale);
+            }, 50);
+
+            // Store interval for cleanup
+            highlight.pulseInterval = pulseInterval;
+        }
+
+        // Create reinforced highlight (blue shimmer indicating strength)
+        function createReinforcedHighlight(mech, targetMesh, color) {
+            if (!targetMesh || !targetMesh.getAbsolutePosition) return;
+
+            // Create a subtle shield effect around reinforced parts
+            const pos = targetMesh.getAbsolutePosition();
+            const highlight = BABYLON.MeshBuilder.CreateSphere('reinforced_' + Date.now(), {
+                diameter: 1.6,
+                segments: 8
+            }, scene);
+            highlight.position = pos.clone();
+            highlight.parent = targetMesh;
+            highlight.position = BABYLON.Vector3.Zero();
+
+            const mat = new BABYLON.StandardMaterial('reinforcedMat_' + Date.now(), scene);
+            mat.emissiveColor = new BABYLON.Color3(color[0], color[1], color[2]);
+            mat.alpha = 0.15;
+            mat.wireframe = true;
+            mat.disableLighting = true;
+            highlight.material = mat;
+
+            // Store reference for cleanup
+            if (!mech.pilotVisuals) mech.pilotVisuals = [];
+            mech.pilotVisuals.push(highlight);
+
+            // Subtle shimmer animation
+            let shimmerPhase = Math.random() * Math.PI * 2;
+            const shimmerInterval = setInterval(() => {
+                if (!highlight || highlight.isDisposed()) {
+                    clearInterval(shimmerInterval);
+                    return;
+                }
+                shimmerPhase += 0.08;
+                const shimmer = 0.1 + Math.sin(shimmerPhase) * 0.05;
+                mat.alpha = shimmer;
+            }, 60);
+
+            highlight.shimmerInterval = shimmerInterval;
         }
 
         // ============================================
@@ -3290,6 +3445,14 @@
                         enemyMech.displayName = enemyData.name || `Enemy ${index + 1}`;
                         // Store enemy level for salvage calculations
                         enemyMech.level = enemyData.level || 1;
+                        // Store pilot data with modifiers
+                        enemyMech.pilot = enemyData.pilot || null;
+                        if (enemyMech.pilot) {
+                            console.log(`Enemy ${index + 1} pilot: ${enemyMech.pilot.fullName} (${enemyMech.pilot.rank})`);
+                            console.log(`  Modifiers:`, enemyMech.pilot.modifiers.map(m => `${m.isPositive ? '+' : '-'}${m.name}`).join(', '));
+                            // Apply visual effects for pilot modifiers (weak spots, reinforced parts)
+                            setTimeout(() => applyPilotVisuals(enemyMech), 500);
+                        }
                         console.log(`Enemy ${index + 1} (${enemyMech.displayName}) weapons:`, enemyMech.loadoutWeapons);
                         console.log(`Enemy ${index + 1} equipment:`, enemyMech.equipment);
                     }
@@ -7460,13 +7623,41 @@
                 const to = target || mech.ai.target;
                 if (!from || !to || to.isDestroyed) return;
 
+                // Check for pilot weapon jam
+                const pilotEffects = from.pilot ? from.pilot.compiledEffects : null;
+                if (pilotEffects && pilotEffects.weaponJamChance > 0) {
+                    if (Math.random() < pilotEffects.weaponJamChance) {
+                        log(`${from.name}'s weapon JAMS! (${(pilotEffects.weaponJamChance * 100).toFixed(0)}% chance)`, 'warn');
+                        // Visual feedback for jam - sparks from weapon pod
+                        const arm = from.lastFiredArm === 'left' ? from.leftArm : from.rightArm;
+                        if (arm && arm.weaponPod) {
+                            createImpactSparks(arm.weaponPod.getAbsolutePosition(), new BABYLON.Vector3(0, 1, 0));
+                        }
+                        return; // Weapon jammed, skip firing
+                    }
+                }
+
                 const wpnName = loadoutWeapon.name || loadoutWeapon.itemId;
                 const battleProps = loadoutWeapon.battle || {};
                 const baseDamage = loadoutWeapon.damage || 10;
 
+                // Determine weapon type for pilot damage bonuses
+                const wpnType = battleProps.weaponType || loadoutWeapon.weaponType || 'ballistic';
+                let pilotDamageMult = 1.0;
+                if (pilotEffects) {
+                    if (wpnType === 'laser' || wpnType === 'beam' || battleProps.isBeam) {
+                        pilotDamageMult = pilotEffects.laserDamageMult * pilotEffects.energyDamageMult;
+                    } else if (wpnType === 'missile' || battleProps.isCluster) {
+                        pilotDamageMult = pilotEffects.missileDamageMult;
+                    } else {
+                        // Ballistic/projectile
+                        pilotDamageMult = pilotEffects.ballisticDamageMult;
+                    }
+                }
+
                 // Apply arm damage reduction if arms are destroyed
                 const armMultiplier = getArmDamageMultiplier(from);
-                const combinedMultiplier = damageMultiplier * armMultiplier;
+                const combinedMultiplier = damageMultiplier * armMultiplier * pilotDamageMult;
                 const finalDamage = Math.round(baseDamage * combinedMultiplier);
 
                 if (damageMultiplier !== 1.0) {
@@ -7959,6 +8150,23 @@
             if (mech.isDestroyed) return;
             if (mech.mechState === MechState.RECOVERING) return;  // Don't damage during recovery
 
+            // Check for pilot evasion
+            const pilotEffects = mech.pilot ? mech.pilot.compiledEffects : null;
+            if (pilotEffects && pilotEffects.evasionChance > 0) {
+                if (Math.random() < pilotEffects.evasionChance) {
+                    log(`${mech.name} EVADES! (${(pilotEffects.evasionChance * 100).toFixed(0)}% chance)`, 'warn');
+                    // Visual feedback - ghost effect
+                    if (mech.torso && mech.torso.material) {
+                        const origAlpha = mech.torso.material.alpha || 1;
+                        mech.torso.material.alpha = 0.3;
+                        setTimeout(() => {
+                            if (mech.torso && mech.torso.material) mech.torso.material.alpha = origAlpha;
+                        }, 200);
+                    }
+                    return; // Attack evaded
+                }
+            }
+
             let actualDamage = weapon.damage;
             const isEnergyWeapon = weapon.isBeam || false;
             const isBallistic = weapon.isProjectile || weapon.isMissile || false;
@@ -7991,7 +8199,9 @@
 
             // Initialize body parts if not already done
             if (!mech.bodyParts) {
-                mech.bodyParts = initializeBodyParts(mech.maxHP);
+                // Pass pilot effects for enemy mechs to apply HP modifiers
+                const pilotEffects = mech.pilot ? mech.pilot.compiledEffects : null;
+                mech.bodyParts = initializeBodyParts(mech.maxHP, undefined, pilotEffects);
             }
 
             const bodyPart = mech.bodyParts[hitPart];
@@ -9001,7 +9211,8 @@
 
                     // Initialize body parts if not already done (in case mech died without taking damage)
                     if (!mech.bodyParts) {
-                        mech.bodyParts = initializeBodyParts(mech.maxHP);
+                        const pilotEffects = mech.pilot ? mech.pilot.compiledEffects : null;
+                        mech.bodyParts = initializeBodyParts(mech.maxHP, undefined, pilotEffects);
                     }
 
                     // Check if torso is specifically destroyed

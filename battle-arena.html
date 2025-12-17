@@ -1984,6 +1984,11 @@
         // Each body part has separate HP. Mech destroyed if head, torso, or both legs destroyed.
         // ============================================
         const BODY_PART_CONFIG = {
+            // Global HP multiplier for all body parts
+            // Increase this to make mechs more durable (2.0 = twice as much HP)
+            // Can be overridden per-mech for difficulty scaling
+            componentHPMultiplier: 2.0,
+
             // HP distribution ratios (relative to base unit)
             // Torso is 2x to make it the toughest part
             hpRatios: {
@@ -2019,9 +2024,14 @@
         };
 
         // Initialize body part health for a mech based on its total HP
-        function initializeBodyParts(totalHP) {
+        // hpMultiplier: optional override for componentHPMultiplier (for difficulty scaling)
+        function initializeBodyParts(totalHP, hpMultiplier) {
+            // Use provided multiplier or fall back to config default
+            const multiplier = hpMultiplier !== undefined ? hpMultiplier : BODY_PART_CONFIG.componentHPMultiplier;
+
             // Calculate base HP unit: totalHP = baseHP * 5.25 (sum of all ratios)
-            const baseHP = Math.round(totalHP / 5.25);
+            // Then apply the HP multiplier to make components more durable
+            const baseHP = Math.round((totalHP / 5.25) * multiplier);
             const torsoHP = Math.round(baseHP * BODY_PART_CONFIG.hpRatios.torso);
 
             return {

@@ -1868,13 +1868,13 @@
         // Helper to get alive mechs
         function getAliveMechs(team) {
             const mechs = team === 'player' ? playerMechs : enemyMechs;
-            return mechs.filter(m => m && m.currentHP > 0 && !m.isDestroyed);
+            return mechs.filter(m => m && !m.isDestroyed);
         }
 
         // Helper to find a new target for a mech
         function findNewTarget(mech) {
             const enemies = mech.isPlayer ? enemyMechs : playerMechs;
-            const aliveEnemies = enemies.filter(e => e && e.currentHP > 0 && !e.isDestroyed);
+            const aliveEnemies = enemies.filter(e => e && !e.isDestroyed);
             if (aliveEnemies.length === 0) return null;
             // Find closest enemy
             const myPos = mech.pelvis.getAbsolutePosition();
@@ -2129,6 +2129,27 @@
             }
 
             return { destroyed: false, reason: null };
+        }
+
+        // Calculate total current HP from all body parts
+        function calculateTotalBodyPartHP(mech) {
+            if (!mech.bodyParts) return 0;
+            const bp = mech.bodyParts;
+            return Math.max(0, bp.head.currentHP) +
+                   Math.max(0, bp.torso.currentHP) +
+                   Math.max(0, bp.leftArm.currentHP) +
+                   Math.max(0, bp.rightArm.currentHP) +
+                   Math.max(0, bp.leftLeg.currentHP) +
+                   Math.max(0, bp.rightLeg.currentHP);
+        }
+
+        // Calculate total max HP from all body parts
+        function calculateTotalBodyPartMaxHP(mech) {
+            if (!mech.bodyParts) return 1;
+            const bp = mech.bodyParts;
+            return bp.head.maxHP + bp.torso.maxHP +
+                   bp.leftArm.maxHP + bp.rightArm.maxHP +
+                   bp.leftLeg.maxHP + bp.rightLeg.maxHP;
         }
 
         // Calculate damage output multiplier based on destroyed arms
@@ -7062,7 +7083,7 @@
 
             // Get or find target
             let target = mech.ai.target;
-            if (!target || target.currentHP <= 0 || target.isDestroyed) {
+            if (!target || target.isDestroyed) {
                 target = findNewTarget(mech);
                 mech.ai.target = target;
             }
@@ -7213,8 +7234,8 @@
                 if (shouldLog) dbg(`${name}: AI disabled`, 'warn');
                 return;
             }
-            if (mech.currentHP <= 0) {
-                if (shouldLog) dbg(`${name}: HP=0, skip AI`, 'warn');
+            if (mech.isDestroyed) {
+                if (shouldLog) dbg(`${name}: destroyed, skip AI`, 'warn');
                 return;
             }
             if (mech.staggerTime > 0) {
@@ -7224,7 +7245,7 @@
 
             // Get or find target
             let target = mech.ai.target;
-            if (!target || target.currentHP <= 0 || target.isDestroyed) {
+            if (!target || target.isDestroyed) {
                 target = findNewTarget(mech);
                 mech.ai.target = target;
             }
@@ -7277,7 +7298,7 @@
 
             // Check all mechs for avoidance
             allMechs.forEach(other => {
-                if (other === mech || other.isDestroyed || other.currentHP <= 0) return;
+                if (other === mech || other.isDestroyed) return;
 
                 const otherPos = other.pelvis.getAbsolutePosition();
                 const toOther = otherPos.subtract(myPos);
@@ -8202,6 +8223,9 @@
                 // Pass pilot effects for enemy mechs to apply HP modifiers
                 const pilotEffects = mech.pilot ? mech.pilot.compiledEffects : null;
                 mech.bodyParts = initializeBodyParts(mech.maxHP, undefined, pilotEffects);
+                // Sync maxHP/currentHP with body part totals
+                mech.maxHP = calculateTotalBodyPartMaxHP(mech);
+                mech.currentHP = mech.maxHP;
             }
 
             const bodyPart = mech.bodyParts[hitPart];
@@ -8239,8 +8263,8 @@
                 }
             }
 
-            // Also track total HP for backwards compatibility
-            mech.currentHP -= actualDamage;
+            // Update currentHP from sum of body parts (for HP bar display)
+            mech.currentHP = calculateTotalBodyPartHP(mech);
             if (mech.currentHP < 0) mech.currentHP = 0;
 
             const knockback = weapon.knockback;
@@ -8250,16 +8274,10 @@
             triggerCinematicAction(mech, 'damage');
 
             // Check for mech destruction based on body parts
+            // Destruction conditions: head destroyed, torso destroyed, OR both legs destroyed
             const destructionCheck = checkMechDestruction(mech);
             if (destructionCheck.destroyed && !mech.isDestroyed) {
                 log(`${mech.name} DESTROYED! (${destructionCheck.reason})`, 'error');
-                triggerDestruction(mech);
-                return;
-            }
-
-            // Legacy destruction check (fallback if no body parts)
-            if (mech.currentHP <= 0 && !mech.isDestroyed) {
-                log(`${mech.name} DESTROYED!`, 'error');
                 triggerDestruction(mech);
                 return;
             }
@@ -9213,6 +9231,9 @@
                     if (!mech.bodyParts) {
                         const pilotEffects = mech.pilot ? mech.pilot.compiledEffects : null;
                         mech.bodyParts = initializeBodyParts(mech.maxHP, undefined, pilotEffects);
+                        // Sync maxHP/currentHP with body part totals
+                        mech.maxHP = calculateTotalBodyPartMaxHP(mech);
+                        mech.currentHP = mech.maxHP;
                     }
 
                     // Check if torso is specifically destroyed
@@ -9351,16 +9372,16 @@
 
             playerMechs.forEach(mech => {
                 if (!mech) return;
-                playerMaxHP += mech.maxHP;
-                playerTotalHP += Math.max(0, mech.currentHP);
-                if (mech.currentHP > 0 && !mech.isDestroyed) playerAlive++;
+                playerMaxHP += mech.bodyParts ? calculateTotalBodyPartMaxHP(mech) : mech.maxHP;
+                playerTotalHP += mech.bodyParts ? calculateTotalBodyPartHP(mech) : Math.max(0, mech.currentHP);
+                if (!mech.isDestroyed) playerAlive++;
             });
 
             enemyMechs.forEach(mech => {
                 if (!mech) return;
-                enemyMaxHP += mech.maxHP;
-                enemyTotalHP += Math.max(0, mech.currentHP);
-                if (mech.currentHP > 0 && !mech.isDestroyed) enemyAlive++;
+                enemyMaxHP += mech.bodyParts ? calculateTotalBodyPartMaxHP(mech) : mech.maxHP;
+                enemyTotalHP += mech.bodyParts ? calculateTotalBodyPartHP(mech) : Math.max(0, mech.currentHP);
+                if (!mech.isDestroyed) enemyAlive++;
             });
 
             // Player team status
@@ -9624,9 +9645,9 @@
             nameElem.textContent = target.displayName || target.name || 'Unknown';
             levelElem.textContent = `Lv.${target.level || '?'}`;
 
-            // Update HP bar
-            const currentHP = Math.max(0, target.currentHP);
-            const maxHP = target.maxHP || 1;
+            // Update HP bar - use aggregate body part HP for accurate representation
+            const currentHP = target.bodyParts ? calculateTotalBodyPartHP(target) : Math.max(0, target.currentHP);
+            const maxHP = target.bodyParts ? calculateTotalBodyPartMaxHP(target) : (target.maxHP || 1);
             const hpPercent = (currentHP / maxHP) * 100;
             hpFill.style.width = `${hpPercent}%`;
             hpText.textContent = `${Math.round(currentHP)} / ${Math.round(maxHP)}`;
@@ -10194,7 +10215,9 @@
             // Update HP bar
             const hpFill = document.getElementById('cockpitHpFill');
             if (hpFill && playerMech) {
-                const hpPercent = (playerMech.currentHP / playerMech.maxHP) * 100;
+                const currentHP = playerMech.bodyParts ? calculateTotalBodyPartHP(playerMech) : playerMech.currentHP;
+                const maxHP = playerMech.bodyParts ? calculateTotalBodyPartMaxHP(playerMech) : playerMech.maxHP;
+                const hpPercent = (currentHP / maxHP) * 100;
                 hpFill.style.width = hpPercent + '%';
 
                 // Change color based on HP level
@@ -10235,7 +10258,9 @@
             // Update warning lights based on mech status
             const warningArmor = document.getElementById('warningArmor');
             if (warningArmor && playerMech) {
-                const hpPercent = playerMech.currentHP / playerMech.maxHP;
+                const curHP = playerMech.bodyParts ? calculateTotalBodyPartHP(playerMech) : playerMech.currentHP;
+                const maxHP2 = playerMech.bodyParts ? calculateTotalBodyPartMaxHP(playerMech) : playerMech.maxHP;
+                const hpPercent = curHP / maxHP2;
                 if (hpPercent < 0.3) {
                     warningArmor.classList.add('warning-active');
                 } else {

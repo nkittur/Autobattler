@@ -2115,6 +2115,43 @@
             return 1.0;
         }
 
+        // Helper function to safely get position from a body part object or mesh
+        function getBodyPartPosition(part) {
+            if (!part) return null;
+
+            // If it has getAbsolutePosition directly, it's a mesh
+            if (typeof part.getAbsolutePosition === 'function') {
+                return part.getAbsolutePosition();
+            }
+
+            // Arms return { armGroup, upperArm, weaponPod } or { shoulder, arm, weaponPod }
+            if (part.weaponPod && typeof part.weaponPod.getAbsolutePosition === 'function') {
+                return part.weaponPod.getAbsolutePosition();
+            }
+            if (part.upperArm && typeof part.upperArm.getAbsolutePosition === 'function') {
+                return part.upperArm.getAbsolutePosition();
+            }
+            if (part.arm && typeof part.arm.getAbsolutePosition === 'function') {
+                return part.arm.getAbsolutePosition();
+            }
+            if (part.armGroup && typeof part.armGroup.getAbsolutePosition === 'function') {
+                return part.armGroup.getAbsolutePosition();
+            }
+
+            // Legs return { hip, legGroup, upperLeg, knee, lowerLeg, ankle, foot, ... }
+            if (part.foot && typeof part.foot.getAbsolutePosition === 'function') {
+                return part.foot.getAbsolutePosition();
+            }
+            if (part.lowerLeg && typeof part.lowerLeg.getAbsolutePosition === 'function') {
+                return part.lowerLeg.getAbsolutePosition();
+            }
+            if (part.legGroup && typeof part.legGroup.getAbsolutePosition === 'function') {
+                return part.legGroup.getAbsolutePosition();
+            }
+
+            return null;
+        }
+
         // Determine which body part was hit based on impact position
         // Uses actual mesh positions for accurate hit detection
         function getHitBodyPart(mech, impactPosition) {
@@ -2136,58 +2173,70 @@
 
             // Get actual mesh positions for each body part
             if (mech.head) {
-                bodyParts.push({
-                    name: 'head',
-                    position: mech.head.getAbsolutePosition(),
-                    radius: hitboxSizes.head
-                });
+                const pos = getBodyPartPosition(mech.head);
+                if (pos) {
+                    bodyParts.push({
+                        name: 'head',
+                        position: pos,
+                        radius: hitboxSizes.head
+                    });
+                }
             }
 
             if (mech.torso) {
-                bodyParts.push({
-                    name: 'torso',
-                    position: mech.torso.getAbsolutePosition(),
-                    radius: hitboxSizes.torso
-                });
+                const pos = getBodyPartPosition(mech.torso);
+                if (pos) {
+                    bodyParts.push({
+                        name: 'torso',
+                        position: pos,
+                        radius: hitboxSizes.torso
+                    });
+                }
             }
 
             if (mech.leftArm) {
-                // Use elbow or arm position for better accuracy
-                const armPos = mech.leftArm.getAbsolutePosition();
-                bodyParts.push({
-                    name: 'leftArm',
-                    position: armPos,
-                    radius: hitboxSizes.leftArm
-                });
+                const pos = getBodyPartPosition(mech.leftArm);
+                if (pos) {
+                    bodyParts.push({
+                        name: 'leftArm',
+                        position: pos,
+                        radius: hitboxSizes.leftArm
+                    });
+                }
             }
 
             if (mech.rightArm) {
-                const armPos = mech.rightArm.getAbsolutePosition();
-                bodyParts.push({
-                    name: 'rightArm',
-                    position: armPos,
-                    radius: hitboxSizes.rightArm
-                });
+                const pos = getBodyPartPosition(mech.rightArm);
+                if (pos) {
+                    bodyParts.push({
+                        name: 'rightArm',
+                        position: pos,
+                        radius: hitboxSizes.rightArm
+                    });
+                }
             }
 
-            // Legs - use shin or foot position for lower hits
+            // Legs - use foot or lower leg position for better accuracy
             if (mech.leftLeg) {
-                // Get lower leg position (shin/foot area)
-                const legPos = mech.leftLeg.getAbsolutePosition();
-                bodyParts.push({
-                    name: 'leftLeg',
-                    position: legPos,
-                    radius: hitboxSizes.leftLeg
-                });
+                const pos = getBodyPartPosition(mech.leftLeg);
+                if (pos) {
+                    bodyParts.push({
+                        name: 'leftLeg',
+                        position: pos,
+                        radius: hitboxSizes.leftLeg
+                    });
+                }
             }
 
             if (mech.rightLeg) {
-                const legPos = mech.rightLeg.getAbsolutePosition();
-                bodyParts.push({
-                    name: 'rightLeg',
-                    position: legPos,
-                    radius: hitboxSizes.rightLeg
-                });
+                const pos = getBodyPartPosition(mech.rightLeg);
+                if (pos) {
+                    bodyParts.push({
+                        name: 'rightLeg',
+                        position: pos,
+                        radius: hitboxSizes.rightLeg
+                    });
+                }
             }
 
             // If no body parts found, fall back to torso

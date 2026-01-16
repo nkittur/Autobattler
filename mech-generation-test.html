@@ -1435,12 +1435,11 @@
                         style.lrmDepth,
                         mount, 'secondary'
                     );
-                    pod.position.x = xMult * style.lrmWidth * 0.5;
-                    pod.position.y = style.lrmHeight * 0.35;
-                    pod.rotation.z = xMult * style.angle;
-                    pod.rotation.x = -0.12;
+                    // Mount is already positioned - only small adjustment needed
+                    pod.position.x = xMult * 0.05;
+                    pod.position.y = -0.05; // Sit on shoulder mount
 
-                    // Missile tubes
+                    // Missile tubes - face FORWARD (positive Z)
                     const tubesPerRow = Math.ceil(Math.sqrt(style.lrmTubes));
                     const tubeSpacing = style.lrmWidth * 0.7 / tubesPerRow;
                     for (let i = 0; i < style.lrmTubes; i++) {
@@ -1450,7 +1449,7 @@
                         tube.position.x = (col - (tubesPerRow - 1) / 2) * tubeSpacing;
                         tube.position.y = (row - (tubesPerRow - 1) / 2) * tubeSpacing;
                         tube.position.z = style.lrmDepth / 2 + 0.02;
-                        tube.rotation.x = Math.PI / 2;
+                        tube.rotation.x = Math.PI / 2; // Face forward
                     }
 
                     // Pod frame/cap
@@ -1465,14 +1464,14 @@
                         style.laserWidth * 1.2,
                         mount, 'secondary'
                     );
-                    housing.position.x = xMult * style.laserWidth * 0.5;
-                    housing.position.y = style.laserHeight * 0.35;
-                    housing.rotation.z = xMult * style.angle * 0.8;
+                    // Mount is already positioned - only small adjustment
+                    housing.position.x = xMult * 0.05;
+                    housing.position.y = -0.05;
 
-                    // Twin laser barrels
+                    // Twin laser barrels - face FORWARD
                     [-1, 1].forEach(laserSide => {
                         const laser = builder.cylinder(0.04, 0.35, housing, 'metal');
-                        laser.rotation.x = Math.PI / 2;
+                        laser.rotation.x = Math.PI / 2; // Face forward
                         laser.position.x = laserSide * 0.06;
                         laser.position.z = style.laserWidth * 0.6 + 0.15;
 
@@ -1493,11 +1492,11 @@
                     style.depth,
                     mount, 'primary'
                 );
-                shoulder.position.x = xMult * style.width * 0.45;
-                shoulder.position.y = style.height * 0.4;
-                shoulder.rotation.z = xMult * 0.2;
+                // Mount is already positioned - minimal adjustment
+                shoulder.position.x = xMult * 0.05;
+                shoulder.position.y = -0.05;
 
-                // Layered armor plates
+                // Layered armor plates - face forward
                 for (let l = 0; l < style.layers; l++) {
                     const plate = builder.wedge(
                         style.width * (0.9 - l * 0.15),
@@ -1508,7 +1507,6 @@
                     );
                     plate.position.z = style.depth * 0.4 + l * 0.06;
                     plate.position.y = l * 0.05;
-                    plate.rotation.x = -0.1 - l * 0.05;
                 }
 
                 // Top ridge
@@ -1518,10 +1516,10 @@
 
             // WEAPON MOUNT - Direct turret style (Walking turret/Urbanmech)
             buildWeaponMountShoulder(builder, mount, xMult, style) {
-                // Turret base
+                // Turret base - mount is already positioned
                 const base = builder.cylinder(style.width * 0.9, style.height * 0.5, mount, 'secondary');
-                base.position.x = xMult * style.width * 0.4;
-                base.position.y = style.height * 0.25;
+                base.position.x = xMult * 0.05;
+                base.position.y = -0.05;
 
                 // Weapon housing
                 const housing = builder.wedge(
@@ -1532,22 +1530,22 @@
                     base, 'primary'
                 );
                 housing.position.y = style.height * 0.35;
-                housing.position.z = style.width * 0.2;
+                housing.position.z = style.width * 0.1;
 
-                // Main cannon
+                // Main cannon - face FORWARD
                 const barrel = builder.cylinder(style.barrelDiameter, style.barrelLength, housing, 'metal');
                 barrel.rotation.x = Math.PI / 2;
-                barrel.position.z = style.barrelLength * 0.5 + style.width * 0.4;
+                barrel.position.z = style.barrelLength * 0.5 + style.width * 0.3;
 
                 // Barrel shroud
                 const shroud = builder.taperedCylinder(style.barrelDiameter * 1.6, style.barrelDiameter * 1.3, style.barrelLength * 0.3, housing, 'dark');
                 shroud.rotation.x = Math.PI / 2;
-                shroud.position.z = style.width * 0.5;
+                shroud.position.z = style.width * 0.4;
 
                 // Muzzle brake
                 const muzzle = builder.cylinder(style.barrelDiameter * 1.5, 0.1, housing, 'dark');
                 muzzle.rotation.x = Math.PI / 2;
-                muzzle.position.z = style.barrelLength + style.width * 0.45;
+                muzzle.position.z = style.barrelLength + style.width * 0.35;
             }
 
             // LRM POD SHOULDERS - Huge missile pods (Catapult signature)
@@ -1560,12 +1558,11 @@
                     style.depth,
                     mount, 'secondary'
                 );
-                pod.position.x = xMult * style.width * 0.55;
-                pod.position.y = style.height * 0.4;
-                pod.rotation.z = xMult * style.angle;
-                pod.rotation.x = -0.15;
+                // Mount is already positioned - minimal adjustment
+                pod.position.x = xMult * 0.08;
+                pod.position.y = -0.05;
 
-                // Dense missile tube grid
+                // Dense missile tube grid - face FORWARD
                 const tubesPerRow = Math.ceil(Math.sqrt(style.tubes));
                 const tubeSpacing = Math.min(style.width, style.depth) * 0.65 / tubesPerRow;
                 for (let i = 0; i < style.tubes; i++) {
@@ -1575,7 +1572,7 @@
                     tube.position.x = (col - (tubesPerRow - 1) / 2) * tubeSpacing;
                     tube.position.y = (row - (tubesPerRow - 1) / 2) * tubeSpacing;
                     tube.position.z = style.depth / 2 + 0.03;
-                    tube.rotation.x = Math.PI / 2;
+                    tube.rotation.x = Math.PI / 2; // Face forward
                 }
 
                 // Heavy frame
@@ -1588,7 +1585,7 @@
                     sideArmor.position.x = side * style.width * 0.48;
                 });
 
-                // Back support strut
+                // Back support strut - connects to torso
                 const strut = builder.box(style.width * 0.3, style.height * 0.6, 0.08, pod, 'dark');
                 strut.position.z = -style.depth * 0.4;
             }
@@ -1596,10 +1593,11 @@
             buildCannonMount(builder, mount, xMult, style) {
                 // Shoulder cannon (PPC/AC style) - WEDGE housing
                 const housing = builder.wedge(style.width, style.width * 0.8, style.height, style.width * 1.1, mount, 'secondary');
-                housing.position.x = xMult * style.width * 0.4;
-                housing.position.y = style.height * 0.3;
+                // Mount is already positioned
+                housing.position.x = xMult * 0.05;
+                housing.position.y = -0.05;
 
-                // Barrel
+                // Barrel - face FORWARD
                 const barrel = builder.cylinder(style.barrelDiameter, style.barrelLength, housing, 'metal');
                 barrel.rotation.x = Math.PI / 2;
                 barrel.position.z = style.width / 2 + style.barrelLength / 2;
@@ -1624,9 +1622,9 @@
 
             buildMinimalShoulder(builder, mount, xMult, style) {
                 const plate = builder.wedge(style.width, style.width * 0.85, style.height, 0.12, mount, 'secondary');
-                plate.position.x = xMult * style.width * 0.3;
-                plate.position.y = style.height * 0.3;
-                plate.rotation.z = xMult * 0.15;
+                // Mount is already positioned
+                plate.position.x = xMult * 0.05;
+                plate.position.y = -0.05;
             }
 
             // ============================================

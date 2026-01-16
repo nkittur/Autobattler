@@ -627,21 +627,22 @@
             getLegStyle(styleName) {
                 const styles = {
                     // REVERSE JOINT - Classic Timber Wolf chicken walker
-                    // Thigh angles BACK, shin angles FORWARD, knee is most forward point
+                    // Thigh angles BACK (-35), shin angles FORWARD relative to thigh (+65)
+                    // Result: knee back-below hip, foot forward-below knee
                     reverseJoint: {
-                        thighLength: rand(0.35, 0.42),    // Short thighs
+                        thighLength: rand(0.4, 0.5),      // Short-ish thighs
                         thighWidth: rand(0.18, 0.22),
                         thighTaper: 0.85,
-                        thighAngle: rand(-35, -25),       // NEGATIVE = thigh goes BACK
-                        shinLength: rand(0.9, 1.05),      // Long shins
+                        thighAngle: rand(-40, -30),       // Thigh goes backward 30-40 deg
+                        shinLength: rand(0.85, 1.0),      // Long shins
                         shinWidth: rand(0.16, 0.2),
                         shinTaper: 0.75,
-                        shinAngle: rand(95, 110),         // POSITIVE = shin goes FORWARD from knee
-                        kneeSize: rand(0.15, 0.2),
+                        shinAngle: rand(65, 75),          // Shin forward 65-75 deg from thigh
+                        kneeSize: rand(0.15, 0.2),        // Net: shin ~30-40 deg forward from vertical
                         kneeForward: 0.1,
                         footLength: rand(0.5, 0.65),
                         footStyle: pick(['platform', 'heavy']),
-                        hasCalfBulge: false,              // Simplified - no calf bulge
+                        hasCalfBulge: false,
                         pelvisHeight: 1.8,
                         wideStance: true,
                         keepFootHorizontal: true

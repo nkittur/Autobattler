@@ -2204,13 +2204,14 @@
                         sk[`${side}Shin`].rotation.x = base - kneeBend - swingBend;
                     }
 
-                    if (sk[`${side}Foot`]) {
+                    // Rotate ankle joint to pivot foot
+                    if (sk[`${side}Ankle`]) {
                         // Foot lifts toe-up, then pivots down to horizontal as it plants
-                        const toeUp = lift * 0.4; // Toe points up when leg lifts
+                        const toeUp = lift * 0.5; // Toe points up when leg lifts
                         // Pivot down earlier - starts as soon as swing is forward
-                        const pivotDown = Math.max(0, swing) * (1 - lift * 0.4) * 0.5;
+                        const pivotDown = Math.max(0, swing) * (1 - lift * 0.4) * 0.6;
                         const impact = impactWave(p);
-                        sk[`${side}Foot`].rotation.x = toeUp - pivotDown - impact * 0.1;
+                        sk[`${side}Ankle`].rotation.x = toeUp - pivotDown - impact * 0.1;
                     }
                 });
 

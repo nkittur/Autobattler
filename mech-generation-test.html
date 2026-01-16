@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mech Generation Test - Modular Kitbash System</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 15px;
+            background: #1a1a2e;
+            font-family: monospace;
+            color: #00ff88;
+            overflow-x: hidden;
+        }
+        #canvasContainer {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 70vh;
+            max-height: 600px;
+            display: block;
+            border: 3px solid #00ff88;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            touch-action: none;
+        }
+        h1 {
+            text-align: center;
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            margin: 8px 0;
+            font-size: 1.3em;
+        }
+        #controls {
+            text-align: center;
+            margin: 10px 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: rgba(0, 255, 136, 0.4);
+        }
+        button.active {
+            background: rgba(0, 255, 136, 0.5);
+        }
+        #stats {
+            max-width: 1200px;
+            margin: 10px auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+        }
+        #stats h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        #mechList {
+            max-width: 1200px;
+            margin: 10px auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #4488ff;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        #mechList h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #4488ff;
+        }
+        .mech-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            margin: 3px 0;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .mech-entry:hover {
+            background: rgba(0,0,0,0.5);
+        }
+        .mech-name {
+            font-weight: bold;
+        }
+        .mech-parts {
+            color: #888;
+            font-size: 10px;
+        }
+        .color-swatch {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        #polyCount {
+            text-align: center;
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .section-title {
+            color: #ffaa00;
+            font-size: 12px;
+            margin: 10px 0 5px 0;
+            border-bottom: 1px solid #ffaa00;
+            padding-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mech Generation Test - Modular Kitbash System</h1>
+
+    <div id="controls">
+        <button onclick="generateNewMechs()">Regenerate All Mechs</button>
+        <button onclick="addSingleMech()">Add Single Mech</button>
+        <button onclick="clearAllMechs()">Clear All</button>
+        <button onclick="toggleAnimation()" id="animToggle">Pause Animation</button>
+        <button onclick="toggleWireframe()" id="wireframeToggle">Show Wireframe</button>
+        <button onclick="cycleCamera()">Cycle Camera</button>
+    </div>
+
+    <div id="canvasContainer">
+        <canvas id="renderCanvas"></canvas>
+    </div>
+
+    <div id="polyCount">Triangles: <span id="triCount">0</span> | Draw Calls: <span id="drawCalls">0</span> | FPS: <span id="fps">0</span></div>
+
+    <div id="stats">
+        <h3>Performance Stats</h3>
+        <div class="stat-row">
+            <span>Total Mechs:</span>
+            <span id="mechCount">0</span>
+        </div>
+        <div class="stat-row">
+            <span>Parts Per Mech:</span>
+            <span id="partsPerMech">~25</span>
+        </div>
+        <div class="stat-row">
+            <span>Total Scene Meshes:</span>
+            <span id="totalMeshes">0</span>
+        </div>
+    </div>
+
+    <div id="mechList">
+        <h3>Generated Mechs</h3>
+        <div id="mechListContent"></div>
+    </div>
+
+    <!-- Babylon.js CDN -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+    <script>
+        // ============================================
+        // CONFIGURATION: PART LIBRARY
+        // ============================================
+
+        /**
+         * Modular Part Library
+         * Each part type has multiple variations that can be mixed and matched.
+         * All parts are designed to connect at standardized attachment points.
+         */
+        const PART_LIBRARY = {
+            // Leg styles - variations in silhouette and mechanical feel
+            legs: {
+                digitigrade: {
+                    name: 'Digitigrade',
+                    description: 'Classic chicken-walker legs',
+                    thighLength: 0.5,
+                    shinLength: 0.7,
+                    thighAngle: 45,
+                    shinAngle: -40,
+                    footStyle: 'toed',
+                    bulkFactor: 1.0
+                },
+                reverseJoint: {
+                    name: 'Reverse Joint',
+                    description: 'Extreme bird-like legs',
+                    thighLength: 0.4,
+                    shinLength: 0.8,
+                    thighAngle: 55,
+                    shinAngle: -50,
+                    footStyle: 'clawed',
+                    bulkFactor: 0.9
+                },
+                heavy: {
+                    name: 'Heavy Plantigrade',
+                    description: 'Tank-like stable legs',
+                    thighLength: 0.55,
+                    shinLength: 0.6,
+                    thighAngle: 20,
+                    shinAngle: -15,
+                    footStyle: 'platform',
+                    bulkFactor: 1.3
+                }
+            },
+
+            // Torso styles - main body shape
+            torsos: {
+                blockCore: {
+                    name: 'Block Core',
+                    description: 'Industrial boxy torso',
+                    width: 1.2,
+                    height: 1.0,
+                    depth: 0.8,
+                    shape: 'box',
+                    upperScale: 1.1
+                },
+                splitThorax: {
+                    name: 'Split Thorax',
+                    description: 'Two-section twisting torso',
+                    width: 1.0,
+                    height: 0.5,
+                    depth: 0.7,
+                    shape: 'split',
+                    upperScale: 1.3
+                },
+                swept: {
+                    name: 'Swept',
+                    description: 'Aggressive forward-leaning',
+                    width: 1.1,
+                    height: 0.8,
+                    depth: 0.9,
+                    shape: 'angled',
+                    upperScale: 1.0
+                }
+            },
+
+            // Arm styles - weapon platforms or manipulators
+            arms: {
+                weaponPod: {
+                    name: 'Weapon Pod',
+                    description: 'Arms built around weapon systems',
+                    upperLength: 0.5,
+                    lowerLength: 0.6,
+                    bulk: 1.2,
+                    hasHand: false,
+                    barrelCount: 2
+                },
+                manipulator: {
+                    name: 'Manipulator',
+                    description: 'Standard articulated arms',
+                    upperLength: 0.5,
+                    lowerLength: 0.55,
+                    bulk: 1.0,
+                    hasHand: true,
+                    barrelCount: 1
+                },
+                heavyArms: {
+                    name: 'Heavy Arms',
+                    description: 'Thick armored limbs',
+                    upperLength: 0.45,
+                    lowerLength: 0.5,
+                    bulk: 1.4,
+                    hasHand: false,
+                    barrelCount: 1
+                }
+            },
+
+            // Head/cockpit styles
+            heads: {
+                sensorDome: {
+                    name: 'Sensor Dome',
+                    description: 'Military sensor cluster',
+                    shape: 'dome',
+                    width: 0.5,
+                    height: 0.35,
+                    hasCockpit: false
+                },
+                monoEye: {
+                    name: 'Mono-Eye',
+                    description: 'Single sensor visor',
+                    shape: 'angular',
+                    width: 0.5,
+                    height: 0.4,
+                    hasCockpit: true
+                },
+                visor: {
+                    name: 'Visor',
+                    description: 'Hero-style head unit',
+                    shape: 'heroic',
+                    width: 0.55,
+                    height: 0.45,
+                    hasCockpit: true
+                }
+            },
+
+            // Shoulder mount styles
+            shoulders: {
+                boxLaunchers: {
+                    name: 'Box Launchers',
+                    description: 'Missile pod shoulders',
+                    size: 0.4,
+                    shape: 'box',
+                    hasMount: true
+                },
+                energyMounts: {
+                    name: 'Energy Mounts',
+                    description: 'Energy weapon hardpoints',
+                    size: 0.35,
+                    shape: 'round',
+                    hasMount: true
+                },
+                armorPlates: {
+                    name: 'Armor Plates',
+                    description: 'Heavy defensive shoulders',
+                    size: 0.45,
+                    shape: 'layered',
+                    hasMount: false
+                }
+            }
+        };
+
+        // Team colors for variety
+        const TEAM_COLORS = [
+            { primary: new BABYLON.Color3(0.2, 0.6, 0.3), secondary: new BABYLON.Color3(0.1, 0.4, 0.2), name: 'Forest' },
+            { primary: new BABYLON.Color3(0.6, 0.2, 0.2), secondary: new BABYLON.Color3(0.4, 0.1, 0.1), name: 'Crimson' },
+            { primary: new BABYLON.Color3(0.2, 0.3, 0.6), secondary: new BABYLON.Color3(0.1, 0.2, 0.4), name: 'Navy' },
+            { primary: new BABYLON.Color3(0.5, 0.4, 0.2), secondary: new BABYLON.Color3(0.3, 0.25, 0.1), name: 'Desert' },
+            { primary: new BABYLON.Color3(0.4, 0.2, 0.5), secondary: new BABYLON.Color3(0.25, 0.1, 0.3), name: 'Royal' },
+            { primary: new BABYLON.Color3(0.3, 0.3, 0.35), secondary: new BABYLON.Color3(0.15, 0.15, 0.2), name: 'Steel' },
+            { primary: new BABYLON.Color3(0.6, 0.4, 0.1), secondary: new BABYLON.Color3(0.4, 0.25, 0.05), name: 'Gold' },
+            { primary: new BABYLON.Color3(0.1, 0.5, 0.5), secondary: new BABYLON.Color3(0.05, 0.3, 0.3), name: 'Teal' }
+        ];
+
+        // ============================================
+        // GLOBAL STATE
+        // ============================================
+
+        let canvas, engine, scene, camera;
+        let mechs = [];
+        let animationPaused = false;
+        let wireframeMode = false;
+        let cameraMode = 0; // 0 = orbit, 1 = top-down, 2 = follow
+        let groundSize = 30;
+
+        // ============================================
+        // MECH BUILDER CLASS
+        // ============================================
+
+        /**
+         * MechBuilder - Assembles mechs from modular parts
+         * Uses a shared skeletal structure for consistent animation
+         */
+        class MechBuilder {
+            constructor(scene) {
+                this.scene = scene;
+                this.mechCount = 0;
+            }
+
+            /**
+             * Create a complete mech from random parts
+             */
+            buildRandomMech(position = new BABYLON.Vector3(0, 0, 0)) {
+                const config = this.generateRandomConfig();
+                return this.buildMech(config, position);
+            }
+
+            /**
+             * Generate a random configuration of parts
+             */
+            generateRandomConfig() {
+                const pickRandom = (obj) => {
+                    const keys = Object.keys(obj);
+                    return keys[Math.floor(Math.random() * keys.length)];
+                };
+
+                return {
+                    legs: pickRandom(PART_LIBRARY.legs),
+                    torso: pickRandom(PART_LIBRARY.torsos),
+                    arms: pickRandom(PART_LIBRARY.arms),
+                    head: pickRandom(PART_LIBRARY.heads),
+                    shoulders: pickRandom(PART_LIBRARY.shoulders),
+                    color: TEAM_COLORS[Math.floor(Math.random() * TEAM_COLORS.length)],
+                    scale: 0.8 + Math.random() * 0.4 // 0.8 to 1.2 scale variation
+                };
+            }
+
+            /**
+             * Build a mech from a specific configuration
+             */
+            buildMech(config, position) {
+                const mechId = `mech_${this.mechCount++}`;
+                const legConfig = PART_LIBRARY.legs[config.legs];
+                const torsoConfig = PART_LIBRARY.torsos[config.torso];
+                const armConfig = PART_LIBRARY.arms[config.arms];
+                const headConfig = PART_LIBRARY.heads[config.head];
+                const shoulderConfig = PART_LIBRARY.shoulders[config.shoulders];
+                const colors = config.color;
+                const scale = config.scale;
+
+                // Create materials
+                const primaryMat = new BABYLON.StandardMaterial(`${mechId}_primary`, this.scene);
+                primaryMat.diffuseColor = colors.primary;
+                primaryMat.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+
+                const secondaryMat = new BABYLON.StandardMaterial(`${mechId}_secondary`, this.scene);
+                secondaryMat.diffuseColor = colors.secondary;
+                secondaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+
+                const metalMat = new BABYLON.StandardMaterial(`${mechId}_metal`, this.scene);
+                metalMat.diffuseColor = new BABYLON.Color3(0.4, 0.4, 0.45);
+                metalMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+                metalMat.specularPower = 32;
+
+                const darkMat = new BABYLON.StandardMaterial(`${mechId}_dark`, this.scene);
+                darkMat.diffuseColor = new BABYLON.Color3(0.15, 0.15, 0.18);
+
+                const glowMat = new BABYLON.StandardMaterial(`${mechId}_glow`, this.scene);
+                glowMat.diffuseColor = new BABYLON.Color3(0, 0.8, 0.5);
+                glowMat.emissiveColor = new BABYLON.Color3(0, 0.5, 0.3);
+
+                // Root container for the entire mech
+                const mechRoot = new BABYLON.TransformNode(mechId, this.scene);
+                mechRoot.position = position;
+                mechRoot.scaling = new BABYLON.Vector3(scale, scale, scale);
+
+                // Build skeleton hierarchy
+                const skeleton = {
+                    root: mechRoot,
+                    pelvis: null,
+                    torso: null,
+                    torsoUpper: null,
+                    head: null,
+                    leftShoulder: null,
+                    rightShoulder: null,
+                    leftUpperArm: null,
+                    rightUpperArm: null,
+                    leftLowerArm: null,
+                    rightLowerArm: null,
+                    leftHip: null,
+                    rightHip: null,
+                    leftThigh: null,
+                    rightThigh: null,
+                    leftKnee: null,
+                    rightKnee: null,
+                    leftShin: null,
+                    rightShin: null,
+                    leftAnkle: null,
+                    rightAnkle: null,
+                    leftFoot: null,
+                    rightFoot: null
+                };
+
+                // Create pelvis (physics root)
+                const pelvis = BABYLON.MeshBuilder.CreateBox(`${mechId}_pelvis`, {
+                    width: 0.9 * torsoConfig.width,
+                    height: 0.4,
+                    depth: 0.6 * torsoConfig.depth
+                }, this.scene);
+                pelvis.material = secondaryMat;
+                pelvis.parent = mechRoot;
+                pelvis.position.y = this.calculatePelvisHeight(legConfig);
+                skeleton.pelvis = pelvis;
+
+                // Build torso based on style
+                this.buildTorso(skeleton, torsoConfig, primaryMat, secondaryMat, darkMat, mechId);
+
+                // Build head
+                this.buildHead(skeleton, headConfig, primaryMat, metalMat, glowMat, mechId);
+
+                // Build shoulders and arms
+                this.buildArms(skeleton, armConfig, shoulderConfig, primaryMat, secondaryMat, metalMat, darkMat, mechId);
+
+                // Build legs
+                this.buildLegs(skeleton, legConfig, primaryMat, secondaryMat, metalMat, darkMat, mechId);
+
+                // Create mech data object
+                const mechData = {
+                    id: mechId,
+                    root: mechRoot,
+                    skeleton: skeleton,
+                    config: config,
+                    colors: colors,
+                    animationPhase: Math.random() * Math.PI * 2, // Random start phase
+                    walkSpeed: 0.8 + Math.random() * 0.4,
+                    targetPosition: this.getRandomPosition(),
+                    currentDirection: Math.random() * Math.PI * 2,
+                    partNames: {
+                        legs: legConfig.name,
+                        torso: torsoConfig.name,
+                        arms: armConfig.name,
+                        head: headConfig.name,
+                        shoulders: shoulderConfig.name
+                    }
+                };
+
+                return mechData;
+            }
+
+            calculatePelvisHeight(legConfig) {
+                // Calculate standing height based on leg configuration
+                const thighY = legConfig.thighLength * Math.cos(legConfig.thighAngle * Math.PI / 180);
+                const shinY = legConfig.shinLength * Math.cos(legConfig.shinAngle * Math.PI / 180);
+                return thighY + shinY + 0.3; // Add foot height
+            }
+
+            buildTorso(skeleton, config, primaryMat, secondaryMat, darkMat, mechId) {
+                if (config.shape === 'box') {
+                    // Single block torso
+                    const torso = BABYLON.MeshBuilder.CreateBox(`${mechId}_torso`, {
+                        width: config.width,
+                        height: config.height,
+                        depth: config.depth
+                    }, this.scene);
+                    torso.material = primaryMat;
+                    torso.parent = skeleton.pelvis;
+                    torso.position.y = 0.2 + config.height / 2;
+                    skeleton.torso = torso;
+
+                    // Upper torso section
+                    const upperTorso = BABYLON.MeshBuilder.CreateBox(`${mechId}_upperTorso`, {
+                        width: config.width * config.upperScale,
+                        height: config.height * 0.5,
+                        depth: config.depth * 0.9
+                    }, this.scene);
+                    upperTorso.material = secondaryMat;
+                    upperTorso.parent = torso;
+                    upperTorso.position.y = config.height / 2 + 0.1;
+                    skeleton.torsoUpper = upperTorso;
+
+                } else if (config.shape === 'split') {
+                    // Two-part torso with waist
+                    const lowerTorso = BABYLON.MeshBuilder.CreateBox(`${mechId}_torso`, {
+                        width: config.width * 0.9,
+                        height: config.height,
+                        depth: config.depth
+                    }, this.scene);
+                    lowerTorso.material = primaryMat;
+                    lowerTorso.parent = skeleton.pelvis;
+                    lowerTorso.position.y = 0.2 + config.height / 2;
+                    skeleton.torso = lowerTorso;
+
+                    // Waist joint
+                    const waist = BABYLON.MeshBuilder.CreateCylinder(`${mechId}_waist`, {
+                        height: 0.15,
+                        diameter: config.width * 0.5
+                    }, this.scene);
+                    waist.material = darkMat;
+                    waist.parent = lowerTorso;
+                    waist.position.y = config.height / 2 + 0.08;
+
+                    // Upper torso
+                    const upperTorso = BABYLON.MeshBuilder.CreateBox(`${mechId}_upperTorso`, {
+                        width: config.width * config.upperScale,
+                        height: config.height * 0.8,
+                        depth: config.depth
+                    }, this.scene);
+                    upperTorso.material = secondaryMat;
+                    upperTorso.parent = lowerTorso;
+                    upperTorso.position.y = config.height / 2 + 0.15 + config.height * 0.4;
+                    skeleton.torsoUpper = upperTorso;
+
+                } else if (config.shape === 'angled') {
+                    // Forward-swept torso
+                    const torso = BABYLON.MeshBuilder.CreateBox(`${mechId}_torso`, {
+                        width: config.width,
+                        height: config.height,
+                        depth: config.depth
+                    }, this.scene);
+                    torso.material = primaryMat;
+                    torso.parent = skeleton.pelvis;
+                    torso.position.y = 0.2 + config.height / 2;
+                    torso.rotation.x = -0.15; // Forward lean
+                    skeleton.torso = torso;
+
+                    // Angular upper section
+                    const upperTorso = BABYLON.MeshBuilder.CreateBox(`${mechId}_upperTorso`, {
+                        width: config.width * config.upperScale,
+                        height: config.height * 0.6,
+                        depth: config.depth * 0.8
+                    }, this.scene);
+                    upperTorso.material = secondaryMat;
+                    upperTorso.parent = torso;
+                    upperTorso.position.y = config.height / 2;
+                    upperTorso.position.z = 0.1;
+                    skeleton.torsoUpper = upperTorso;
+                }
+
+                // Add detail plating
+                this.addTorsoDetails(skeleton, config, darkMat, mechId);
+            }
+
+            addTorsoDetails(skeleton, config, darkMat, mechId) {
+                // Add panel lines and vents
+                const vent = BABYLON.MeshBuilder.CreateBox(`${mechId}_vent`, {
+                    width: config.width * 0.3,
+                    height: 0.05,
+                    depth: 0.1
+                }, this.scene);
+                vent.material = darkMat;
+                vent.parent = skeleton.torsoUpper || skeleton.torso;
+                vent.position.z = config.depth / 2 + 0.01;
+            }
+
+            buildHead(skeleton, config, primaryMat, metalMat, glowMat, mechId) {
+                const parentNode = skeleton.torsoUpper || skeleton.torso;
+
+                // Head base
+                let head;
+                if (config.shape === 'dome') {
+                    head = BABYLON.MeshBuilder.CreateSphere(`${mechId}_head`, {
+                        diameter: config.width,
+                        segments: 12
+                    }, this.scene);
+                    head.scaling.y = config.height / config.width;
+                } else if (config.shape === 'angular') {
+                    head = BABYLON.MeshBuilder.CreateBox(`${mechId}_head`, {
+                        width: config.width,
+                        height: config.height,
+                        depth: config.width * 0.8
+                    }, this.scene);
+                } else {
+                    // Heroic visor style
+                    head = BABYLON.MeshBuilder.CreateBox(`${mechId}_head`, {
+                        width: config.width,
+                        height: config.height,
+                        depth: config.width * 0.7
+                    }, this.scene);
+                }
+
+                head.material = primaryMat;
+                head.parent = parentNode;
+                head.position.y = 0.4;
+                skeleton.head = head;
+
+                // Visor/sensor
+                const visor = BABYLON.MeshBuilder.CreateBox(`${mechId}_visor`, {
+                    width: config.width * 0.8,
+                    height: config.height * 0.3,
+                    depth: 0.1
+                }, this.scene);
+                visor.material = glowMat;
+                visor.parent = head;
+                visor.position.z = config.width * 0.35;
+                visor.position.y = config.shape === 'dome' ? 0 : 0.05;
+
+                // Add antenna for visor type
+                if (config.shape === 'heroic') {
+                    const antenna = BABYLON.MeshBuilder.CreateBox(`${mechId}_antenna`, {
+                        width: 0.05,
+                        height: 0.2,
+                        depth: 0.05
+                    }, this.scene);
+                    antenna.material = metalMat;
+                    antenna.parent = head;
+                    antenna.position.y = config.height / 2 + 0.1;
+                    antenna.rotation.z = 0.3;
+                }
+            }
+
+            buildArms(skeleton, armConfig, shoulderConfig, primaryMat, secondaryMat, metalMat, darkMat, mechId) {
+                const parentNode = skeleton.torsoUpper || skeleton.torso;
+                const armSpacing = 0.7;
+
+                ['left', 'right'].forEach((side, index) => {
+                    const xMult = index === 0 ? -1 : 1;
+
+                    // Shoulder mount
+                    let shoulder;
+                    if (shoulderConfig.shape === 'box') {
+                        shoulder = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Shoulder`, {
+                            width: shoulderConfig.size,
+                            height: shoulderConfig.size * 0.8,
+                            depth: shoulderConfig.size
+                        }, this.scene);
+                    } else if (shoulderConfig.shape === 'round') {
+                        shoulder = BABYLON.MeshBuilder.CreateCylinder(`${mechId}_${side}Shoulder`, {
+                            height: shoulderConfig.size * 0.6,
+                            diameter: shoulderConfig.size
+                        }, this.scene);
+                        shoulder.rotation.z = Math.PI / 2;
+                    } else {
+                        // Layered armor plates
+                        shoulder = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Shoulder`, {
+                            width: shoulderConfig.size * 0.8,
+                            height: shoulderConfig.size,
+                            depth: shoulderConfig.size * 1.2
+                        }, this.scene);
+                    }
+                    shoulder.material = secondaryMat;
+                    shoulder.parent = parentNode;
+                    shoulder.position.x = xMult * armSpacing;
+                    shoulder.position.y = 0.1;
+                    skeleton[`${side}Shoulder`] = shoulder;
+
+                    // Upper arm
+                    const upperArm = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}UpperArm`, {
+                        width: 0.25 * armConfig.bulk,
+                        height: armConfig.upperLength,
+                        depth: 0.25 * armConfig.bulk
+                    }, this.scene);
+                    upperArm.material = primaryMat;
+                    upperArm.parent = shoulder;
+                    upperArm.position.x = xMult * 0.1;
+                    upperArm.position.y = -armConfig.upperLength / 2 - 0.1;
+                    upperArm.setPivotPoint(new BABYLON.Vector3(0, armConfig.upperLength / 2, 0));
+                    skeleton[`${side}UpperArm`] = upperArm;
+
+                    // Elbow joint
+                    const elbow = BABYLON.MeshBuilder.CreateSphere(`${mechId}_${side}Elbow`, {
+                        diameter: 0.2 * armConfig.bulk
+                    }, this.scene);
+                    elbow.material = darkMat;
+                    elbow.parent = upperArm;
+                    elbow.position.y = -armConfig.upperLength / 2;
+
+                    // Lower arm
+                    const lowerArm = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}LowerArm`, {
+                        width: 0.3 * armConfig.bulk,
+                        height: armConfig.lowerLength,
+                        depth: 0.3 * armConfig.bulk
+                    }, this.scene);
+                    lowerArm.material = secondaryMat;
+                    lowerArm.parent = upperArm;
+                    lowerArm.position.y = -armConfig.upperLength / 2 - armConfig.lowerLength / 2 - 0.05;
+                    lowerArm.setPivotPoint(new BABYLON.Vector3(0, armConfig.lowerLength / 2, 0));
+                    skeleton[`${side}LowerArm`] = lowerArm;
+
+                    // Weapon barrels or hands
+                    for (let b = 0; b < armConfig.barrelCount; b++) {
+                        const barrel = BABYLON.MeshBuilder.CreateCylinder(`${mechId}_${side}Barrel${b}`, {
+                            height: 0.5,
+                            diameter: 0.12
+                        }, this.scene);
+                        barrel.material = metalMat;
+                        barrel.parent = lowerArm;
+                        barrel.rotation.x = Math.PI / 2;
+                        barrel.position.y = -armConfig.lowerLength / 2;
+                        barrel.position.z = 0.25;
+                        if (armConfig.barrelCount > 1) {
+                            barrel.position.x = (b - 0.5) * 0.15;
+                        }
+                    }
+
+                    if (armConfig.hasHand) {
+                        const hand = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Hand`, {
+                            width: 0.2,
+                            height: 0.15,
+                            depth: 0.25
+                        }, this.scene);
+                        hand.material = darkMat;
+                        hand.parent = lowerArm;
+                        hand.position.y = -armConfig.lowerLength / 2 - 0.08;
+                    }
+                });
+            }
+
+            buildLegs(skeleton, config, primaryMat, secondaryMat, metalMat, darkMat, mechId) {
+                const legSpacing = 0.4;
+                const thighAngleRad = config.thighAngle * Math.PI / 180;
+                const shinAngleRad = config.shinAngle * Math.PI / 180;
+
+                ['left', 'right'].forEach((side, index) => {
+                    const xMult = index === 0 ? -1 : 1;
+
+                    // Hip joint
+                    const hip = BABYLON.MeshBuilder.CreateSphere(`${mechId}_${side}Hip`, {
+                        diameter: 0.3 * config.bulkFactor
+                    }, this.scene);
+                    hip.material = darkMat;
+                    hip.parent = skeleton.pelvis;
+                    hip.position.x = xMult * legSpacing;
+                    hip.position.y = -0.15;
+                    skeleton[`${side}Hip`] = hip;
+
+                    // Thigh
+                    const thigh = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Thigh`, {
+                        width: 0.25 * config.bulkFactor,
+                        height: config.thighLength,
+                        depth: 0.3 * config.bulkFactor
+                    }, this.scene);
+                    thigh.material = primaryMat;
+                    thigh.parent = hip;
+                    thigh.position.y = -config.thighLength / 2;
+                    thigh.rotation.x = thighAngleRad;
+                    thigh.setPivotPoint(new BABYLON.Vector3(0, config.thighLength / 2, 0));
+                    skeleton[`${side}Thigh`] = thigh;
+
+                    // Knee joint
+                    const knee = BABYLON.MeshBuilder.CreateSphere(`${mechId}_${side}Knee`, {
+                        diameter: 0.25 * config.bulkFactor
+                    }, this.scene);
+                    knee.material = metalMat;
+                    knee.parent = thigh;
+                    knee.position.y = -config.thighLength / 2;
+                    skeleton[`${side}Knee`] = knee;
+
+                    // Shin
+                    const shin = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Shin`, {
+                        width: 0.3 * config.bulkFactor,
+                        height: config.shinLength,
+                        depth: 0.35 * config.bulkFactor
+                    }, this.scene);
+                    shin.material = secondaryMat;
+                    shin.parent = knee;
+                    shin.position.y = -config.shinLength / 2;
+                    shin.rotation.x = shinAngleRad;
+                    shin.setPivotPoint(new BABYLON.Vector3(0, config.shinLength / 2, 0));
+                    skeleton[`${side}Shin`] = shin;
+
+                    // Calf actuator bulge (for digitigrade)
+                    if (config.thighAngle > 30) {
+                        const calf = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Calf`, {
+                            width: 0.2 * config.bulkFactor,
+                            height: config.shinLength * 0.6,
+                            depth: 0.15
+                        }, this.scene);
+                        calf.material = darkMat;
+                        calf.parent = shin;
+                        calf.position.z = -0.2 * config.bulkFactor;
+                        calf.position.y = 0.1;
+                    }
+
+                    // Ankle
+                    const ankle = BABYLON.MeshBuilder.CreateSphere(`${mechId}_${side}Ankle`, {
+                        diameter: 0.2 * config.bulkFactor
+                    }, this.scene);
+                    ankle.material = darkMat;
+                    ankle.parent = shin;
+                    ankle.position.y = -config.shinLength / 2;
+                    skeleton[`${side}Ankle`] = ankle;
+
+                    // Foot based on style
+                    this.buildFoot(skeleton, config, side, primaryMat, darkMat, mechId);
+                });
+            }
+
+            buildFoot(skeleton, config, side, primaryMat, darkMat, mechId) {
+                const ankle = skeleton[`${side}Ankle`];
+
+                if (config.footStyle === 'toed') {
+                    // Two-toed digitigrade foot
+                    const footBase = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}FootBase`, {
+                        width: 0.25,
+                        height: 0.1,
+                        depth: 0.2
+                    }, this.scene);
+                    footBase.material = primaryMat;
+                    footBase.parent = ankle;
+                    footBase.position.y = -0.1;
+                    footBase.position.z = 0.1;
+                    skeleton[`${side}Foot`] = footBase;
+
+                    // Toes
+                    for (let t = 0; t < 2; t++) {
+                        const toe = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Toe${t}`, {
+                            width: 0.08,
+                            height: 0.06,
+                            depth: 0.2
+                        }, this.scene);
+                        toe.material = darkMat;
+                        toe.parent = footBase;
+                        toe.position.x = (t - 0.5) * 0.15;
+                        toe.position.z = 0.15;
+                    }
+
+                    // Heel spur
+                    const heel = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Heel`, {
+                        width: 0.1,
+                        height: 0.08,
+                        depth: 0.15
+                    }, this.scene);
+                    heel.material = darkMat;
+                    heel.parent = footBase;
+                    heel.position.z = -0.15;
+                    heel.position.y = -0.02;
+
+                } else if (config.footStyle === 'clawed') {
+                    // Three-clawed foot
+                    const footBase = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}FootBase`, {
+                        width: 0.3,
+                        height: 0.08,
+                        depth: 0.15
+                    }, this.scene);
+                    footBase.material = primaryMat;
+                    footBase.parent = ankle;
+                    footBase.position.y = -0.08;
+                    skeleton[`${side}Foot`] = footBase;
+
+                    // Claws
+                    for (let c = 0; c < 3; c++) {
+                        const claw = BABYLON.MeshBuilder.CreateCylinder(`${mechId}_${side}Claw${c}`, {
+                            height: 0.25,
+                            diameterTop: 0.02,
+                            diameterBottom: 0.06
+                        }, this.scene);
+                        claw.material = darkMat;
+                        claw.parent = footBase;
+                        claw.rotation.x = Math.PI / 2 + 0.3;
+                        claw.position.x = (c - 1) * 0.1;
+                        claw.position.z = 0.15;
+                        claw.position.y = -0.05;
+                    }
+
+                } else {
+                    // Platform foot
+                    const foot = BABYLON.MeshBuilder.CreateBox(`${mechId}_${side}Foot`, {
+                        width: 0.4,
+                        height: 0.12,
+                        depth: 0.5
+                    }, this.scene);
+                    foot.material = primaryMat;
+                    foot.parent = ankle;
+                    foot.position.y = -0.1;
+                    foot.position.z = 0.1;
+                    skeleton[`${side}Foot`] = foot;
+                }
+            }
+
+            getRandomPosition() {
+                const margin = 3;
+                return new BABYLON.Vector3(
+                    (Math.random() - 0.5) * (groundSize - margin * 2),
+                    0,
+                    (Math.random() - 0.5) * (groundSize - margin * 2)
+                );
+            }
+        }
+
+        // ============================================
+        // ANIMATION SYSTEM
+        // ============================================
+
+        class MechAnimator {
+            constructor() {
+                this.time = 0;
+            }
+
+            update(deltaTime, mechs) {
+                this.time += deltaTime;
+
+                mechs.forEach(mech => {
+                    this.animateWalk(mech, deltaTime);
+                    this.updateMovement(mech, deltaTime);
+                });
+            }
+
+            animateWalk(mech, deltaTime) {
+                if (animationPaused) return;
+
+                const skeleton = mech.skeleton;
+                const phase = mech.animationPhase + this.time * mech.walkSpeed * 5;
+                const legConfig = PART_LIBRARY.legs[mech.config.legs];
+
+                // Walking animation parameters
+                const walkAmplitude = 0.15;
+                const bobAmplitude = 0.03;
+
+                // Body bob
+                if (skeleton.pelvis) {
+                    skeleton.pelvis.position.y = this.calculatePelvisHeight(legConfig) +
+                        Math.abs(Math.sin(phase * 2)) * bobAmplitude;
+                }
+
+                // Leg animation
+                ['left', 'right'].forEach((side, index) => {
+                    const sidePhase = phase + index * Math.PI; // Opposite phase for each leg
+
+                    // Thigh swing
+                    if (skeleton[`${side}Thigh`]) {
+                        const baseAngle = legConfig.thighAngle * Math.PI / 180;
+                        skeleton[`${side}Thigh`].rotation.x = baseAngle + Math.sin(sidePhase) * walkAmplitude;
+                    }
+
+                    // Shin follows with delay
+                    if (skeleton[`${side}Shin`]) {
+                        const baseAngle = legConfig.shinAngle * Math.PI / 180;
+                        skeleton[`${side}Shin`].rotation.x = baseAngle + Math.sin(sidePhase - 0.5) * walkAmplitude * 0.8;
+                    }
+                });
+
+                // Arm swing (opposite to legs)
+                ['left', 'right'].forEach((side, index) => {
+                    const sidePhase = phase + (index + 1) * Math.PI;
+
+                    if (skeleton[`${side}UpperArm`]) {
+                        skeleton[`${side}UpperArm`].rotation.x = Math.sin(sidePhase) * 0.2;
+                    }
+                    if (skeleton[`${side}LowerArm`]) {
+                        skeleton[`${side}LowerArm`].rotation.x = Math.sin(sidePhase) * 0.1 - 0.1;
+                    }
+                });
+
+                // Subtle torso twist
+                if (skeleton.torso) {
+                    skeleton.torso.rotation.y = Math.sin(phase) * 0.03;
+                }
+            }
+
+            calculatePelvisHeight(legConfig) {
+                const thighY = legConfig.thighLength * Math.cos(legConfig.thighAngle * Math.PI / 180);
+                const shinY = legConfig.shinLength * Math.cos(legConfig.shinAngle * Math.PI / 180);
+                return thighY + shinY + 0.3;
+            }
+
+            updateMovement(mech, deltaTime) {
+                if (animationPaused) return;
+
+                const root = mech.root;
+                const target = mech.targetPosition;
+                const speed = mech.walkSpeed * 2;
+
+                // Calculate direction to target
+                const dx = target.x - root.position.x;
+                const dz = target.z - root.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+
+                if (distance < 1) {
+                    // Pick new target
+                    mech.targetPosition = this.getRandomPosition();
+                } else {
+                    // Move towards target
+                    const moveX = (dx / distance) * speed * deltaTime;
+                    const moveZ = (dz / distance) * speed * deltaTime;
+
+                    root.position.x += moveX;
+                    root.position.z += moveZ;
+
+                    // Rotate to face direction
+                    const targetAngle = Math.atan2(dx, dz);
+                    const currentAngle = root.rotation.y;
+                    const angleDiff = targetAngle - currentAngle;
+
+                    // Smooth rotation
+                    let rotationStep = angleDiff;
+                    if (rotationStep > Math.PI) rotationStep -= Math.PI * 2;
+                    if (rotationStep < -Math.PI) rotationStep += Math.PI * 2;
+
+                    root.rotation.y += rotationStep * deltaTime * 3;
+                }
+
+                // Keep within bounds
+                const bounds = groundSize / 2 - 2;
+                root.position.x = Math.max(-bounds, Math.min(bounds, root.position.x));
+                root.position.z = Math.max(-bounds, Math.min(bounds, root.position.z));
+            }
+
+            getRandomPosition() {
+                const margin = 3;
+                return new BABYLON.Vector3(
+                    (Math.random() - 0.5) * (groundSize - margin * 2),
+                    0,
+                    (Math.random() - 0.5) * (groundSize - margin * 2)
+                );
+            }
+        }
+
+        // ============================================
+        // SCENE SETUP
+        // ============================================
+
+        let mechBuilder;
+        let mechAnimator;
+
+        function createScene() {
+            scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.08, 0.08, 0.12);
+
+            // Camera
+            camera = new BABYLON.ArcRotateCamera('camera', -Math.PI / 4, Math.PI / 3, 25,
+                new BABYLON.Vector3(0, 2, 0), scene);
+            camera.attachControl(canvas, true);
+            camera.lowerRadiusLimit = 5;
+            camera.upperRadiusLimit = 50;
+            camera.wheelPrecision = 30;
+
+            // Lighting
+            const hemiLight = new BABYLON.HemisphericLight('hemiLight',
+                new BABYLON.Vector3(0, 1, 0), scene);
+            hemiLight.intensity = 0.6;
+            hemiLight.groundColor = new BABYLON.Color3(0.1, 0.1, 0.15);
+
+            const dirLight = new BABYLON.DirectionalLight('dirLight',
+                new BABYLON.Vector3(-0.5, -1, -0.5), scene);
+            dirLight.intensity = 0.8;
+            dirLight.position = new BABYLON.Vector3(10, 20, 10);
+
+            // Ground
+            const ground = BABYLON.MeshBuilder.CreateGround('ground', {
+                width: groundSize,
+                height: groundSize,
+                subdivisions: 20
+            }, scene);
+            const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
+            groundMat.diffuseColor = new BABYLON.Color3(0.15, 0.18, 0.12);
+            groundMat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
+            ground.material = groundMat;
+
+            // Grid lines on ground
+            const gridMat = new BABYLON.StandardMaterial('gridMat', scene);
+            gridMat.diffuseColor = new BABYLON.Color3(0.2, 0.25, 0.18);
+            gridMat.alpha = 0.5;
+
+            for (let i = -groundSize/2; i <= groundSize/2; i += 5) {
+                const lineH = BABYLON.MeshBuilder.CreateBox(`gridH${i}`, {
+                    width: groundSize, height: 0.02, depth: 0.05
+                }, scene);
+                lineH.position.z = i;
+                lineH.position.y = 0.01;
+                lineH.material = gridMat;
+
+                const lineV = BABYLON.MeshBuilder.CreateBox(`gridV${i}`, {
+                    width: 0.05, height: 0.02, depth: groundSize
+                }, scene);
+                lineV.position.x = i;
+                lineV.position.y = 0.01;
+                lineV.material = gridMat;
+            }
+
+            // Initialize builders
+            mechBuilder = new MechBuilder(scene);
+            mechAnimator = new MechAnimator();
+
+            // Generate initial mechs
+            generateNewMechs();
+
+            return scene;
+        }
+
+        function generateNewMechs() {
+            // Clear existing mechs
+            clearAllMechs();
+
+            // Generate 10 mechs in a spread pattern
+            for (let i = 0; i < 10; i++) {
+                const angle = (i / 10) * Math.PI * 2;
+                const radius = 5 + Math.random() * 8;
+                const position = new BABYLON.Vector3(
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                );
+
+                const mech = mechBuilder.buildRandomMech(position);
+                mech.root.rotation.y = angle + Math.PI; // Face center initially
+                mechs.push(mech);
+            }
+
+            updateMechList();
+            updateStats();
+        }
+
+        function addSingleMech() {
+            const mech = mechBuilder.buildRandomMech(mechAnimator.getRandomPosition());
+            mechs.push(mech);
+            updateMechList();
+            updateStats();
+        }
+
+        function clearAllMechs() {
+            mechs.forEach(mech => {
+                mech.root.dispose();
+            });
+            mechs = [];
+            updateMechList();
+            updateStats();
+        }
+
+        function toggleAnimation() {
+            animationPaused = !animationPaused;
+            document.getElementById('animToggle').textContent =
+                animationPaused ? 'Resume Animation' : 'Pause Animation';
+            document.getElementById('animToggle').classList.toggle('active', animationPaused);
+        }
+
+        function toggleWireframe() {
+            wireframeMode = !wireframeMode;
+            scene.meshes.forEach(mesh => {
+                if (mesh.material) {
+                    mesh.material.wireframe = wireframeMode;
+                }
+            });
+            document.getElementById('wireframeToggle').textContent =
+                wireframeMode ? 'Hide Wireframe' : 'Show Wireframe';
+            document.getElementById('wireframeToggle').classList.toggle('active', wireframeMode);
+        }
+
+        function cycleCamera() {
+            cameraMode = (cameraMode + 1) % 3;
+
+            switch (cameraMode) {
+                case 0: // Orbit
+                    camera.alpha = -Math.PI / 4;
+                    camera.beta = Math.PI / 3;
+                    camera.radius = 25;
+                    camera.target = new BABYLON.Vector3(0, 2, 0);
+                    break;
+                case 1: // Top-down
+                    camera.alpha = 0;
+                    camera.beta = 0.1;
+                    camera.radius = 35;
+                    camera.target = new BABYLON.Vector3(0, 0, 0);
+                    break;
+                case 2: // Low angle
+                    camera.alpha = -Math.PI / 6;
+                    camera.beta = Math.PI / 2.2;
+                    camera.radius = 15;
+                    camera.target = new BABYLON.Vector3(0, 1.5, 0);
+                    break;
+            }
+        }
+
+        function updateMechList() {
+            const container = document.getElementById('mechListContent');
+            container.innerHTML = mechs.map((mech, i) => `
+                <div class="mech-entry">
+                    <span>
+                        <span class="color-swatch" style="background: rgb(${Math.floor(mech.colors.primary.r*255)}, ${Math.floor(mech.colors.primary.g*255)}, ${Math.floor(mech.colors.primary.b*255)})"></span>
+                        <span class="mech-name">Mech #${i + 1}</span>
+                        <span style="color: #888;">(${mech.colors.name})</span>
+                    </span>
+                    <span class="mech-parts">${mech.partNames.legs} / ${mech.partNames.torso} / ${mech.partNames.arms}</span>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('mechCount').textContent = mechs.length;
+            document.getElementById('totalMeshes').textContent = scene.meshes.length;
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            canvas = document.getElementById('renderCanvas');
+            engine = new BABYLON.Engine(canvas, true, {
+                antialias: true,
+                preserveDrawingBuffer: true,
+                stencil: true
+            });
+
+            scene = createScene();
+
+            // Main render loop
+            let lastTime = performance.now();
+            engine.runRenderLoop(() => {
+                const currentTime = performance.now();
+                const deltaTime = (currentTime - lastTime) / 1000;
+                lastTime = currentTime;
+
+                // Update animations
+                mechAnimator.update(deltaTime, mechs);
+
+                scene.render();
+
+                // Update performance stats
+                document.getElementById('triCount').textContent =
+                    scene.getActiveIndices().toLocaleString();
+                document.getElementById('drawCalls').textContent =
+                    scene.getActiveMeshes().length;
+                document.getElementById('fps').textContent =
+                    engine.getFps().toFixed(1);
+            });
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                engine.resize();
+            });
+        });
+    </script>
+</body>
+</html>

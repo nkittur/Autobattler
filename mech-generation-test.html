@@ -185,11 +185,11 @@
         const ARCHETYPES = {
             madcat: {
                 name: 'Timber Wolf',
-                torsoStyle: 'bulbous',
+                torsoStyle: 'timberwolf',
                 legStyle: 'digitigrade',
                 shoulderStyle: 'missiles',
                 armStyle: 'energy',
-                headStyle: 'angular',
+                headStyle: 'integrated',
                 stance: 'wide',
                 heightMult: 1.0
             },
@@ -225,11 +225,11 @@
             },
             catapult: {
                 name: 'Missile Boat',
-                torsoStyle: 'rounded',
+                torsoStyle: 'missileboat',
                 legStyle: 'digitigrade',
                 shoulderStyle: 'lrm',
                 armStyle: 'stub',
-                headStyle: 'dome',
+                headStyle: 'integrated',
                 stance: 'medium',
                 heightMult: 0.95
             }
@@ -814,6 +814,63 @@
                     cockpitGlass.position.z = 0.12;
                 }
 
+                // Integrated cockpit (Timber Wolf / Catapult style - no separate head)
+                if (style.integratedCockpit) {
+                    // Main cockpit housing that projects forward from upper torso
+                    const cockpitHousing = builder.box(
+                        style.upperWidth * 0.45,
+                        style.upperHeight * 0.5,
+                        style.upperDepth * 0.5,
+                        torsoUpper, 'secondary'
+                    );
+                    cockpitHousing.position.y = style.upperHeight * 0.75;
+                    cockpitHousing.position.z = style.upperDepth * 0.35;
+
+                    // Forward-angled cockpit canopy
+                    const canopy = builder.box(
+                        style.upperWidth * 0.35,
+                        style.upperHeight * 0.35,
+                        style.upperDepth * 0.35,
+                        cockpitHousing, 'primary'
+                    );
+                    canopy.position.y = style.upperHeight * 0.1;
+                    canopy.position.z = style.upperDepth * 0.3;
+                    canopy.rotation.x = -0.25;
+
+                    // Cockpit glass/visor
+                    const visor = builder.box(
+                        style.upperWidth * 0.3,
+                        style.upperHeight * 0.18,
+                        0.08,
+                        canopy, 'glow'
+                    );
+                    visor.position.y = style.upperHeight * 0.05;
+                    visor.position.z = style.upperDepth * 0.2;
+
+                    // Side sensor panels
+                    [-1, 1].forEach(side => {
+                        const sensorPanel = builder.box(
+                            0.08,
+                            style.upperHeight * 0.25,
+                            style.upperDepth * 0.2,
+                            cockpitHousing, 'dark'
+                        );
+                        sensorPanel.position.x = side * style.upperWidth * 0.22;
+                        sensorPanel.position.y = style.upperHeight * 0.05;
+                        sensorPanel.position.z = style.upperDepth * 0.15;
+                    });
+
+                    // Top sensor/antenna array
+                    const sensorArray = builder.box(
+                        style.upperWidth * 0.2,
+                        0.08,
+                        style.upperDepth * 0.15,
+                        cockpitHousing, 'metal'
+                    );
+                    sensorArray.position.y = style.upperHeight * 0.28;
+                    sensorArray.position.z = style.upperDepth * 0.1;
+                }
+
                 // Chest vents
                 if (style.hasVents) {
                     [-1, 1].forEach(side => {
@@ -871,7 +928,8 @@
                         upperHeight: rand(0.7, 0.85),
                         upperDepth: rand(0.7, 0.85),
                         hasCockpit: true,
-                        hasVents: true
+                        hasVents: true,
+                        integratedCockpit: false
                     },
                     blocky: {
                         lowerWidth: rand(1.0, 1.2),
@@ -881,7 +939,8 @@
                         upperHeight: rand(0.85, 1.0),
                         upperDepth: rand(0.8, 0.95),
                         hasCockpit: true,
-                        hasVents: true
+                        hasVents: true,
+                        integratedCockpit: false
                     },
                     narrow: {
                         lowerWidth: rand(0.6, 0.75),
@@ -891,7 +950,8 @@
                         upperHeight: rand(0.55, 0.7),
                         upperDepth: rand(0.55, 0.65),
                         hasCockpit: false,
-                        hasVents: false
+                        hasVents: false,
+                        integratedCockpit: false
                     },
                     hunched: {
                         lowerWidth: rand(0.85, 1.0),
@@ -901,7 +961,8 @@
                         upperHeight: rand(0.6, 0.75),
                         upperDepth: rand(0.85, 1.0),
                         hasCockpit: true,
-                        hasVents: true
+                        hasVents: true,
+                        integratedCockpit: false
                     },
                     rounded: {
                         lowerWidth: rand(0.75, 0.9),
@@ -911,7 +972,32 @@
                         upperHeight: rand(0.65, 0.8),
                         upperDepth: rand(0.7, 0.85),
                         hasCockpit: true,
-                        hasVents: false
+                        hasVents: false,
+                        integratedCockpit: false
+                    },
+                    // Timber Wolf style - wide shoulders, integrated cockpit in chest
+                    timberwolf: {
+                        lowerWidth: rand(0.85, 1.0),
+                        lowerHeight: rand(0.35, 0.45),
+                        depth: rand(0.65, 0.8),
+                        upperWidth: rand(1.2, 1.4),
+                        upperHeight: rand(0.75, 0.9),
+                        upperDepth: rand(0.8, 0.95),
+                        hasCockpit: false,
+                        hasVents: true,
+                        integratedCockpit: true
+                    },
+                    // Missile boat style - rounded, low profile, integrated cockpit
+                    missileboat: {
+                        lowerWidth: rand(0.8, 0.95),
+                        lowerHeight: rand(0.3, 0.4),
+                        depth: rand(0.6, 0.75),
+                        upperWidth: rand(1.1, 1.3),
+                        upperHeight: rand(0.6, 0.75),
+                        upperDepth: rand(0.75, 0.9),
+                        hasCockpit: false,
+                        hasVents: false,
+                        integratedCockpit: true
                     }
                 };
                 return styles[styleName] || styles.bulbous;
@@ -1245,6 +1331,13 @@
 
             buildHead(builder, skeleton, arch) {
                 const style = this.getHeadStyle(arch.headStyle);
+
+                // Skip head building for integrated cockpit styles (Timber Wolf, Catapult)
+                if (style.type === 'integrated') {
+                    skeleton.head = skeleton.torsoUpper; // Point to torso for animation compatibility
+                    return;
+                }
+
                 const torsoUpper = skeleton.torsoUpper;
 
                 const head = new BABYLON.TransformNode(builder.name('head'), this.scene);
@@ -1297,6 +1390,10 @@
                         width: rand(0.4, 0.5),
                         height: rand(0.3, 0.4),
                         forward: rand(0.08, 0.18)
+                    },
+                    // Integrated cockpit - no separate head, cockpit is in torso
+                    integrated: {
+                        type: 'integrated'
                     }
                 };
                 return styles[styleName] || styles.angular;

@@ -2099,27 +2099,40 @@
                 const sk = mech.skeleton;
                 const legStyle = mech.legData.style;
 
-                // Slower cycle for heavy feel (was *4, now *2.2)
-                const rawPhase = mech.animPhase + this.time * mech.walkSpeed * 2.2;
+                // Faster cycle - was too slow at 2.2
+                const rawPhase = mech.animPhase + this.time * mech.walkSpeed * 4.0;
 
-                // Create "stompy" motion - fast lift, slow plant with pause
-                // Use sawtooth-ish wave for mechanical feel
+                // Store phase for movement sync
+                mech.walkPhase = rawPhase;
+
+                // Determine which foot is pushing (grounded) for movement sync
+                // Each leg: 0-0.5 = lifting/airborne, 0.5-1.0 = planted/pushing
+                const leftNorm = (rawPhase % (Math.PI * 2)) / (Math.PI * 2);
+                const rightNorm = ((rawPhase + Math.PI) % (Math.PI * 2)) / (Math.PI * 2);
+
+                // Push factor: how much forward thrust based on foot contact
+                // Higher when foot is planted (norm > 0.5), lower when lifting
+                const leftPush = leftNorm > 0.4 && leftNorm < 0.95 ? 1.0 : 0.3;
+                const rightPush = rightNorm > 0.4 && rightNorm < 0.95 ? 1.0 : 0.3;
+                mech.pushFactor = Math.max(leftPush, rightPush);
+
+                // Smoother leg animation - less exaggerated pauses
                 const stompyWave = (p) => {
-                    const norm = (p % (Math.PI * 2)) / (Math.PI * 2); // 0-1
-                    // Quick lift (0-0.3), hold (0.3-0.5), slow plant (0.5-0.85), pause (0.85-1)
-                    if (norm < 0.3) return Math.sin(norm / 0.3 * Math.PI / 2); // Quick lift
-                    if (norm < 0.5) return 1.0; // Hold at top
-                    if (norm < 0.85) return Math.cos((norm - 0.5) / 0.35 * Math.PI / 2); // Slow plant
-                    return 0; // Ground contact pause
+                    const norm = (p % (Math.PI * 2)) / (Math.PI * 2);
+                    // Sinusoidal base with slight hold at extremes
+                    const base = Math.sin(norm * Math.PI * 2) * 0.5 + 0.5;
+                    // Add slight snap at bottom
+                    if (norm > 0.45 && norm < 0.55) return base * 0.95;
+                    return base;
                 };
 
                 // Impact detection - when foot hits ground
                 const impactWave = (p) => {
                     const norm = (p % (Math.PI * 2)) / (Math.PI * 2);
-                    // Sharp spike at ground contact (0.85)
-                    if (norm > 0.82 && norm < 0.92) {
-                        const t = (norm - 0.82) / 0.1;
-                        return Math.sin(t * Math.PI) * Math.exp(-t * 2);
+                    // Sharp spike at ground contact
+                    if (norm > 0.45 && norm < 0.55) {
+                        const t = (norm - 0.45) / 0.1;
+                        return Math.sin(t * Math.PI) * 0.7;
                     }
                     return 0;
                 };
@@ -2208,8 +2221,11 @@
             updateMovement(mech, dt) {
                 const root = mech.root;
                 const target = mech.targetPos;
-                // Slower movement speed for heavy feel
-                const speed = mech.walkSpeed * 1.8;
+
+                // Base speed increased, modulated by push factor from walk cycle
+                const baseSpeed = mech.walkSpeed * 3.0;
+                const pushFactor = mech.pushFactor || 1.0;
+                const speed = baseSpeed * pushFactor;
 
                 const dx = target.x - root.position.x;
                 const dz = target.z - root.position.z;
@@ -2218,15 +2234,16 @@
                 if (dist < 1.5) {
                     mech.targetPos = this.randomPos();
                 } else {
+                    // Movement synced with walk cycle via pushFactor
                     root.position.x += (dx / dist) * speed * dt;
                     root.position.z += (dz / dist) * speed * dt;
 
-                    // Slower turning for heavy mech
+                    // Turning speed
                     const targetAngle = Math.atan2(dx, dz);
                     let angleDiff = targetAngle - root.rotation.y;
                     if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                     if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                    root.rotation.y += angleDiff * dt * 1.5; // Slower turn (was 2.5)
+                    root.rotation.y += angleDiff * dt * 2.0;
                 }
 
                 // Bounds

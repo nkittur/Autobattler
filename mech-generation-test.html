@@ -2106,10 +2106,10 @@
                 mech.walkPhase = rawPhase;
 
                 // Movement speed pulses twice per walk cycle (once per step)
-                // Creates a surge-pause-surge rhythm as each foot pushes off
+                // Creates a surge-stop-surge rhythm as each foot pushes off
                 const stepPulse = Math.abs(Math.sin(rawPhase));
-                // Range: 0.4 (between steps) to 1.3 (mid-push) - very noticeable variation
-                mech.pushFactor = 0.4 + stepPulse * 0.9;
+                // Range: 0 (between steps) to 1.3 (mid-push) - full stop between pushes
+                mech.pushFactor = stepPulse * 1.3;
 
                 // Smoother leg animation - less exaggerated pauses
                 const stompyWave = (p) => {

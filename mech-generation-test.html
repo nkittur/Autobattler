@@ -2192,19 +2192,19 @@
 
                     if (sk[`${side}Thigh`]) {
                         const base = legStyle.thighAngle * Math.PI / 180;
-                        // Leg lift - for reverse joint, reduce backward angle to lift
-                        const thighLift = lift * (isReverseJoint ? -0.4 : 0.55);
-                        // Forward/back swing - inverted for reverse joint
-                        const thighSwing = swing * 0.35 * swingDir;
+                        // Leg lift - for reverse joint, reduce backward angle more to swing forward
+                        const thighLift = lift * (isReverseJoint ? -0.65 : 0.55);
+                        // Forward/back swing - larger swing for reverse joint to get leg in front
+                        const thighSwing = swing * (isReverseJoint ? 0.55 : 0.35) * swingDir;
                         sk[`${side}Thigh`].rotation.x = base + thighLift + thighSwing;
                     }
 
                     if (sk[`${side}Shin`]) {
                         const base = legStyle.shinAngle * Math.PI / 180;
-                        // Knee bend - reverse joint bends opposite direction
-                        const kneeBend = lift * (isReverseJoint ? -0.5 : 0.6);
+                        // Knee bend - reverse joint bends more for pronounced chicken walk
+                        const kneeBend = lift * (isReverseJoint ? -0.75 : 0.6);
                         // Extra bend when leg swings forward
-                        const swingBend = Math.max(0, swing * swingDir) * 0.2 * (isReverseJoint ? -1 : 1);
+                        const swingBend = Math.max(0, swing * swingDir) * (isReverseJoint ? 0.35 : 0.2) * (isReverseJoint ? -1 : 1);
                         sk[`${side}Shin`].rotation.x = base - kneeBend - swingBend;
                     }
 

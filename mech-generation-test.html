@@ -2137,56 +2137,71 @@
                 const rightImpact = impactWave(rawPhase + Math.PI);
                 const totalImpact = leftImpact + rightImpact;
 
-                // BODY BOB - Heavy drop on each step
+                // Weight shift - body shifts toward the planted leg
+                // When left leg lifts (phase 0), shift right. When right lifts (phase PI), shift left.
+                const weightShift = Math.sin(rawPhase) * 0.15; // Lateral shift amount
+
+                // BODY BOB AND LATERAL SHIFT
                 if (sk.pelvis) {
-                    const baseBob = Math.abs(Math.sin(rawPhase)) * 0.025;
-                    const impactDrop = totalImpact * 0.08; // Drop on impact
+                    const baseBob = Math.abs(Math.sin(rawPhase)) * 0.03;
+                    const impactDrop = totalImpact * 0.1;
                     sk.pelvis.position.y = legStyle.pelvisHeight + baseBob - impactDrop;
+                    // Shift hips toward planted leg for balance
+                    sk.pelvis.position.x = weightShift;
                 }
 
                 // TORSO SWAY AND SHUDDER
                 if (sk.torso) {
-                    // Side-to-side sway (weight shift)
-                    const sway = Math.sin(rawPhase) * 0.04;
+                    // Lean toward planted leg (counter to hip shift for balance)
+                    const sway = Math.sin(rawPhase) * 0.08;
                     sk.torso.rotation.z = sway;
 
                     // Forward/back twist with walk
-                    sk.torso.rotation.y = Math.sin(rawPhase) * 0.025;
+                    sk.torso.rotation.y = Math.sin(rawPhase) * 0.04;
 
                     // Impact shudder - quick vibration on foot plant
-                    const shudder = totalImpact * Math.sin(this.time * 80) * 0.015;
-                    sk.torso.rotation.x = (sk.torso.rotation.x || 0) + shudder;
+                    const shudder = totalImpact * Math.sin(this.time * 80) * 0.02;
+                    sk.torso.rotation.x = shudder;
                 }
 
-                // Upper torso additional shudder
+                // Upper torso additional sway
                 if (sk.torsoUpper) {
-                    const upperShudder = totalImpact * Math.sin(this.time * 60) * 0.01;
-                    sk.torsoUpper.rotation.z = upperShudder;
+                    const upperShudder = totalImpact * Math.sin(this.time * 60) * 0.015;
+                    sk.torsoUpper.rotation.z = upperShudder - Math.sin(rawPhase) * 0.03;
                 }
 
-                // LEGS - Stompy motion
+                // LEGS - Full stride with lift and swing
                 ['left', 'right'].forEach((side, idx) => {
                     const p = rawPhase + idx * Math.PI;
                     const lift = stompyWave(p);
+                    // Swing: positive = leg forward, negative = leg back
+                    const swing = Math.sin(p);
 
                     if (sk[`${side}Thigh`]) {
                         const base = legStyle.thighAngle * Math.PI / 180;
-                        // More pronounced leg lift
-                        sk[`${side}Thigh`].rotation.x = base + lift * 0.35;
+                        // Much more pronounced leg lift
+                        const thighLift = lift * 0.55;
+                        // Forward/back swing during stride
+                        const thighSwing = swing * 0.35;
+                        sk[`${side}Thigh`].rotation.x = base + thighLift + thighSwing;
                     }
 
                     if (sk[`${side}Shin`]) {
                         const base = legStyle.shinAngle * Math.PI / 180;
-                        // Knee bends more during lift phase
-                        const kneeBend = lift * 0.25;
-                        sk[`${side}Shin`].rotation.x = base - kneeBend;
+                        // Knee bends significantly during lift, straightens during plant
+                        const kneeBend = lift * 0.6;
+                        // Extra bend when leg swings forward
+                        const swingBend = Math.max(0, swing) * 0.2;
+                        sk[`${side}Shin`].rotation.x = base - kneeBend - swingBend;
                     }
 
                     if (sk[`${side}Foot`]) {
                         // Foot lifts toe-first, plants heel-first
-                        const footLift = lift * 0.15;
+                        const footLift = lift * 0.3;
                         const impact = impactWave(p);
-                        sk[`${side}Foot`].rotation.x = footLift - impact * 0.1;
+                        // Foot flexes during swing
+                        const footFlex = swing * 0.15;
+                        sk[`${side}Foot`].rotation.x = footLift + footFlex - impact * 0.15;
                     }
                 });
 

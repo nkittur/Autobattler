@@ -189,7 +189,7 @@
                 headStyle: 'integrated',
                 torsoLean: 0.25,             // Lean forward (T-Rex stance)
                 shoulderWidth: 1.8,          // Wide shoulders
-                hipWidth: 0.9,               // Narrow hips
+                hipWidth: 1.3,               // WIDE hips for chicken walker stance
                 heightMult: 1.0
             },
             // ARCHETYPE B: "Linebacker" - Massive width, head sunk into shoulders
@@ -234,7 +234,7 @@
                 headStyle: 'cockpitBubble',  // Exposed cockpit
                 torsoLean: 0.35,             // Strong forward lean
                 shoulderWidth: 1.5,
-                hipWidth: 0.85,
+                hipWidth: 1.25,              // Wide hips for chicken walker
                 heightMult: 1.05
             },
             // ARCHETYPE: "Missile Platform" - Huge shoulder pods dominate
@@ -249,7 +249,7 @@
                 headStyle: 'integrated',
                 torsoLean: 0.15,
                 shoulderWidth: 2.5,          // Pods make it very wide
-                hipWidth: 0.8,
+                hipWidth: 1.2,               // Wide hips for chicken walker
                 heightMult: 0.95
             }
         };
@@ -596,8 +596,9 @@
             buildLegs(builder, skeleton, arch, hipWidth) {
                 const style = this.getLegStyle(arch.legStyle);
 
-                // Hip width from archetype (narrow hips + wide shoulders = aggressive)
-                const stanceWidth = hipWidth * 0.35;
+                // Hip width - chicken walkers get extra wide stance
+                const stanceMultiplier = style.wideStance ? 0.55 : 0.35;
+                const stanceWidth = hipWidth * stanceMultiplier;
 
                 // Create pelvis with WEDGE shape (not box!)
                 const pelvis = new BABYLON.TransformNode(builder.name('pelvis'), this.scene);
@@ -625,23 +626,25 @@
 
             getLegStyle(styleName) {
                 const styles = {
-                    // REVERSE JOINT - The signature BattleTech look
-                    // Short thigh angled back, LONG shin, knee projects FORWARD
+                    // REVERSE JOINT - Classic chicken walker look
+                    // Wide stance, short thighs back, LONG thick shins forward, big flat feet
                     reverseJoint: {
-                        thighLength: rand(0.38, 0.48),
-                        thighWidth: rand(0.24, 0.32),
-                        thighTaper: 0.85,              // Taper toward knee
-                        thighAngle: rand(50, 65),      // Angled back
-                        shinLength: rand(0.85, 1.05),  // LONG shin
-                        shinWidth: rand(0.2, 0.28),
-                        shinTaper: 0.7,               // Taper toward ankle
-                        shinAngle: rand(-55, -42),    // Angled forward
-                        kneeSize: rand(0.22, 0.3),
-                        kneeForward: rand(0.18, 0.28), // Knee projects FORWARD
-                        footLength: rand(0.55, 0.75),
-                        footStyle: pick(['talon', 'raptor']),
+                        thighLength: rand(0.28, 0.35),    // SHORT thighs
+                        thighWidth: rand(0.22, 0.28),
+                        thighTaper: 0.9,                  // Slight taper
+                        thighAngle: rand(60, 75),         // Angled sharply back
+                        shinLength: rand(0.95, 1.15),     // LONG shin
+                        shinWidth: rand(0.24, 0.32),      // Thicker
+                        shinTaper: 1.2,                   // GROWS toward ankle (inverse taper)
+                        shinAngle: rand(-60, -50),        // Angled sharply forward
+                        kneeSize: rand(0.28, 0.36),       // Big knee joint
+                        kneeForward: rand(0.22, 0.32),    // Knee projects well forward
+                        footLength: rand(0.7, 0.9),       // BIGGER feet
+                        footStyle: pick(['platform', 'heavy', 'splayed']),  // Big flat feet
                         hasCalfBulge: true,
-                        pelvisHeight: 1.7
+                        pelvisHeight: 1.6,
+                        wideStance: true,                 // Flag for extra wide stance
+                        keepFootHorizontal: true          // Feet stay flat
                     },
                     // HEAVY - Wide, stable, linebacker stance
                     heavy: {
@@ -999,6 +1002,45 @@
                             guard.position.z = footLen * 0.35;
                         });
                     }
+
+                } else if (footStyle === 'splayed') {
+                    // Big splayed chicken walker foot - wide, circular, always flat
+                    const footRadius = footLen * 0.5;
+
+                    // Central foot pad - circular/disc shape
+                    const centerPad = builder.cylinder(footRadius * 0.7, 0.12, foot, 'primary');
+                    centerPad.position.y = -0.08;
+                    centerPad.position.z = footLen * 0.15;
+
+                    // Top mechanical housing
+                    const housing = builder.cylinder(footRadius * 0.4, 0.1, foot, 'secondary');
+                    housing.position.y = 0.02;
+                    housing.position.z = footLen * 0.15;
+
+                    // Three splayed toes at 120 degree angles
+                    [0, 1, 2].forEach(t => {
+                        const angle = (t * 120 - 90) * Math.PI / 180; // -90, 30, 150 degrees
+                        const toeX = Math.cos(angle) * footRadius * 0.5;
+                        const toeZ = Math.sin(angle) * footRadius * 0.5 + footLen * 0.15;
+
+                        // Toe pad
+                        const toePad = builder.cylinder(footRadius * 0.35, 0.1, foot, 'secondary');
+                        toePad.position.x = toeX;
+                        toePad.position.y = -0.1;
+                        toePad.position.z = toeZ;
+
+                        // Connector strut to center
+                        const strut = builder.box(0.08, 0.06, footRadius * 0.4, foot, 'dark');
+                        strut.position.x = toeX * 0.5;
+                        strut.position.y = -0.05;
+                        strut.position.z = (toeZ + footLen * 0.15) * 0.5;
+                        strut.rotation.y = angle;
+                    });
+
+                    // Heel pad
+                    const heelPad = builder.cylinder(footRadius * 0.4, 0.1, foot, 'secondary');
+                    heelPad.position.y = -0.1;
+                    heelPad.position.z = -footLen * 0.15;
                 }
             }
 
@@ -2192,30 +2234,42 @@
 
                     if (sk[`${side}Thigh`]) {
                         const base = legStyle.thighAngle * Math.PI / 180;
-                        // Leg lift - for reverse joint, reduce backward angle more to swing forward
-                        const thighLift = lift * (isReverseJoint ? -0.65 : 0.55);
-                        // Forward/back swing - larger swing for reverse joint to get leg in front
-                        const thighSwing = swing * (isReverseJoint ? 0.55 : 0.35) * swingDir;
+                        // Leg lift - for reverse joint, reduce backward angle to swing forward
+                        const thighLift = lift * (isReverseJoint ? -0.85 : 0.55);
+                        // Forward/back swing - much larger for reverse joint to get leg well in front
+                        const thighSwing = swing * (isReverseJoint ? 0.8 : 0.35) * swingDir;
                         sk[`${side}Thigh`].rotation.x = base + thighLift + thighSwing;
                     }
 
                     if (sk[`${side}Shin`]) {
                         const base = legStyle.shinAngle * Math.PI / 180;
-                        // Knee bend - reverse joint bends more for pronounced chicken walk
-                        const kneeBend = lift * (isReverseJoint ? -0.75 : 0.6);
+                        // Knee bend - reverse joint bends much more for chicken walk
+                        const kneeBend = lift * (isReverseJoint ? -0.95 : 0.6);
                         // Extra bend when leg swings forward
-                        const swingBend = Math.max(0, swing * swingDir) * (isReverseJoint ? 0.35 : 0.2) * (isReverseJoint ? -1 : 1);
+                        const swingBend = Math.max(0, swing * swingDir) * (isReverseJoint ? 0.45 : 0.2) * (isReverseJoint ? -1 : 1);
                         sk[`${side}Shin`].rotation.x = base - kneeBend - swingBend;
                     }
 
                     // Rotate ankle joint to pivot foot
                     if (sk[`${side}Ankle`]) {
-                        // Foot lifts toe-up, then pivots down to horizontal as it plants
-                        const toeUp = lift * 0.5; // Toe points up when leg lifts
-                        // Pivot down earlier - starts as soon as swing is forward
-                        const pivotDown = Math.max(0, swing) * (1 - lift * 0.4) * 0.6;
-                        const impact = impactWave(p);
-                        sk[`${side}Ankle`].rotation.x = toeUp - pivotDown - impact * 0.1;
+                        if (legStyle.keepFootHorizontal) {
+                            // Chicken walker feet stay horizontal - counter-rotate to cancel leg angles
+                            const thighAngle = legStyle.thighAngle * Math.PI / 180;
+                            const shinAngle = legStyle.shinAngle * Math.PI / 180;
+                            const thighLift = lift * (isReverseJoint ? -0.85 : 0.55);
+                            const thighSwing = swing * (isReverseJoint ? 0.8 : 0.35) * swingDir;
+                            const kneeBend = lift * (isReverseJoint ? -0.95 : 0.6);
+                            const swingBendVal = Math.max(0, swing * swingDir) * (isReverseJoint ? 0.45 : 0.2) * (isReverseJoint ? -1 : 1);
+                            // Counter-rotate to keep foot flat
+                            const totalLegRotation = (thighAngle + thighLift + thighSwing) + (shinAngle - kneeBend - swingBendVal);
+                            sk[`${side}Ankle`].rotation.x = -totalLegRotation;
+                        } else {
+                            // Normal foot pivot animation
+                            const toeUp = lift * 0.5;
+                            const pivotDown = Math.max(0, swing) * (1 - lift * 0.4) * 0.6;
+                            const impact = impactWave(p);
+                            sk[`${side}Ankle`].rotation.x = toeUp - pivotDown - impact * 0.1;
+                        }
                     }
                 });
 

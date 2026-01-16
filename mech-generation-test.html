@@ -146,18 +146,12 @@
         <canvas id="renderCanvas"></canvas>
     </div>
 
-    <div id="polyCount">Triangles: <span id="triCount">0</span> | Meshes: <span id="drawCalls">0</span> | FPS: <span id="fps">0</span></div>
-
-    <div id="stats">
-        <h3>Stats</h3>
-        <div class="stat-row">
-            <span>Total Mechs:</span>
-            <span id="mechCount">0</span>
-        </div>
-        <div class="stat-row">
-            <span>Meshes Per Mech:</span>
-            <span id="partsPerMech">~80</span>
-        </div>
+    <div id="polyCount">
+        <strong>FPS: <span id="fps" style="color: #00ff88;">0</span></strong> |
+        Triangles: <span id="triCount">0</span> |
+        Vertices: <span id="vertCount">0</span> |
+        Meshes: <span id="drawCalls">0</span> |
+        Mechs: <span id="mechCount">0</span>
     </div>
 
     <div id="mechList">
@@ -259,12 +253,13 @@
         let groundSize = 40;
 
         // ============================================
-        // COMPOUND SHAPE BUILDER
+        // COMPOUND SHAPE BUILDER - HIGH POLY VERSION
         // ============================================
 
         /**
          * Creates compound shapes from multiple primitives
          * This is the core of creating interesting silhouettes
+         * HIGH POLY: Tripled tessellation and detail budget
          */
         class ShapeBuilder {
             constructor(scene, materials, mechId) {
@@ -289,9 +284,18 @@
                 return mesh;
             }
 
+            // Beveled box - box with chamfered edges for more interesting silhouette
+            beveledBox(w, h, d, bevel, parent, mat = 'primary') {
+                // Create main box
+                const main = this.box(w - bevel * 2, h, d - bevel * 2, parent, mat);
+                // Add beveled edges
+                const edgeW = this.box(w, h - bevel * 2, d - bevel * 2, main, mat);
+                const edgeD = this.box(w - bevel * 2, h - bevel * 2, d, main, mat);
+                return main;
+            }
+
             // Tapered box (wider at bottom or top)
-            taperedBox(wBot, wTop, h, d, parent, mat = 'primary') {
-                // Create using ribbon or just approximate with box
+            taperedBox(wBot, wTop, h, parent, mat = 'primary') {
                 const mesh = BABYLON.MeshBuilder.CreateCylinder(this.name('taper'), {
                     diameterBottom: wBot,
                     diameterTop: wTop,
@@ -304,21 +308,48 @@
                 return mesh;
             }
 
+            // High-poly cylinder (24 tessellation)
             cylinder(diameter, height, parent, mat = 'metal') {
                 const mesh = BABYLON.MeshBuilder.CreateCylinder(this.name('cyl'), {
                     diameter: diameter,
                     height: height,
-                    tessellation: 12
+                    tessellation: 24
                 }, this.scene);
                 mesh.material = this.mats[mat];
                 if (parent) mesh.parent = parent;
                 return mesh;
             }
 
+            // Tapered cylinder for pistons/actuators
+            taperedCylinder(dBot, dTop, height, parent, mat = 'metal') {
+                const mesh = BABYLON.MeshBuilder.CreateCylinder(this.name('tcyl'), {
+                    diameterBottom: dBot,
+                    diameterTop: dTop,
+                    height: height,
+                    tessellation: 24
+                }, this.scene);
+                mesh.material = this.mats[mat];
+                if (parent) mesh.parent = parent;
+                return mesh;
+            }
+
+            // High-poly sphere (16 segments)
             sphere(diameter, parent, mat = 'dark') {
                 const mesh = BABYLON.MeshBuilder.CreateSphere(this.name('sph'), {
                     diameter: diameter,
-                    segments: 8
+                    segments: 16
+                }, this.scene);
+                mesh.material = this.mats[mat];
+                if (parent) mesh.parent = parent;
+                return mesh;
+            }
+
+            // Hemisphere for domes
+            hemisphere(diameter, parent, mat = 'primary') {
+                const mesh = BABYLON.MeshBuilder.CreateSphere(this.name('hemi'), {
+                    diameter: diameter,
+                    segments: 16,
+                    slice: 0.5
                 }, this.scene);
                 mesh.material = this.mats[mat];
                 if (parent) mesh.parent = parent;
@@ -330,6 +361,89 @@
                 const mesh = this.box(w, h, d, parent, mat);
                 mesh.rotation.x = angle;
                 return mesh;
+            }
+
+            // Layered armor plate (multiple overlapping plates)
+            armorPlate(w, h, layers, parent, mat = 'secondary') {
+                const plate = new BABYLON.TransformNode(this.name('armorPlate'), this.scene);
+                if (parent) plate.parent = parent;
+                for (let i = 0; i < layers; i++) {
+                    const layer = this.box(w * (1 - i * 0.1), h * (1 - i * 0.15), 0.03, plate, i === 0 ? mat : 'primary');
+                    layer.position.z = i * 0.025;
+                    layer.position.y = i * 0.02;
+                }
+                return plate;
+            }
+
+            // Vent/grille detail
+            vents(w, h, count, parent, mat = 'dark') {
+                const ventGroup = new BABYLON.TransformNode(this.name('vents'), this.scene);
+                if (parent) ventGroup.parent = parent;
+                const spacing = h / count;
+                for (let i = 0; i < count; i++) {
+                    const vent = this.box(w, spacing * 0.4, 0.06, ventGroup, mat);
+                    vent.position.y = (i - (count - 1) / 2) * spacing;
+                }
+                return ventGroup;
+            }
+
+            // Mechanical joint with visible detail
+            mechanicalJoint(diameter, parent, mat = 'metal') {
+                const joint = new BABYLON.TransformNode(this.name('joint'), this.scene);
+                if (parent) joint.parent = parent;
+                // Main ball
+                this.sphere(diameter, joint, mat);
+                // Ring detail
+                const ring = this.cylinder(diameter * 1.15, diameter * 0.15, joint, 'dark');
+                // Bolts
+                for (let i = 0; i < 4; i++) {
+                    const bolt = this.cylinder(diameter * 0.12, diameter * 0.1, joint, 'dark');
+                    bolt.rotation.x = Math.PI / 2;
+                    bolt.position.z = diameter * 0.5;
+                    bolt.rotation.y = (i / 4) * Math.PI * 2;
+                }
+                return joint;
+            }
+
+            // Piston/actuator
+            piston(length, diameter, parent, mat = 'metal') {
+                const piston = new BABYLON.TransformNode(this.name('piston'), this.scene);
+                if (parent) piston.parent = parent;
+                // Outer housing
+                const housing = this.cylinder(diameter, length * 0.6, piston, 'dark');
+                housing.position.y = length * 0.2;
+                // Inner rod
+                const rod = this.cylinder(diameter * 0.5, length, piston, mat);
+                // End caps
+                const cap1 = this.cylinder(diameter * 1.2, diameter * 0.2, piston, 'dark');
+                cap1.position.y = length * 0.5;
+                const cap2 = this.cylinder(diameter * 0.8, diameter * 0.15, piston, 'dark');
+                cap2.position.y = -length * 0.5;
+                return piston;
+            }
+
+            // Weapon barrel with detail
+            weaponBarrel(length, diameter, parent, mat = 'metal') {
+                const barrel = new BABYLON.TransformNode(this.name('barrel'), this.scene);
+                if (parent) barrel.parent = parent;
+                // Main barrel
+                const main = this.cylinder(diameter, length, barrel, mat);
+                main.rotation.x = Math.PI / 2;
+                // Shroud
+                const shroud = this.cylinder(diameter * 1.4, length * 0.3, barrel, 'primary');
+                shroud.rotation.x = Math.PI / 2;
+                shroud.position.z = -length * 0.25;
+                // Muzzle brake
+                const muzzle = this.cylinder(diameter * 1.2, length * 0.1, barrel, 'dark');
+                muzzle.rotation.x = Math.PI / 2;
+                muzzle.position.z = length * 0.5;
+                // Cooling fins
+                for (let i = 0; i < 3; i++) {
+                    const fin = this.cylinder(diameter * 1.25, 0.02, barrel, 'dark');
+                    fin.rotation.x = Math.PI / 2;
+                    fin.position.z = length * (0.1 + i * 0.15);
+                }
+                return barrel;
             }
         }
 
@@ -522,12 +636,15 @@
             }
 
             buildLeg(builder, skeleton, side, xMult, style, stanceWidth, pelvis) {
-                // Hip joint node
+                // Hip joint node with detailed mechanical joint
                 const hipJoint = new BABYLON.TransformNode(builder.name(`${side}Hip`), this.scene);
                 hipJoint.parent = pelvis;
                 hipJoint.position.x = xMult * stanceWidth;
                 hipJoint.position.y = -0.15;
                 skeleton[`${side}Hip`] = hipJoint;
+
+                // Hip mechanical joint detail
+                builder.mechanicalJoint(0.22, hipJoint, 'metal');
 
                 // === THIGH ===
                 const thigh = new BABYLON.TransformNode(builder.name(`${side}Thigh`), this.scene);
@@ -544,25 +661,41 @@
                 );
                 thighMain.position.y = -style.thighLength / 2;
 
-                // Thigh armor plates
-                const thighFront = builder.box(
-                    style.thighWidth * 0.8,
-                    style.thighLength * 0.7,
-                    0.08,
+                // Thigh upper armor plate (layered)
+                const thighArmorUpper = builder.armorPlate(
+                    style.thighWidth * 0.85,
+                    style.thighLength * 0.4,
+                    3,
                     thigh, 'secondary'
                 );
-                thighFront.position.y = -style.thighLength * 0.4;
-                thighFront.position.z = style.thighWidth * 0.6;
+                thighArmorUpper.position.y = -style.thighLength * 0.25;
+                thighArmorUpper.position.z = style.thighWidth * 0.58;
 
-                // Inner thigh detail
-                const thighInner = builder.box(
-                    0.08,
-                    style.thighLength * 0.6,
-                    style.thighWidth * 0.7,
-                    thigh, 'dark'
+                // Thigh lower armor plate
+                const thighArmorLower = builder.armorPlate(
+                    style.thighWidth * 0.75,
+                    style.thighLength * 0.35,
+                    2,
+                    thigh, 'secondary'
                 );
+                thighArmorLower.position.y = -style.thighLength * 0.65;
+                thighArmorLower.position.z = style.thighWidth * 0.58;
+
+                // Inner thigh mechanical detail
+                const thighInner = builder.box(0.06, style.thighLength * 0.5, style.thighWidth * 0.6, thigh, 'dark');
                 thighInner.position.y = -style.thighLength * 0.5;
-                thighInner.position.x = -xMult * style.thighWidth * 0.5;
+                thighInner.position.x = -xMult * style.thighWidth * 0.52;
+
+                // Thigh actuator detail
+                const thighActuator = builder.piston(style.thighLength * 0.5, 0.06, thigh, 'metal');
+                thighActuator.position.y = -style.thighLength * 0.5;
+                thighActuator.position.x = xMult * style.thighWidth * 0.3;
+                thighActuator.position.z = -style.thighWidth * 0.4;
+
+                // Side vents on thigh
+                const thighVents = builder.vents(style.thighWidth * 0.3, style.thighLength * 0.3, 4, thigh, 'dark');
+                thighVents.position.y = -style.thighLength * 0.4;
+                thighVents.position.x = xMult * style.thighWidth * 0.52;
 
                 // === KNEE ===
                 const kneeJoint = new BABYLON.TransformNode(builder.name(`${side}Knee`), this.scene);
@@ -570,25 +703,43 @@
                 kneeJoint.position.y = -style.thighLength;
                 skeleton[`${side}Knee`] = kneeJoint;
 
-                // Knee is a complex joint that projects forward
-                const kneeCore = builder.sphere(style.kneeSize, kneeJoint, 'metal');
+                // Knee mechanical joint (high detail)
+                builder.mechanicalJoint(style.kneeSize, kneeJoint, 'metal');
 
-                // Knee housing - the forward-projecting knee cap
+                // Knee housing - the forward-projecting knee cap (multi-layered)
                 const kneeCap = builder.box(
-                    style.kneeSize * 1.2,
-                    style.kneeSize * 1.4,
-                    style.kneeSize * 0.8,
+                    style.kneeSize * 1.3,
+                    style.kneeSize * 1.5,
+                    style.kneeSize * 0.9,
                     kneeJoint, 'primary'
                 );
-                kneeCap.position.z = style.kneeForward + style.kneeSize * 0.3;
-                kneeCap.position.y = style.kneeSize * 0.1;
+                kneeCap.position.z = style.kneeForward + style.kneeSize * 0.35;
+                kneeCap.position.y = style.kneeSize * 0.12;
 
-                // Knee side guards
+                // Knee cap layered armor
+                const kneeCapArmor = builder.armorPlate(
+                    style.kneeSize * 1.1,
+                    style.kneeSize * 1.2,
+                    2,
+                    kneeCap, 'secondary'
+                );
+                kneeCapArmor.position.z = style.kneeSize * 0.45;
+
+                // Knee side guards with detail
                 [-1, 1].forEach(kSide => {
-                    const kneeGuard = builder.box(0.06, style.kneeSize * 1.2, style.kneeSize * 0.6, kneeJoint, 'secondary');
-                    kneeGuard.position.x = kSide * style.kneeSize * 0.7;
+                    const kneeGuard = builder.box(0.07, style.kneeSize * 1.3, style.kneeSize * 0.7, kneeJoint, 'secondary');
+                    kneeGuard.position.x = kSide * style.kneeSize * 0.75;
                     kneeGuard.position.z = style.kneeForward * 0.5;
+
+                    // Guard detail
+                    const guardDetail = builder.box(0.03, style.kneeSize * 0.8, style.kneeSize * 0.4, kneeGuard, 'dark');
+                    guardDetail.position.x = kSide * 0.02;
                 });
+
+                // Knee hydraulic detail
+                const kneeHydraulic = builder.cylinder(0.05, style.kneeSize * 0.8, kneeJoint, 'metal');
+                kneeHydraulic.position.z = -style.kneeSize * 0.3;
+                kneeHydraulic.position.y = -style.kneeSize * 0.2;
 
                 // === SHIN ===
                 const shin = new BABYLON.TransformNode(builder.name(`${side}Shin`), this.scene);
@@ -596,7 +747,7 @@
                 shin.rotation.x = style.shinAngle * Math.PI / 180;
                 skeleton[`${side}Shin`] = shin;
 
-                // Shin main structure - tapers down
+                // Shin main structure
                 const shinMain = builder.box(
                     style.shinWidth,
                     style.shinLength,
@@ -605,46 +756,70 @@
                 );
                 shinMain.position.y = -style.shinLength / 2;
 
-                // Shin front armor
-                const shinFront = builder.box(
-                    style.shinWidth * 0.75,
-                    style.shinLength * 0.85,
-                    0.1,
+                // Shin front armor (multi-layer)
+                const shinArmorFront = builder.armorPlate(
+                    style.shinWidth * 0.8,
+                    style.shinLength * 0.75,
+                    3,
                     shin, 'secondary'
                 );
-                shinFront.position.y = -style.shinLength * 0.45;
-                shinFront.position.z = style.shinWidth * 0.65;
+                shinArmorFront.position.y = -style.shinLength * 0.4;
+                shinArmorFront.position.z = style.shinWidth * 0.62;
 
-                // Calf bulge (for digitigrade)
+                // Shin side armor plates
+                [-1, 1].forEach(sSide => {
+                    const sideArmor = builder.box(0.05, style.shinLength * 0.7, style.shinWidth * 0.8, shin, 'secondary');
+                    sideArmor.position.x = sSide * style.shinWidth * 0.52;
+                    sideArmor.position.y = -style.shinLength * 0.4;
+
+                    // Side armor detail panel
+                    const sidePanel = builder.box(0.02, style.shinLength * 0.4, style.shinWidth * 0.5, sideArmor, 'dark');
+                    sidePanel.position.x = sSide * 0.02;
+                });
+
+                // Calf bulge (for digitigrade) - enhanced
                 if (style.hasCalfBulge) {
                     const calfBulge = builder.box(
-                        style.shinWidth * 0.9,
-                        style.shinLength * 0.5,
-                        style.shinWidth * 0.6,
+                        style.shinWidth * 0.95,
+                        style.shinLength * 0.55,
+                        style.shinWidth * 0.65,
                         shin, 'secondary'
                     );
                     calfBulge.position.y = -style.shinLength * 0.25;
-                    calfBulge.position.z = -style.shinWidth * 0.7;
+                    calfBulge.position.z = -style.shinWidth * 0.72;
 
-                    // Calf detail
-                    const calfDetail = builder.box(
-                        style.shinWidth * 0.5,
-                        style.shinLength * 0.35,
-                        0.08,
-                        shin, 'dark'
-                    );
-                    calfDetail.position.y = -style.shinLength * 0.3;
-                    calfDetail.position.z = -style.shinWidth * 1.0;
+                    // Calf detail panels
+                    const calfPanel1 = builder.box(style.shinWidth * 0.6, style.shinLength * 0.4, 0.06, calfBulge, 'dark');
+                    calfPanel1.position.z = -style.shinWidth * 0.33;
+
+                    const calfPanel2 = builder.box(style.shinWidth * 0.4, style.shinLength * 0.25, 0.04, calfBulge, 'primary');
+                    calfPanel2.position.z = -style.shinWidth * 0.35;
+                    calfPanel2.position.y = 0.05;
+
+                    // Calf actuators
+                    const calfActuator = builder.piston(style.shinLength * 0.35, 0.05, shin, 'metal');
+                    calfActuator.position.y = -style.shinLength * 0.3;
+                    calfActuator.position.z = -style.shinWidth * 0.95;
                 }
 
-                // Lower shin taper
+                // Lower shin taper with detail
                 const shinLower = builder.box(
-                    style.shinWidth * 0.7,
-                    style.shinLength * 0.25,
-                    style.shinWidth * 0.9,
+                    style.shinWidth * 0.72,
+                    style.shinLength * 0.28,
+                    style.shinWidth * 0.92,
                     shin, 'primary'
                 );
-                shinLower.position.y = -style.shinLength * 0.85;
+                shinLower.position.y = -style.shinLength * 0.84;
+
+                // Lower shin detail
+                const shinLowerDetail = builder.box(
+                    style.shinWidth * 0.5,
+                    style.shinLength * 0.15,
+                    0.05,
+                    shin, 'dark'
+                );
+                shinLowerDetail.position.y = -style.shinLength * 0.88;
+                shinLowerDetail.position.z = style.shinWidth * 0.48;
 
                 // === ANKLE ===
                 const ankleJoint = new BABYLON.TransformNode(builder.name(`${side}Ankle`), this.scene);
@@ -652,7 +827,8 @@
                 ankleJoint.position.y = -style.shinLength;
                 skeleton[`${side}Ankle`] = ankleJoint;
 
-                const ankleCore = builder.sphere(style.shinWidth * 0.5, ankleJoint, 'metal');
+                // Ankle mechanical joint (high detail)
+                builder.mechanicalJoint(style.shinWidth * 0.5, ankleJoint, 'metal');
 
                 // === FOOT ===
                 this.buildFoot(builder, skeleton, side, style, ankleJoint);
@@ -667,84 +843,148 @@
                 const footStyle = style.footStyle;
 
                 if (footStyle === 'talon' || footStyle === 'raptor') {
-                    // Bird-like talon foot - long and forward-projecting
+                    // Bird-like talon foot - long and forward-projecting (enhanced)
 
-                    // Heel section
-                    const heel = builder.box(0.15, 0.1, 0.2, foot, 'primary');
+                    // Heel assembly
+                    const heelAssembly = new BABYLON.TransformNode(builder.name('heelAssembly'), this.scene);
+                    heelAssembly.parent = foot;
+
+                    const heel = builder.box(0.18, 0.12, 0.22, heelAssembly, 'primary');
                     heel.position.y = -0.1;
                     heel.position.z = -0.1;
 
-                    // Heel spur
-                    const heelSpur = builder.box(0.08, 0.06, 0.18, foot, 'dark');
-                    heelSpur.position.y = -0.12;
-                    heelSpur.position.z = -0.22;
-                    heelSpur.rotation.x = 0.3;
+                    // Heel armor
+                    const heelArmor = builder.armorPlate(0.15, 0.1, 2, heelAssembly, 'secondary');
+                    heelArmor.position.y = -0.08;
+                    heelArmor.position.z = -0.2;
+                    heelArmor.rotation.x = 0.3;
 
-                    // Mid foot
-                    const midFoot = builder.box(0.18, 0.08, footLen * 0.4, foot, 'primary');
+                    // Heel spur with detail
+                    const heelSpur = builder.box(0.1, 0.07, 0.2, heelAssembly, 'dark');
+                    heelSpur.position.y = -0.13;
+                    heelSpur.position.z = -0.24;
+                    heelSpur.rotation.x = 0.35;
+
+                    const spurTip = builder.taperedCylinder(0.06, 0.02, 0.12, heelSpur, 'metal');
+                    spurTip.rotation.x = Math.PI / 2;
+                    spurTip.position.z = -0.15;
+
+                    // Mid foot structure
+                    const midFoot = builder.box(0.2, 0.1, footLen * 0.45, foot, 'primary');
                     midFoot.position.y = -0.12;
-                    midFoot.position.z = footLen * 0.15;
+                    midFoot.position.z = footLen * 0.18;
 
-                    // Toes - 2 or 3 forward-projecting claws
+                    // Mid foot detail
+                    const midFootDetail = builder.box(0.12, 0.04, footLen * 0.3, midFoot, 'dark');
+                    midFootDetail.position.y = 0.04;
+
+                    // Toes - 2 or 3 forward-projecting claws with segments
                     const numToes = footStyle === 'raptor' ? 3 : 2;
-                    const toeSpread = footStyle === 'raptor' ? 0.12 : 0.1;
+                    const toeSpread = footStyle === 'raptor' ? 0.13 : 0.11;
 
                     for (let t = 0; t < numToes; t++) {
                         const toeX = (t - (numToes - 1) / 2) * toeSpread;
 
-                        // Toe base
-                        const toeBase = builder.box(0.07, 0.06, footLen * 0.35, foot, 'secondary');
+                        // Toe base segment
+                        const toeBase = builder.box(0.08, 0.07, footLen * 0.22, foot, 'secondary');
                         toeBase.position.x = toeX;
                         toeBase.position.y = -0.13;
-                        toeBase.position.z = footLen * 0.4;
+                        toeBase.position.z = footLen * 0.35;
+
+                        // Toe joint
+                        const toeJoint = builder.sphere(0.05, foot, 'metal');
+                        toeJoint.position.x = toeX;
+                        toeJoint.position.y = -0.13;
+                        toeJoint.position.z = footLen * 0.48;
+
+                        // Toe mid segment
+                        const toeMid = builder.box(0.06, 0.05, footLen * 0.18, foot, 'primary');
+                        toeMid.position.x = toeX;
+                        toeMid.position.y = -0.14;
+                        toeMid.position.z = footLen * 0.58;
 
                         // Toe claw
-                        const toeClaw = builder.box(0.05, 0.04, footLen * 0.25, foot, 'dark');
+                        const toeClaw = builder.taperedCylinder(0.05, 0.02, footLen * 0.15, foot, 'dark');
                         toeClaw.position.x = toeX;
                         toeClaw.position.y = -0.14;
-                        toeClaw.position.z = footLen * 0.65;
-                        toeClaw.rotation.x = 0.15;
+                        toeClaw.position.z = footLen * 0.72;
+                        toeClaw.rotation.x = Math.PI / 2 + 0.2;
                     }
 
                 } else if (footStyle === 'split') {
-                    // Split-toe foot
-                    const heelBlock = builder.box(0.2, 0.12, 0.15, foot, 'primary');
+                    // Split-toe foot (enhanced)
+                    const heelBlock = builder.box(0.22, 0.14, 0.18, foot, 'primary');
                     heelBlock.position.y = -0.1;
                     heelBlock.position.z = -0.05;
 
-                    // Two large toe sections
-                    [-1, 1].forEach((toeSide, idx) => {
-                        const toe = builder.box(0.12, 0.08, footLen * 0.6, foot, 'primary');
-                        toe.position.x = toeSide * 0.1;
-                        toe.position.y = -0.12;
-                        toe.position.z = footLen * 0.25;
+                    // Heel detail
+                    const heelDetail = builder.box(0.18, 0.06, 0.08, heelBlock, 'dark');
+                    heelDetail.position.z = -0.06;
 
-                        const toeEnd = builder.box(0.1, 0.06, footLen * 0.2, foot, 'secondary');
-                        toeEnd.position.x = toeSide * 0.1;
+                    // Two large toe sections with detail
+                    [-1, 1].forEach((toeSide, idx) => {
+                        // Toe main
+                        const toe = builder.box(0.14, 0.1, footLen * 0.55, foot, 'primary');
+                        toe.position.x = toeSide * 0.12;
+                        toe.position.y = -0.12;
+                        toe.position.z = footLen * 0.22;
+
+                        // Toe armor
+                        const toeArmor = builder.armorPlate(0.12, footLen * 0.35, 2, toe, 'secondary');
+                        toeArmor.position.y = 0.04;
+
+                        // Toe joint
+                        const toeJoint = builder.sphere(0.06, foot, 'metal');
+                        toeJoint.position.x = toeSide * 0.12;
+                        toeJoint.position.y = -0.12;
+                        toeJoint.position.z = footLen * 0.48;
+
+                        // Toe tip
+                        const toeEnd = builder.box(0.12, 0.08, footLen * 0.22, foot, 'secondary');
+                        toeEnd.position.x = toeSide * 0.12;
                         toeEnd.position.y = -0.13;
-                        toeEnd.position.z = footLen * 0.55;
+                        toeEnd.position.z = footLen * 0.58;
+
+                        // Toe tip detail
+                        const toeTip = builder.box(0.08, 0.04, 0.06, toeEnd, 'dark');
+                        toeTip.position.z = footLen * 0.1;
                     });
 
                 } else if (footStyle === 'platform' || footStyle === 'heavy' || footStyle === 'block') {
-                    // Heavy platform foot for assault mechs
-                    const footWidth = footStyle === 'heavy' ? 0.45 : 0.35;
+                    // Heavy platform foot for assault mechs (enhanced)
+                    const footWidth = footStyle === 'heavy' ? 0.5 : 0.38;
 
                     // Main foot platform
-                    const platform = builder.box(footWidth, 0.12, footLen * 0.8, foot, 'primary');
+                    const platform = builder.box(footWidth, 0.14, footLen * 0.85, foot, 'primary');
                     platform.position.y = -0.1;
-                    platform.position.z = footLen * 0.2;
+                    platform.position.z = footLen * 0.22;
 
-                    // Heel
-                    const heel = builder.box(footWidth * 0.8, 0.1, 0.15, foot, 'secondary');
+                    // Platform top detail
+                    const platformTop = builder.box(footWidth * 0.7, 0.04, footLen * 0.5, platform, 'secondary');
+                    platformTop.position.y = 0.06;
+
+                    // Heel section
+                    const heel = builder.box(footWidth * 0.85, 0.12, 0.18, foot, 'secondary');
                     heel.position.y = -0.1;
-                    heel.position.z = -0.1;
+                    heel.position.z = -0.12;
 
-                    // Front edge
-                    const frontEdge = builder.box(footWidth * 0.9, 0.08, 0.1, foot, 'secondary');
+                    // Heel detail
+                    const heelDetail = builder.box(footWidth * 0.6, 0.06, 0.08, heel, 'dark');
+                    heelDetail.position.z = -0.06;
+
+                    // Front edge with treads
+                    const frontEdge = builder.box(footWidth * 0.95, 0.1, 0.12, foot, 'secondary');
                     frontEdge.position.y = -0.11;
-                    frontEdge.position.z = footLen * 0.55;
+                    frontEdge.position.z = footLen * 0.6;
 
-                    // Toe guards
+                    // Tread details
+                    for (let tr = 0; tr < 4; tr++) {
+                        const tread = builder.box(footWidth * 0.8, 0.02, 0.04, foot, 'dark');
+                        tread.position.y = -0.16;
+                        tread.position.z = footLen * (-0.1 + tr * 0.2);
+                    }
+
+                    // Toe guards (enhanced)
                     if (footStyle === 'heavy') {
                         [-1, 1].forEach(side => {
                             const guard = builder.box(0.08, 0.1, footLen * 0.3, foot, 'dark');
@@ -1724,6 +1964,7 @@
             scene = createScene();
 
             let lastTime = performance.now();
+            let frameCount = 0;
             engine.runRenderLoop(() => {
                 const now = performance.now();
                 const dt = (now - lastTime) / 1000;
@@ -1732,9 +1973,24 @@
                 animator.update(dt, mechs);
                 scene.render();
 
-                document.getElementById('triCount').textContent = scene.getActiveIndices().toLocaleString();
-                document.getElementById('drawCalls').textContent = scene.getActiveMeshes().length;
-                document.getElementById('fps').textContent = engine.getFps().toFixed(0);
+                // Update stats every 10 frames for performance
+                frameCount++;
+                if (frameCount % 10 === 0) {
+                    const triangles = scene.getActiveIndices() / 3;
+                    let totalVerts = 0;
+                    scene.meshes.forEach(m => {
+                        if (m.getTotalVertices) totalVerts += m.getTotalVertices();
+                    });
+                    document.getElementById('triCount').textContent = Math.floor(triangles).toLocaleString();
+                    document.getElementById('vertCount').textContent = totalVerts.toLocaleString();
+                    document.getElementById('drawCalls').textContent = scene.getActiveMeshes().length;
+                    document.getElementById('mechCount').textContent = mechs.length;
+
+                    const fps = engine.getFps();
+                    const fpsEl = document.getElementById('fps');
+                    fpsEl.textContent = fps.toFixed(0);
+                    fpsEl.style.color = fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffaa00' : '#ff4444';
+                }
             });
 
             window.addEventListener('resize', () => engine.resize());

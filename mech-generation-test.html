@@ -2106,9 +2106,18 @@
                 mech.walkPhase = rawPhase;
 
                 // Movement speed pulses twice per walk cycle (once per step)
-                // Creates a surge-stop-surge rhythm as each foot pushes off
-                const stepPulse = Math.abs(Math.sin(rawPhase));
-                // Range: 0 (between steps) to 1.3 (mid-push) - full stop between pushes
+                // Asymmetric: quick acceleration (push-off), slow deceleration (coast)
+                const stepNorm = (rawPhase % Math.PI) / Math.PI; // 0-1 per step
+                const attackTime = 0.15; // Push-off takes 15% of step
+                let stepPulse;
+                if (stepNorm < attackTime) {
+                    // Quick acceleration - foot pushes off
+                    stepPulse = stepNorm / attackTime;
+                } else {
+                    // Slow deceleration - coasting through stride
+                    const decayProgress = (stepNorm - attackTime) / (1 - attackTime);
+                    stepPulse = Math.pow(1 - decayProgress, 0.6); // Power curve for gradual slowdown
+                }
                 mech.pushFactor = stepPulse * 1.3;
 
                 // Smoother leg animation - less exaggerated pauses

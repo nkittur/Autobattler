@@ -1400,19 +1400,12 @@
             // ASYMMETRIC SHOULDERS - Different weapons on each side
             buildAsymmetricShoulder(builder, mount, xMult, style, sideIndex) {
                 if (sideIndex === 0) {
-                    // Left side: LRM Pod (Timber Wolf's signature)
-                    const pod = builder.wedge(
-                        style.lrmWidth,
-                        style.lrmWidth * 0.85,
-                        style.lrmHeight,
-                        style.lrmDepth,
-                        mount, 'secondary'
-                    );
-                    // Mount is already positioned - only small adjustment needed
+                    // Left side: LRM Pod - use BOX (no diagonal rotation)
+                    const pod = builder.box(style.lrmWidth, style.lrmHeight, style.lrmDepth, mount, 'secondary');
                     pod.position.x = xMult * 0.05;
-                    pod.position.y = -0.05; // Sit on shoulder mount
+                    pod.position.y = style.lrmHeight * 0.5;
 
-                    // Missile tubes - face FORWARD (positive Z)
+                    // Missile tubes - face FORWARD
                     const tubesPerRow = Math.ceil(Math.sqrt(style.lrmTubes));
                     const tubeSpacing = style.lrmWidth * 0.7 / tubesPerRow;
                     for (let i = 0; i < style.lrmTubes; i++) {
@@ -1422,33 +1415,25 @@
                         tube.position.x = (col - (tubesPerRow - 1) / 2) * tubeSpacing;
                         tube.position.y = (row - (tubesPerRow - 1) / 2) * tubeSpacing;
                         tube.position.z = style.lrmDepth / 2 + 0.02;
-                        tube.rotation.x = Math.PI / 2; // Face forward
+                        tube.rotation.x = Math.PI / 2;
                     }
 
-                    // Pod frame/cap
-                    const cap = builder.wedge(style.lrmWidth * 1.05, style.lrmWidth * 0.95, 0.08, style.lrmDepth * 0.85, pod, 'primary');
-                    cap.position.y = style.lrmHeight / 2 + 0.04;
+                    // Pod frame/cap - BOX
+                    const cap = builder.box(style.lrmWidth * 1.0, 0.06, style.lrmDepth * 0.85, pod, 'primary');
+                    cap.position.y = style.lrmHeight / 2 + 0.03;
                 } else {
-                    // Right side: Laser/energy array
-                    const housing = builder.wedge(
-                        style.laserWidth,
-                        style.laserWidth * 0.8,
-                        style.laserHeight,
-                        style.laserWidth * 1.2,
-                        mount, 'secondary'
-                    );
-                    // Mount is already positioned - only small adjustment
+                    // Right side: Laser/energy array - use BOX
+                    const housing = builder.box(style.laserWidth, style.laserHeight, style.laserWidth * 1.2, mount, 'secondary');
                     housing.position.x = xMult * 0.05;
-                    housing.position.y = -0.05;
+                    housing.position.y = style.laserHeight * 0.5;
 
                     // Twin laser barrels - face FORWARD
                     [-1, 1].forEach(laserSide => {
                         const laser = builder.cylinder(0.04, 0.35, housing, 'metal');
-                        laser.rotation.x = Math.PI / 2; // Face forward
+                        laser.rotation.x = Math.PI / 2;
                         laser.position.x = laserSide * 0.06;
                         laser.position.z = style.laserWidth * 0.6 + 0.15;
 
-                        // Laser tip glow
                         const tip = builder.cylinder(0.05, 0.04, laser, 'glow');
                         tip.position.y = 0.18;
                     });
@@ -1457,51 +1442,37 @@
 
             // MASSIVE SHOULDERS - Huge armor plates (Atlas)
             buildMassiveShoulder(builder, mount, xMult, style) {
-                // Main shoulder block - WEDGE shape
-                const shoulder = builder.wedge(
-                    style.width,
-                    style.width * 0.85,
-                    style.height,
-                    style.depth,
-                    mount, 'primary'
-                );
-                // Mount is already positioned - minimal adjustment
+                // Main shoulder block - BOX (no diagonal)
+                const shoulder = builder.box(style.width, style.height, style.depth, mount, 'primary');
                 shoulder.position.x = xMult * 0.05;
-                shoulder.position.y = -0.05;
+                shoulder.position.y = style.height * 0.5;
 
                 // Layered armor plates - face forward
                 for (let l = 0; l < style.layers; l++) {
-                    const plate = builder.wedge(
-                        style.width * (0.9 - l * 0.15),
-                        style.width * (0.8 - l * 0.15),
+                    const plate = builder.box(
+                        style.width * (0.9 - l * 0.12),
                         style.height * (0.7 - l * 0.1),
-                        0.08,
+                        0.06,
                         shoulder, l === 0 ? 'secondary' : 'primary'
                     );
-                    plate.position.z = style.depth * 0.4 + l * 0.06;
-                    plate.position.y = l * 0.05;
+                    plate.position.z = style.depth * 0.4 + l * 0.05;
+                    plate.position.y = l * 0.04;
                 }
 
                 // Top ridge
-                const ridge = builder.wedge(style.width * 0.7, style.width * 0.5, 0.1, style.depth * 0.6, shoulder, 'secondary');
+                const ridge = builder.box(style.width * 0.7, 0.08, style.depth * 0.6, shoulder, 'secondary');
                 ridge.position.y = style.height * 0.5;
             }
 
             // WEAPON MOUNT - Direct turret style (Walking turret/Urbanmech)
             buildWeaponMountShoulder(builder, mount, xMult, style) {
-                // Turret base - mount is already positioned
+                // Turret base
                 const base = builder.cylinder(style.width * 0.9, style.height * 0.5, mount, 'secondary');
                 base.position.x = xMult * 0.05;
-                base.position.y = -0.05;
+                base.position.y = style.height * 0.25;
 
-                // Weapon housing
-                const housing = builder.wedge(
-                    style.width * 0.8,
-                    style.width * 0.6,
-                    style.height * 0.45,
-                    style.width * 1.2,
-                    base, 'primary'
-                );
+                // Weapon housing - BOX
+                const housing = builder.box(style.width * 0.8, style.height * 0.4, style.width * 1.0, base, 'primary');
                 housing.position.y = style.height * 0.35;
                 housing.position.z = style.width * 0.1;
 
@@ -1523,17 +1494,10 @@
 
             // LRM POD SHOULDERS - Huge missile pods (Catapult signature)
             buildLRMPodShoulder(builder, mount, xMult, style) {
-                // MASSIVE missile pod - dominates silhouette
-                const pod = builder.wedge(
-                    style.width,
-                    style.width * 0.9,
-                    style.height,
-                    style.depth,
-                    mount, 'secondary'
-                );
-                // Mount is already positioned - minimal adjustment
+                // MASSIVE missile pod - BOX (no diagonal)
+                const pod = builder.box(style.width, style.height, style.depth, mount, 'secondary');
                 pod.position.x = xMult * 0.08;
-                pod.position.y = -0.05;
+                pod.position.y = style.height * 0.5;
 
                 // Dense missile tube grid - face FORWARD
                 const tubesPerRow = Math.ceil(Math.sqrt(style.tubes));
@@ -1545,30 +1509,29 @@
                     tube.position.x = (col - (tubesPerRow - 1) / 2) * tubeSpacing;
                     tube.position.y = (row - (tubesPerRow - 1) / 2) * tubeSpacing;
                     tube.position.z = style.depth / 2 + 0.03;
-                    tube.rotation.x = Math.PI / 2; // Face forward
+                    tube.rotation.x = Math.PI / 2;
                 }
 
-                // Heavy frame
-                const frameTop = builder.wedge(style.width * 1.1, style.width, 0.1, style.depth * 0.85, pod, 'primary');
-                frameTop.position.y = style.height / 2 + 0.05;
+                // Heavy frame - BOX
+                const frameTop = builder.box(style.width * 1.05, 0.08, style.depth * 0.85, pod, 'primary');
+                frameTop.position.y = style.height / 2 + 0.04;
 
-                // Side armor
+                // Side armor - BOX
                 [-1, 1].forEach(side => {
-                    const sideArmor = builder.wedge(0.1, 0.08, style.height * 0.8, style.depth * 0.7, pod, 'primary');
+                    const sideArmor = builder.box(0.08, style.height * 0.8, style.depth * 0.7, pod, 'primary');
                     sideArmor.position.x = side * style.width * 0.48;
                 });
 
-                // Back support strut - connects to torso
+                // Back support strut
                 const strut = builder.box(style.width * 0.3, style.height * 0.6, 0.08, pod, 'dark');
                 strut.position.z = -style.depth * 0.4;
             }
 
             buildCannonMount(builder, mount, xMult, style) {
-                // Shoulder cannon (PPC/AC style) - WEDGE housing
-                const housing = builder.wedge(style.width, style.width * 0.8, style.height, style.width * 1.1, mount, 'secondary');
-                // Mount is already positioned
+                // Shoulder cannon - BOX housing
+                const housing = builder.box(style.width, style.height, style.width * 1.0, mount, 'secondary');
                 housing.position.x = xMult * 0.05;
-                housing.position.y = -0.05;
+                housing.position.y = style.height * 0.5;
 
                 // Barrel - face FORWARD
                 const barrel = builder.cylinder(style.barrelDiameter, style.barrelLength, housing, 'metal');
@@ -1594,10 +1557,9 @@
             }
 
             buildMinimalShoulder(builder, mount, xMult, style) {
-                const plate = builder.wedge(style.width, style.width * 0.85, style.height, 0.12, mount, 'secondary');
-                // Mount is already positioned
+                const plate = builder.box(style.width, style.height, 0.1, mount, 'secondary');
                 plate.position.x = xMult * 0.05;
-                plate.position.y = -0.05;
+                plate.position.y = style.height * 0.5;
             }
 
             // ============================================
@@ -2114,7 +2076,7 @@
         }
 
         // ============================================
-        // ANIMATION SYSTEM
+        // ANIMATION SYSTEM - Heavy Mech Walk
         // ============================================
 
         class MechAnimator {
@@ -2127,62 +2089,127 @@
                 this.time += dt;
 
                 mechs.forEach(mech => {
-                    this.animateWalk(mech, dt);
+                    this.animateHeavyWalk(mech, dt);
                     this.updateMovement(mech, dt);
                 });
             }
 
-            animateWalk(mech, dt) {
+            // Heavy, stompy walk cycle with impact shudder
+            animateHeavyWalk(mech, dt) {
                 const sk = mech.skeleton;
-                const phase = mech.animPhase + this.time * mech.walkSpeed * 4;
                 const legStyle = mech.legData.style;
 
-                // Body bob
+                // Slower cycle for heavy feel (was *4, now *2.2)
+                const rawPhase = mech.animPhase + this.time * mech.walkSpeed * 2.2;
+
+                // Create "stompy" motion - fast lift, slow plant with pause
+                // Use sawtooth-ish wave for mechanical feel
+                const stompyWave = (p) => {
+                    const norm = (p % (Math.PI * 2)) / (Math.PI * 2); // 0-1
+                    // Quick lift (0-0.3), hold (0.3-0.5), slow plant (0.5-0.85), pause (0.85-1)
+                    if (norm < 0.3) return Math.sin(norm / 0.3 * Math.PI / 2); // Quick lift
+                    if (norm < 0.5) return 1.0; // Hold at top
+                    if (norm < 0.85) return Math.cos((norm - 0.5) / 0.35 * Math.PI / 2); // Slow plant
+                    return 0; // Ground contact pause
+                };
+
+                // Impact detection - when foot hits ground
+                const impactWave = (p) => {
+                    const norm = (p % (Math.PI * 2)) / (Math.PI * 2);
+                    // Sharp spike at ground contact (0.85)
+                    if (norm > 0.82 && norm < 0.92) {
+                        const t = (norm - 0.82) / 0.1;
+                        return Math.sin(t * Math.PI) * Math.exp(-t * 2);
+                    }
+                    return 0;
+                };
+
+                // Calculate impact from both legs
+                const leftImpact = impactWave(rawPhase);
+                const rightImpact = impactWave(rawPhase + Math.PI);
+                const totalImpact = leftImpact + rightImpact;
+
+                // BODY BOB - Heavy drop on each step
                 if (sk.pelvis) {
-                    sk.pelvis.position.y = legStyle.pelvisHeight + Math.abs(Math.sin(phase * 2)) * 0.04;
+                    const baseBob = Math.abs(Math.sin(rawPhase)) * 0.025;
+                    const impactDrop = totalImpact * 0.08; // Drop on impact
+                    sk.pelvis.position.y = legStyle.pelvisHeight + baseBob - impactDrop;
                 }
 
-                // Legs
+                // TORSO SWAY AND SHUDDER
+                if (sk.torso) {
+                    // Side-to-side sway (weight shift)
+                    const sway = Math.sin(rawPhase) * 0.04;
+                    sk.torso.rotation.z = sway;
+
+                    // Forward/back twist with walk
+                    sk.torso.rotation.y = Math.sin(rawPhase) * 0.025;
+
+                    // Impact shudder - quick vibration on foot plant
+                    const shudder = totalImpact * Math.sin(this.time * 80) * 0.015;
+                    sk.torso.rotation.x = (sk.torso.rotation.x || 0) + shudder;
+                }
+
+                // Upper torso additional shudder
+                if (sk.torsoUpper) {
+                    const upperShudder = totalImpact * Math.sin(this.time * 60) * 0.01;
+                    sk.torsoUpper.rotation.z = upperShudder;
+                }
+
+                // LEGS - Stompy motion
                 ['left', 'right'].forEach((side, idx) => {
-                    const p = phase + idx * Math.PI;
+                    const p = rawPhase + idx * Math.PI;
+                    const lift = stompyWave(p);
 
                     if (sk[`${side}Thigh`]) {
                         const base = legStyle.thighAngle * Math.PI / 180;
-                        sk[`${side}Thigh`].rotation.x = base + Math.sin(p) * 0.2;
+                        // More pronounced leg lift
+                        sk[`${side}Thigh`].rotation.x = base + lift * 0.35;
                     }
 
                     if (sk[`${side}Shin`]) {
                         const base = legStyle.shinAngle * Math.PI / 180;
-                        sk[`${side}Shin`].rotation.x = base + Math.sin(p - 0.5) * 0.15;
+                        // Knee bends more during lift phase
+                        const kneeBend = lift * 0.25;
+                        sk[`${side}Shin`].rotation.x = base - kneeBend;
                     }
 
                     if (sk[`${side}Foot`]) {
-                        sk[`${side}Foot`].rotation.x = Math.sin(p - 1) * 0.1;
+                        // Foot lifts toe-first, plants heel-first
+                        const footLift = lift * 0.15;
+                        const impact = impactWave(p);
+                        sk[`${side}Foot`].rotation.x = footLift - impact * 0.1;
                     }
                 });
 
-                // Arms swing opposite to legs
+                // ARMS - Minimal swing (heavy mechs don't swing arms much)
                 ['left', 'right'].forEach((side, idx) => {
-                    const p = phase + (idx + 1) * Math.PI;
+                    const p = rawPhase + (idx + 1) * Math.PI;
 
                     if (sk[`${side}UpperArm`]) {
-                        sk[`${side}UpperArm`].rotation.x = Math.sin(p) * 0.15;
+                        // Very slight counter-swing
+                        sk[`${side}UpperArm`].rotation.x = Math.sin(p) * 0.06;
+                        // Arms hang more naturally
+                        sk[`${side}UpperArm`].rotation.z = (idx === 0 ? 1 : -1) * 0.05;
                     }
                     if (sk[`${side}LowerArm`]) {
-                        sk[`${side}LowerArm`].rotation.x = Math.sin(p) * 0.1 - 0.1;
+                        // Slight elbow bend, minimal movement
+                        sk[`${side}LowerArm`].rotation.x = -0.15 + Math.sin(p) * 0.03;
                     }
                 });
 
-                // Torso twist
-                if (sk.torso) {
-                    sk.torso.rotation.y = Math.sin(phase) * 0.03;
+                // HEAD - Slight stabilization counter-movement
+                if (sk.head && sk.head !== sk.torsoUpper) {
+                    sk.head.rotation.y = -Math.sin(rawPhase) * 0.015;
+                    sk.head.rotation.z = -Math.sin(rawPhase) * 0.02;
                 }
             }
 
             updateMovement(mech, dt) {
                 const root = mech.root;
                 const target = mech.targetPos;
-                const speed = mech.walkSpeed * 2.5;
+                // Slower movement speed for heavy feel
+                const speed = mech.walkSpeed * 1.8;
 
                 const dx = target.x - root.position.x;
                 const dz = target.z - root.position.z;
@@ -2194,12 +2221,12 @@
                     root.position.x += (dx / dist) * speed * dt;
                     root.position.z += (dz / dist) * speed * dt;
 
-                    // Face direction
+                    // Slower turning for heavy mech
                     const targetAngle = Math.atan2(dx, dz);
                     let angleDiff = targetAngle - root.rotation.y;
                     if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                     if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                    root.rotation.y += angleDiff * dt * 2.5;
+                    root.rotation.y += angleDiff * dt * 1.5; // Slower turn (was 2.5)
                 }
 
                 // Bounds

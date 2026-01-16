@@ -626,25 +626,25 @@
 
             getLegStyle(styleName) {
                 const styles = {
-                    // REVERSE JOINT - Classic chicken walker look
-                    // Wide stance, short thighs back, LONG thick shins forward, big flat feet
+                    // REVERSE JOINT - Classic Timber Wolf chicken walker
+                    // Thigh angles BACK, shin angles FORWARD, knee is most forward point
                     reverseJoint: {
-                        thighLength: rand(0.28, 0.35),    // SHORT thighs
-                        thighWidth: rand(0.22, 0.28),
-                        thighTaper: 0.9,                  // Slight taper
-                        thighAngle: rand(60, 75),         // Angled sharply back
-                        shinLength: rand(0.95, 1.15),     // LONG shin
-                        shinWidth: rand(0.24, 0.32),      // Thicker
-                        shinTaper: 1.2,                   // GROWS toward ankle (inverse taper)
-                        shinAngle: rand(-60, -50),        // Angled sharply forward
-                        kneeSize: rand(0.28, 0.36),       // Big knee joint
-                        kneeForward: rand(0.22, 0.32),    // Knee projects well forward
-                        footLength: rand(0.7, 0.9),       // BIGGER feet
-                        footStyle: pick(['platform', 'heavy', 'splayed']),  // Big flat feet
-                        hasCalfBulge: true,
-                        pelvisHeight: 1.6,
-                        wideStance: true,                 // Flag for extra wide stance
-                        keepFootHorizontal: true          // Feet stay flat
+                        thighLength: rand(0.35, 0.42),    // Short thighs
+                        thighWidth: rand(0.18, 0.22),
+                        thighTaper: 0.85,
+                        thighAngle: rand(-35, -25),       // NEGATIVE = thigh goes BACK
+                        shinLength: rand(0.9, 1.05),      // Long shins
+                        shinWidth: rand(0.16, 0.2),
+                        shinTaper: 0.75,
+                        shinAngle: rand(95, 110),         // POSITIVE = shin goes FORWARD from knee
+                        kneeSize: rand(0.15, 0.2),
+                        kneeForward: 0.1,
+                        footLength: rand(0.5, 0.65),
+                        footStyle: pick(['platform', 'heavy']),
+                        hasCalfBulge: false,              // Simplified - no calf bulge
+                        pelvisHeight: 1.8,
+                        wideStance: true,
+                        keepFootHorizontal: true
                     },
                     // HEAVY - Wide, stable, linebacker stance
                     heavy: {
@@ -685,150 +685,57 @@
             }
 
             buildLeg(builder, skeleton, side, xMult, style, stanceWidth, pelvis) {
-                // Hip joint node
+                // Detect if this is a reverse joint leg
+                const isReverseJoint = style.thighAngle < 0;
+
+                // === HIP ===
                 const hipJoint = new BABYLON.TransformNode(builder.name(`${side}Hip`), this.scene);
                 hipJoint.parent = pelvis;
                 hipJoint.position.x = xMult * stanceWidth;
-                hipJoint.position.y = -0.15;
+                hipJoint.position.y = -0.1;
                 skeleton[`${side}Hip`] = hipJoint;
 
-                // Hip mechanical joint
-                builder.mechanicalJoint(0.2, hipJoint, 'metal');
+                // Hip joint sphere
+                const hipBall = builder.sphere(0.12, hipJoint, 'metal');
 
-                // === THIGH - TAPERED WEDGE (foot larger than hip!) ===
+                // === THIGH - Simple box ===
                 const thigh = new BABYLON.TransformNode(builder.name(`${side}Thigh`), this.scene);
                 thigh.parent = hipJoint;
                 thigh.rotation.x = style.thighAngle * Math.PI / 180;
                 skeleton[`${side}Thigh`] = thigh;
 
-                // Thigh main - WEDGE not box! Tapers toward knee
-                const taper = style.thighTaper || 0.85;
-                const thighMain = builder.wedge(
+                // Thigh - simple tapered box
+                const thighMain = builder.box(
                     style.thighWidth,
-                    style.thighWidth * taper,
                     style.thighLength,
-                    style.thighWidth * 1.1,
+                    style.thighWidth * 0.9,
                     thigh, 'primary'
                 );
                 thighMain.position.y = -style.thighLength / 2;
 
-                // Front armor plate (no rotation)
-                const thighArmor = builder.armorPlate(
-                    style.thighWidth * 0.8,
-                    style.thighLength * 0.6,
-                    2,
-                    thigh, 'secondary'
-                );
-                thighArmor.position.y = -style.thighLength * 0.35;
-                thighArmor.position.z = style.thighWidth * 0.55;
-
-                // Inner actuator
-                const thighActuator = builder.piston(style.thighLength * 0.4, 0.05, thigh, 'metal');
-                thighActuator.position.y = -style.thighLength * 0.5;
-                thighActuator.position.z = -style.thighWidth * 0.35;
-
-                // === KNEE - Forward projecting joint ===
+                // === KNEE ===
                 const kneeJoint = new BABYLON.TransformNode(builder.name(`${side}Knee`), this.scene);
                 kneeJoint.parent = thigh;
                 kneeJoint.position.y = -style.thighLength;
                 skeleton[`${side}Knee`] = kneeJoint;
 
-                // Knee joint ball
-                builder.mechanicalJoint(style.kneeSize, kneeJoint, 'metal');
+                // Knee joint - simple sphere
+                const kneeBall = builder.sphere(style.kneeSize, kneeJoint, 'metal');
 
-                // Knee cap - projects FORWARD (key to silhouette!)
-                const kneeCap = builder.wedge(
-                    style.kneeSize * 1.4,
-                    style.kneeSize * 1.0,
-                    style.kneeSize * 1.6,
-                    style.kneeSize * 1.0,
-                    kneeJoint, 'primary'
-                );
-                kneeCap.position.z = style.kneeForward + style.kneeSize * 0.4;
-                kneeCap.position.y = style.kneeSize * 0.1;
-
-                // Knee armor
-                const kneeArmor = builder.armorPlate(style.kneeSize * 1.2, style.kneeSize * 1.3, 2, kneeCap, 'secondary');
-                kneeArmor.position.z = style.kneeSize * 0.5;
-
-                // Side guards
-                [-1, 1].forEach(kSide => {
-                    const guard = builder.wedge(0.08, 0.06, style.kneeSize * 1.2, style.kneeSize * 0.6, kneeJoint, 'secondary');
-                    guard.position.x = kSide * style.kneeSize * 0.7;
-                    guard.position.z = style.kneeForward * 0.4;
-                });
-
-                // === SHIN - LONG TAPERED (key to chicken walker look) ===
+                // === SHIN - Simple box ===
                 const shin = new BABYLON.TransformNode(builder.name(`${side}Shin`), this.scene);
                 shin.parent = kneeJoint;
                 shin.rotation.x = style.shinAngle * Math.PI / 180;
                 skeleton[`${side}Shin`] = shin;
 
-                // Shin main - WEDGE tapers toward ankle (pyramid = stability)
-                const shinTaper = style.shinTaper || 0.7;
-                const shinMain = builder.wedge(
+                // Shin - simple box
+                const shinMain = builder.box(
                     style.shinWidth,
-                    style.shinWidth * shinTaper,
                     style.shinLength,
-                    style.shinWidth * 1.15,
+                    style.shinWidth * 0.85,
                     shin, 'primary'
                 );
                 shinMain.position.y = -style.shinLength / 2;
-
-                // Front armor (no rotation)
-                const shinArmor = builder.armorPlate(
-                    style.shinWidth * 0.75,
-                    style.shinLength * 0.7,
-                    2,
-                    shin, 'secondary'
-                );
-                shinArmor.position.y = -style.shinLength * 0.38;
-                shinArmor.position.z = style.shinWidth * 0.58;
-
-                // Calf bulge (myomer bundles) for reverse joint
-                if (style.hasCalfBulge) {
-                    const calfBulge = builder.wedge(
-                        style.shinWidth * 0.9,
-                        style.shinWidth * 0.6,
-                        style.shinLength * 0.5,
-                        style.shinWidth * 0.55,
-                        shin, 'secondary'
-                    );
-                    calfBulge.position.y = -style.shinLength * 0.25;
-                    calfBulge.position.z = -style.shinWidth * 0.72;
-
-                    // Calf detail panels
-                    const calfPanel1 = builder.box(style.shinWidth * 0.6, style.shinLength * 0.4, 0.06, calfBulge, 'dark');
-                    calfPanel1.position.z = -style.shinWidth * 0.33;
-
-                    const calfPanel2 = builder.box(style.shinWidth * 0.4, style.shinLength * 0.25, 0.04, calfBulge, 'primary');
-                    calfPanel2.position.z = -style.shinWidth * 0.35;
-                    calfPanel2.position.y = 0.05;
-
-                    // Calf actuators
-                    const calfActuator = builder.piston(style.shinLength * 0.35, 0.05, shin, 'metal');
-                    calfActuator.position.y = -style.shinLength * 0.3;
-                    calfActuator.position.z = -style.shinWidth * 0.95;
-                }
-
-                // Lower shin taper with detail
-                const shinLower = builder.box(
-                    style.shinWidth * 0.72,
-                    style.shinLength * 0.28,
-                    style.shinWidth * 0.92,
-                    shin, 'primary'
-                );
-                shinLower.position.y = -style.shinLength * 0.84;
-
-                // Lower shin detail
-                const shinLowerDetail = builder.box(
-                    style.shinWidth * 0.5,
-                    style.shinLength * 0.15,
-                    0.05,
-                    shin, 'dark'
-                );
-                shinLowerDetail.position.y = -style.shinLength * 0.88;
-                shinLowerDetail.position.z = style.shinWidth * 0.48;
 
                 // === ANKLE ===
                 const ankleJoint = new BABYLON.TransformNode(builder.name(`${side}Ankle`), this.scene);
@@ -836,8 +743,8 @@
                 ankleJoint.position.y = -style.shinLength;
                 skeleton[`${side}Ankle`] = ankleJoint;
 
-                // Ankle mechanical joint (high detail)
-                builder.mechanicalJoint(style.shinWidth * 0.5, ankleJoint, 'metal');
+                // Ankle sphere
+                const ankleBall = builder.sphere(style.shinWidth * 0.4, ankleJoint, 'metal');
 
                 // === FOOT ===
                 this.buildFoot(builder, skeleton, side, style, ankleJoint);
@@ -2222,47 +2129,40 @@
                 }
 
                 // LEGS - Full stride with lift and swing
-                // Detect reverse joint legs (thigh angled far back, shin angled forward)
-                const isReverseJoint = legStyle.thighAngle > 40;
-                const swingDir = isReverseJoint ? -1 : 1; // Invert swing for reverse joint
+                // Reverse joint: thighAngle < 0 (thigh goes back), shinAngle > 0 (shin goes forward)
+                const isReverseJoint = legStyle.thighAngle < 0;
 
                 ['left', 'right'].forEach((side, idx) => {
                     const p = rawPhase + idx * Math.PI;
                     const lift = stompyWave(p);
-                    // Swing: positive = leg forward, negative = leg back
                     const swing = Math.sin(p);
 
                     if (sk[`${side}Thigh`]) {
                         const base = legStyle.thighAngle * Math.PI / 180;
-                        // Leg lift - for reverse joint, reduce backward angle to swing forward
-                        const thighLift = lift * (isReverseJoint ? -0.85 : 0.55);
-                        // Forward/back swing - much larger for reverse joint to get leg well in front
-                        const thighSwing = swing * (isReverseJoint ? 0.8 : 0.35) * swingDir;
-                        sk[`${side}Thigh`].rotation.x = base + thighLift + thighSwing;
+                        // For both leg types: positive swing brings foot forward
+                        const thighSwing = swing * 0.4;
+                        const thighLift = lift * 0.3;
+                        sk[`${side}Thigh`].rotation.x = base + thighSwing + thighLift;
                     }
 
                     if (sk[`${side}Shin`]) {
                         const base = legStyle.shinAngle * Math.PI / 180;
-                        // Knee bend - reverse joint bends much more for chicken walk
-                        const kneeBend = lift * (isReverseJoint ? -0.95 : 0.6);
-                        // Extra bend when leg swings forward
-                        const swingBend = Math.max(0, swing * swingDir) * (isReverseJoint ? 0.45 : 0.2) * (isReverseJoint ? -1 : 1);
-                        sk[`${side}Shin`].rotation.x = base - kneeBend - swingBend;
+                        // Knee bends during lift
+                        const kneeBend = lift * (isReverseJoint ? 0.4 : -0.4);
+                        sk[`${side}Shin`].rotation.x = base + kneeBend;
                     }
 
-                    // Rotate ankle joint to pivot foot
+                    // Rotate ankle to keep foot horizontal
                     if (sk[`${side}Ankle`]) {
                         if (legStyle.keepFootHorizontal) {
-                            // Chicken walker feet stay horizontal - counter-rotate to cancel leg angles
-                            const thighAngle = legStyle.thighAngle * Math.PI / 180;
-                            const shinAngle = legStyle.shinAngle * Math.PI / 180;
-                            const thighLift = lift * (isReverseJoint ? -0.85 : 0.55);
-                            const thighSwing = swing * (isReverseJoint ? 0.8 : 0.35) * swingDir;
-                            const kneeBend = lift * (isReverseJoint ? -0.95 : 0.6);
-                            const swingBendVal = Math.max(0, swing * swingDir) * (isReverseJoint ? 0.45 : 0.2) * (isReverseJoint ? -1 : 1);
-                            // Counter-rotate to keep foot flat
-                            const totalLegRotation = (thighAngle + thighLift + thighSwing) + (shinAngle - kneeBend - swingBendVal);
-                            sk[`${side}Ankle`].rotation.x = -totalLegRotation;
+                            // Calculate total leg rotation and counter-rotate ankle
+                            const thighBase = legStyle.thighAngle * Math.PI / 180;
+                            const shinBase = legStyle.shinAngle * Math.PI / 180;
+                            const thighSwing = swing * 0.4;
+                            const thighLift = lift * 0.3;
+                            const kneeBend = lift * (isReverseJoint ? 0.4 : -0.4);
+                            const totalRot = (thighBase + thighSwing + thighLift) + (shinBase + kneeBend);
+                            sk[`${side}Ankle`].rotation.x = -totalRot;
                         } else {
                             // Normal foot pivot animation
                             const toeUp = lift * 0.5;

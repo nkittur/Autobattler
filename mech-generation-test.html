@@ -2207,8 +2207,8 @@
                     if (sk[`${side}Foot`]) {
                         // Foot lifts toe-up, then pivots down to horizontal as it plants
                         const toeUp = lift * 0.4; // Toe points up when leg lifts
-                        // Pivot down as foot swings forward and approaches ground
-                        const pivotDown = Math.max(0, swing) * (1 - lift) * 0.5;
+                        // Pivot down earlier - starts as soon as swing is forward
+                        const pivotDown = Math.max(0, swing) * (1 - lift * 0.4) * 0.5;
                         const impact = impactWave(p);
                         sk[`${side}Foot`].rotation.x = toeUp - pivotDown - impact * 0.1;
                     }

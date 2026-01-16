@@ -353,11 +353,10 @@
                 // Main V-shape body
                 const main = this.wedge(wBottom, wTop, h, d, torso, mat);
 
-                // Front slope armor
-                const frontSlope = this.box(wTop * 0.7, h * 0.4, 0.08, torso, 'secondary');
-                frontSlope.position.y = h * 0.15;
-                frontSlope.position.z = d * 0.52;
-                frontSlope.rotation.x = -0.3; // Angled outward
+                // Front chest plate (no rotation)
+                const frontPlate = this.box(wTop * 0.65, h * 0.35, 0.08, torso, 'secondary');
+                frontPlate.position.y = h * 0.15;
+                frontPlate.position.z = d * 0.5;
 
                 return torso;
             }
@@ -405,13 +404,12 @@
                 const pod = new BABYLON.TransformNode(this.name('mpod'), this.scene);
                 if (parent) pod.parent = parent;
 
-                // Main housing (slightly tapered for military look)
-                const housing = this.wedge(w, w * 0.9, h, d, pod, mat);
+                // Main housing
+                const housing = this.box(w, h, d, pod, mat);
 
-                // Top armor slope
+                // Top armor (no rotation)
                 const topArmor = this.box(w * 0.85, 0.06, d * 0.8, pod, 'primary');
                 topArmor.position.y = h * 0.52;
-                topArmor.rotation.x = 0.15;
 
                 // Missile tubes
                 const tubesPerRow = Math.ceil(Math.sqrt(tubes));
@@ -426,11 +424,10 @@
                     tube.rotation.x = Math.PI / 2;
                 }
 
-                // Side armor plates
+                // Side armor plates (no rotation)
                 [-1, 1].forEach(side => {
                     const plate = this.box(0.04, h * 0.8, d * 0.7, pod, 'primary');
                     plate.position.x = side * w * 0.48;
-                    plate.rotation.z = side * 0.1; // Slight angle
                 });
 
                 return pod;
@@ -712,7 +709,7 @@
                 );
                 thighMain.position.y = -style.thighLength / 2;
 
-                // Front armor plate (angled for deflection)
+                // Front armor plate (no rotation)
                 const thighArmor = builder.armorPlate(
                     style.thighWidth * 0.8,
                     style.thighLength * 0.6,
@@ -721,7 +718,6 @@
                 );
                 thighArmor.position.y = -style.thighLength * 0.35;
                 thighArmor.position.z = style.thighWidth * 0.55;
-                thighArmor.rotation.x = -0.15; // Angled!
 
                 // Inner actuator
                 const thighActuator = builder.piston(style.thighLength * 0.4, 0.05, thigh, 'metal');
@@ -776,7 +772,7 @@
                 );
                 shinMain.position.y = -style.shinLength / 2;
 
-                // Front armor (angled)
+                // Front armor (no rotation)
                 const shinArmor = builder.armorPlate(
                     style.shinWidth * 0.75,
                     style.shinLength * 0.7,
@@ -785,7 +781,6 @@
                 );
                 shinArmor.position.y = -style.shinLength * 0.38;
                 shinArmor.position.z = style.shinWidth * 0.58;
-                shinArmor.rotation.x = -0.12;
 
                 // Calf bulge (myomer bundles) for reverse joint
                 if (style.hasCalfBulge) {
@@ -1032,17 +1027,15 @@
                 );
                 lowerCore.position.y = style.lowerHeight / 2;
 
-                // Waist armor - angled plates
-                const waistFront = builder.wedge(
-                    style.lowerWidth * 0.85,
-                    style.lowerWidth * 0.75,
-                    style.lowerHeight * 0.35,
-                    0.12,
+                // Waist armor - simple front plate (no rotation)
+                const waistFront = builder.box(
+                    style.lowerWidth * 0.8,
+                    style.lowerHeight * 0.3,
+                    0.1,
                     torsoLower, 'secondary'
                 );
                 waistFront.position.y = style.lowerHeight * 0.3;
-                waistFront.position.z = style.depth / 2 + 0.06;
-                waistFront.rotation.x = -0.15; // Angled deflection
+                waistFront.position.z = style.depth / 2 + 0.05;
 
                 // Waist twist joint
                 const waistJoint = builder.cylinder(style.lowerWidth * 0.5, 0.12, torsoLower, 'dark');
@@ -1067,14 +1060,6 @@
                         torsoUpper, 'primary'
                     );
                     upperCore.position.y = style.upperHeight / 2;
-
-                    // Side armor flares (emphasize V)
-                    [-1, 1].forEach(side => {
-                        const flare = builder.wedge(0.12, 0.18, style.upperHeight * 0.6, style.upperDepth * 0.5, torsoUpper, 'secondary');
-                        flare.position.x = side * style.upperWidth * 0.48;
-                        flare.position.y = style.upperHeight * 0.55;
-                        flare.rotation.z = side * 0.15;
-                    });
 
                 } else if (style.type === 'coffinHull') {
                     // COFFIN HULL: Hexagonal with sloped top (linebacker)
@@ -1106,19 +1091,16 @@
                         torsoUpper, 'primary'
                     );
                     upperCore.position.y = style.upperHeight / 2;
-                    upperCore.rotation.x = -0.1; // Slight forward lean
 
-                    // Pronounced chest thrust
-                    const chestThrust = builder.wedge(
-                        style.upperWidth * 0.6,
-                        style.upperWidth * 0.4,
-                        style.upperHeight * 0.4,
-                        style.upperDepth * 0.4,
+                    // Chest plate (no rotation - keep it clean)
+                    const chestPlate = builder.box(
+                        style.upperWidth * 0.5,
+                        style.upperHeight * 0.35,
+                        0.12,
                         torsoUpper, 'secondary'
                     );
-                    chestThrust.position.y = style.upperHeight * 0.5;
-                    chestThrust.position.z = style.upperDepth * 0.5;
-                    chestThrust.rotation.x = -0.25;
+                    chestPlate.position.y = style.upperHeight * 0.5;
+                    chestPlate.position.z = style.upperDepth * 0.5;
 
                 } else {
                     // DEFAULT/COMPACT: Simple tapered core
@@ -1134,74 +1116,66 @@
 
                 // Cockpit/chest area (exposed cockpit bubble - Marauder style)
                 if (style.hasCockpit) {
-                    const cockpitBulge = builder.wedge(
-                        style.upperWidth * 0.45,
-                        style.upperWidth * 0.35,
-                        style.upperHeight * 0.35,
-                        0.25,
+                    const cockpitBulge = builder.box(
+                        style.upperWidth * 0.4,
+                        style.upperHeight * 0.3,
+                        0.2,
                         torsoUpper, 'secondary'
                     );
                     cockpitBulge.position.y = style.upperHeight * 0.65;
-                    cockpitBulge.position.z = style.upperDepth / 2 + 0.12;
-                    cockpitBulge.rotation.x = -0.25;
+                    cockpitBulge.position.z = style.upperDepth / 2 + 0.1;
 
                     // Cockpit glass
                     const cockpitGlass = builder.box(
                         style.upperWidth * 0.28,
-                        style.upperHeight * 0.18,
-                        0.08,
+                        style.upperHeight * 0.16,
+                        0.06,
                         cockpitBulge, 'glow'
                     );
-                    cockpitGlass.position.z = 0.14;
-                    cockpitGlass.position.y = 0.02;
+                    cockpitGlass.position.z = 0.12;
                 }
 
                 // Integrated cockpit (Timber Wolf / Catapult style - no separate head)
                 if (style.integratedCockpit) {
-                    // Main cockpit housing - WEDGE projecting forward
-                    const cockpitHousing = builder.wedge(
-                        style.upperWidth * 0.5,
-                        style.upperWidth * 0.35,
-                        style.upperHeight * 0.45,
-                        style.upperDepth * 0.45,
+                    // Main cockpit housing - simple box
+                    const cockpitHousing = builder.box(
+                        style.upperWidth * 0.45,
+                        style.upperHeight * 0.4,
+                        style.upperDepth * 0.4,
                         torsoUpper, 'secondary'
                     );
-                    cockpitHousing.position.y = style.upperHeight * 0.78;
-                    cockpitHousing.position.z = style.upperDepth * 0.32;
+                    cockpitHousing.position.y = style.upperHeight * 0.8;
+                    cockpitHousing.position.z = style.upperDepth * 0.3;
 
-                    // Forward-angled cockpit canopy
-                    const canopy = builder.wedge(
-                        style.upperWidth * 0.38,
-                        style.upperWidth * 0.25,
-                        style.upperHeight * 0.3,
-                        style.upperDepth * 0.3,
+                    // Cockpit canopy (no rotation)
+                    const canopy = builder.box(
+                        style.upperWidth * 0.35,
+                        style.upperHeight * 0.25,
+                        style.upperDepth * 0.25,
                         cockpitHousing, 'primary'
                     );
-                    canopy.position.y = style.upperHeight * 0.12;
-                    canopy.position.z = style.upperDepth * 0.28;
-                    canopy.rotation.x = -0.3;
+                    canopy.position.y = style.upperHeight * 0.1;
+                    canopy.position.z = style.upperDepth * 0.2;
 
                     // Cockpit glass/visor
                     const visor = builder.box(
                         style.upperWidth * 0.28,
-                        style.upperHeight * 0.15,
-                        0.06,
+                        style.upperHeight * 0.14,
+                        0.05,
                         canopy, 'glow'
                     );
-                    visor.position.y = style.upperHeight * 0.04;
-                    visor.position.z = style.upperDepth * 0.18;
+                    visor.position.z = style.upperDepth * 0.14;
 
                     // Side sensor panels
                     [-1, 1].forEach(side => {
                         const sensorPanel = builder.box(
-                            0.06,
-                            style.upperHeight * 0.22,
-                            style.upperDepth * 0.18,
+                            0.05,
+                            style.upperHeight * 0.2,
+                            style.upperDepth * 0.15,
                             cockpitHousing, 'dark'
                         );
-                        sensorPanel.position.x = side * style.upperWidth * 0.24;
-                        sensorPanel.position.y = style.upperHeight * 0.04;
-                        sensorPanel.position.z = style.upperDepth * 0.12;
+                        sensorPanel.position.x = side * style.upperWidth * 0.22;
+                        sensorPanel.position.z = style.upperDepth * 0.1;
                     });
                 }
 
@@ -1217,16 +1191,15 @@
                     });
                 }
 
-                // Back armor/engine - WEDGE shape
-                const backPlate = builder.wedge(
-                    style.upperWidth * 0.8,
-                    style.upperWidth * 0.7,
-                    style.upperHeight * 0.75,
-                    0.18,
+                // Back armor/engine - simple box (no angled fins)
+                const backPlate = builder.box(
+                    style.upperWidth * 0.75,
+                    style.upperHeight * 0.7,
+                    0.15,
                     torsoUpper, 'secondary'
                 );
-                backPlate.position.y = style.upperHeight * 0.42;
-                backPlate.position.z = -style.upperDepth / 2 - 0.1;
+                backPlate.position.y = style.upperHeight * 0.4;
+                backPlate.position.z = -style.upperDepth / 2 - 0.08;
 
                 // Engine exhaust
                 [-1, 1].forEach(side => {
@@ -2038,11 +2011,10 @@
                 const headMain = builder.wedge(style.width, style.width * 0.75, style.height, style.width * 0.7, head, 'primary');
                 headMain.position.y = style.height / 2;
 
-                // Skull-like face
-                const faceplate = builder.wedge(style.width * 0.85, style.width * 0.65, style.height * 0.6, 0.15, head, 'secondary');
+                // Skull-like face (no rotation)
+                const faceplate = builder.box(style.width * 0.7, style.height * 0.5, 0.12, head, 'secondary');
                 faceplate.position.y = style.height * 0.55;
                 faceplate.position.z = style.width * 0.35;
-                faceplate.rotation.x = -0.15;
 
                 // Deep-set eyes
                 [-1, 1].forEach(side => {

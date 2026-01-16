@@ -4202,6 +4202,296 @@
         };
 
         // ============================================
+        // COMBAT SCALING SYSTEM
+        // ============================================
+        const COMBAT_SCALING = {
+            // Global HP multiplier for ALL mechs (player and enemy)
+            // 2.0 = double HP, battles last twice as long
+            globalHPMultiplier: 2.0,
+
+            // Pilot level by mission risk (1-5 stars)
+            // Higher risk = higher level pilots with better modifiers
+            pilotLevelByRisk: { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 },
+
+            // Level-based scaling (compounds with pilot modifiers)
+            levelScaling: {
+                hpPerLevel: 0.08,      // +8% HP per level
+            },
+
+            // Player bonuses
+            playerBonus: {
+                hpMultiplier: 1.0      // No extra HP boost beyond global
+            }
+        };
+
+        // ============================================
+        // PILOT SYSTEM - Enemy pilots with modifiers
+        // ============================================
+        const PILOT_SYSTEM = {
+            // Pilot rank templates by level
+            // positiveChance: chance each modifier is positive vs negative
+            ranks: {
+                1: { name: 'Rookie', title: 'Pvt.', modifierCount: 2, positiveChance: 0.15 },
+                2: { name: 'Green', title: 'Cpl.', modifierCount: 2, positiveChance: 0.35 },
+                3: { name: 'Regular', title: 'Sgt.', modifierCount: 2, positiveChance: 0.55 },
+                4: { name: 'Veteran', title: 'Lt.', modifierCount: 3, positiveChance: 0.75 },
+                5: { name: 'Elite', title: 'Cpt.', modifierCount: 3, positiveChance: 0.90 },
+                6: { name: 'Ace', title: 'Cmdr.', modifierCount: 4, positiveChance: 1.0 }
+            },
+
+            // Pilot name pools
+            firstNames: ['Jack', 'Sara', 'Viktor', 'Elena', 'Marcus', 'Yuki', 'Chen', 'Alexei',
+                        'Maria', 'Hans', 'Fatima', 'Duke', 'Raven', 'Zara', 'Klaus', 'Jin'],
+            callsigns: ['Razor', 'Ghost', 'Hammer', 'Viper', 'Storm', 'Wolf', 'Hawk', 'Snake',
+                       'Iron', 'Shadow', 'Blaze', 'Frost', 'Thunder', 'Reaper', 'Phoenix', 'Titan'],
+
+            // Negative modifiers (make mech worse) - for low level pilots
+            negativeModifiers: [
+                {
+                    id: 'weak_legs',
+                    name: 'Weak Legs',
+                    description: 'Leg armor compromised',
+                    effect: { leftLegHPMult: 0.5, rightLegHPMult: 0.5 },
+                    visual: { type: 'weak_spot', parts: ['leftLeg', 'rightLeg'], color: [1, 0.3, 0.3] }
+                },
+                {
+                    id: 'weak_left_arm',
+                    name: 'Damaged Left Arm',
+                    description: 'Left arm structural weakness',
+                    effect: { leftArmHPMult: 0.4 },
+                    visual: { type: 'weak_spot', parts: ['leftArm'], color: [1, 0.3, 0.3] }
+                },
+                {
+                    id: 'weak_right_arm',
+                    name: 'Damaged Right Arm',
+                    description: 'Right arm structural weakness',
+                    effect: { rightArmHPMult: 0.4 },
+                    visual: { type: 'weak_spot', parts: ['rightArm'], color: [1, 0.3, 0.3] }
+                },
+                {
+                    id: 'weapon_jam',
+                    name: 'Weapon Malfunction',
+                    description: '20% chance weapons jam',
+                    effect: { weaponJamChance: 0.20 },
+                    visual: null
+                },
+                {
+                    id: 'poor_aim',
+                    name: 'Poor Aim',
+                    description: '30% reduced accuracy',
+                    effect: { accuracyMult: 0.7 },
+                    visual: null
+                },
+                {
+                    id: 'slow_reactions',
+                    name: 'Slow Reactions',
+                    description: '25% slower fire rate',
+                    effect: { fireRateMult: 0.75 },
+                    visual: null
+                },
+                {
+                    id: 'exposed_core',
+                    name: 'Exposed Core',
+                    description: 'Torso armor compromised',
+                    effect: { torsoHPMult: 0.6 },
+                    visual: { type: 'weak_spot', parts: ['torso'], color: [1, 0.5, 0.2] }
+                },
+                {
+                    id: 'cracked_cockpit',
+                    name: 'Cracked Cockpit',
+                    description: 'Head vulnerable to damage',
+                    effect: { headHPMult: 0.5 },
+                    visual: { type: 'weak_spot', parts: ['head'], color: [1, 0.3, 0.3] }
+                },
+                {
+                    id: 'overheating',
+                    name: 'Overheating',
+                    description: 'Energy weapons deal 20% less damage',
+                    effect: { energyDamageMult: 0.8 },
+                    visual: null
+                },
+                {
+                    id: 'ammo_shortage',
+                    name: 'Ammo Shortage',
+                    description: 'Ballistic weapons deal 20% less damage',
+                    effect: { ballisticDamageMult: 0.8 },
+                    visual: null
+                }
+            ],
+
+            // Positive modifiers (make mech better) - for high level pilots
+            positiveModifiers: [
+                {
+                    id: 'laser_expert',
+                    name: 'Laser Specialist',
+                    description: '+35% laser damage',
+                    effect: { laserDamageMult: 1.35 },
+                    visual: null
+                },
+                {
+                    id: 'missile_expert',
+                    name: 'Missile Specialist',
+                    description: '+35% missile damage',
+                    effect: { missileDamageMult: 1.35 },
+                    visual: null
+                },
+                {
+                    id: 'ballistic_expert',
+                    name: 'Ballistic Specialist',
+                    description: '+35% ballistic damage',
+                    effect: { ballisticDamageMult: 1.35 },
+                    visual: null
+                },
+                {
+                    id: 'iron_legs',
+                    name: 'Iron Legs',
+                    description: 'Double leg HP',
+                    effect: { leftLegHPMult: 2.0, rightLegHPMult: 2.0 },
+                    visual: { type: 'reinforced', parts: ['leftLeg', 'rightLeg'], color: [0.3, 0.6, 1] }
+                },
+                {
+                    id: 'reinforced_arms',
+                    name: 'Reinforced Arms',
+                    description: '+60% arm HP',
+                    effect: { leftArmHPMult: 1.6, rightArmHPMult: 1.6 },
+                    visual: { type: 'reinforced', parts: ['leftArm', 'rightArm'], color: [0.3, 0.6, 1] }
+                },
+                {
+                    id: 'hardened_core',
+                    name: 'Hardened Core',
+                    description: '+50% torso HP',
+                    effect: { torsoHPMult: 1.5 },
+                    visual: { type: 'reinforced', parts: ['torso'], color: [0.3, 0.6, 1] }
+                },
+                {
+                    id: 'armored_head',
+                    name: 'Armored Cockpit',
+                    description: '+50% head HP',
+                    effect: { headHPMult: 1.5 },
+                    visual: { type: 'reinforced', parts: ['head'], color: [0.3, 0.6, 1] }
+                },
+                {
+                    id: 'quick_draw',
+                    name: 'Quick Draw',
+                    description: '+30% fire rate',
+                    effect: { fireRateMult: 1.3 },
+                    visual: null
+                },
+                {
+                    id: 'dead_eye',
+                    name: 'Dead Eye',
+                    description: '+30% accuracy',
+                    effect: { accuracyMult: 1.3 },
+                    visual: null
+                },
+                {
+                    id: 'evasive',
+                    name: 'Evasive Maneuvers',
+                    description: '15% chance to dodge attacks',
+                    effect: { evasionChance: 0.15 },
+                    visual: null
+                }
+            ]
+        };
+
+        // Generate a pilot for an enemy mech
+        function generatePilot(level, missionRisk = 1) {
+            // Clamp level to valid range
+            level = Math.max(1, Math.min(6, level));
+            const rank = PILOT_SYSTEM.ranks[level];
+
+            // Generate name
+            const firstName = PILOT_SYSTEM.firstNames[Math.floor(Math.random() * PILOT_SYSTEM.firstNames.length)];
+            const callsign = PILOT_SYSTEM.callsigns[Math.floor(Math.random() * PILOT_SYSTEM.callsigns.length)];
+
+            // Roll for modifiers
+            const modifiers = [];
+            const usedIds = new Set();
+
+            for (let i = 0; i < rank.modifierCount; i++) {
+                const isPositive = Math.random() < rank.positiveChance;
+                const pool = isPositive ? PILOT_SYSTEM.positiveModifiers : PILOT_SYSTEM.negativeModifiers;
+
+                // Pick a modifier we haven't used yet
+                const availableModifiers = pool.filter(m => !usedIds.has(m.id));
+                if (availableModifiers.length === 0) continue;
+
+                const modifier = availableModifiers[Math.floor(Math.random() * availableModifiers.length)];
+                usedIds.add(modifier.id);
+                modifiers.push({
+                    ...modifier,
+                    isPositive
+                });
+            }
+
+            return {
+                name: firstName,
+                callsign: callsign,
+                fullName: `${rank.title} ${firstName} "${callsign}"`,
+                level: level,
+                rank: rank.name,
+                modifiers: modifiers,
+                // Compile all effects into one object for easy application
+                compiledEffects: compileEffects(modifiers)
+            };
+        }
+
+        // Compile all modifier effects into a single effects object
+        function compileEffects(modifiers) {
+            const effects = {
+                // HP multipliers per body part (default 1.0)
+                headHPMult: 1.0,
+                torsoHPMult: 1.0,
+                leftArmHPMult: 1.0,
+                rightArmHPMult: 1.0,
+                leftLegHPMult: 1.0,
+                rightLegHPMult: 1.0,
+                // Damage multipliers by weapon type
+                laserDamageMult: 1.0,
+                missileDamageMult: 1.0,
+                ballisticDamageMult: 1.0,
+                energyDamageMult: 1.0,
+                // Combat modifiers
+                accuracyMult: 1.0,
+                fireRateMult: 1.0,
+                evasionChance: 0.0,
+                weaponJamChance: 0.0,
+                // Visual indicators (parts to highlight)
+                weakSpots: [],
+                reinforcedParts: []
+            };
+
+            for (const mod of modifiers) {
+                // Apply effect multipliers (they stack multiplicatively)
+                for (const [key, value] of Object.entries(mod.effect)) {
+                    if (key.endsWith('Mult')) {
+                        effects[key] = (effects[key] || 1.0) * value;
+                    } else if (key.endsWith('Chance')) {
+                        // Chances are additive
+                        effects[key] = (effects[key] || 0) + value;
+                    }
+                }
+
+                // Track visual indicators
+                if (mod.visual) {
+                    if (mod.visual.type === 'weak_spot') {
+                        effects.weakSpots.push(...mod.visual.parts.map(p => ({
+                            part: p,
+                            color: mod.visual.color
+                        })));
+                    } else if (mod.visual.type === 'reinforced') {
+                        effects.reinforcedParts.push(...mod.visual.parts.map(p => ({
+                            part: p,
+                            color: mod.visual.color
+                        })));
+                    }
+                }
+            }
+
+            return effects;
+        }
+
+        // ============================================
         // SALVAGE SYSTEM (Multiple Options, Limited Picks)
         // ============================================
         const SALVAGE = {
@@ -4449,8 +4739,14 @@
             const armorBudget = budget * ENEMY_GENERATION.allocation.armor;
             const weaponBudget = budget * ENEMY_GENERATION.allocation.weapons;
 
-            // Calculate stats (scaled to match player economy: ~15-40 HP, ~3-8 damage)
-            const baseHealth = 12 + Math.round(healthBudget * ENEMY_GENERATION.rates.healthPerBudget * chassis.healthMult);
+            // Generate pilot based on mission risk
+            const pilotLevel = COMBAT_SCALING.pilotLevelByRisk[missionRisk] || 1;
+            const pilot = generatePilot(pilotLevel, missionRisk);
+
+            // Calculate stats with global HP multiplier and level scaling
+            const levelHPBonus = 1 + (level - 1) * COMBAT_SCALING.levelScaling.hpPerLevel;
+            const rawHealth = 12 + Math.round(healthBudget * ENEMY_GENERATION.rates.healthPerBudget * chassis.healthMult);
+            const baseHealth = Math.round(rawHealth * COMBAT_SCALING.globalHPMultiplier * levelHPBonus);
             const baseDamage = 3 + Math.round(damageBudget * ENEMY_GENERATION.rates.damagePerBudget * chassis.damageMult);
             const baseArmor = Math.round(armorBudget * ENEMY_GENERATION.rates.armorPerBudget * chassis.armorMult);
 
@@ -4545,7 +4841,7 @@
                 }
             }
 
-            // Generate name
+            // Generate name - include pilot callsign for flavor
             const tierIndex = Math.min(5, Math.ceil(level / 2));
             const prefixes = ENEMY_GENERATION.namePrefixes[tierIndex] || ENEMY_GENERATION.namePrefixes[1];
             const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
@@ -4557,6 +4853,7 @@
                 level: level,
                 maxHealth: baseHealth,
                 equipment: equipment,
+                pilot: pilot,  // Include pilot with modifiers
                 stats: {
                     weight: 30 + level * 8,
                     energy: 30 + weaponCount * 15,
@@ -7191,12 +7488,30 @@
                         return `<span style="color: ${rarityColor}; font-size: 9px;">${item.icon}</span>`;
                     }).filter(x => x).join(' ');
 
+                    // Build pilot info HTML
+                    let pilotHTML = '';
+                    if (enemy.pilot) {
+                        const pilot = enemy.pilot;
+                        const rankColor = pilot.level >= 4 ? '#ff6644' : pilot.level >= 3 ? '#ffcc44' : '#88aa88';
+                        const modifierIcons = pilot.modifiers.map(m => {
+                            if (m.isPositive) {
+                                return `<span style="color: #66ff66;" title="${m.name}: ${m.description}">▲</span>`;
+                            } else {
+                                return `<span style="color: #ff6666;" title="${m.name}: ${m.description}">▼</span>`;
+                            }
+                        }).join('');
+                        pilotHTML = `<div style="font-size: 9px; color: ${rankColor}; margin-top: 2px;">
+                            🎖️ ${pilot.fullName} ${modifierIcons}
+                        </div>`;
+                    }
+
                     enemiesHTML += `<div style="margin: 4px 0; padding: 4px; background: rgba(0,0,0,0.2); border-radius: 3px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span>⚠️ ${enemy.name}</span>
                             <span style="font-size: 10px; color: #888;">Lv.${enemy.level}</span>
                         </div>
                         <div style="font-size: 10px; color: #888;">HP: ${enemy.maxHealth} | DMG: ${enemy.stats.damage}</div>
+                        ${pilotHTML}
                         <div style="margin-top: 2px;">${equipList || '<span style="color: #555; font-size: 9px;">No equipment</span>'}</div>
                     </div>`;
                 });
@@ -8767,11 +9082,10 @@
                 }
             });
 
-            // Use mech's base HP + hpBonus from armor
-            // Player gets 2x health advantage
+            // Use mech's base HP + hpBonus from armor, scaled by global HP multiplier
             const mech = getActiveMech();
             const baseHealth = mech.baseHP || 25;
-            const totalHealth = (baseHealth + hpBonus) * 2;
+            const totalHealth = Math.round((baseHealth + hpBonus) * COMBAT_SCALING.globalHPMultiplier * COMBAT_SCALING.playerBonus.hpMultiplier);
 
             return {
                 maxHealth: totalHealth,
@@ -9126,6 +9440,25 @@
                     totalScrap += mechScrap;
                     equipmentHTML += '</div>';
 
+                    // Build pilot info for salvage screen
+                    let salvagePilotHTML = '';
+                    if (enemy.pilot) {
+                        const pilot = enemy.pilot;
+                        const rankColor = pilot.level >= 4 ? '#ff6644' : pilot.level >= 3 ? '#ffcc44' : '#88aa88';
+                        const modifiersList = pilot.modifiers.map(m => {
+                            const icon = m.isPositive ? '▲' : '▼';
+                            const color = m.isPositive ? '#66ff66' : '#ff6666';
+                            return `<div style="font-size: 8px; color: ${color};">${icon} ${m.name}</div>`;
+                        }).join('');
+                        salvagePilotHTML = `
+                            <div style="margin-bottom: 8px; padding: 6px; background: rgba(0,0,0,0.3); border-radius: 4px; border-left: 2px solid ${rankColor};">
+                                <div style="font-size: 9px; color: ${rankColor};">🎖️ ${pilot.fullName}</div>
+                                <div style="font-size: 8px; color: #666;">${pilot.rank} Pilot</div>
+                                <div style="margin-top: 4px;">${modifiersList}</div>
+                            </div>
+                        `;
+                    }
+
                     // Mech card
                     enemyMechsHTML += `
                         <div style="background: rgba(0,0,0,0.5); border: 2px solid #ff6644; border-radius: 8px; padding: 12px; width: 220px;">
@@ -9133,6 +9466,7 @@
                                 <div style="font-size: 12px; color: #ff6644; font-weight: bold;">${enemy.name}</div>
                                 <div style="font-size: 10px; color: #666;">Lv.${enemy.level || 1}</div>
                             </div>
+                            ${salvagePilotHTML}
                             ${bodyPartsHTML}
                             ${equipmentHTML}
                             <div style="margin-top: 8px; text-align: center; font-size: 10px; color: #888;">

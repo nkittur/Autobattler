@@ -2105,16 +2105,11 @@
                 // Store phase for movement sync
                 mech.walkPhase = rawPhase;
 
-                // Determine which foot is pushing (grounded) for movement sync
-                // Each leg: 0-0.5 = lifting/airborne, 0.5-1.0 = planted/pushing
-                const leftNorm = (rawPhase % (Math.PI * 2)) / (Math.PI * 2);
-                const rightNorm = ((rawPhase + Math.PI) % (Math.PI * 2)) / (Math.PI * 2);
-
-                // Push factor: how much forward thrust based on foot contact
-                // Higher when foot is planted (norm > 0.5), lower when lifting
-                const leftPush = leftNorm > 0.4 && leftNorm < 0.95 ? 1.0 : 0.3;
-                const rightPush = rightNorm > 0.4 && rightNorm < 0.95 ? 1.0 : 0.3;
-                mech.pushFactor = Math.max(leftPush, rightPush);
+                // Movement speed pulses twice per walk cycle (once per step)
+                // Creates a surge-pause-surge rhythm as each foot pushes off
+                const stepPulse = Math.abs(Math.sin(rawPhase));
+                // Range: 0.4 (between steps) to 1.3 (mid-push) - very noticeable variation
+                mech.pushFactor = 0.4 + stepPulse * 0.9;
 
                 // Smoother leg animation - less exaggerated pauses
                 const stompyWave = (p) => {

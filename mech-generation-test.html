@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mech Generation Test - Iconic Silhouettes</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 15px;
+            background: #1a1a2e;
+            font-family: monospace;
+            color: #00ff88;
+            overflow-x: hidden;
+        }
+        #canvasContainer {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 70vh;
+            max-height: 600px;
+            display: block;
+            border: 3px solid #00ff88;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            touch-action: none;
+        }
+        h1 {
+            text-align: center;
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            margin: 8px 0;
+            font-size: 1.3em;
+        }
+        #controls {
+            text-align: center;
+            margin: 10px 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+        button {
+            padding: 8px 16px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: rgba(0, 255, 136, 0.4);
+        }
+        button.active {
+            background: rgba(0, 255, 136, 0.5);
+        }
+        #stats {
+            max-width: 1200px;
+            margin: 10px auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+        }
+        #stats h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        #mechList {
+            max-width: 1200px;
+            margin: 10px auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #4488ff;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        #mechList h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #4488ff;
+        }
+        .mech-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            margin: 3px 0;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .mech-entry:hover {
+            background: rgba(0,0,0,0.5);
+        }
+        .mech-name {
+            font-weight: bold;
+        }
+        .mech-parts {
+            color: #888;
+            font-size: 10px;
+        }
+        .color-swatch {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        #polyCount {
+            text-align: center;
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mech Generation - Iconic Silhouettes</h1>
+
+    <div id="controls">
+        <button onclick="generateNewMechs()">Regenerate All</button>
+        <button onclick="addSingleMech()">Add Mech</button>
+        <button onclick="clearAllMechs()">Clear All</button>
+        <button onclick="toggleAnimation()" id="animToggle">Pause</button>
+        <button onclick="toggleWireframe()" id="wireframeToggle">Wireframe</button>
+        <button onclick="cycleCamera()">Camera</button>
+    </div>
+
+    <div id="canvasContainer">
+        <canvas id="renderCanvas"></canvas>
+    </div>
+
+    <div id="polyCount">
+        <strong>FPS: <span id="fps" style="color: #00ff88;">0</span></strong> |
+        Triangles: <span id="triCount">0</span> |
+        Vertices: <span id="vertCount">0</span> |
+        Meshes: <span id="drawCalls">0</span> |
+        Mechs: <span id="mechCount">0</span>
+    </div>
+
+    <div id="mechList">
+        <h3>Generated Mechs</h3>
+        <div id="mechListContent"></div>
+    </div>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+
+    <script>
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        const rand = (min, max) => min + Math.random() * (max - min);
+        const randInt = (min, max) => Math.floor(rand(min, max + 1));
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        const chance = (pct) => Math.random() < pct;
+
+        // ============================================
+        // MECH ARCHETYPE DEFINITIONS
+        // ============================================
+
+        // These define the general proportions and style tendencies
+        const ARCHETYPES = {
+            // ARCHETYPE A: "Chicken Walker" - Reverse joint, torso thrust forward
+            madcat: {
+                name: 'Timber Wolf',
+                chassis: 'chickenWalker',    // Posture type
+                torsoStyle: 'vShape',        // V-shape = wider at top (aggressive)
+                legStyle: 'reverseJoint',    // Knees bend backward
+                shoulderStyle: 'asymmetric', // BIG missile pod on one side
+                leftArm: 'gunArm',           // Arm IS the weapon
+                rightArm: 'gunArm',
+                headStyle: 'integrated',
+                torsoLean: 0.25,             // Lean forward (T-Rex stance)
+                shoulderWidth: 1.8,          // Wide shoulders
+                hipWidth: 1.3,               // WIDE hips for chicken walker stance
+                heightMult: 1.0
+            },
+            // ARCHETYPE B: "Linebacker" - Massive width, head sunk into shoulders
+            atlas: {
+                name: 'Assault',
+                chassis: 'linebacker',
+                torsoStyle: 'coffinHull',    // Hexagonal coffin shape
+                legStyle: 'heavy',           // Thick, stable legs
+                shoulderStyle: 'massive',    // Huge shoulder armor
+                leftArm: 'gunArm',
+                rightArm: 'fist',            // Asymmetric: gun + melee
+                headStyle: 'sunken',         // Head buried in shoulders
+                torsoLean: 0,
+                shoulderWidth: 2.2,          // VERY wide
+                hipWidth: 1.4,               // Also wide (stable)
+                heightMult: 1.15
+            },
+            // ARCHETYPE C: "Walking Turret" - No real arms, weapons on torso
+            urbanmech: {
+                name: 'Turret',
+                chassis: 'walkingTurret',
+                torsoStyle: 'barrel',        // Cylindrical/barrel torso
+                legStyle: 'stubby',          // Short thick legs
+                shoulderStyle: 'weaponMount', // Direct weapon mounts
+                leftArm: 'none',             // No arms!
+                rightArm: 'none',
+                headStyle: 'turret',
+                torsoLean: 0,
+                shoulderWidth: 1.2,
+                hipWidth: 1.0,
+                heightMult: 0.8
+            },
+            // ARCHETYPE: "Hunched Predator" - Forward lean, arms are PPCs
+            marauder: {
+                name: 'Marauder',
+                chassis: 'hunchedPredator',
+                torsoStyle: 'hunchedWedge',  // Forward-thrust wedge
+                legStyle: 'reverseJoint',
+                shoulderStyle: 'cannons',    // Shoulder cannons
+                leftArm: 'ppcArm',           // Arms ARE particle projectors
+                rightArm: 'ppcArm',
+                headStyle: 'cockpitBubble',  // Exposed cockpit
+                torsoLean: 0.35,             // Strong forward lean
+                shoulderWidth: 1.5,
+                hipWidth: 1.25,              // Wide hips for chicken walker
+                heightMult: 1.05
+            },
+            // ARCHETYPE: "Missile Platform" - Huge shoulder pods dominate
+            catapult: {
+                name: 'Catapult',
+                chassis: 'missilePlatform',
+                torsoStyle: 'compact',       // Small torso
+                legStyle: 'reverseJoint',
+                shoulderStyle: 'lrmPods',    // MASSIVE missile pods
+                leftArm: 'stub',             // Tiny arms
+                rightArm: 'stub',
+                headStyle: 'integrated',
+                torsoLean: 0.15,
+                shoulderWidth: 2.5,          // Pods make it very wide
+                hipWidth: 1.2,               // Wide hips for chicken walker
+                heightMult: 0.95
+            }
+        };
+
+        // Team colors
+        const TEAM_COLORS = [
+            { primary: [0.25, 0.45, 0.25], secondary: [0.15, 0.3, 0.15], accent: [0.8, 0.6, 0.2], name: 'Jade Falcon' },
+            { primary: [0.5, 0.2, 0.2], secondary: [0.35, 0.12, 0.12], accent: [0.9, 0.7, 0.3], name: 'Wolf' },
+            { primary: [0.2, 0.25, 0.5], secondary: [0.12, 0.15, 0.35], accent: [0.7, 0.7, 0.8], name: 'Steiner' },
+            { primary: [0.45, 0.35, 0.2], secondary: [0.3, 0.22, 0.12], accent: [0.6, 0.5, 0.3], name: 'Desert' },
+            { primary: [0.35, 0.35, 0.38], secondary: [0.2, 0.2, 0.22], accent: [0.5, 0.8, 0.5], name: 'Steel' },
+            { primary: [0.5, 0.5, 0.45], secondary: [0.35, 0.35, 0.3], accent: [0.3, 0.5, 0.7], name: 'Arctic' },
+            { primary: [0.15, 0.15, 0.2], secondary: [0.08, 0.08, 0.12], accent: [0.8, 0.2, 0.2], name: 'Shadow' },
+            { primary: [0.4, 0.3, 0.2], secondary: [0.25, 0.18, 0.1], accent: [0.9, 0.5, 0.2], name: 'Rust' }
+        ];
+
+        // ============================================
+        // GLOBAL STATE
+        // ============================================
+
+        let canvas, engine, scene, camera;
+        let mechs = [];
+        let animationPaused = false;
+        let wireframeMode = false;
+        let cameraMode = 0;
+        let groundSize = 40;
+
+        // ============================================
+        // COMPOUND SHAPE BUILDER - SILHOUETTE FOCUSED
+        // ============================================
+
+        /**
+         * Creates compound shapes with SLOPED ARMOR (trapezoids, wedges)
+         * THE TRAPEZOID RULE: No more 90-degree boxes! Military hardware has slopes.
+         */
+        class ShapeBuilder {
+            constructor(scene, materials, mechId) {
+                this.scene = scene;
+                this.mats = materials;
+                this.mechId = mechId;
+                this.partCount = 0;
+            }
+
+            name(base) {
+                return `${this.mechId}_${base}_${this.partCount++}`;
+            }
+
+            // Basic box - USE SPARINGLY, prefer wedge/trapezoid
+            box(w, h, d, parent, mat = 'primary') {
+                const mesh = BABYLON.MeshBuilder.CreateBox(this.name('box'), {
+                    width: w, height: h, depth: d
+                }, this.scene);
+                mesh.material = this.mats[mat];
+                if (parent) mesh.parent = parent;
+                return mesh;
+            }
+
+            // WEDGE - Sloped armor! The key to military hardware look
+            // taperRatio < 1 = narrower at top (A-shape, stable)
+            // taperRatio > 1 = wider at top (V-shape, aggressive)
+            wedge(wBottom, wTop, h, d, parent, mat = 'primary') {
+                // Use 4-sided cylinder rotated to create trapezoid cross-section
+                const mesh = BABYLON.MeshBuilder.CreateCylinder(this.name('wedge'), {
+                    diameterBottom: wBottom * 1.414, // Adjust for square cross-section
+                    diameterTop: wTop * 1.414,
+                    height: h,
+                    tessellation: 4
+                }, this.scene);
+                mesh.rotation.y = Math.PI / 4;
+                mesh.scaling.z = d / wBottom; // Stretch depth
+                mesh.material = this.mats[mat];
+                if (parent) mesh.parent = parent;
+                return mesh;
+            }
+
+            // COFFIN SHAPE - Hexagonal hull with sloped top and bottom
+            coffinHull(w, h, d, slopeRatio, parent, mat = 'primary') {
+                const hull = new BABYLON.TransformNode(this.name('coffin'), this.scene);
+                if (parent) hull.parent = parent;
+
+                // Main body (slightly tapered)
+                const body = this.wedge(w, w * 0.9, h * 0.6, d, hull, mat);
+                body.position.y = 0;
+
+                // Top slope
+                const top = this.wedge(w * 0.9, w * 0.6, h * 0.25, d * 0.9, hull, 'secondary');
+                top.position.y = h * 0.42;
+
+                // Bottom slope
+                const bottom = this.wedge(w * 0.85, w, h * 0.15, d * 0.85, hull, 'secondary');
+                bottom.position.y = -h * 0.38;
+
+                return hull;
+            }
+
+            // AGGRESSIVE TORSO - V-shaped (wider shoulders)
+            vTorso(wBottom, wTop, h, d, parent, mat = 'primary') {
+                const torso = new BABYLON.TransformNode(this.name('vtorso'), this.scene);
+                if (parent) torso.parent = parent;
+
+                // Main V-shape body
+                const main = this.wedge(wBottom, wTop, h, d, torso, mat);
+
+                // Front chest plate (no rotation)
+                const frontPlate = this.box(wTop * 0.65, h * 0.35, 0.08, torso, 'secondary');
+                frontPlate.position.y = h * 0.15;
+                frontPlate.position.z = d * 0.5;
+
+                return torso;
+            }
+
+            // GUN ARM - The arm IS the weapon, not holding one
+            gunArm(length, caliber, parent, mat = 'primary') {
+                const arm = new BABYLON.TransformNode(this.name('gunarm'), this.scene);
+                if (parent) arm.parent = parent;
+
+                // Upper arm housing (tapered)
+                const upper = this.wedge(caliber * 3, caliber * 2.5, length * 0.4, caliber * 2.5, arm, mat);
+                upper.position.y = -length * 0.2;
+
+                // Elbow joint
+                const elbow = this.sphere(caliber * 1.8, arm, 'metal');
+                elbow.position.y = -length * 0.4;
+
+                // Barrel housing (the forearm IS the gun)
+                const housing = this.wedge(caliber * 2.8, caliber * 2, length * 0.35, caliber * 3, arm, 'secondary');
+                housing.position.y = -length * 0.6;
+
+                // Main barrel
+                const barrel = this.cylinder(caliber, length * 0.5, arm, 'metal');
+                barrel.rotation.x = Math.PI / 2;
+                barrel.position.y = -length * 0.65;
+                barrel.position.z = length * 0.35;
+
+                // Barrel shroud
+                const shroud = this.cylinder(caliber * 1.5, length * 0.15, arm, 'dark');
+                shroud.rotation.x = Math.PI / 2;
+                shroud.position.y = -length * 0.65;
+                shroud.position.z = length * 0.15;
+
+                // Muzzle brake
+                const muzzle = this.cylinder(caliber * 1.3, 0.08, arm, 'dark');
+                muzzle.rotation.x = Math.PI / 2;
+                muzzle.position.y = -length * 0.65;
+                muzzle.position.z = length * 0.6;
+
+                return arm;
+            }
+
+            // MISSILE POD - Boxy launcher that dominates silhouette
+            missilePod(w, h, d, tubes, parent, mat = 'secondary') {
+                const pod = new BABYLON.TransformNode(this.name('mpod'), this.scene);
+                if (parent) pod.parent = parent;
+
+                // Main housing
+                const housing = this.box(w, h, d, pod, mat);
+
+                // Top armor (no rotation)
+                const topArmor = this.box(w * 0.85, 0.06, d * 0.8, pod, 'primary');
+                topArmor.position.y = h * 0.52;
+
+                // Missile tubes
+                const tubesPerRow = Math.ceil(Math.sqrt(tubes));
+                const tubeSpacing = Math.min(w, d) * 0.7 / tubesPerRow;
+                for (let i = 0; i < tubes; i++) {
+                    const row = Math.floor(i / tubesPerRow);
+                    const col = i % tubesPerRow;
+                    const tube = this.cylinder(tubeSpacing * 0.7, 0.1, pod, 'dark');
+                    tube.position.x = (col - (tubesPerRow - 1) / 2) * tubeSpacing;
+                    tube.position.y = (row - (tubesPerRow - 1) / 2) * tubeSpacing;
+                    tube.position.z = d * 0.5;
+                    tube.rotation.x = Math.PI / 2;
+                }
+
+                // Side armor plates (no rotation)
+                [-1, 1].forEach(side => {
+                    const plate = this.box(0.04, h * 0.8, d * 0.7, pod, 'primary');
+                    plate.position.x = side * w * 0.48;
+                });
+
+                return pod;
+            }
+
+            // High-poly cylinder
+            cylinder(diameter, height, parent, mat = 'metal') {
+                const mesh = BABYLON.MeshBuilder.CreateCylinder(this.name('cyl'), {
+                    diameter: diameter,
+                    height: height,
+                    tessellation: 24
+                }, this.scene);
+                mesh.material = this.mats[mat];
+                if (parent) mesh.parent = parent;
+                return mesh;
+            }
+
+            // Tapered cylinder
+            taperedCylinder(dBot, dTop, height, parent, mat = 'metal') {
+                const mesh = BABYLON.MeshBuilder.CreateCylinder(this.name('tcyl'), {
+                    diameterBottom: dBot,
+                    diameterTop: dTop,
+                    height: height,
+                    tessellation: 24
+                }, this.scene);
+                mesh.material = this.mats[mat];
+                if (parent) mesh.parent = parent;
+                return mesh;
+            }
+
+            // High-poly sphere
+            sphere(diameter, parent, mat = 'dark') {
+                const mesh = BABYLON.MeshBuilder.CreateSphere(this.name('sph'), {
+                    diameter: diameter,
+                    segments: 16
+                }, this.scene);
+                mesh.material = this.mats[mat];
+                if (parent) mesh.parent = parent;
+                return mesh;
+            }
+
+            // Layered armor plate
+            armorPlate(w, h, layers, parent, mat = 'secondary') {
+                const plate = new BABYLON.TransformNode(this.name('armor'), this.scene);
+                if (parent) plate.parent = parent;
+                for (let i = 0; i < layers; i++) {
+                    const layer = this.box(w * (1 - i * 0.12), h * (1 - i * 0.1), 0.035, plate, i === 0 ? mat : 'primary');
+                    layer.position.z = i * 0.03;
+                    layer.position.y = i * 0.015;
+                }
+                return plate;
+            }
+
+            // Mechanical joint
+            mechanicalJoint(diameter, parent, mat = 'metal') {
+                const joint = new BABYLON.TransformNode(this.name('joint'), this.scene);
+                if (parent) joint.parent = parent;
+                this.sphere(diameter, joint, mat);
+                this.cylinder(diameter * 1.15, diameter * 0.15, joint, 'dark');
+                return joint;
+            }
+
+            // Piston
+            piston(length, diameter, parent, mat = 'metal') {
+                const p = new BABYLON.TransformNode(this.name('piston'), this.scene);
+                if (parent) p.parent = parent;
+                this.cylinder(diameter, length * 0.6, p, 'dark').position.y = length * 0.2;
+                this.cylinder(diameter * 0.5, length, p, mat);
+                this.cylinder(diameter * 1.2, diameter * 0.2, p, 'dark').position.y = length * 0.5;
+                return p;
+            }
+        }
+
+        // ============================================
+        // MECH GENERATOR - ICONIC SILHOUETTES
+        // ============================================
+
+        class MechGenerator {
+            constructor(scene) {
+                this.scene = scene;
+                this.mechCount = 0;
+            }
+
+            createMaterials(colors, mechId) {
+                const mats = {};
+
+                mats.primary = new BABYLON.StandardMaterial(`${mechId}_primary`, this.scene);
+                mats.primary.diffuseColor = new BABYLON.Color3(...colors.primary);
+                mats.primary.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+
+                mats.secondary = new BABYLON.StandardMaterial(`${mechId}_secondary`, this.scene);
+                mats.secondary.diffuseColor = new BABYLON.Color3(...colors.secondary);
+                mats.secondary.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
+
+                mats.accent = new BABYLON.StandardMaterial(`${mechId}_accent`, this.scene);
+                mats.accent.diffuseColor = new BABYLON.Color3(...colors.accent);
+                mats.accent.specularColor = new BABYLON.Color3(0.3, 0.3, 0.3);
+
+                mats.metal = new BABYLON.StandardMaterial(`${mechId}_metal`, this.scene);
+                mats.metal.diffuseColor = new BABYLON.Color3(0.35, 0.35, 0.4);
+                mats.metal.specularColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+                mats.metal.specularPower = 32;
+
+                mats.dark = new BABYLON.StandardMaterial(`${mechId}_dark`, this.scene);
+                mats.dark.diffuseColor = new BABYLON.Color3(0.12, 0.12, 0.15);
+
+                mats.glow = new BABYLON.StandardMaterial(`${mechId}_glow`, this.scene);
+                mats.glow.diffuseColor = new BABYLON.Color3(0.2, 0.8, 0.5);
+                mats.glow.emissiveColor = new BABYLON.Color3(0.1, 0.4, 0.25);
+
+                mats.missile = new BABYLON.StandardMaterial(`${mechId}_missile`, this.scene);
+                mats.missile.diffuseColor = new BABYLON.Color3(0.25, 0.25, 0.28);
+
+                return mats;
+            }
+
+            generate(position) {
+                const mechId = `mech_${this.mechCount++}`;
+                const archetype = pick(Object.values(ARCHETYPES));
+                const colors = pick(TEAM_COLORS);
+                const scale = rand(0.9, 1.1) * archetype.heightMult;
+
+                const mats = this.createMaterials(colors, mechId);
+                const builder = new ShapeBuilder(this.scene, mats, mechId);
+
+                // Root node
+                const root = new BABYLON.TransformNode(mechId, this.scene);
+                root.position = position;
+                root.scaling = new BABYLON.Vector3(scale, scale, scale);
+
+                // Skeleton for animation
+                const skeleton = {};
+
+                // Get chassis-specific proportions
+                const hipWidth = archetype.hipWidth || 1.0;
+                const shoulderWidth = archetype.shoulderWidth || 1.5;
+                const torsoLean = archetype.torsoLean || 0;
+
+                // Build from ground up with chassis-specific proportions
+                const legData = this.buildLegs(builder, skeleton, archetype, hipWidth);
+                this.buildTorso(builder, skeleton, archetype, legData.pelvisHeight, shoulderWidth, torsoLean);
+                this.buildArms(builder, skeleton, archetype);
+                this.buildShoulders(builder, skeleton, archetype, shoulderWidth);
+                this.buildHead(builder, skeleton, archetype);
+
+                // Parent pelvis to root
+                skeleton.pelvis.parent = root;
+
+                return {
+                    id: mechId,
+                    root: root,
+                    skeleton: skeleton,
+                    archetype: archetype,
+                    colors: colors,
+                    animPhase: rand(0, Math.PI * 2),
+                    walkSpeed: rand(0.7, 1.0),
+                    targetPos: this.randomPos(),
+                    legData: legData
+                };
+            }
+
+            // ============================================
+            // LEG GENERATION - REVERSE JOINT IS KEY
+            // ============================================
+
+            buildLegs(builder, skeleton, arch, hipWidth) {
+                const style = this.getLegStyle(arch.legStyle);
+
+                // Hip width - chicken walkers get extra wide stance
+                const stanceMultiplier = style.wideStance ? 0.55 : 0.35;
+                const stanceWidth = hipWidth * stanceMultiplier;
+
+                // Create pelvis with WEDGE shape (not box!)
+                const pelvis = new BABYLON.TransformNode(builder.name('pelvis'), this.scene);
+                pelvis.position.y = style.pelvisHeight;
+                skeleton.pelvis = pelvis;
+
+                // Pelvis is a tapered wedge (wider at back for stability look)
+                const pelvisCore = builder.wedge(0.7 * hipWidth, 0.6 * hipWidth, 0.35, 0.55, pelvis, 'secondary');
+
+                // Hip housings (tapered, not boxes)
+                [-1, 1].forEach(side => {
+                    const hipHousing = builder.wedge(0.22, 0.18, 0.28, 0.35, pelvis, 'primary');
+                    hipHousing.position.x = side * (0.35 + stanceWidth * 0.5);
+                    hipHousing.position.y = -0.08;
+                });
+
+                // Build each leg
+                ['left', 'right'].forEach((side, idx) => {
+                    const xMult = idx === 0 ? -1 : 1;
+                    this.buildLeg(builder, skeleton, side, xMult, style, stanceWidth, pelvis);
+                });
+
+                return { pelvisHeight: style.pelvisHeight, style };
+            }
+
+            getLegStyle(styleName) {
+                const styles = {
+                    // REVERSE JOINT - Classic Timber Wolf chicken walker
+                    // Thigh angles BACK (-35), shin angles FORWARD relative to thigh (+65)
+                    // Result: knee back-below hip, foot forward-below knee
+                    reverseJoint: {
+                        thighLength: rand(0.4, 0.5),      // Short-ish thighs
+                        thighWidth: rand(0.18, 0.22),
+                        thighTaper: 0.85,
+                        thighAngle: rand(-40, -30),       // Thigh goes backward 30-40 deg
+                        shinLength: rand(0.85, 1.0),      // Long shins
+                        shinWidth: rand(0.16, 0.2),
+                        shinTaper: 0.75,
+                        shinAngle: rand(65, 75),          // Shin forward 65-75 deg from thigh
+                        kneeSize: rand(0.15, 0.2),        // Net: shin ~30-40 deg forward from vertical
+                        kneeForward: 0.1,
+                        footLength: rand(0.5, 0.65),
+                        footStyle: pick(['platform', 'heavy']),
+                        hasCalfBulge: false,
+                        pelvisHeight: 1.8,
+                        wideStance: true,
+                        keepFootHorizontal: true
+                    },
+                    // HEAVY - Wide, stable, linebacker stance
+                    heavy: {
+                        thighLength: rand(0.5, 0.65),
+                        thighWidth: rand(0.4, 0.52),
+                        thighTaper: 0.9,
+                        thighAngle: rand(18, 28),      // More vertical
+                        shinLength: rand(0.55, 0.7),
+                        shinWidth: rand(0.38, 0.48),
+                        shinTaper: 0.85,
+                        shinAngle: rand(-22, -12),
+                        kneeSize: rand(0.35, 0.45),
+                        kneeForward: rand(0.06, 0.12),
+                        footLength: rand(0.5, 0.65),
+                        footStyle: pick(['platform', 'heavy']),
+                        hasCalfBulge: false,
+                        pelvisHeight: 1.4
+                    },
+                    // STUBBY - Short thick legs for walking turret
+                    stubby: {
+                        thighLength: rand(0.35, 0.45),
+                        thighWidth: rand(0.35, 0.45),
+                        thighTaper: 0.95,
+                        thighAngle: rand(12, 22),
+                        shinLength: rand(0.4, 0.5),
+                        shinWidth: rand(0.32, 0.42),
+                        shinTaper: 0.9,
+                        shinAngle: rand(-18, -8),
+                        kneeSize: rand(0.3, 0.38),
+                        kneeForward: rand(0.04, 0.08),
+                        footLength: rand(0.4, 0.55),
+                        footStyle: pick(['platform', 'block']),
+                        hasCalfBulge: false,
+                        pelvisHeight: 1.1
+                    }
+                };
+                return styles[styleName] || styles.reverseJoint;
+            }
+
+            buildLeg(builder, skeleton, side, xMult, style, stanceWidth, pelvis) {
+                // Detect if this is a reverse joint leg
+                const isReverseJoint = style.thighAngle < 0;
+
+                // === HIP ===
+                const hipJoint = new BABYLON.TransformNode(builder.name(`${side}Hip`), this.scene);
+                hipJoint.parent = pelvis;
+                hipJoint.position.x = xMult * stanceWidth;
+                hipJoint.position.y = -0.1;
+                skeleton[`${side}Hip`] = hipJoint;
+
+                // Hip joint sphere
+                const hipBall = builder.sphere(0.12, hipJoint, 'metal');
+
+                // === THIGH - Simple box ===
+                const thigh = new BABYLON.TransformNode(builder.name(`${side}Thigh`), this.scene);
+                thigh.parent = hipJoint;
+                thigh.rotation.x = style.thighAngle * Math.PI / 180;
+                skeleton[`${side}Thigh`] = thigh;
+
+                // Thigh - simple tapered box
+                const thighMain = builder.box(
+                    style.thighWidth,
+                    style.thighLength,
+                    style.thighWidth * 0.9,
+                    thigh, 'primary'
+                );
+                thighMain.position.y = -style.thighLength / 2;
+
+                // === KNEE ===
+                const kneeJoint = new BABYLON.TransformNode(builder.name(`${side}Knee`), this.scene);
+                kneeJoint.parent = thigh;
+                kneeJoint.position.y = -style.thighLength;
+                skeleton[`${side}Knee`] = kneeJoint;
+
+                // Knee joint - simple sphere
+                const kneeBall = builder.sphere(style.kneeSize, kneeJoint, 'metal');
+
+                // === SHIN - Simple box ===
+                const shin = new BABYLON.TransformNode(builder.name(`${side}Shin`), this.scene);
+                shin.parent = kneeJoint;
+                shin.rotation.x = style.shinAngle * Math.PI / 180;
+                skeleton[`${side}Shin`] = shin;
+
+                // Shin - simple box
+                const shinMain = builder.box(
+                    style.shinWidth,
+                    style.shinLength,
+                    style.shinWidth * 0.85,
+                    shin, 'primary'
+                );
+                shinMain.position.y = -style.shinLength / 2;
+
+                // === ANKLE ===
+                const ankleJoint = new BABYLON.TransformNode(builder.name(`${side}Ankle`), this.scene);
+                ankleJoint.parent = shin;
+                ankleJoint.position.y = -style.shinLength;
+                skeleton[`${side}Ankle`] = ankleJoint;
+
+                // Ankle sphere
+                const ankleBall = builder.sphere(style.shinWidth * 0.4, ankleJoint, 'metal');
+
+                // === FOOT ===
+                this.buildFoot(builder, skeleton, side, style, ankleJoint);
+            }
+
+            buildFoot(builder, skeleton, side, style, ankleJoint) {
+                const foot = new BABYLON.TransformNode(builder.name(`${side}Foot`), this.scene);
+                foot.parent = ankleJoint;
+                skeleton[`${side}Foot`] = foot;
+
+                const footLen = style.footLength;
+                const footStyle = style.footStyle;
+
+                if (footStyle === 'talon' || footStyle === 'raptor') {
+                    // Bird-like talon foot - long and forward-projecting (enhanced)
+
+                    // Heel assembly
+                    const heelAssembly = new BABYLON.TransformNode(builder.name('heelAssembly'), this.scene);
+                    heelAssembly.parent = foot;
+
+                    const heel = builder.box(0.18, 0.12, 0.22, heelAssembly, 'primary');
+                    heel.position.y = -0.1;
+                    heel.position.z = -0.1;
+
+                    // Heel armor
+                    const heelArmor = builder.armorPlate(0.15, 0.1, 2, heelAssembly, 'secondary');
+                    heelArmor.position.y = -0.08;
+                    heelArmor.position.z = -0.2;
+                    heelArmor.rotation.x = 0.3;
+
+                    // Heel spur with detail
+                    const heelSpur = builder.box(0.1, 0.07, 0.2, heelAssembly, 'dark');
+                    heelSpur.position.y = -0.13;
+                    heelSpur.position.z = -0.24;
+                    heelSpur.rotation.x = 0.35;
+
+                    const spurTip = builder.taperedCylinder(0.06, 0.02, 0.12, heelSpur, 'metal');
+                    spurTip.rotation.x = Math.PI / 2;
+                    spurTip.position.z = -0.15;
+
+                    // Mid foot structure
+                    const midFoot = builder.box(0.2, 0.1, footLen * 0.45, foot, 'primary');
+                    midFoot.position.y = -0.12;
+                    midFoot.position.z = footLen * 0.18;
+
+                    // Mid foot detail
+                    const midFootDetail = builder.box(0.12, 0.04, footLen * 0.3, midFoot, 'dark');
+                    midFootDetail.position.y = 0.04;
+
+                    // Toes - 2 or 3 forward-projecting claws with segments
+                    const numToes = footStyle === 'raptor' ? 3 : 2;
+                    const toeSpread = footStyle === 'raptor' ? 0.13 : 0.11;
+
+                    for (let t = 0; t < numToes; t++) {
+                        const toeX = (t - (numToes - 1) / 2) * toeSpread;
+
+                        // Toe base segment
+                        const toeBase = builder.box(0.08, 0.07, footLen * 0.22, foot, 'secondary');
+                        toeBase.position.x = toeX;
+                        toeBase.position.y = -0.13;
+                        toeBase.position.z = footLen * 0.35;
+
+                        // Toe joint
+                        const toeJoint = builder.sphere(0.05, foot, 'metal');
+                        toeJoint.position.x = toeX;
+                        toeJoint.position.y = -0.13;
+                        toeJoint.position.z = footLen * 0.48;
+
+                        // Toe mid segment
+                        const toeMid = builder.box(0.06, 0.05, footLen * 0.18, foot, 'primary');
+                        toeMid.position.x = toeX;
+                        toeMid.position.y = -0.14;
+                        toeMid.position.z = footLen * 0.58;
+
+                        // Toe claw
+                        const toeClaw = builder.taperedCylinder(0.05, 0.02, footLen * 0.15, foot, 'dark');
+                        toeClaw.position.x = toeX;
+                        toeClaw.position.y = -0.14;
+                        toeClaw.position.z = footLen * 0.72;
+                        toeClaw.rotation.x = Math.PI / 2 + 0.2;
+                    }
+
+                } else if (footStyle === 'split') {
+                    // Split-toe foot (enhanced)
+                    const heelBlock = builder.box(0.22, 0.14, 0.18, foot, 'primary');
+                    heelBlock.position.y = -0.1;
+                    heelBlock.position.z = -0.05;
+
+                    // Heel detail
+                    const heelDetail = builder.box(0.18, 0.06, 0.08, heelBlock, 'dark');
+                    heelDetail.position.z = -0.06;
+
+                    // Two large toe sections with detail
+                    [-1, 1].forEach((toeSide, idx) => {
+                        // Toe main
+                        const toe = builder.box(0.14, 0.1, footLen * 0.55, foot, 'primary');
+                        toe.position.x = toeSide * 0.12;
+                        toe.position.y = -0.12;
+                        toe.position.z = footLen * 0.22;
+
+                        // Toe armor
+                        const toeArmor = builder.armorPlate(0.12, footLen * 0.35, 2, toe, 'secondary');
+                        toeArmor.position.y = 0.04;
+
+                        // Toe joint
+                        const toeJoint = builder.sphere(0.06, foot, 'metal');
+                        toeJoint.position.x = toeSide * 0.12;
+                        toeJoint.position.y = -0.12;
+                        toeJoint.position.z = footLen * 0.48;
+
+                        // Toe tip
+                        const toeEnd = builder.box(0.12, 0.08, footLen * 0.22, foot, 'secondary');
+                        toeEnd.position.x = toeSide * 0.12;
+                        toeEnd.position.y = -0.13;
+                        toeEnd.position.z = footLen * 0.58;
+
+                        // Toe tip detail
+                        const toeTip = builder.box(0.08, 0.04, 0.06, toeEnd, 'dark');
+                        toeTip.position.z = footLen * 0.1;
+                    });
+
+                } else if (footStyle === 'platform' || footStyle === 'heavy' || footStyle === 'block') {
+                    // Heavy platform foot for assault mechs (enhanced)
+                    const footWidth = footStyle === 'heavy' ? 0.5 : 0.38;
+
+                    // Main foot platform
+                    const platform = builder.box(footWidth, 0.14, footLen * 0.85, foot, 'primary');
+                    platform.position.y = -0.1;
+                    platform.position.z = footLen * 0.22;
+
+                    // Platform top detail
+                    const platformTop = builder.box(footWidth * 0.7, 0.04, footLen * 0.5, platform, 'secondary');
+                    platformTop.position.y = 0.06;
+
+                    // Heel section
+                    const heel = builder.box(footWidth * 0.85, 0.12, 0.18, foot, 'secondary');
+                    heel.position.y = -0.1;
+                    heel.position.z = -0.12;
+
+                    // Heel detail
+                    const heelDetail = builder.box(footWidth * 0.6, 0.06, 0.08, heel, 'dark');
+                    heelDetail.position.z = -0.06;
+
+                    // Front edge with treads
+                    const frontEdge = builder.box(footWidth * 0.95, 0.1, 0.12, foot, 'secondary');
+                    frontEdge.position.y = -0.11;
+                    frontEdge.position.z = footLen * 0.6;
+
+                    // Tread details
+                    for (let tr = 0; tr < 4; tr++) {
+                        const tread = builder.box(footWidth * 0.8, 0.02, 0.04, foot, 'dark');
+                        tread.position.y = -0.16;
+                        tread.position.z = footLen * (-0.1 + tr * 0.2);
+                    }
+
+                    // Toe guards (enhanced)
+                    if (footStyle === 'heavy') {
+                        [-1, 1].forEach(side => {
+                            const guard = builder.box(0.08, 0.1, footLen * 0.3, foot, 'dark');
+                            guard.position.x = side * footWidth * 0.5;
+                            guard.position.y = -0.08;
+                            guard.position.z = footLen * 0.35;
+                        });
+                    }
+
+                } else if (footStyle === 'splayed') {
+                    // Big splayed chicken walker foot - wide, circular, always flat
+                    const footRadius = footLen * 0.5;
+
+                    // Central foot pad - circular/disc shape
+                    const centerPad = builder.cylinder(footRadius * 0.7, 0.12, foot, 'primary');
+                    centerPad.position.y = -0.08;
+                    centerPad.position.z = footLen * 0.15;
+
+                    // Top mechanical housing
+                    const housing = builder.cylinder(footRadius * 0.4, 0.1, foot, 'secondary');
+                    housing.position.y = 0.02;
+                    housing.position.z = footLen * 0.15;
+
+                    // Three splayed toes at 120 degree angles
+                    [0, 1, 2].forEach(t => {
+                        const angle = (t * 120 - 90) * Math.PI / 180; // -90, 30, 150 degrees
+                        const toeX = Math.cos(angle) * footRadius * 0.5;
+                        const toeZ = Math.sin(angle) * footRadius * 0.5 + footLen * 0.15;
+
+                        // Toe pad
+                        const toePad = builder.cylinder(footRadius * 0.35, 0.1, foot, 'secondary');
+                        toePad.position.x = toeX;
+                        toePad.position.y = -0.1;
+                        toePad.position.z = toeZ;
+
+                        // Connector strut to center
+                        const strut = builder.box(0.08, 0.06, footRadius * 0.4, foot, 'dark');
+                        strut.position.x = toeX * 0.5;
+                        strut.position.y = -0.05;
+                        strut.position.z = (toeZ + footLen * 0.15) * 0.5;
+                        strut.rotation.y = angle;
+                    });
+
+                    // Heel pad
+                    const heelPad = builder.cylinder(footRadius * 0.4, 0.1, foot, 'secondary');
+                    heelPad.position.y = -0.1;
+                    heelPad.position.z = -footLen * 0.15;
+                }
+            }
+
+            // ============================================
+            // TORSO GENERATION
+            // ============================================
+
+            buildTorso(builder, skeleton, arch, pelvisHeight, shoulderWidth, torsoLean) {
+                const style = this.getTorsoStyle(arch.torsoStyle);
+
+                // Lower torso connects to pelvis
+                const torsoLower = new BABYLON.TransformNode(builder.name('torsoLower'), this.scene);
+                torsoLower.parent = skeleton.pelvis;
+                torsoLower.position.y = 0.2;
+                // Apply torso lean for chicken walker forward stance
+                torsoLower.rotation.x = torsoLean || 0;
+                skeleton.torso = torsoLower;
+
+                // Build lower torso structure with WEDGE shape (not box!)
+                const lowerCore = builder.wedge(
+                    style.lowerWidth,
+                    style.lowerWidth * 0.9,  // Slight taper
+                    style.lowerHeight,
+                    style.depth,
+                    torsoLower, 'primary'
+                );
+                lowerCore.position.y = style.lowerHeight / 2;
+
+                // Waist armor - simple front plate (no rotation)
+                const waistFront = builder.box(
+                    style.lowerWidth * 0.8,
+                    style.lowerHeight * 0.3,
+                    0.1,
+                    torsoLower, 'secondary'
+                );
+                waistFront.position.y = style.lowerHeight * 0.3;
+                waistFront.position.z = style.depth / 2 + 0.05;
+
+                // Waist twist joint
+                const waistJoint = builder.cylinder(style.lowerWidth * 0.5, 0.12, torsoLower, 'dark');
+                waistJoint.position.y = style.lowerHeight + 0.06;
+
+                // Upper torso
+                const torsoUpper = new BABYLON.TransformNode(builder.name('torsoUpper'), this.scene);
+                torsoUpper.parent = torsoLower;
+                torsoUpper.position.y = style.lowerHeight + 0.1;
+                skeleton.torsoUpper = torsoUpper;
+
+                // Build upper torso based on style TYPE
+                const taperRatio = style.taperRatio || 1.0;
+
+                if (style.type === 'vShape') {
+                    // V-SHAPE: Narrow waist, wide shoulders (aggressive)
+                    const upperCore = builder.wedge(
+                        style.upperWidth * 0.75,   // Narrower at bottom
+                        style.upperWidth,          // Wider at top (shoulders)
+                        style.upperHeight,
+                        style.upperDepth,
+                        torsoUpper, 'primary'
+                    );
+                    upperCore.position.y = style.upperHeight / 2;
+
+                } else if (style.type === 'coffinHull') {
+                    // COFFIN HULL: Hexagonal with sloped top (linebacker)
+                    const hull = builder.coffinHull(
+                        style.upperWidth,
+                        style.upperHeight,
+                        style.upperDepth,
+                        0.85,
+                        torsoUpper, 'primary'
+                    );
+                    hull.position.y = style.upperHeight / 2;
+
+                } else if (style.type === 'barrel') {
+                    // BARREL: Cylindrical turret body
+                    const drum = builder.cylinder(style.upperWidth * 0.9, style.upperHeight, torsoUpper, 'primary');
+                    drum.position.y = style.upperHeight / 2;
+
+                    // Top cap (flat turret top)
+                    const cap = builder.cylinder(style.upperWidth * 0.95, 0.1, torsoUpper, 'secondary');
+                    cap.position.y = style.upperHeight;
+
+                } else if (style.type === 'hunchedWedge') {
+                    // HUNCHED WEDGE: Forward-thrust predator (Marauder)
+                    const upperCore = builder.wedge(
+                        style.upperWidth * 0.9,
+                        style.upperWidth * 0.7,    // Tapers toward top
+                        style.upperHeight,
+                        style.upperDepth,
+                        torsoUpper, 'primary'
+                    );
+                    upperCore.position.y = style.upperHeight / 2;
+
+                    // Chest plate (no rotation - keep it clean)
+                    const chestPlate = builder.box(
+                        style.upperWidth * 0.5,
+                        style.upperHeight * 0.35,
+                        0.12,
+                        torsoUpper, 'secondary'
+                    );
+                    chestPlate.position.y = style.upperHeight * 0.5;
+                    chestPlate.position.z = style.upperDepth * 0.5;
+
+                } else {
+                    // DEFAULT/COMPACT: Simple tapered core
+                    const upperCore = builder.wedge(
+                        style.upperWidth * 0.9,
+                        style.upperWidth * taperRatio * 0.9,
+                        style.upperHeight,
+                        style.upperDepth,
+                        torsoUpper, 'primary'
+                    );
+                    upperCore.position.y = style.upperHeight / 2;
+                }
+
+                // Cockpit/chest area (exposed cockpit bubble - Marauder style)
+                if (style.hasCockpit) {
+                    const cockpitBulge = builder.box(
+                        style.upperWidth * 0.4,
+                        style.upperHeight * 0.3,
+                        0.2,
+                        torsoUpper, 'secondary'
+                    );
+                    cockpitBulge.position.y = style.upperHeight * 0.65;
+                    cockpitBulge.position.z = style.upperDepth / 2 + 0.1;
+
+                    // Cockpit glass
+                    const cockpitGlass = builder.box(
+                        style.upperWidth * 0.28,
+                        style.upperHeight * 0.16,
+                        0.06,
+                        cockpitBulge, 'glow'
+                    );
+                    cockpitGlass.position.z = 0.12;
+                }
+
+                // Integrated cockpit (Timber Wolf / Catapult style - no separate head)
+                if (style.integratedCockpit) {
+                    // Main cockpit housing - simple box
+                    const cockpitHousing = builder.box(
+                        style.upperWidth * 0.45,
+                        style.upperHeight * 0.4,
+                        style.upperDepth * 0.4,
+                        torsoUpper, 'secondary'
+                    );
+                    cockpitHousing.position.y = style.upperHeight * 0.8;
+                    cockpitHousing.position.z = style.upperDepth * 0.3;
+
+                    // Cockpit canopy (no rotation)
+                    const canopy = builder.box(
+                        style.upperWidth * 0.35,
+                        style.upperHeight * 0.25,
+                        style.upperDepth * 0.25,
+                        cockpitHousing, 'primary'
+                    );
+                    canopy.position.y = style.upperHeight * 0.1;
+                    canopy.position.z = style.upperDepth * 0.2;
+
+                    // Cockpit glass/visor
+                    const visor = builder.box(
+                        style.upperWidth * 0.28,
+                        style.upperHeight * 0.14,
+                        0.05,
+                        canopy, 'glow'
+                    );
+                    visor.position.z = style.upperDepth * 0.14;
+
+                    // Side sensor panels
+                    [-1, 1].forEach(side => {
+                        const sensorPanel = builder.box(
+                            0.05,
+                            style.upperHeight * 0.2,
+                            style.upperDepth * 0.15,
+                            cockpitHousing, 'dark'
+                        );
+                        sensorPanel.position.x = side * style.upperWidth * 0.22;
+                        sensorPanel.position.z = style.upperDepth * 0.1;
+                    });
+                }
+
+                // Chest vents - angled for heat dissipation look
+                if (style.hasVents) {
+                    [-1, 1].forEach(side => {
+                        for (let v = 0; v < 3; v++) {
+                            const vent = builder.box(0.14, 0.035, 0.07, torsoUpper, 'dark');
+                            vent.position.x = side * style.upperWidth * 0.32;
+                            vent.position.y = style.upperHeight * 0.28 + v * 0.07;
+                            vent.position.z = style.upperDepth / 2 + 0.02;
+                        }
+                    });
+                }
+
+                // Back armor/engine - simple box (no angled fins)
+                const backPlate = builder.box(
+                    style.upperWidth * 0.75,
+                    style.upperHeight * 0.7,
+                    0.15,
+                    torsoUpper, 'secondary'
+                );
+                backPlate.position.y = style.upperHeight * 0.4;
+                backPlate.position.z = -style.upperDepth / 2 - 0.08;
+
+                // Engine exhaust
+                [-1, 1].forEach(side => {
+                    const exhaust = builder.cylinder(0.11, 0.18, torsoUpper, 'dark');
+                    exhaust.position.x = side * style.upperWidth * 0.28;
+                    exhaust.position.y = style.upperHeight * 0.28;
+                    exhaust.position.z = -style.upperDepth / 2 - 0.14;
+                    exhaust.rotation.x = Math.PI / 2;
+                });
+
+                // Shoulder mounts - positioned based on archetype's shoulderWidth
+                const shoulderY = style.upperHeight * 0.85;
+                const shoulderOffset = (shoulderWidth || 1.5) * 0.4;
+
+                skeleton.shoulderMountL = new BABYLON.TransformNode(builder.name('shoulderMountL'), this.scene);
+                skeleton.shoulderMountL.parent = torsoUpper;
+                skeleton.shoulderMountL.position.set(-shoulderOffset, shoulderY, 0);
+
+                skeleton.shoulderMountR = new BABYLON.TransformNode(builder.name('shoulderMountR'), this.scene);
+                skeleton.shoulderMountR.parent = torsoUpper;
+                skeleton.shoulderMountR.position.set(shoulderOffset, shoulderY, 0);
+
+                // Arm mounts (lower than shoulder mounts)
+                const armY = style.upperHeight * 0.5;
+                skeleton.armMountL = new BABYLON.TransformNode(builder.name('armMountL'), this.scene);
+                skeleton.armMountL.parent = torsoUpper;
+                skeleton.armMountL.position.set(-style.upperWidth / 2 - 0.05, armY, 0);
+
+                skeleton.armMountR = new BABYLON.TransformNode(builder.name('armMountR'), this.scene);
+                skeleton.armMountR.parent = torsoUpper;
+                skeleton.armMountR.position.set(style.upperWidth / 2 + 0.05, armY, 0);
+            }
+
+            getTorsoStyle(styleName) {
+                const styles = {
+                    // V-SHAPE - Wider at top (aggressive chicken walker stance)
+                    vShape: {
+                        type: 'vShape',
+                        lowerWidth: rand(0.7, 0.85),
+                        lowerHeight: rand(0.35, 0.45),
+                        depth: rand(0.6, 0.75),
+                        upperWidth: rand(1.2, 1.5),   // Much wider at shoulders
+                        upperHeight: rand(0.7, 0.85),
+                        upperDepth: rand(0.75, 0.9),
+                        taperRatio: 1.4,              // Wider at top
+                        hasCockpit: false,
+                        hasVents: true,
+                        integratedCockpit: true       // Timber Wolf style
+                    },
+                    // COFFIN HULL - Hexagonal sloped armor (linebacker)
+                    coffinHull: {
+                        type: 'coffinHull',
+                        lowerWidth: rand(1.0, 1.2),
+                        lowerHeight: rand(0.4, 0.5),
+                        depth: rand(0.8, 0.95),
+                        upperWidth: rand(1.3, 1.6),
+                        upperHeight: rand(0.9, 1.1),
+                        upperDepth: rand(0.9, 1.05),
+                        taperRatio: 0.85,             // Slight taper (stable)
+                        hasCockpit: false,
+                        hasVents: true,
+                        integratedCockpit: false
+                    },
+                    // BARREL - Cylindrical turret body (walking turret)
+                    barrel: {
+                        type: 'barrel',
+                        lowerWidth: rand(0.9, 1.1),
+                        lowerHeight: rand(0.35, 0.45),
+                        depth: rand(0.9, 1.1),        // Square/round base
+                        upperWidth: rand(1.0, 1.2),
+                        upperHeight: rand(0.8, 1.0),
+                        upperDepth: rand(1.0, 1.2),
+                        taperRatio: 1.0,              // No taper (drum)
+                        hasCockpit: false,
+                        hasVents: false,
+                        integratedCockpit: false
+                    },
+                    // HUNCHED WEDGE - Forward thrust (predator stance)
+                    hunchedWedge: {
+                        type: 'hunchedWedge',
+                        lowerWidth: rand(0.75, 0.9),
+                        lowerHeight: rand(0.3, 0.4),
+                        depth: rand(0.7, 0.85),
+                        upperWidth: rand(1.1, 1.3),
+                        upperHeight: rand(0.6, 0.75),
+                        upperDepth: rand(0.9, 1.1),   // Deep chest
+                        taperRatio: 1.2,
+                        hasCockpit: true,             // Exposed cockpit bubble
+                        hasVents: true,
+                        integratedCockpit: false
+                    },
+                    // COMPACT - Small torso (missile pods dominate)
+                    compact: {
+                        type: 'compact',
+                        lowerWidth: rand(0.65, 0.8),
+                        lowerHeight: rand(0.28, 0.38),
+                        depth: rand(0.55, 0.7),
+                        upperWidth: rand(0.9, 1.1),
+                        upperHeight: rand(0.55, 0.7),
+                        upperDepth: rand(0.65, 0.8),
+                        taperRatio: 1.15,
+                        hasCockpit: false,
+                        hasVents: false,
+                        integratedCockpit: true       // Catapult style
+                    }
+                };
+                return styles[styleName] || styles.vShape;
+            }
+
+            // ============================================
+            // SHOULDER GENERATION - Signature look
+            // Weapons become the silhouette!
+            // ============================================
+
+            buildShoulders(builder, skeleton, arch, shoulderWidth) {
+                const style = this.getShoulderStyle(arch.shoulderStyle);
+
+                ['L', 'R'].forEach((side, idx) => {
+                    const mount = skeleton[`shoulderMount${side}`];
+                    const xMult = idx === 0 ? -1 : 1;
+
+                    if (style.type === 'asymmetric') {
+                        // ASYMMETRIC: Different weapons on each side (Timber Wolf)
+                        this.buildAsymmetricShoulder(builder, mount, xMult, style, idx);
+                    } else if (style.type === 'massive') {
+                        // MASSIVE: Huge shoulder armor (Atlas)
+                        this.buildMassiveShoulder(builder, mount, xMult, style);
+                    } else if (style.type === 'weaponMount') {
+                        // WEAPON MOUNT: Direct weapon turret (Walking Turret)
+                        this.buildWeaponMountShoulder(builder, mount, xMult, style);
+                    } else if (style.type === 'lrmPods') {
+                        // LRM PODS: Huge missile pods dominate (Catapult)
+                        this.buildLRMPodShoulder(builder, mount, xMult, style);
+                    } else if (style.type === 'cannons') {
+                        this.buildCannonMount(builder, mount, xMult, style);
+                    } else {
+                        this.buildMinimalShoulder(builder, mount, xMult, style);
+                    }
+                });
+            }
+
+            getShoulderStyle(styleName) {
+                const styles = {
+                    // ASYMMETRIC - One side LRM, other side laser (Timber Wolf signature)
+                    asymmetric: {
+                        type: 'asymmetric',
+                        lrmWidth: rand(0.45, 0.6),
+                        lrmHeight: rand(0.55, 0.75),
+                        lrmDepth: rand(0.45, 0.6),
+                        lrmTubes: randInt(10, 15),
+                        laserWidth: rand(0.25, 0.35),
+                        laserHeight: rand(0.35, 0.45),
+                        angle: rand(0.2, 0.35)
+                    },
+                    // MASSIVE - Huge shoulder armor (Atlas linebacker)
+                    massive: {
+                        type: 'massive',
+                        width: rand(0.55, 0.75),
+                        height: rand(0.65, 0.85),
+                        depth: rand(0.45, 0.6),
+                        layers: randInt(2, 3)
+                    },
+                    // WEAPON MOUNT - Direct weapon turret (Urbanmech)
+                    weaponMount: {
+                        type: 'weaponMount',
+                        width: rand(0.35, 0.45),
+                        height: rand(0.4, 0.55),
+                        barrelLength: rand(0.5, 0.75),
+                        barrelDiameter: rand(0.12, 0.18)
+                    },
+                    // LRM PODS - Huge missile pods (Catapult signature)
+                    lrmPods: {
+                        type: 'lrmPods',
+                        width: rand(0.55, 0.75),
+                        height: rand(0.7, 0.95),
+                        depth: rand(0.55, 0.7),
+                        tubes: randInt(15, 20),
+                        angle: rand(0.25, 0.4)
+                    },
+                    // CANNONS - Shoulder mounted cannons (Marauder)
+                    cannons: {
+                        type: 'cannons',
+                        width: rand(0.3, 0.42),
+                        height: rand(0.35, 0.5),
+                        barrelLength: rand(0.65, 0.95),
+                        barrelDiameter: rand(0.1, 0.15)
+                    },
+                    // MINIMAL - Just armor plates
+                    minimal: {
+                        type: 'minimal',
+                        width: rand(0.2, 0.3),
+                        height: rand(0.2, 0.3)
+                    }
+                };
+                return styles[styleName] || styles.asymmetric;
+            }
+
+            // ASYMMETRIC SHOULDERS - Different weapons on each side
+            buildAsymmetricShoulder(builder, mount, xMult, style, sideIndex) {
+                if (sideIndex === 0) {
+                    // Left side: LRM Pod - use BOX (no diagonal rotation)
+                    const pod = builder.box(style.lrmWidth, style.lrmHeight, style.lrmDepth, mount, 'secondary');
+                    pod.position.x = xMult * 0.05;
+                    pod.position.y = style.lrmHeight * 0.5;
+
+                    // Missile tubes - face FORWARD
+                    const tubesPerRow = Math.ceil(Math.sqrt(style.lrmTubes));
+                    const tubeSpacing = style.lrmWidth * 0.7 / tubesPerRow;
+                    for (let i = 0; i < style.lrmTubes; i++) {
+                        const row = Math.floor(i / tubesPerRow);
+                        const col = i % tubesPerRow;
+                        const tube = builder.cylinder(tubeSpacing * 0.7, 0.08, pod, 'dark');
+                        tube.position.x = (col - (tubesPerRow - 1) / 2) * tubeSpacing;
+                        tube.position.y = (row - (tubesPerRow - 1) / 2) * tubeSpacing;
+                        tube.position.z = style.lrmDepth / 2 + 0.02;
+                        tube.rotation.x = Math.PI / 2;
+                    }
+
+                    // Pod frame/cap - BOX
+                    const cap = builder.box(style.lrmWidth * 1.0, 0.06, style.lrmDepth * 0.85, pod, 'primary');
+                    cap.position.y = style.lrmHeight / 2 + 0.03;
+                } else {
+                    // Right side: Laser/energy array - use BOX
+                    const housing = builder.box(style.laserWidth, style.laserHeight, style.laserWidth * 1.2, mount, 'secondary');
+                    housing.position.x = xMult * 0.05;
+                    housing.position.y = style.laserHeight * 0.5;
+
+                    // Twin laser barrels - face FORWARD
+                    [-1, 1].forEach(laserSide => {
+                        const laser = builder.cylinder(0.04, 0.35, housing, 'metal');
+                        laser.rotation.x = Math.PI / 2;
+                        laser.position.x = laserSide * 0.06;
+                        laser.position.z = style.laserWidth * 0.6 + 0.15;
+
+                        const tip = builder.cylinder(0.05, 0.04, laser, 'glow');
+                        tip.position.y = 0.18;
+                    });
+                }
+            }
+
+            // MASSIVE SHOULDERS - Huge armor plates (Atlas)
+            buildMassiveShoulder(builder, mount, xMult, style) {
+                // Main shoulder block - BOX (no diagonal)
+                const shoulder = builder.box(style.width, style.height, style.depth, mount, 'primary');
+                shoulder.position.x = xMult * 0.05;
+                shoulder.position.y = style.height * 0.5;
+
+                // Layered armor plates - face forward
+                for (let l = 0; l < style.layers; l++) {
+                    const plate = builder.box(
+                        style.width * (0.9 - l * 0.12),
+                        style.height * (0.7 - l * 0.1),
+                        0.06,
+                        shoulder, l === 0 ? 'secondary' : 'primary'
+                    );
+                    plate.position.z = style.depth * 0.4 + l * 0.05;
+                    plate.position.y = l * 0.04;
+                }
+
+                // Top ridge
+                const ridge = builder.box(style.width * 0.7, 0.08, style.depth * 0.6, shoulder, 'secondary');
+                ridge.position.y = style.height * 0.5;
+            }
+
+            // WEAPON MOUNT - Direct turret style (Walking turret/Urbanmech)
+            buildWeaponMountShoulder(builder, mount, xMult, style) {
+                // Turret base
+                const base = builder.cylinder(style.width * 0.9, style.height * 0.5, mount, 'secondary');
+                base.position.x = xMult * 0.05;
+                base.position.y = style.height * 0.25;
+
+                // Weapon housing - BOX
+                const housing = builder.box(style.width * 0.8, style.height * 0.4, style.width * 1.0, base, 'primary');
+                housing.position.y = style.height * 0.35;
+                housing.position.z = style.width * 0.1;
+
+                // Main cannon - face FORWARD
+                const barrel = builder.cylinder(style.barrelDiameter, style.barrelLength, housing, 'metal');
+                barrel.rotation.x = Math.PI / 2;
+                barrel.position.z = style.barrelLength * 0.5 + style.width * 0.3;
+
+                // Barrel shroud
+                const shroud = builder.taperedCylinder(style.barrelDiameter * 1.6, style.barrelDiameter * 1.3, style.barrelLength * 0.3, housing, 'dark');
+                shroud.rotation.x = Math.PI / 2;
+                shroud.position.z = style.width * 0.4;
+
+                // Muzzle brake
+                const muzzle = builder.cylinder(style.barrelDiameter * 1.5, 0.1, housing, 'dark');
+                muzzle.rotation.x = Math.PI / 2;
+                muzzle.position.z = style.barrelLength + style.width * 0.35;
+            }
+
+            // LRM POD SHOULDERS - Huge missile pods (Catapult signature)
+            buildLRMPodShoulder(builder, mount, xMult, style) {
+                // MASSIVE missile pod - BOX (no diagonal)
+                const pod = builder.box(style.width, style.height, style.depth, mount, 'secondary');
+                pod.position.x = xMult * 0.08;
+                pod.position.y = style.height * 0.5;
+
+                // Dense missile tube grid - face FORWARD
+                const tubesPerRow = Math.ceil(Math.sqrt(style.tubes));
+                const tubeSpacing = Math.min(style.width, style.depth) * 0.65 / tubesPerRow;
+                for (let i = 0; i < style.tubes; i++) {
+                    const row = Math.floor(i / tubesPerRow);
+                    const col = i % tubesPerRow;
+                    const tube = builder.cylinder(tubeSpacing * 0.7, 0.1, pod, 'dark');
+                    tube.position.x = (col - (tubesPerRow - 1) / 2) * tubeSpacing;
+                    tube.position.y = (row - (tubesPerRow - 1) / 2) * tubeSpacing;
+                    tube.position.z = style.depth / 2 + 0.03;
+                    tube.rotation.x = Math.PI / 2;
+                }
+
+                // Heavy frame - BOX
+                const frameTop = builder.box(style.width * 1.05, 0.08, style.depth * 0.85, pod, 'primary');
+                frameTop.position.y = style.height / 2 + 0.04;
+
+                // Side armor - BOX
+                [-1, 1].forEach(side => {
+                    const sideArmor = builder.box(0.08, style.height * 0.8, style.depth * 0.7, pod, 'primary');
+                    sideArmor.position.x = side * style.width * 0.48;
+                });
+
+                // Back support strut
+                const strut = builder.box(style.width * 0.3, style.height * 0.6, 0.08, pod, 'dark');
+                strut.position.z = -style.depth * 0.4;
+            }
+
+            buildCannonMount(builder, mount, xMult, style) {
+                // Shoulder cannon - BOX housing
+                const housing = builder.box(style.width, style.height, style.width * 1.0, mount, 'secondary');
+                housing.position.x = xMult * 0.05;
+                housing.position.y = style.height * 0.5;
+
+                // Barrel - face FORWARD
+                const barrel = builder.cylinder(style.barrelDiameter, style.barrelLength, housing, 'metal');
+                barrel.rotation.x = Math.PI / 2;
+                barrel.position.z = style.width / 2 + style.barrelLength / 2;
+
+                // Barrel shroud
+                const shroud = builder.taperedCylinder(style.barrelDiameter * 1.6, style.barrelDiameter * 1.2, style.barrelLength * 0.35, housing, 'primary');
+                shroud.rotation.x = Math.PI / 2;
+                shroud.position.z = style.width / 2 + style.barrelLength * 0.15;
+
+                // Muzzle
+                const muzzle = builder.cylinder(style.barrelDiameter * 1.4, 0.1, housing, 'dark');
+                muzzle.rotation.x = Math.PI / 2;
+                muzzle.position.z = style.width / 2 + style.barrelLength + 0.03;
+
+                // Heat vents
+                for (let v = 0; v < 2; v++) {
+                    const vent = builder.box(style.width * 0.6, 0.03, 0.06, housing, 'dark');
+                    vent.position.y = -style.height * 0.2 + v * 0.08;
+                    vent.position.z = -style.width * 0.35;
+                }
+            }
+
+            buildMinimalShoulder(builder, mount, xMult, style) {
+                const plate = builder.box(style.width, style.height, 0.1, mount, 'secondary');
+                plate.position.x = xMult * 0.05;
+                plate.position.y = style.height * 0.5;
+            }
+
+            // ============================================
+            // ARM GENERATION - "The arm IS the weapon"
+            // ============================================
+
+            buildArms(builder, skeleton, arch) {
+                // Build each arm based on archetype's leftArm/rightArm spec
+                // Possible values: 'gunArm', 'ppcArm', 'fist', 'stub', 'none'
+
+                ['L', 'R'].forEach((side, idx) => {
+                    const mount = skeleton[`armMount${side}`];
+                    const xMult = idx === 0 ? -1 : 1;
+                    const fullSide = idx === 0 ? 'left' : 'right';
+                    const armType = idx === 0 ? arch.leftArm : arch.rightArm;
+
+                    // Skip if no arm
+                    if (armType === 'none') {
+                        skeleton[`${fullSide}UpperArm`] = mount;
+                        skeleton[`${fullSide}LowerArm`] = mount;
+                        return;
+                    }
+
+                    // Upper arm joint
+                    const upperArmJoint = new BABYLON.TransformNode(builder.name(`${fullSide}UpperArmJoint`), this.scene);
+                    upperArmJoint.parent = mount;
+                    skeleton[`${fullSide}UpperArm`] = upperArmJoint;
+
+                    // Build based on arm type
+                    if (armType === 'gunArm') {
+                        // GUN ARM: The arm IS the weapon (Timber Wolf style)
+                        this.buildGunArm(builder, upperArmJoint, skeleton, fullSide, xMult);
+                    } else if (armType === 'ppcArm') {
+                        // PPC ARM: Large energy cannon arm (Marauder style)
+                        this.buildPPCArm(builder, upperArmJoint, skeleton, fullSide, xMult);
+                    } else if (armType === 'fist') {
+                        // FIST: Melee/manipulator arm (Atlas style)
+                        this.buildFistArm(builder, upperArmJoint, skeleton, fullSide, xMult);
+                    } else if (armType === 'stub') {
+                        // STUB: Small vestigial arm (Catapult style)
+                        this.buildStubArm(builder, upperArmJoint, skeleton, fullSide, xMult);
+                    } else {
+                        // Default: Generic gun arm
+                        this.buildGunArm(builder, upperArmJoint, skeleton, fullSide, xMult);
+                    }
+                });
+            }
+
+            // GUN ARM - The arm IS the weapon, not holding one
+            buildGunArm(builder, upperArmJoint, skeleton, fullSide, xMult) {
+                const length = rand(0.55, 0.7);
+                const caliber = rand(0.08, 0.12);
+
+                // Upper arm housing - WEDGE (tapers toward elbow)
+                const upperArm = builder.wedge(
+                    caliber * 3.2,
+                    caliber * 2.6,
+                    length * 0.45,
+                    caliber * 2.8,
+                    upperArmJoint, 'primary'
+                );
+                upperArm.position.y = -length * 0.22;
+                upperArm.position.x = xMult * 0.04;
+
+                // Shoulder joint cover
+                const shoulderCover = builder.sphere(caliber * 2.5, upperArmJoint, 'secondary');
+                shoulderCover.position.x = xMult * 0.04;
+                shoulderCover.scaling.y = 0.65;
+
+                // Elbow joint
+                const elbowJoint = new BABYLON.TransformNode(builder.name(`${fullSide}ElbowJoint`), this.scene);
+                elbowJoint.parent = upperArmJoint;
+                elbowJoint.position.y = -length * 0.45;
+                elbowJoint.position.x = xMult * 0.04;
+                skeleton[`${fullSide}LowerArm`] = elbowJoint;
+
+                builder.mechanicalJoint(caliber * 2.2, elbowJoint, 'metal');
+
+                // Forearm - WEDGE housing for the gun
+                const forearm = builder.wedge(
+                    caliber * 3.0,
+                    caliber * 2.2,
+                    length * 0.4,
+                    caliber * 3.2,
+                    elbowJoint, 'primary'
+                );
+                forearm.position.y = -length * 0.2;
+
+                // MAIN BARREL - The arm's purpose!
+                const barrelLen = rand(0.45, 0.65);
+                const barrel = builder.cylinder(caliber, barrelLen, elbowJoint, 'metal');
+                barrel.rotation.x = Math.PI / 2;
+                barrel.position.y = -length * 0.25;
+                barrel.position.z = barrelLen * 0.5 + caliber * 1.5;
+
+                // Barrel shroud
+                const shroud = builder.cylinder(caliber * 1.6, barrelLen * 0.25, elbowJoint, 'dark');
+                shroud.rotation.x = Math.PI / 2;
+                shroud.position.y = -length * 0.25;
+                shroud.position.z = caliber * 1.8;
+
+                // Muzzle brake
+                const muzzle = builder.cylinder(caliber * 1.4, 0.08, elbowJoint, 'dark');
+                muzzle.rotation.x = Math.PI / 2;
+                muzzle.position.y = -length * 0.25;
+                muzzle.position.z = barrelLen + caliber * 1.6;
+
+                // Heat vents on housing
+                for (let v = 0; v < 2; v++) {
+                    const vent = builder.box(caliber * 2, 0.03, caliber * 0.8, forearm, 'dark');
+                    vent.position.y = -length * 0.08 + v * 0.1;
+                    vent.position.z = -caliber * 1.2;
+                }
+            }
+
+            // PPC ARM - Large Particle Projector Cannon (Marauder style)
+            buildPPCArm(builder, upperArmJoint, skeleton, fullSide, xMult) {
+                const length = rand(0.6, 0.75);
+                const caliber = rand(0.1, 0.14);
+
+                // Upper arm - thicker for PPC
+                const upperArm = builder.wedge(
+                    caliber * 3.5,
+                    caliber * 3.0,
+                    length * 0.4,
+                    caliber * 3.0,
+                    upperArmJoint, 'primary'
+                );
+                upperArm.position.y = -length * 0.2;
+                upperArm.position.x = xMult * 0.05;
+
+                // Shoulder cover
+                const shoulderCover = builder.sphere(caliber * 2.8, upperArmJoint, 'secondary');
+                shoulderCover.position.x = xMult * 0.05;
+                shoulderCover.scaling.y = 0.6;
+
+                // Elbow
+                const elbowJoint = new BABYLON.TransformNode(builder.name(`${fullSide}ElbowJoint`), this.scene);
+                elbowJoint.parent = upperArmJoint;
+                elbowJoint.position.y = -length * 0.42;
+                elbowJoint.position.x = xMult * 0.05;
+                skeleton[`${fullSide}LowerArm`] = elbowJoint;
+
+                builder.mechanicalJoint(caliber * 2.5, elbowJoint, 'metal');
+
+                // PPC housing - LARGE tapered barrel assembly
+                const ppcHousing = builder.wedge(
+                    caliber * 3.8,
+                    caliber * 2.5,
+                    length * 0.5,
+                    caliber * 4.0,
+                    elbowJoint, 'secondary'
+                );
+                ppcHousing.position.y = -length * 0.25;
+
+                // PPC barrel (long, distinctive)
+                const barrelLen = rand(0.6, 0.85);
+                const ppcBarrel = builder.taperedCylinder(caliber * 1.8, caliber * 1.2, barrelLen, elbowJoint, 'metal');
+                ppcBarrel.rotation.x = Math.PI / 2;
+                ppcBarrel.position.y = -length * 0.28;
+                ppcBarrel.position.z = barrelLen * 0.5 + caliber * 2;
+
+                // Energy coils (signature PPC look)
+                for (let c = 0; c < 3; c++) {
+                    const coil = builder.cylinder(caliber * 2.2, 0.04, elbowJoint, 'accent');
+                    coil.rotation.x = Math.PI / 2;
+                    coil.position.y = -length * 0.28;
+                    coil.position.z = caliber * 2.5 + c * barrelLen * 0.25;
+                }
+
+                // Muzzle emitter
+                const emitter = builder.sphere(caliber * 1.6, elbowJoint, 'glow');
+                emitter.position.y = -length * 0.28;
+                emitter.position.z = barrelLen + caliber * 2.2;
+                emitter.scaling.z = 0.6;
+            }
+
+            // FIST ARM - Melee/manipulator (Atlas style - one gun, one fist)
+            buildFistArm(builder, upperArmJoint, skeleton, fullSide, xMult) {
+                const length = rand(0.5, 0.65);
+                const width = rand(0.2, 0.28);
+
+                // Upper arm
+                const upperArm = builder.wedge(width, width * 0.85, length * 0.5, width * 0.9, upperArmJoint, 'primary');
+                upperArm.position.y = -length * 0.25;
+                upperArm.position.x = xMult * 0.04;
+
+                // Shoulder
+                const shoulderCover = builder.sphere(width * 1.3, upperArmJoint, 'secondary');
+                shoulderCover.position.x = xMult * 0.04;
+                shoulderCover.scaling.y = 0.65;
+
+                // Elbow
+                const elbowJoint = new BABYLON.TransformNode(builder.name(`${fullSide}ElbowJoint`), this.scene);
+                elbowJoint.parent = upperArmJoint;
+                elbowJoint.position.y = -length * 0.52;
+                elbowJoint.position.x = xMult * 0.04;
+                skeleton[`${fullSide}LowerArm`] = elbowJoint;
+
+                builder.mechanicalJoint(width * 0.9, elbowJoint, 'metal');
+
+                // Forearm
+                const forearm = builder.wedge(width * 0.95, width * 0.8, length * 0.45, width * 0.85, elbowJoint, 'primary');
+                forearm.position.y = -length * 0.22;
+
+                // FIST - Large armored hand
+                const fist = builder.wedge(width * 1.1, width * 0.9, width * 0.8, width * 0.7, elbowJoint, 'secondary');
+                fist.position.y = -length * 0.52;
+
+                // Knuckle armor
+                const knuckles = builder.box(width * 0.9, 0.06, width * 0.5, fist, 'metal');
+                knuckles.position.z = width * 0.35;
+                knuckles.position.y = -width * 0.2;
+
+                // Finger segments (simplified)
+                for (let f = 0; f < 3; f++) {
+                    const finger = builder.box(0.04, width * 0.3, 0.05, fist, 'dark');
+                    finger.position.x = (f - 1) * 0.08;
+                    finger.position.y = -width * 0.45;
+                    finger.position.z = width * 0.25;
+                }
+            }
+
+            // STUB ARM - Vestigial arm (Catapult style - shoulders do the work)
+            buildStubArm(builder, upperArmJoint, skeleton, fullSide, xMult) {
+                const length = rand(0.3, 0.4);
+                const width = rand(0.15, 0.2);
+
+                // Short upper arm
+                const upperArm = builder.wedge(width, width * 0.8, length * 0.5, width * 0.85, upperArmJoint, 'primary');
+                upperArm.position.y = -length * 0.25;
+                upperArm.position.x = xMult * 0.03;
+
+                // Small shoulder
+                const shoulderCover = builder.sphere(width * 1.1, upperArmJoint, 'secondary');
+                shoulderCover.position.x = xMult * 0.03;
+                shoulderCover.scaling.y = 0.6;
+
+                // Elbow/end
+                const elbowJoint = new BABYLON.TransformNode(builder.name(`${fullSide}ElbowJoint`), this.scene);
+                elbowJoint.parent = upperArmJoint;
+                elbowJoint.position.y = -length * 0.5;
+                elbowJoint.position.x = xMult * 0.03;
+                skeleton[`${fullSide}LowerArm`] = elbowJoint;
+
+                // Short stub forearm with small laser
+                const stub = builder.wedge(width * 0.85, width * 0.6, length * 0.35, width * 0.8, elbowJoint, 'secondary');
+                stub.position.y = -length * 0.18;
+
+                // Small medium laser
+                const laser = builder.cylinder(0.04, 0.18, elbowJoint, 'metal');
+                laser.rotation.x = Math.PI / 2;
+                laser.position.y = -length * 0.2;
+                laser.position.z = 0.12;
+            }
+
+            // ============================================
+            // HEAD GENERATION
+            // ============================================
+
+            buildHead(builder, skeleton, arch) {
+                const style = this.getHeadStyle(arch.headStyle);
+
+                // Skip head building for integrated cockpit styles (Timber Wolf, Catapult)
+                if (style.type === 'integrated') {
+                    skeleton.head = skeleton.torsoUpper; // Point to torso for animation compatibility
+                    return;
+                }
+
+                const torsoUpper = skeleton.torsoUpper;
+
+                const head = new BABYLON.TransformNode(builder.name('head'), this.scene);
+                head.parent = torsoUpper;
+                head.position.y = style.sunken ? 0.55 : 0.85; // Lower for sunken heads
+                head.position.z = style.forward || 0;
+                skeleton.head = head;
+
+                if (style.type === 'angular') {
+                    this.buildAngularHead(builder, head, style);
+                } else if (style.type === 'skull') {
+                    this.buildSkullHead(builder, head, style);
+                } else if (style.type === 'sensor') {
+                    this.buildSensorHead(builder, head, style);
+                } else if (style.type === 'cockpitBubble') {
+                    this.buildCockpitBubbleHead(builder, head, style);
+                } else if (style.type === 'sunken') {
+                    this.buildSunkenHead(builder, head, style);
+                } else if (style.type === 'turret') {
+                    this.buildTurretHead(builder, head, style);
+                } else {
+                    this.buildDomeHead(builder, head, style);
+                }
+            }
+
+            getHeadStyle(styleName) {
+                const styles = {
+                    angular: {
+                        type: 'angular',
+                        width: rand(0.4, 0.55),
+                        height: rand(0.35, 0.45),
+                        forward: rand(0.1, 0.2)
+                    },
+                    skull: {
+                        type: 'skull',
+                        width: rand(0.5, 0.65),
+                        height: rand(0.45, 0.55),
+                        forward: rand(0.05, 0.15)
+                    },
+                    sensor: {
+                        type: 'sensor',
+                        width: rand(0.35, 0.45),
+                        height: rand(0.25, 0.35),
+                        forward: rand(0.05, 0.15)
+                    },
+                    dome: {
+                        type: 'dome',
+                        width: rand(0.4, 0.5),
+                        height: rand(0.3, 0.4),
+                        forward: rand(0.08, 0.18)
+                    },
+                    // SUNKEN - Head buried in massive shoulders (Atlas)
+                    sunken: {
+                        type: 'sunken',
+                        width: rand(0.45, 0.6),
+                        height: rand(0.35, 0.45),
+                        forward: rand(0.1, 0.18),
+                        sunken: true  // Flag for lower head position
+                    },
+                    // TURRET - No real head, just sensor dome (Urbanmech)
+                    turret: {
+                        type: 'turret',
+                        width: rand(0.55, 0.7),
+                        height: rand(0.35, 0.45),
+                        forward: 0
+                    },
+                    // COCKPIT BUBBLE - Exposed cockpit (Marauder)
+                    cockpitBubble: {
+                        type: 'cockpitBubble',
+                        width: rand(0.4, 0.52),
+                        height: rand(0.32, 0.42),
+                        forward: rand(0.2, 0.3)
+                    },
+                    // Integrated cockpit - no separate head, cockpit is in torso
+                    integrated: {
+                        type: 'integrated'
+                    }
+                };
+                return styles[styleName] || styles.angular;
+            }
+
+            buildAngularHead(builder, head, style) {
+                // Main head block - WEDGE shape
+                const headMain = builder.wedge(style.width, style.width * 0.85, style.height, style.width * 0.75, head, 'primary');
+                headMain.position.y = style.height / 2;
+
+                // Visor
+                const visor = builder.box(style.width * 0.85, style.height * 0.32, 0.07, head, 'glow');
+                visor.position.y = style.height * 0.55;
+                visor.position.z = style.width * 0.38;
+
+                // Antenna
+                if (chance(0.6)) {
+                    [-1, 1].forEach(side => {
+                        const antenna = builder.box(0.035, style.height * 0.45, 0.035, head, 'metal');
+                        antenna.position.x = side * style.width * 0.42;
+                        antenna.position.y = style.height * 0.88;
+                        antenna.rotation.z = side * 0.28;
+                    });
+                }
+            }
+
+            buildSkullHead(builder, head, style) {
+                // Skull-like head (Atlas style) - WEDGE for sloped armor
+                const headMain = builder.wedge(style.width, style.width * 0.8, style.height, style.width * 0.65, head, 'primary');
+                headMain.position.y = style.height / 2;
+
+                // Eye sockets (deep-set)
+                [-1, 1].forEach(side => {
+                    const eye = builder.box(style.width * 0.22, style.height * 0.22, 0.08, head, 'dark');
+                    eye.position.x = side * style.width * 0.24;
+                    eye.position.y = style.height * 0.58;
+                    eye.position.z = style.width * 0.32;
+
+                    // Eye glow
+                    const eyeGlow = builder.box(style.width * 0.14, style.height * 0.1, 0.04, head, 'glow');
+                    eyeGlow.position.x = side * style.width * 0.24;
+                    eyeGlow.position.y = style.height * 0.58;
+                    eyeGlow.position.z = style.width * 0.36;
+                });
+
+                // Jaw area
+                const jaw = builder.wedge(style.width * 0.65, style.width * 0.5, style.height * 0.18, style.width * 0.35, head, 'secondary');
+                jaw.position.y = style.height * 0.12;
+                jaw.position.z = style.width * 0.08;
+            }
+
+            buildSensorHead(builder, head, style) {
+                // Small sensor cluster
+                const dome = builder.sphere(style.width, head, 'primary');
+                dome.position.y = style.height / 2;
+                dome.scaling.y = style.height / style.width;
+
+                // Sensor band
+                const band = builder.cylinder(style.width * 1.1, 0.07, head, 'glow');
+                band.position.y = style.height * 0.5;
+            }
+
+            // SUNKEN HEAD - Buried between massive shoulders (Atlas)
+            buildSunkenHead(builder, head, style) {
+                // Low-profile head wedged between shoulders
+                const headMain = builder.wedge(style.width, style.width * 0.75, style.height, style.width * 0.7, head, 'primary');
+                headMain.position.y = style.height / 2;
+
+                // Skull-like face (no rotation)
+                const faceplate = builder.box(style.width * 0.7, style.height * 0.5, 0.12, head, 'secondary');
+                faceplate.position.y = style.height * 0.55;
+                faceplate.position.z = style.width * 0.35;
+
+                // Deep-set eyes
+                [-1, 1].forEach(side => {
+                    const eyeSocket = builder.box(style.width * 0.2, style.height * 0.2, 0.1, head, 'dark');
+                    eyeSocket.position.x = side * style.width * 0.22;
+                    eyeSocket.position.y = style.height * 0.6;
+                    eyeSocket.position.z = style.width * 0.35;
+
+                    const eyeGlow = builder.box(style.width * 0.12, style.height * 0.1, 0.04, head, 'glow');
+                    eyeGlow.position.x = side * style.width * 0.22;
+                    eyeGlow.position.y = style.height * 0.6;
+                    eyeGlow.position.z = style.width * 0.42;
+                });
+
+                // Heavy brow ridge
+                const brow = builder.wedge(style.width * 0.9, style.width * 0.7, 0.08, style.width * 0.25, head, 'primary');
+                brow.position.y = style.height * 0.75;
+                brow.position.z = style.width * 0.28;
+            }
+
+            // TURRET HEAD - Rotating sensor dome (Urbanmech)
+            buildTurretHead(builder, head, style) {
+                // Cylindrical turret base
+                const base = builder.cylinder(style.width * 0.85, style.height * 0.5, head, 'secondary');
+                base.position.y = style.height * 0.25;
+
+                // Sensor dome on top
+                const dome = builder.sphere(style.width * 0.75, head, 'primary');
+                dome.position.y = style.height * 0.55;
+                dome.scaling.y = 0.6;
+
+                // 360 sensor ring
+                const sensorRing = builder.cylinder(style.width * 0.9, 0.06, head, 'glow');
+                sensorRing.position.y = style.height * 0.45;
+
+                // Top antenna/rangefinder
+                const antenna = builder.cylinder(0.04, style.height * 0.4, head, 'metal');
+                antenna.position.y = style.height * 0.85;
+
+                // Rangefinder housing
+                const rangefinder = builder.box(style.width * 0.25, style.height * 0.15, style.width * 0.35, head, 'dark');
+                rangefinder.position.y = style.height * 0.4;
+                rangefinder.position.z = style.width * 0.35;
+            }
+
+            // COCKPIT BUBBLE - Exposed cockpit (Marauder)
+            buildCockpitBubbleHead(builder, head, style) {
+                // Base structure
+                const base = builder.wedge(style.width, style.width * 0.8, style.height * 0.5, style.width * 0.75, head, 'primary');
+                base.position.y = style.height * 0.25;
+
+                // Cockpit bubble - prominent glass dome
+                const bubble = builder.sphere(style.width * 0.7, head, 'glow');
+                bubble.position.y = style.height * 0.5;
+                bubble.position.z = style.width * 0.25;
+                bubble.scaling.z = 0.7;
+                bubble.scaling.y = 0.75;
+
+                // Cockpit frame
+                const frameTop = builder.box(style.width * 0.65, 0.04, style.width * 0.35, head, 'dark');
+                frameTop.position.y = style.height * 0.72;
+                frameTop.position.z = style.width * 0.2;
+
+                // Side frames
+                [-1, 1].forEach(side => {
+                    const sideFrame = builder.box(0.04, style.height * 0.4, style.width * 0.3, head, 'dark');
+                    sideFrame.position.x = side * style.width * 0.3;
+                    sideFrame.position.y = style.height * 0.5;
+                    sideFrame.position.z = style.width * 0.2;
+                });
+
+                // Rear sensor array
+                const sensors = builder.box(style.width * 0.5, style.height * 0.25, 0.1, head, 'secondary');
+                sensors.position.y = style.height * 0.35;
+                sensors.position.z = -style.width * 0.3;
+            }
+
+            buildDomeHead(builder, head, style) {
+                // Rounded dome head
+                const dome = builder.sphere(style.width, head, 'primary');
+                dome.position.y = style.height / 2;
+                dome.scaling.y = style.height / style.width * 0.8;
+
+                // Visor slit
+                const visor = builder.box(style.width * 0.78, 0.07, 0.08, head, 'glow');
+                visor.position.y = style.height * 0.5;
+                visor.position.z = style.width * 0.43;
+            }
+
+            randomPos() {
+                return new BABYLON.Vector3(
+                    rand(-groundSize / 2 + 3, groundSize / 2 - 3),
+                    0,
+                    rand(-groundSize / 2 + 3, groundSize / 2 - 3)
+                );
+            }
+        }
+
+        // ============================================
+        // ANIMATION SYSTEM - Heavy Mech Walk
+        // ============================================
+
+        class MechAnimator {
+            constructor() {
+                this.time = 0;
+            }
+
+            update(dt, mechs) {
+                if (animationPaused) return;
+                this.time += dt;
+
+                mechs.forEach(mech => {
+                    this.animateHeavyWalk(mech, dt);
+                    this.updateMovement(mech, dt);
+                });
+            }
+
+            // Heavy, stompy walk cycle with impact shudder
+            animateHeavyWalk(mech, dt) {
+                const sk = mech.skeleton;
+                const legStyle = mech.legData.style;
+
+                // Faster cycle - was too slow at 2.2
+                const rawPhase = mech.animPhase + this.time * mech.walkSpeed * 4.0;
+
+                // Store phase for movement sync
+                mech.walkPhase = rawPhase;
+
+                // Movement speed pulses twice per walk cycle (once per step)
+                // Asymmetric: quick acceleration (push-off), slow deceleration (coast)
+                const stepNorm = (rawPhase % Math.PI) / Math.PI; // 0-1 per step
+                const attackTime = 0.15; // Push-off takes 15% of step
+                let stepPulse;
+                if (stepNorm < attackTime) {
+                    // Quick acceleration - foot pushes off
+                    stepPulse = stepNorm / attackTime;
+                } else {
+                    // Slow deceleration - coasting through stride
+                    const decayProgress = (stepNorm - attackTime) / (1 - attackTime);
+                    stepPulse = Math.pow(1 - decayProgress, 0.6); // Power curve for gradual slowdown
+                }
+                mech.pushFactor = stepPulse * 1.3;
+
+                // Smoother leg animation - less exaggerated pauses
+                const stompyWave = (p) => {
+                    const norm = (p % (Math.PI * 2)) / (Math.PI * 2);
+                    // Sinusoidal base with slight hold at extremes
+                    const base = Math.sin(norm * Math.PI * 2) * 0.5 + 0.5;
+                    // Add slight snap at bottom
+                    if (norm > 0.45 && norm < 0.55) return base * 0.95;
+                    return base;
+                };
+
+                // Impact detection - when foot hits ground
+                const impactWave = (p) => {
+                    const norm = (p % (Math.PI * 2)) / (Math.PI * 2);
+                    // Sharp spike at ground contact
+                    if (norm > 0.45 && norm < 0.55) {
+                        const t = (norm - 0.45) / 0.1;
+                        return Math.sin(t * Math.PI) * 0.7;
+                    }
+                    return 0;
+                };
+
+                // Calculate impact from both legs
+                const leftImpact = impactWave(rawPhase);
+                const rightImpact = impactWave(rawPhase + Math.PI);
+                const totalImpact = leftImpact + rightImpact;
+
+                // Weight shift - body shifts toward the planted leg
+                // When left leg lifts (phase 0), shift right. When right lifts (phase PI), shift left.
+                const weightShift = Math.sin(rawPhase) * 0.15; // Lateral shift amount
+
+                // BODY BOB AND LATERAL SHIFT
+                if (sk.pelvis) {
+                    const baseBob = Math.abs(Math.sin(rawPhase)) * 0.03;
+                    const impactDrop = totalImpact * 0.1;
+                    sk.pelvis.position.y = legStyle.pelvisHeight + baseBob - impactDrop;
+                    // Shift hips toward planted leg for balance
+                    sk.pelvis.position.x = weightShift;
+                }
+
+                // TORSO SWAY AND SHUDDER
+                if (sk.torso) {
+                    // Lean toward planted leg (counter to hip shift for balance)
+                    const sway = Math.sin(rawPhase) * 0.08;
+                    sk.torso.rotation.z = sway;
+
+                    // Forward/back twist with walk
+                    sk.torso.rotation.y = Math.sin(rawPhase) * 0.04;
+
+                    // Impact shudder - quick vibration on foot plant
+                    const shudder = totalImpact * Math.sin(this.time * 80) * 0.02;
+                    sk.torso.rotation.x = shudder;
+                }
+
+                // Upper torso additional sway
+                if (sk.torsoUpper) {
+                    const upperShudder = totalImpact * Math.sin(this.time * 60) * 0.015;
+                    sk.torsoUpper.rotation.z = upperShudder - Math.sin(rawPhase) * 0.03;
+                }
+
+                // LEGS - Full stride with lift and swing
+                // Reverse joint: thighAngle < 0 (thigh goes back), shinAngle > 0 (shin goes forward)
+                const isReverseJoint = legStyle.thighAngle < 0;
+
+                ['left', 'right'].forEach((side, idx) => {
+                    const p = rawPhase + idx * Math.PI;
+                    const lift = stompyWave(p);
+                    const swing = Math.sin(p);
+
+                    if (sk[`${side}Thigh`]) {
+                        const base = legStyle.thighAngle * Math.PI / 180;
+                        // For both leg types: positive swing brings foot forward
+                        const thighSwing = swing * 0.4;
+                        const thighLift = lift * 0.3;
+                        sk[`${side}Thigh`].rotation.x = base + thighSwing + thighLift;
+                    }
+
+                    if (sk[`${side}Shin`]) {
+                        const base = legStyle.shinAngle * Math.PI / 180;
+                        // Knee bends during lift
+                        const kneeBend = lift * (isReverseJoint ? 0.4 : -0.4);
+                        sk[`${side}Shin`].rotation.x = base + kneeBend;
+                    }
+
+                    // Rotate ankle to keep foot horizontal
+                    if (sk[`${side}Ankle`]) {
+                        if (legStyle.keepFootHorizontal) {
+                            // Calculate total leg rotation and counter-rotate ankle
+                            const thighBase = legStyle.thighAngle * Math.PI / 180;
+                            const shinBase = legStyle.shinAngle * Math.PI / 180;
+                            const thighSwing = swing * 0.4;
+                            const thighLift = lift * 0.3;
+                            const kneeBend = lift * (isReverseJoint ? 0.4 : -0.4);
+                            const totalRot = (thighBase + thighSwing + thighLift) + (shinBase + kneeBend);
+                            sk[`${side}Ankle`].rotation.x = -totalRot;
+                        } else {
+                            // Normal foot pivot animation
+                            const toeUp = lift * 0.5;
+                            const pivotDown = Math.max(0, swing) * (1 - lift * 0.4) * 0.6;
+                            const impact = impactWave(p);
+                            sk[`${side}Ankle`].rotation.x = toeUp - pivotDown - impact * 0.1;
+                        }
+                    }
+                });
+
+                // ARMS - Minimal swing (heavy mechs don't swing arms much)
+                ['left', 'right'].forEach((side, idx) => {
+                    const p = rawPhase + (idx + 1) * Math.PI;
+
+                    if (sk[`${side}UpperArm`]) {
+                        // Very slight counter-swing
+                        sk[`${side}UpperArm`].rotation.x = Math.sin(p) * 0.06;
+                        // Arms hang more naturally
+                        sk[`${side}UpperArm`].rotation.z = (idx === 0 ? 1 : -1) * 0.05;
+                    }
+                    if (sk[`${side}LowerArm`]) {
+                        // Slight elbow bend, minimal movement
+                        sk[`${side}LowerArm`].rotation.x = -0.15 + Math.sin(p) * 0.03;
+                    }
+                });
+
+                // HEAD - Slight stabilization counter-movement
+                if (sk.head && sk.head !== sk.torsoUpper) {
+                    sk.head.rotation.y = -Math.sin(rawPhase) * 0.015;
+                    sk.head.rotation.z = -Math.sin(rawPhase) * 0.02;
+                }
+            }
+
+            updateMovement(mech, dt) {
+                const root = mech.root;
+                const target = mech.targetPos;
+
+                // Base speed increased, modulated by push factor from walk cycle
+                const baseSpeed = mech.walkSpeed * 3.0;
+                const pushFactor = mech.pushFactor || 1.0;
+                const speed = baseSpeed * pushFactor;
+
+                const dx = target.x - root.position.x;
+                const dz = target.z - root.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+
+                if (dist < 1.5) {
+                    mech.targetPos = this.randomPos();
+                } else {
+                    // Movement synced with walk cycle via pushFactor
+                    root.position.x += (dx / dist) * speed * dt;
+                    root.position.z += (dz / dist) * speed * dt;
+
+                    // Turning speed
+                    const targetAngle = Math.atan2(dx, dz);
+                    let angleDiff = targetAngle - root.rotation.y;
+                    if (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                    if (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    root.rotation.y += angleDiff * dt * 2.0;
+                }
+
+                // Bounds
+                const bounds = groundSize / 2 - 3;
+                root.position.x = Math.max(-bounds, Math.min(bounds, root.position.x));
+                root.position.z = Math.max(-bounds, Math.min(bounds, root.position.z));
+            }
+
+            randomPos() {
+                return new BABYLON.Vector3(
+                    rand(-groundSize / 2 + 3, groundSize / 2 - 3),
+                    0,
+                    rand(-groundSize / 2 + 3, groundSize / 2 - 3)
+                );
+            }
+        }
+
+        // ============================================
+        // SCENE SETUP
+        // ============================================
+
+        let generator;
+        let animator;
+
+        function createScene() {
+            scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.06, 0.06, 0.1);
+
+            camera = new BABYLON.ArcRotateCamera('cam', -Math.PI / 4, Math.PI / 3, 20,
+                new BABYLON.Vector3(0, 2.5, 0), scene);
+            camera.attachControl(canvas, true);
+            camera.lowerRadiusLimit = 4;
+            camera.upperRadiusLimit = 60;
+            camera.wheelPrecision = 20;
+
+            // Lighting
+            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
+            hemi.intensity = 0.5;
+            hemi.groundColor = new BABYLON.Color3(0.1, 0.1, 0.12);
+
+            const dir = new BABYLON.DirectionalLight('dir', new BABYLON.Vector3(-0.5, -1, -0.3), scene);
+            dir.intensity = 0.9;
+            dir.position = new BABYLON.Vector3(15, 25, 15);
+
+            // Ground
+            const ground = BABYLON.MeshBuilder.CreateGround('ground', {
+                width: groundSize, height: groundSize, subdivisions: 1
+            }, scene);
+            const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
+            groundMat.diffuseColor = new BABYLON.Color3(0.12, 0.14, 0.1);
+            groundMat.specularColor = new BABYLON.Color3(0.02, 0.02, 0.02);
+            ground.material = groundMat;
+
+            // Grid
+            const gridMat = new BABYLON.StandardMaterial('gridMat', scene);
+            gridMat.diffuseColor = new BABYLON.Color3(0.18, 0.2, 0.16);
+            gridMat.alpha = 0.4;
+
+            for (let i = -groundSize / 2; i <= groundSize / 2; i += 5) {
+                const h = BABYLON.MeshBuilder.CreateBox(`gh${i}`, { width: groundSize, height: 0.02, depth: 0.04 }, scene);
+                h.position.z = i; h.position.y = 0.01; h.material = gridMat;
+                const v = BABYLON.MeshBuilder.CreateBox(`gv${i}`, { width: 0.04, height: 0.02, depth: groundSize }, scene);
+                v.position.x = i; v.position.y = 0.01; v.material = gridMat;
+            }
+
+            generator = new MechGenerator(scene);
+            animator = new MechAnimator();
+
+            generateNewMechs();
+
+            return scene;
+        }
+
+        function generateNewMechs() {
+            clearAllMechs();
+
+            for (let i = 0; i < 10; i++) {
+                const angle = (i / 10) * Math.PI * 2;
+                const radius = 6 + rand(0, 10);
+                const pos = new BABYLON.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+                const mech = generator.generate(pos);
+                mech.root.rotation.y = angle + Math.PI;
+                mechs.push(mech);
+            }
+
+            updateUI();
+        }
+
+        function addSingleMech() {
+            const mech = generator.generate(animator.randomPos());
+            mechs.push(mech);
+            updateUI();
+        }
+
+        function clearAllMechs() {
+            mechs.forEach(m => m.root.dispose());
+            mechs = [];
+            updateUI();
+        }
+
+        function toggleAnimation() {
+            animationPaused = !animationPaused;
+            document.getElementById('animToggle').textContent = animationPaused ? 'Resume' : 'Pause';
+            document.getElementById('animToggle').classList.toggle('active', animationPaused);
+        }
+
+        function toggleWireframe() {
+            wireframeMode = !wireframeMode;
+            scene.meshes.forEach(m => { if (m.material) m.material.wireframe = wireframeMode; });
+            document.getElementById('wireframeToggle').classList.toggle('active', wireframeMode);
+        }
+
+        function cycleCamera() {
+            cameraMode = (cameraMode + 1) % 4;
+            switch (cameraMode) {
+                case 0: camera.alpha = -Math.PI / 4; camera.beta = Math.PI / 3; camera.radius = 20; break;
+                case 1: camera.alpha = 0; camera.beta = 0.1; camera.radius = 40; break;
+                case 2: camera.alpha = -Math.PI / 6; camera.beta = Math.PI / 2.3; camera.radius = 12; break;
+                case 3: camera.alpha = Math.PI; camera.beta = Math.PI / 2.5; camera.radius = 8; break;
+            }
+            camera.target = new BABYLON.Vector3(0, 2, 0);
+        }
+
+        function updateUI() {
+            document.getElementById('mechCount').textContent = mechs.length;
+            const container = document.getElementById('mechListContent');
+            container.innerHTML = mechs.map((m, i) => `
+                <div class="mech-entry">
+                    <span>
+                        <span class="color-swatch" style="background: rgb(${Math.floor(m.colors.primary[0]*255)},${Math.floor(m.colors.primary[1]*255)},${Math.floor(m.colors.primary[2]*255)})"></span>
+                        <span class="mech-name">${m.archetype.name} #${i + 1}</span>
+                        <span style="color: #888;">(${m.colors.name})</span>
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+
+        window.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('renderCanvas');
+            engine = new BABYLON.Engine(canvas, true, { antialias: true, stencil: true });
+
+            scene = createScene();
+
+            let lastTime = performance.now();
+            let frameCount = 0;
+            engine.runRenderLoop(() => {
+                const now = performance.now();
+                const dt = (now - lastTime) / 1000;
+                lastTime = now;
+
+                animator.update(dt, mechs);
+                scene.render();
+
+                // Update stats every 10 frames for performance
+                frameCount++;
+                if (frameCount % 10 === 0) {
+                    const triangles = scene.getActiveIndices() / 3;
+                    let totalVerts = 0;
+                    scene.meshes.forEach(m => {
+                        if (m.getTotalVertices) totalVerts += m.getTotalVertices();
+                    });
+                    document.getElementById('triCount').textContent = Math.floor(triangles).toLocaleString();
+                    document.getElementById('vertCount').textContent = totalVerts.toLocaleString();
+                    document.getElementById('drawCalls').textContent = scene.getActiveMeshes().length;
+                    document.getElementById('mechCount').textContent = mechs.length;
+
+                    const fps = engine.getFps();
+                    const fpsEl = document.getElementById('fps');
+                    fpsEl.textContent = fps.toFixed(0);
+                    fpsEl.style.color = fps >= 55 ? '#00ff88' : fps >= 30 ? '#ffaa00' : '#ff4444';
+                }
+            });
+
+            window.addEventListener('resize', () => engine.resize());
+        });
+    </script>
+</body>
+</html>

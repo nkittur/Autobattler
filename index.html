@@ -1940,6 +1940,77 @@
                 max-height: 100%;
             }
         }
+
+        /* Mobile Battle UI optimizations */
+        @media (max-width: 768px) {
+            #battleHeader {
+                top: 10px;
+            }
+
+            #missionTitle {
+                font-size: 16px;
+                letter-spacing: 1px;
+            }
+
+            #battleStatus {
+                top: 50px;
+                padding: 10px 15px;
+                gap: 15px;
+                flex-wrap: wrap;
+                justify-content: center;
+                max-width: 95%;
+            }
+
+            #battleVS {
+                font-size: 16px;
+                width: 100%;
+                text-align: center;
+                order: -1;
+            }
+
+            .team-status {
+                min-width: 120px;
+            }
+
+            .hp-bar {
+                width: 120px;
+                height: 14px;
+            }
+
+            #playerMechName, #enemyMechName {
+                font-size: 10px;
+            }
+
+            #battleResultOverlay .battle-result-content {
+                padding: 20px;
+            }
+
+            #battleResult {
+                font-size: 28px !important;
+            }
+        }
+
+        /* Very small mobile screens */
+        @media (max-width: 480px) {
+            #battleStatus {
+                top: 40px;
+                padding: 8px 10px;
+                gap: 10px;
+            }
+
+            .team-status {
+                min-width: 100px;
+            }
+
+            .hp-bar {
+                width: 100px;
+                height: 12px;
+            }
+
+            #missionTitle {
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2241,6 +2312,8 @@
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="assets/textures/mech-texture-generator.js"></script>
+    <script src="assets/textures/mech-texture-system.js"></script>
 
     <script>
         // ============================================
@@ -2255,6 +2328,12 @@
         let engine, scene, camera, havokInstance, havokPlugin;
         let builderCamera, battleCamera;
         let gameTime = 0;
+
+        // Texture system for mech rendering
+        let textureSystem = null;
+        let battleTextureSystem = null;
+        let textureGenerator = null;
+        let isMobileDevice = false;
 
         // ============================================
         // MECHBUILDER DATA STRUCTURES
@@ -5036,23 +5115,40 @@
             battleScene = new BABYLON.Scene(engine);
             battleScene.clearColor = new BABYLON.Color3(0.5, 0.6, 0.75);
 
+            // Initialize texture system for battle scene
+            initializeBattleTextureSystem(battleScene);
+
             // Enable physics
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
             battleScene.enablePhysics(new BABYLON.Vector3(0, -18, 0), havokPlugin);
 
-            // Camera
-            battleCamera = new BABYLON.ArcRotateCamera('battleCam', -Math.PI/2, Math.PI/3.5, 25,
+            // Camera - optimized for mobile
+            battleCamera = new BABYLON.ArcRotateCamera('battleCam', -Math.PI/2, Math.PI/3.5,
+                isMobileDevice ? 30 : 25, // Zoom out more on mobile for better overview
                 new BABYLON.Vector3(0, 2, 0), battleScene);
             battleCamera.attachControl(document.getElementById('renderCanvas'), true);
-            battleCamera.lowerRadiusLimit = 10;
-            battleCamera.upperRadiusLimit = 50;
+            battleCamera.lowerRadiusLimit = isMobileDevice ? 15 : 10;
+            battleCamera.upperRadiusLimit = isMobileDevice ? 40 : 50;
 
-            // Lighting
+            // Mobile-specific camera settings
+            if (isMobileDevice) {
+                battleCamera.pinchPrecision = 50; // Make pinch zoom less sensitive
+                battleCamera.angularSensibilityX = 2000; // Make rotation less sensitive
+                battleCamera.angularSensibilityY = 2000;
+                battleCamera.panningSensibility = 100; // Make panning less sensitive
+            }
+
+            // Lighting - slightly simplified on mobile
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), battleScene);
-            hemi.intensity = 0.5;
+            hemi.intensity = isMobileDevice ? 0.6 : 0.5;
 
             const sun = new BABYLON.DirectionalLight('sun', new BABYLON.Vector3(-1, -2, -1), battleScene);
-            sun.intensity = 1.2;
+            sun.intensity = isMobileDevice ? 1.0 : 1.2;
+
+            // Disable shadows on mobile for better performance
+            if (!isMobileDevice) {
+                // Shadows only on desktop
+            }
 
             // Ground
             battleGround = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 30 }, battleScene);
@@ -5078,29 +5174,47 @@
         // Matches the proportions of the builder mech for consistency
         function createBattleMech(scene, xPos, zPos, isPlayer, weapons, maxHP) {
             const name = isPlayer ? 'player' : 'enemy';
-            const colors = isPlayer ?
-                { primary: BATTLE_COLORS.playerPrimary, secondary: BATTLE_COLORS.playerSecondary } :
-                { primary: BATTLE_COLORS.enemyPrimary, secondary: BATTLE_COLORS.enemySecondary };
+            const teamColors = isPlayer ? TEAM_COLOR_SETS.player : TEAM_COLOR_SETS.enemy;
 
-            // Materials - match builder holographic style but solid
-            const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
-            primaryMat.diffuseColor = colors.primary;
-            primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            // Use texture system if available, otherwise fallback to solid colors
+            let mats;
+            if (battleTextureSystem && battleTextureSystem.textures.diffuse) {
+                mats = battleTextureSystem.createMaterialSet(teamColors, name);
+            } else {
+                // Fallback to simple materials if texture system not ready
+                const colors = isPlayer ?
+                    { primary: BATTLE_COLORS.playerPrimary, secondary: BATTLE_COLORS.playerSecondary } :
+                    { primary: BATTLE_COLORS.enemyPrimary, secondary: BATTLE_COLORS.enemySecondary };
 
-            const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
-            secondaryMat.diffuseColor = colors.secondary;
+                mats = {
+                    primary: new BABYLON.StandardMaterial(name + '_primary', scene),
+                    secondary: new BABYLON.StandardMaterial(name + '_secondary', scene),
+                    metal: new BABYLON.StandardMaterial(name + '_metal', scene),
+                    dark: new BABYLON.StandardMaterial(name + '_dark', scene),
+                    glow: new BABYLON.StandardMaterial(name + '_glow', scene)
+                };
+                mats.primary.diffuseColor = colors.primary;
+                mats.primary.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                mats.secondary.diffuseColor = colors.secondary;
+                mats.metal.diffuseColor = BATTLE_COLORS.metal;
+                mats.metal.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+                mats.dark.diffuseColor = BATTLE_COLORS.darkMetal;
+                mats.glow.diffuseColor = isPlayer ? new BABYLON.Color3(0, 0.5, 0.5) : new BABYLON.Color3(0.5, 0.2, 0.2);
+                mats.glow.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 0.9) : new BABYLON.Color3(0.9, 0.3, 0.2);
+            }
 
-            const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
-            metalMat.diffuseColor = BATTLE_COLORS.metal;
-            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
-
-            const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
-            darkMat.diffuseColor = BATTLE_COLORS.darkMetal;
+            // Aliases for compatibility with existing code
+            const primaryMat = mats.primary;
+            const secondaryMat = mats.secondary;
+            const metalMat = mats.metal;
+            const darkMat = mats.dark;
 
             // Cockpit material (glowing)
-            const cockpitMat = new BABYLON.StandardMaterial(name + '_cockpit', scene);
-            cockpitMat.diffuseColor = isPlayer ? new BABYLON.Color3(0, 0.5, 0.5) : new BABYLON.Color3(0.5, 0.2, 0.2);
-            cockpitMat.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 0.9) : new BABYLON.Color3(0.9, 0.3, 0.2);
+            const cockpitMat = mats.glow || new BABYLON.StandardMaterial(name + '_cockpit', scene);
+            if (!mats.glow) {
+                cockpitMat.diffuseColor = isPlayer ? new BABYLON.Color3(0, 0.5, 0.5) : new BABYLON.Color3(0.5, 0.2, 0.2);
+                cockpitMat.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 0.9) : new BABYLON.Color3(0.9, 0.3, 0.2);
+            }
             cockpitMat.alpha = 0.9;
 
             // Pelvis (physics body) - matches builder: width: 0.9, height: 0.4, depth: 0.6
@@ -9759,6 +9873,25 @@
             // Clear localStorage
             localStorage.removeItem('battleConfig');
 
+            // Clean up battle texture system to free resources
+            if (battleTextureSystem) {
+                battleTextureSystem.dispose();
+                battleTextureSystem = null;
+            }
+
+            // Dispose battle scene
+            if (battleScene) {
+                battleScene.dispose();
+                battleScene = null;
+            }
+
+            // Clear battle state
+            battleMechs = [];
+            projectiles = [];
+            beams = [];
+            playerBattleMech = null;
+            enemyBattleMech = null;
+
             // Keep equipped items on mech - don't return to bench
             // Equipment persists between battles
 
@@ -9786,18 +9919,95 @@
         }
 
         // ============================================
+        // TEXTURE SYSTEM INITIALIZATION
+        // ============================================
+
+        function initializeTextureSystem(targetScene) {
+            try {
+                // Use smaller textures on mobile for better performance
+                const textureSize = isMobileDevice ? 512 : 1024;
+
+                // Create texture generator and generate textures
+                textureGenerator = new MechTextureGenerator(textureSize);
+                const maps = textureGenerator.generate();
+
+                // Initialize texture system for the scene
+                textureSystem = new MechTextureSystem(targetScene, { textureSize });
+                textureSystem.initializeFromCanvas(maps.diffuse);
+
+                console.log(`[Texture System] Initialized with ${textureSize}px textures (mobile: ${isMobileDevice})`);
+            } catch (error) {
+                console.error('[Texture System] Failed to initialize:', error);
+                textureSystem = null;
+                textureGenerator = null;
+            }
+        }
+
+        function initializeBattleTextureSystem(targetScene) {
+            try {
+                // Create texture system for battle scene if needed
+                if (!textureGenerator) {
+                    const textureSize = isMobileDevice ? 512 : 1024;
+                    textureGenerator = new MechTextureGenerator(textureSize);
+                    textureGenerator.generate();
+                }
+
+                battleTextureSystem = new MechTextureSystem(targetScene, {
+                    textureSize: isMobileDevice ? 512 : 1024
+                });
+                battleTextureSystem.initializeFromCanvas(textureGenerator.diffuseCanvas);
+
+                console.log('[Texture System] Battle scene textures initialized');
+            } catch (error) {
+                console.error('[Texture System] Failed to initialize battle textures:', error);
+                battleTextureSystem = null;
+            }
+        }
+
+        // Team color definitions for textured mechs
+        const TEAM_COLOR_SETS = {
+            player: {
+                primary: [0.15, 0.35, 0.2],    // Forest green
+                secondary: [0.25, 0.45, 0.3],  // Lighter green
+                accent: [0.0, 0.9, 0.6]        // Bright cyan-green glow
+            },
+            enemy: {
+                primary: [0.45, 0.12, 0.12],   // Deep red
+                secondary: [0.55, 0.18, 0.18], // Lighter red
+                accent: [1.0, 0.4, 0.2]        // Orange glow
+            }
+        };
+
+        // ============================================
         // ENGINE INITIALIZATION
         // ============================================
         async function initEngine() {
             const canvas = document.getElementById('renderCanvas');
-            engine = new BABYLON.Engine(canvas, true, {
+
+            // Detect mobile device for performance optimization
+            isMobileDevice = window.innerWidth <= 768 || 'ontouchstart' in window ||
+                navigator.maxTouchPoints > 0;
+
+            // Mobile-optimized engine options
+            const engineOptions = {
                 preserveDrawingBuffer: true,
                 stencil: true,
-                antialias: true
-            });
+                antialias: !isMobileDevice, // Disable antialiasing on mobile for performance
+                powerPreference: isMobileDevice ? 'low-power' : 'high-performance'
+            };
+
+            engine = new BABYLON.Engine(canvas, true, engineOptions);
+
+            // Limit hardware scaling on mobile for better performance
+            if (isMobileDevice) {
+                engine.setHardwareScalingLevel(Math.min(window.devicePixelRatio, 2));
+            }
 
             scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0.02, 0.04, 0.03, 1);
+
+            // Initialize texture system for builder scene
+            initializeTextureSystem(scene);
 
             // Initialize MechBuilder
             createBuilderScene();

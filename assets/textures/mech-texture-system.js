@@ -75,7 +75,9 @@ class MechTextureSystem {
      * We boost the diffuseColor to compensate for the texture darkening.
      */
     createMaterial(materialType, teamColors, mechId) {
-        const cacheKey = `${mechId}_${materialType}`;
+        // Include team colors in cache key to handle color changes
+        const colorHash = this.getColorHash(teamColors);
+        const cacheKey = `${mechId}_${materialType}_${colorHash}`;
 
         if (this.materialCache.has(cacheKey)) {
             return this.materialCache.get(cacheKey);
@@ -204,6 +206,15 @@ class MechTextureSystem {
         });
 
         return mats;
+    }
+
+    /**
+     * Generate a hash string from team colors for cache key uniqueness
+     */
+    getColorHash(teamColors) {
+        // Round to 2 decimal places to avoid floating point issues
+        const round = (arr) => arr.map(v => Math.round(v * 100)).join(',');
+        return `${round(teamColors.primary)}_${round(teamColors.secondary)}_${round(teamColors.accent)}`;
     }
 
     /**

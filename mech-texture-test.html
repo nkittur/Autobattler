@@ -218,9 +218,12 @@
         }
 
         function regenerateMechs() {
-            // Clear existing
+            // Clear existing mechs
             mechs.forEach(m => m.dispose());
             mechs = [];
+
+            // Clear material cache to prevent memory leaks from old materials
+            textureSystem.clearCache();
 
             // Create test mechs with different teams
             const positions = [

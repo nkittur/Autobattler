@@ -1,0 +1,21 @@
+# Mech Trim Sheet Texture
+#
+# This file indicates where the mech trim sheet texture should be placed.
+# Save the sci-fi industrial texture sheet as:
+#   /home/user/Autobattler/assets/textures/mech-trim-sheet.png
+#
+# The texture contains:
+# - Heavy armor panels with rivets
+# - Vents (horizontal and vertical)
+# - Cables and hydraulic lines
+# - Pistons and mechanical details
+# - Weathered/rusted metal surfaces
+# - Battle damage and scratches
+#
+# UV Regions (approximate):
+# Top-left: Armor panels, vents
+# Top-center: Large armor pieces, cables
+# Top-right: Mechanical details, pistons
+# Bottom-left: Weathered panels
+# Bottom-center: Scratched metal surfaces
+# Bottom-right: Greeble details, vents

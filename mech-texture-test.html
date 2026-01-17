@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mech Texture System Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 15px;
+            background: #1a1a2e;
+            font-family: monospace;
+            color: #00ff88;
+        }
+        #canvasContainer {
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 50vh;
+            display: block;
+            border: 3px solid #00ff88;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+            touch-action: none;
+        }
+        h1 {
+            text-align: center;
+            color: #00ff88;
+            text-shadow: 0 0 10px #00ff88;
+            margin: 8px 0;
+            font-size: 1.2em;
+        }
+        #controls {
+            text-align: center;
+            margin: 10px 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+        }
+        button {
+            padding: 6px 12px;
+            background: rgba(0, 255, 136, 0.2);
+            border: 2px solid #00ff88;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        button:hover {
+            background: rgba(0, 255, 136, 0.4);
+        }
+        button.active {
+            background: rgba(0, 255, 136, 0.5);
+        }
+        #texturePreview {
+            max-width: 300px;
+            margin: 10px auto;
+            text-align: center;
+        }
+        #texturePreview canvas {
+            width: 100%;
+            max-width: 256px;
+            border: 2px solid #4488ff;
+            border-radius: 4px;
+        }
+        #info {
+            max-width: 1000px;
+            margin: 10px auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #4488ff;
+            border-radius: 8px;
+            font-size: 11px;
+        }
+        #info h3 {
+            margin: 0 0 8px 0;
+            color: #4488ff;
+            font-size: 12px;
+        }
+        .team-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        .team-badge:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mech Texture System v2 - Futuristic Armor</h1>
+
+    <div id="controls">
+        <button onclick="regenerateMechs()">Regenerate</button>
+        <button onclick="toggleTextures()" id="texToggle">Textures: ON</button>
+        <button onclick="toggleWireframe()" id="wireToggle">Wireframe</button>
+        <button onclick="regenerateTexture()">New Texture</button>
+    </div>
+
+    <div id="canvasContainer">
+        <canvas id="renderCanvas"></canvas>
+    </div>
+
+    <div id="info">
+        <h3>Team Colors (click to apply)</h3>
+        <div id="teamButtons"></div>
+
+        <h3 style="margin-top: 10px;">Texture Preview</h3>
+        <div id="texturePreview"></div>
+    </div>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="assets/textures/mech-texture-generator.js"></script>
+    <script src="assets/textures/mech-texture-system.js"></script>
+
+    <script>
+        let canvas, engine, scene, camera;
+        let textureSystem;
+        let mechs = [];
+        let texturesEnabled = true;
+        let wireframeMode = false;
+        let currentTeamIndex = 0;
+
+        const TEAM_COLORS = [
+            { primary: [0.25, 0.5, 0.3], secondary: [0.15, 0.35, 0.2], accent: [0.9, 0.7, 0.2], name: 'Jade Falcon' },
+            { primary: [0.6, 0.15, 0.15], secondary: [0.4, 0.1, 0.1], accent: [1.0, 0.8, 0.3], name: 'Wolf' },
+            { primary: [0.2, 0.3, 0.6], secondary: [0.12, 0.2, 0.45], accent: [0.7, 0.8, 1.0], name: 'Steiner' },
+            { primary: [0.5, 0.4, 0.25], secondary: [0.35, 0.28, 0.15], accent: [0.7, 0.6, 0.4], name: 'Desert' },
+            { primary: [0.4, 0.4, 0.45], secondary: [0.25, 0.25, 0.3], accent: [0.4, 0.9, 0.6], name: 'Steel' },
+            { primary: [0.15, 0.15, 0.2], secondary: [0.08, 0.08, 0.12], accent: [0.9, 0.2, 0.2], name: 'Shadow' },
+            { primary: [0.55, 0.35, 0.2], secondary: [0.4, 0.25, 0.12], accent: [1.0, 0.6, 0.2], name: 'Rust' }
+        ];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            canvas = document.getElementById('renderCanvas');
+            engine = new BABYLON.Engine(canvas, true);
+
+            createScene();
+            createTeamButtons();
+
+            // Generate initial texture
+            regenerateTexture();
+
+            engine.runRenderLoop(() => scene.render());
+            window.addEventListener('resize', () => engine.resize());
+        });
+
+        function createScene() {
+            scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.05, 0.05, 0.08);
+
+            camera = new BABYLON.ArcRotateCamera('cam', -Math.PI / 4, Math.PI / 3, 15, new BABYLON.Vector3(0, 2, 0), scene);
+            camera.attachControl(canvas, true);
+            camera.lowerRadiusLimit = 5;
+            camera.upperRadiusLimit = 30;
+
+            // Lighting
+            const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), scene);
+            hemi.intensity = 0.5;
+            hemi.groundColor = new BABYLON.Color3(0.1, 0.1, 0.12);
+
+            const dir = new BABYLON.DirectionalLight('dir', new BABYLON.Vector3(-0.5, -1, -0.3), scene);
+            dir.intensity = 0.8;
+
+            // Ground
+            const ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 20, height: 20 }, scene);
+            const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
+            groundMat.diffuseColor = new BABYLON.Color3(0.08, 0.1, 0.08);
+            ground.material = groundMat;
+
+            // Initialize texture system
+            textureSystem = new MechTextureSystem(scene);
+        }
+
+        function createTeamButtons() {
+            const container = document.getElementById('teamButtons');
+            TEAM_COLORS.forEach((team, i) => {
+                const btn = document.createElement('span');
+                btn.className = 'team-badge';
+                btn.style.background = `rgb(${team.primary[0]*255}, ${team.primary[1]*255}, ${team.primary[2]*255})`;
+                btn.style.color = '#fff';
+                btn.textContent = team.name;
+                btn.onclick = () => {
+                    currentTeamIndex = i;
+                    regenerateMechs();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function regenerateTexture() {
+            const generator = new MechTextureGenerator(1024);
+            const maps = generator.generate();
+
+            // Show preview
+            const preview = document.getElementById('texturePreview');
+            preview.innerHTML = '';
+            const previewCanvas = document.createElement('canvas');
+            previewCanvas.width = 256;
+            previewCanvas.height = 256;
+            const ctx = previewCanvas.getContext('2d');
+            ctx.drawImage(maps.diffuse, 0, 0, 256, 256);
+            preview.appendChild(previewCanvas);
+
+            // Initialize system
+            textureSystem.initializeFromCanvas(maps.diffuse);
+
+            regenerateMechs();
+        }
+
+        function regenerateMechs() {
+            // Clear existing
+            mechs.forEach(m => m.dispose());
+            mechs = [];
+
+            // Create test mechs with different teams
+            const positions = [
+                new BABYLON.Vector3(-4, 0, 0),
+                new BABYLON.Vector3(0, 0, 0),
+                new BABYLON.Vector3(4, 0, 0)
+            ];
+
+            positions.forEach((pos, i) => {
+                const teamIdx = (currentTeamIndex + i) % TEAM_COLORS.length;
+                const mech = createTestMech(TEAM_COLORS[teamIdx], `mech${i}`, pos);
+                mechs.push(mech);
+            });
+
+            applyWireframe(wireframeMode);
+        }
+
+        function createTestMech(colors, id, position) {
+            let mats;
+            if (texturesEnabled && textureSystem.textures.diffuse) {
+                mats = textureSystem.createMaterialSet(colors, id);
+            } else {
+                mats = createSimpleMaterials(colors, id);
+            }
+
+            const root = new BABYLON.TransformNode(id, scene);
+            root.position = position;
+
+            // === LEGS ===
+            [-0.4, 0.4].forEach((xOff, idx) => {
+                const side = idx === 0 ? 'L' : 'R';
+
+                // Hip
+                const hip = BABYLON.MeshBuilder.CreateSphere(`${id}_${side}Hip`, { diameter: 0.15 }, scene);
+                hip.material = mats.metal;
+                hip.position.set(xOff, 1.6, 0);
+                hip.parent = root;
+
+                // Thigh
+                const thigh = BABYLON.MeshBuilder.CreateBox(`${id}_${side}Thigh`, { width: 0.18, height: 0.45, depth: 0.16 }, scene);
+                thigh.material = mats.primary;
+                thigh.position.set(xOff, 1.25, 0.08);
+                thigh.rotation.x = -0.45;
+                thigh.parent = root;
+
+                // Knee
+                const knee = BABYLON.MeshBuilder.CreateSphere(`${id}_${side}Knee`, { diameter: 0.16 }, scene);
+                knee.material = mats.metal;
+                knee.position.set(xOff, 1.0, 0.2);
+                knee.parent = root;
+
+                // Shin
+                const shin = BABYLON.MeshBuilder.CreateBox(`${id}_${side}Shin`, { width: 0.16, height: 0.7, depth: 0.14 }, scene);
+                shin.material = mats.primary;
+                shin.position.set(xOff, 0.5, 0.05);
+                shin.rotation.x = 0.65;
+                shin.parent = root;
+
+                // Foot
+                const foot = BABYLON.MeshBuilder.CreateBox(`${id}_${side}Foot`, { width: 0.25, height: 0.08, depth: 0.4 }, scene);
+                foot.material = mats.secondary;
+                foot.position.set(xOff, 0.04, 0.1);
+                foot.parent = root;
+            });
+
+            // === PELVIS ===
+            const pelvis = BABYLON.MeshBuilder.CreateBox(`${id}_pelvis`, { width: 0.7, height: 0.25, depth: 0.4 }, scene);
+            pelvis.material = mats.secondary;
+            pelvis.position.y = 1.7;
+            pelvis.parent = root;
+
+            // === TORSO ===
+            const torso = BABYLON.MeshBuilder.CreateCylinder(`${id}_torso`, {
+                diameterBottom: 0.8,
+                diameterTop: 1.2,
+                height: 1.0,
+                tessellation: 4
+            }, scene);
+            torso.rotation.y = Math.PI / 4;
+            torso.material = mats.primary;
+            torso.position.y = 2.4;
+            torso.parent = root;
+
+            // Chest plate
+            const chest = BABYLON.MeshBuilder.CreateBox(`${id}_chest`, { width: 0.7, height: 0.35, depth: 0.12 }, scene);
+            chest.material = mats.secondary;
+            chest.position.set(0, 2.55, 0.45);
+            chest.parent = root;
+
+            // === SHOULDERS ===
+            [-0.7, 0.7].forEach((xOff, idx) => {
+                const shoulder = BABYLON.MeshBuilder.CreateBox(`${id}_shoulder${idx}`, { width: 0.4, height: 0.3, depth: 0.35 }, scene);
+                shoulder.material = mats.secondary;
+                shoulder.position.set(xOff, 2.75, 0);
+                shoulder.parent = root;
+
+                // Shoulder vent
+                const vent = BABYLON.MeshBuilder.CreateBox(`${id}_vent${idx}`, { width: 0.25, height: 0.12, depth: 0.06 }, scene);
+                vent.material = mats.dark;
+                vent.position.set(xOff * 1.05, 2.75, 0.18);
+                vent.parent = root;
+            });
+
+            // === ARMS ===
+            [-0.7, 0.7].forEach((xOff, idx) => {
+                // Upper arm
+                const upper = BABYLON.MeshBuilder.CreateBox(`${id}_upperArm${idx}`, { width: 0.16, height: 0.4, depth: 0.14 }, scene);
+                upper.material = mats.primary;
+                upper.position.set(xOff, 2.3, 0);
+                upper.parent = root;
+
+                // Elbow
+                const elbow = BABYLON.MeshBuilder.CreateSphere(`${id}_elbow${idx}`, { diameter: 0.14 }, scene);
+                elbow.material = mats.metal;
+                elbow.position.set(xOff, 2.05, 0);
+                elbow.parent = root;
+
+                // Forearm/gun
+                const forearm = BABYLON.MeshBuilder.CreateCylinder(`${id}_forearm${idx}`, {
+                    diameterTop: 0.1,
+                    diameterBottom: 0.15,
+                    height: 0.5,
+                    tessellation: 12
+                }, scene);
+                forearm.material = mats.metal;
+                forearm.position.set(xOff, 1.75, 0);
+                forearm.parent = root;
+
+                // Muzzle
+                const muzzle = BABYLON.MeshBuilder.CreateCylinder(`${id}_muzzle${idx}`, {
+                    diameter: 0.12,
+                    height: 0.12,
+                    tessellation: 12
+                }, scene);
+                muzzle.material = mats.dark;
+                muzzle.position.set(xOff, 1.45, 0);
+                muzzle.parent = root;
+            });
+
+            // === HEAD ===
+            const head = BABYLON.MeshBuilder.CreateBox(`${id}_head`, { width: 0.35, height: 0.25, depth: 0.3 }, scene);
+            head.material = mats.secondary;
+            head.position.set(0, 3.1, 0.15);
+            head.parent = root;
+
+            // Visor
+            const visor = BABYLON.MeshBuilder.CreateBox(`${id}_visor`, { width: 0.25, height: 0.1, depth: 0.08 }, scene);
+            visor.material = mats.glow;
+            visor.position.set(0, 3.1, 0.35);
+            visor.parent = root;
+
+            return root;
+        }
+
+        function createSimpleMaterials(colors, id) {
+            const mats = {};
+
+            mats.primary = new BABYLON.StandardMaterial(`${id}_primary`, scene);
+            mats.primary.diffuseColor = new BABYLON.Color3(...colors.primary);
+
+            mats.secondary = new BABYLON.StandardMaterial(`${id}_secondary`, scene);
+            mats.secondary.diffuseColor = new BABYLON.Color3(...colors.secondary);
+
+            mats.accent = new BABYLON.StandardMaterial(`${id}_accent`, scene);
+            mats.accent.diffuseColor = new BABYLON.Color3(...colors.accent);
+
+            mats.metal = new BABYLON.StandardMaterial(`${id}_metal`, scene);
+            mats.metal.diffuseColor = new BABYLON.Color3(0.35, 0.35, 0.4);
+            mats.metal.specularPower = 32;
+
+            mats.dark = new BABYLON.StandardMaterial(`${id}_dark`, scene);
+            mats.dark.diffuseColor = new BABYLON.Color3(0.12, 0.12, 0.15);
+
+            mats.glow = new BABYLON.StandardMaterial(`${id}_glow`, scene);
+            mats.glow.diffuseColor = new BABYLON.Color3(...colors.accent);
+            mats.glow.emissiveColor = new BABYLON.Color3(colors.accent[0] * 0.3, colors.accent[1] * 0.3, colors.accent[2] * 0.3);
+
+            mats.missile = new BABYLON.StandardMaterial(`${id}_missile`, scene);
+            mats.missile.diffuseColor = new BABYLON.Color3(0.25, 0.25, 0.28);
+
+            return mats;
+        }
+
+        function toggleTextures() {
+            texturesEnabled = !texturesEnabled;
+            document.getElementById('texToggle').textContent = `Textures: ${texturesEnabled ? 'ON' : 'OFF'}`;
+            document.getElementById('texToggle').classList.toggle('active', texturesEnabled);
+            regenerateMechs();
+        }
+
+        function toggleWireframe() {
+            wireframeMode = !wireframeMode;
+            document.getElementById('wireToggle').classList.toggle('active', wireframeMode);
+            applyWireframe(wireframeMode);
+        }
+
+        function applyWireframe(enabled) {
+            scene.meshes.forEach(m => {
+                if (m.material) m.material.wireframe = enabled;
+            });
+        }
+    </script>
+</body>
+</html>

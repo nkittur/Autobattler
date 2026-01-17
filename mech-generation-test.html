@@ -140,6 +140,9 @@
         <button onclick="toggleAnimation()" id="animToggle">Pause</button>
         <button onclick="toggleWireframe()" id="wireframeToggle">Wireframe</button>
         <button onclick="cycleCamera()">Camera</button>
+        <button onclick="toggleTextures()" id="texToggle">Textures: OFF</button>
+        <button onclick="loadTextureFile()">Load Texture</button>
+        <input type="file" id="textureFileInput" accept="image/*" style="display:none" onchange="handleTextureUpload(event)">
     </div>
 
     <div id="canvasContainer">
@@ -160,6 +163,8 @@
     </div>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="assets/textures/mech-texture-generator.js"></script>
+    <script src="assets/textures/mech-texture-system.js"></script>
 
     <script>
         // ============================================
@@ -276,6 +281,11 @@
         let wireframeMode = false;
         let cameraMode = 0;
         let groundSize = 40;
+
+        // Texture system state
+        let textureSystem = null;
+        let texturesEnabled = false;
+        let textureLoaded = false;
 
         // ============================================
         // COMPOUND SHAPE BUILDER - SILHOUETTE FOCUSED
@@ -512,6 +522,12 @@
             }
 
             createMaterials(colors, mechId) {
+                // Use textured materials if texture system is enabled
+                if (texturesEnabled && textureSystem && textureSystem.textures.diffuse) {
+                    return textureSystem.createMaterialSet(colors, mechId);
+                }
+
+                // Fall back to simple color-based materials
                 const mats = {};
 
                 mats.primary = new BABYLON.StandardMaterial(`${mechId}_primary`, this.scene);
@@ -2402,6 +2418,9 @@
             generator = new MechGenerator(scene);
             animator = new MechAnimator();
 
+            // Initialize texture system
+            textureSystem = new MechTextureSystem(scene);
+
             generateNewMechs();
 
             return scene;
@@ -2455,6 +2474,61 @@
                 case 3: camera.alpha = Math.PI; camera.beta = Math.PI / 2.5; camera.radius = 8; break;
             }
             camera.target = new BABYLON.Vector3(0, 2, 0);
+        }
+
+        // ============================================
+        // TEXTURE SYSTEM CONTROLS
+        // ============================================
+
+        function toggleTextures() {
+            if (!textureLoaded) {
+                // Generate procedural texture if none loaded
+                generateProceduralTexture();
+            }
+            texturesEnabled = !texturesEnabled;
+            document.getElementById('texToggle').textContent = `Textures: ${texturesEnabled ? 'ON' : 'OFF'}`;
+            document.getElementById('texToggle').classList.toggle('active', texturesEnabled);
+            // Regenerate mechs with new material settings
+            generateNewMechs();
+        }
+
+        function loadTextureFile() {
+            document.getElementById('textureFileInput').click();
+        }
+
+        function handleTextureUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Initialize texture system from image
+                    textureSystem.initializeFromImage(img);
+                    textureLoaded = true;
+                    texturesEnabled = true;
+                    document.getElementById('texToggle').textContent = 'Textures: ON';
+                    document.getElementById('texToggle').classList.add('active');
+                    // Regenerate mechs with loaded texture
+                    generateNewMechs();
+                    console.log('Texture loaded successfully:', file.name);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function generateProceduralTexture() {
+            if (typeof MechTextureGenerator === 'undefined') {
+                console.warn('MechTextureGenerator not available');
+                return;
+            }
+            const generator = new MechTextureGenerator(1024);
+            const maps = generator.generate();
+            textureSystem.initializeFromCanvas(maps.diffuse);
+            textureLoaded = true;
+            console.log('Procedural texture generated');
         }
 
         function updateUI() {

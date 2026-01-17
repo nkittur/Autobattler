@@ -627,25 +627,27 @@
             getLegStyle(styleName) {
                 const styles = {
                     // REVERSE JOINT - Classic Timber Wolf chicken walker
-                    // Thigh angles BACK (-35), shin angles FORWARD relative to thigh (+65)
-                    // Result: knee back-below hip, foot forward-below knee
+                    // Thigh angles FORWARD (+45), knee projects FORWARD of hip
+                    // Shin angles BACKWARD relative to thigh (-65), bringing foot under hip
+                    // Creates classic "Z" shape: hip -> knee forward -> ankle back under
                     reverseJoint: {
                         thighLength: rand(0.4, 0.5),      // Short-ish thighs
                         thighWidth: rand(0.18, 0.22),
                         thighTaper: 0.85,
-                        thighAngle: rand(-40, -30),       // Thigh goes backward 30-40 deg
+                        thighAngle: rand(40, 50),         // Thigh goes FORWARD 40-50 deg
                         shinLength: rand(0.85, 1.0),      // Long shins
                         shinWidth: rand(0.16, 0.2),
                         shinTaper: 0.75,
-                        shinAngle: rand(65, 75),          // Shin forward 65-75 deg from thigh
-                        kneeSize: rand(0.15, 0.2),        // Net: shin ~30-40 deg forward from vertical
+                        shinAngle: rand(-75, -60),        // Shin BACKWARD 60-75 deg from thigh
+                        kneeSize: rand(0.15, 0.2),        // Net: shin ~15-25 deg back from vertical
                         kneeForward: 0.1,
                         footLength: rand(0.5, 0.65),
                         footStyle: pick(['platform', 'heavy']),
                         hasCalfBulge: false,
                         pelvisHeight: 1.8,
                         wideStance: true,
-                        keepFootHorizontal: true
+                        keepFootHorizontal: true,
+                        isReverseJoint: true              // Explicit flag for animation
                     },
                     // HEAVY - Wide, stable, linebacker stance
                     heavy: {
@@ -686,8 +688,8 @@
             }
 
             buildLeg(builder, skeleton, side, xMult, style, stanceWidth, pelvis) {
-                // Detect if this is a reverse joint leg
-                const isReverseJoint = style.thighAngle < 0;
+                // Detect if this is a reverse joint leg (knee projects forward)
+                const isReverseJoint = style.isReverseJoint === true;
 
                 // === HIP ===
                 const hipJoint = new BABYLON.TransformNode(builder.name(`${side}Hip`), this.scene);
@@ -2130,8 +2132,8 @@
                 }
 
                 // LEGS - Full stride with lift and swing
-                // Reverse joint: thighAngle < 0 (thigh goes back), shinAngle > 0 (shin goes forward)
-                const isReverseJoint = legStyle.thighAngle < 0;
+                // Reverse joint: knee projects FORWARD, shin angles backward
+                const isReverseJoint = legStyle.isReverseJoint === true;
 
                 ['left', 'right'].forEach((side, idx) => {
                     const p = rawPhase + idx * Math.PI;

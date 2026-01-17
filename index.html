@@ -1772,6 +1772,134 @@
            MOBILE RESPONSIVE STYLES
            ============================================ */
         @media (max-width: 768px) {
+            /* Main loadout layout - stack vertically on mobile */
+            #loadoutMain {
+                flex-direction: column;
+                position: relative;
+            }
+
+            /* Bench Panel - bottom of screen on mobile */
+            #benchPanel {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                min-width: unset;
+                max-height: 35vh;
+                border-right: none;
+                border-top: 2px solid #00ff88;
+                z-index: 100;
+                background: linear-gradient(0deg, rgba(0,20,10,0.98) 0%, rgba(0,20,10,0.95) 100%);
+            }
+
+            #benchHeader {
+                padding: 8px 15px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            #benchTitle {
+                font-size: 12px;
+                margin-bottom: 0;
+            }
+
+            #benchSubtitle {
+                font-size: 9px;
+            }
+
+            #benchScroll {
+                padding: 8px;
+                max-height: calc(35vh - 50px);
+            }
+
+            .bench-item-vertical {
+                padding: 8px;
+                margin-bottom: 6px;
+            }
+
+            .bench-item-vertical .item-icon {
+                font-size: 20px;
+            }
+
+            .bench-item-vertical .item-name {
+                font-size: 10px;
+            }
+
+            .bench-item-vertical .item-stats {
+                font-size: 8px;
+            }
+
+            .item-stat-row {
+                font-size: 9px;
+            }
+
+            .item-stat.damage {
+                font-size: 12px;
+            }
+
+            .item-stat.damage .item-stat-icon {
+                font-size: 12px;
+            }
+
+            .item-stat.damage .item-stat-value {
+                font-size: 11px;
+            }
+
+            /* Mech Grid Area - takes remaining space above bench */
+            #mechGridArea {
+                position: relative;
+                top: unset;
+                left: unset;
+                right: unset;
+                bottom: unset;
+                flex: 1;
+                padding: 10px;
+                padding-bottom: calc(35vh + 10px); /* Space for fixed bench */
+            }
+
+            /* Unified Mech Grid - smaller on mobile */
+            #unifiedMechGrid {
+                padding: 6px;
+                gap: 2px;
+                transform: scale(0.85);
+                transform-origin: center top;
+            }
+
+            /* Mech cells smaller on mobile */
+            .mech-cell {
+                width: 36px;
+                height: 36px;
+            }
+
+            .placed-item-unified .placed-cell {
+                width: 36px;
+                height: 36px;
+            }
+
+            .placed-item-unified .item-icon-overlay {
+                font-size: 18px;
+            }
+
+            /* Mech stats bar - horizontal scroll on mobile */
+            #mechStats {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                gap: 10px;
+                padding: 8px 10px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #mechStats .stat-item {
+                flex-shrink: 0;
+                min-width: 80px;
+            }
+
+            #mechStats .stat-bar {
+                width: 70px;
+            }
+
             /* Stats Panel - Compact for mobile */
             #statsPanel {
                 flex-wrap: wrap;
@@ -1865,10 +1993,41 @@
             #missionTab .mission-title {
                 font-size: 20px;
             }
+
+            /* Drag ghost smaller on mobile */
+            #dragGhost .ghost-cell {
+                width: 32px;
+                height: 32px;
+            }
+
+            #dragGhost .ghost-cell-empty {
+                width: 32px;
+                height: 32px;
+            }
         }
 
         /* Very small screens */
         @media (max-width: 480px) {
+            /* Mech cells even smaller */
+            .mech-cell {
+                width: 30px;
+                height: 30px;
+            }
+
+            .placed-item-unified .placed-cell {
+                width: 30px;
+                height: 30px;
+            }
+
+            .placed-item-unified .item-icon-overlay {
+                font-size: 14px;
+            }
+
+            /* Scale down the grid more */
+            #unifiedMechGrid {
+                transform: scale(0.75);
+            }
+
             .grid-cell {
                 width: 28px;
                 height: 28px;
@@ -1884,7 +2043,15 @@
             }
 
             .stat-bar {
-                width: 80px;
+                width: 60px;
+            }
+
+            #mechStats .stat-bar {
+                width: 55px;
+            }
+
+            #mechStats .stat-item {
+                min-width: 65px;
             }
 
             .bench-item {
@@ -1894,6 +2061,15 @@
 
             .bench-item .item-icon {
                 font-size: 18px;
+            }
+
+            /* Bench panel smaller */
+            #benchPanel {
+                max-height: 30vh;
+            }
+
+            #mechGridArea {
+                padding-bottom: calc(30vh + 10px);
             }
 
             #missionTab .mission-grid {
@@ -1920,6 +2096,47 @@
 
             #loadoutTab {
                 flex-direction: row;
+            }
+
+            #loadoutMain {
+                flex-direction: row;
+            }
+
+            /* In landscape, bench on left side (not bottom) */
+            #benchPanel {
+                position: relative;
+                bottom: unset;
+                left: unset;
+                right: unset;
+                width: 180px;
+                min-width: 180px;
+                max-height: unset;
+                height: auto;
+                border-top: none;
+                border-right: 2px solid #00ff88;
+            }
+
+            #benchScroll {
+                max-height: calc(100vh - 180px);
+            }
+
+            #mechGridArea {
+                flex: 1;
+                padding-bottom: 20px;
+            }
+
+            #unifiedMechGrid {
+                transform: scale(0.8);
+            }
+
+            .mech-cell {
+                width: 34px;
+                height: 34px;
+            }
+
+            .placed-item-unified .placed-cell {
+                width: 34px;
+                height: 34px;
             }
 
             #gridOverlayContainer {

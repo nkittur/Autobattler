@@ -627,25 +627,27 @@
             getLegStyle(styleName) {
                 const styles = {
                     // REVERSE JOINT - Classic Timber Wolf chicken walker
-                    // Thigh angles BACK (-35), shin angles FORWARD relative to thigh (+65)
-                    // Result: knee back-below hip, foot forward-below knee
+                    // Thigh angles FORWARD (+45), knee projects FORWARD of hip
+                    // Shin angles BACKWARD relative to thigh (-65), bringing foot under hip
+                    // Creates classic "Z" shape: hip -> knee forward -> ankle back under
                     reverseJoint: {
                         thighLength: rand(0.4, 0.5),      // Short-ish thighs
                         thighWidth: rand(0.18, 0.22),
                         thighTaper: 0.85,
-                        thighAngle: rand(-40, -30),       // Thigh goes backward 30-40 deg
+                        thighAngle: rand(40, 50),         // Thigh goes FORWARD 40-50 deg
                         shinLength: rand(0.85, 1.0),      // Long shins
                         shinWidth: rand(0.16, 0.2),
                         shinTaper: 0.75,
-                        shinAngle: rand(65, 75),          // Shin forward 65-75 deg from thigh
-                        kneeSize: rand(0.15, 0.2),        // Net: shin ~30-40 deg forward from vertical
+                        shinAngle: rand(-75, -60),        // Shin BACKWARD 60-75 deg from thigh
+                        kneeSize: rand(0.15, 0.2),        // Net: shin ~15-25 deg back from vertical
                         kneeForward: 0.1,
                         footLength: rand(0.5, 0.65),
-                        footStyle: pick(['platform', 'heavy']),
+                        footStyle: 'talonSplay',          // Three-talon splayed foot
                         hasCalfBulge: false,
                         pelvisHeight: 1.8,
                         wideStance: true,
-                        keepFootHorizontal: true
+                        keepFootHorizontal: true,
+                        isReverseJoint: true              // Explicit flag for animation
                     },
                     // HEAVY - Wide, stable, linebacker stance
                     heavy: {
@@ -686,8 +688,8 @@
             }
 
             buildLeg(builder, skeleton, side, xMult, style, stanceWidth, pelvis) {
-                // Detect if this is a reverse joint leg
-                const isReverseJoint = style.thighAngle < 0;
+                // Detect if this is a reverse joint leg (knee projects forward)
+                const isReverseJoint = style.isReverseJoint === true;
 
                 // === HIP ===
                 const hipJoint = new BABYLON.TransformNode(builder.name(`${side}Hip`), this.scene);
@@ -729,7 +731,7 @@
                 shin.rotation.x = style.shinAngle * Math.PI / 180;
                 skeleton[`${side}Shin`] = shin;
 
-                // Shin - simple box
+                // Shin - core structure
                 const shinMain = builder.box(
                     style.shinWidth,
                     style.shinLength,
@@ -737,6 +739,50 @@
                     shin, 'primary'
                 );
                 shinMain.position.y = -style.shinLength / 2;
+
+                // For reverse-joint legs, add tapered armor coating that thickens toward ankle
+                if (isReverseJoint) {
+                    const numSegments = 4;
+                    const segmentHeight = style.shinLength / numSegments;
+
+                    for (let i = 0; i < numSegments; i++) {
+                        // Coating gets thicker toward the ankle (bottom)
+                        const progress = i / (numSegments - 1); // 0 at top, 1 at bottom
+                        const coatingThickness = 0.03 + progress * 0.08; // 0.03 at top, 0.11 at bottom
+                        const coatingWidth = style.shinWidth + coatingThickness * 2;
+                        const coatingDepth = style.shinWidth * 0.85 + coatingThickness * 2;
+
+                        // Front armor plate
+                        const frontPlate = builder.box(
+                            coatingWidth * 0.9,
+                            segmentHeight * 0.85,
+                            coatingThickness,
+                            shin, 'secondary'
+                        );
+                        frontPlate.position.y = -segmentHeight * (i + 0.5);
+                        frontPlate.position.z = coatingDepth / 2;
+
+                        // Side armor plates
+                        [-1, 1].forEach(sideSign => {
+                            const sidePlate = builder.box(
+                                coatingThickness,
+                                segmentHeight * 0.85,
+                                coatingDepth * 0.7,
+                                shin, 'secondary'
+                            );
+                            sidePlate.position.x = sideSign * coatingWidth / 2;
+                            sidePlate.position.y = -segmentHeight * (i + 0.5);
+                        });
+                    }
+
+                    // Large ankle housing that flares out
+                    const ankleHousing = builder.cylinder(
+                        style.shinWidth * 0.8,
+                        0.12,
+                        shin, 'metal'
+                    );
+                    ankleHousing.position.y = -style.shinLength + 0.06;
+                }
 
                 // === ANKLE ===
                 const ankleJoint = new BABYLON.TransformNode(builder.name(`${side}Ankle`), this.scene);
@@ -949,6 +995,71 @@
                     const heelPad = builder.cylinder(footRadius * 0.4, 0.1, foot, 'secondary');
                     heelPad.position.y = -0.1;
                     heelPad.position.z = -footLen * 0.15;
+
+                } else if (footStyle === 'talonSplay') {
+                    // Three-talon splayed foot for chicken walkers
+                    // Larger diameter than shin at bottom for stability
+                    const footRadius = footLen * 0.7; // Bigger than shin width
+                    const talonLength = footLen * 0.5;
+
+                    // Central ankle mount - mechanical housing
+                    const centralMount = builder.cylinder(footRadius * 0.35, 0.15, foot, 'metal');
+                    centralMount.position.y = -0.02;
+
+                    // Upper housing detail
+                    const upperHousing = builder.cylinder(footRadius * 0.45, 0.08, foot, 'secondary');
+                    upperHousing.position.y = 0.04;
+
+                    // Three talons at 120 degree angles (one forward, two back)
+                    [0, 1, 2].forEach(t => {
+                        // Angles: 0° (forward), 120° (back-right), 240° (back-left)
+                        const angle = (t * 120) * Math.PI / 180;
+
+                        // Talon base position
+                        const baseX = Math.sin(angle) * footRadius * 0.3;
+                        const baseZ = Math.cos(angle) * footRadius * 0.3;
+
+                        // Talon arm (strut from center to talon)
+                        const talonArm = new BABYLON.TransformNode(builder.name(`talonArm${t}`), this.scene);
+                        talonArm.parent = foot;
+                        talonArm.rotation.y = -angle;
+
+                        // Talon strut - thick mechanical arm
+                        const strut = builder.box(0.1, 0.08, talonLength * 0.6, talonArm, 'primary');
+                        strut.position.z = talonLength * 0.3;
+                        strut.position.y = -0.06;
+
+                        // Strut armor plate on top
+                        const strutArmor = builder.box(0.12, 0.03, talonLength * 0.5, talonArm, 'secondary');
+                        strutArmor.position.z = talonLength * 0.3;
+                        strutArmor.position.y = -0.02;
+
+                        // Talon claw tip - angular, predatory
+                        const clawBase = builder.box(0.14, 0.1, talonLength * 0.35, talonArm, 'secondary');
+                        clawBase.position.z = talonLength * 0.7;
+                        clawBase.position.y = -0.08;
+
+                        // Claw ground contact pad
+                        const clawPad = builder.box(0.16, 0.04, talonLength * 0.25, talonArm, 'dark');
+                        clawPad.position.z = talonLength * 0.75;
+                        clawPad.position.y = -0.14;
+
+                        // Talon tip - pointed claw
+                        const clawTip = builder.box(0.08, 0.06, talonLength * 0.2, talonArm, 'metal');
+                        clawTip.position.z = talonLength * 0.9;
+                        clawTip.position.y = -0.1;
+                        clawTip.rotation.x = 0.2; // Slight dig-in angle
+
+                        // Hydraulic detail on talon
+                        const hydraulic = builder.cylinder(0.025, talonLength * 0.4, talonArm, 'metal');
+                        hydraulic.rotation.x = Math.PI / 2;
+                        hydraulic.position.z = talonLength * 0.35;
+                        hydraulic.position.y = 0.02;
+                    });
+
+                    // Central foot pad between talons (ground contact)
+                    const centerPad = builder.cylinder(footRadius * 0.25, 0.05, foot, 'dark');
+                    centerPad.position.y = -0.12;
                 }
             }
 
@@ -2130,8 +2241,8 @@
                 }
 
                 // LEGS - Full stride with lift and swing
-                // Reverse joint: thighAngle < 0 (thigh goes back), shinAngle > 0 (shin goes forward)
-                const isReverseJoint = legStyle.thighAngle < 0;
+                // Reverse joint: knee projects FORWARD, shin angles backward
+                const isReverseJoint = legStyle.isReverseJoint === true;
 
                 ['left', 'right'].forEach((side, idx) => {
                     const p = rawPhase + idx * Math.PI;

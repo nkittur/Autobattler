@@ -7002,9 +7002,9 @@
             if (clientX >= rect.left && clientX <= rect.right &&
                 clientY >= rect.top && clientY <= rect.bottom) {
 
-                // Calculate grid cell position
-                const cellSize = 47;  // 45px + 2px gap
-                const padding = 10;
+                // Calculate grid cell position using dynamic sizes for mobile responsiveness
+                const cellSize = getMechCellSize();
+                const padding = getMechGridPadding();
                 const localX = clientX - rect.left - padding;
                 const localY = clientY - rect.top - padding;
 

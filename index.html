@@ -349,33 +349,40 @@
 
         .shape-grid {
             display: inline-grid;
-            gap: 2px;
+            gap: 1px;
         }
 
         .shape-cell {
             width: 10px;
             height: 10px;
-            border-radius: 2px;
+            border-radius: 1px;
         }
 
         .shape-cell.filled {
-            border: 1px solid rgba(255,255,255,0.3);
+            background: currentColor;
+            opacity: 0.8;
         }
 
         .shape-cell.empty {
             background: transparent;
         }
 
-        .bench-item-vertical.weapon { border-color: #ff6644; }
+        .bench-item-vertical.weapon { border-color: #ff6644; color: #ff6644; }
         .bench-item-vertical.weapon .item-icon { color: #ff6644; }
-        .bench-item-vertical.armor { border-color: #4488ff; }
+        .bench-item-vertical.armor { border-color: #4488ff; color: #4488ff; }
         .bench-item-vertical.armor .item-icon { color: #4488ff; }
-        .bench-item-vertical.reactor { border-color: #ffaa00; }
+        .bench-item-vertical.reactor { border-color: #ffaa00; color: #ffaa00; }
         .bench-item-vertical.reactor .item-icon { color: #ffaa00; }
-        .bench-item-vertical.system { border-color: #aa44ff; }
+        .bench-item-vertical.system { border-color: #aa44ff; color: #aa44ff; }
         .bench-item-vertical.system .item-icon { color: #aa44ff; }
-        .bench-item-vertical.cooling { border-color: #44ddff; }
+        .bench-item-vertical.cooling { border-color: #44ddff; color: #44ddff; }
         .bench-item-vertical.cooling .item-icon { color: #44ddff; }
+
+        /* Shape preview cells in vertical bench items */
+        .bench-item-vertical .shape-cell.filled {
+            background: currentColor;
+            opacity: 0.8;
+        }
 
         #benchEmpty {
             text-align: center;
@@ -403,8 +410,8 @@
         /* Unified Mech Grid */
         #unifiedMechGrid {
             display: grid;
-            gap: 2px;
-            padding: 10px;
+            gap: 0;
+            padding: 8px;
             background: rgba(0, 20, 10, 0.9);
             border: 2px solid rgba(0, 255, 136, 0.6);
             border-radius: 8px;
@@ -417,15 +424,15 @@
             width: 45px;
             height: 45px;
             background: rgba(0, 255, 136, 0.15);
-            border: 1px solid rgba(0, 255, 136, 0.5);
-            border-radius: 3px;
+            border: 1px solid rgba(0, 255, 136, 0.4);
             transition: all 0.2s ease;
             position: relative;
+            /* No border-radius for connected grid look */
         }
 
         .mech-cell.invalid {
-            background: transparent;
-            border-color: transparent;
+            background: rgba(0, 10, 5, 0.3);
+            border-color: rgba(0, 255, 136, 0.1);
             pointer-events: none;
         }
 
@@ -1890,7 +1897,7 @@
             /* Unified Mech Grid - much smaller on mobile */
             #unifiedMechGrid {
                 padding: 4px;
-                gap: 1px;
+                gap: 0;
                 transform: none;
                 margin-top: 0;
             }
@@ -2072,7 +2079,7 @@
 
             #unifiedMechGrid {
                 padding: 3px;
-                gap: 1px;
+                gap: 0;
             }
 
             .grid-cell {

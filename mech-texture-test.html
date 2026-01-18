@@ -211,8 +211,8 @@
             ctx.drawImage(maps.diffuse, 0, 0, 256, 256);
             preview.appendChild(previewCanvas);
 
-            // Initialize system
-            textureSystem.initializeFromCanvas(maps.diffuse);
+            // Initialize system with both diffuse and normal maps
+            textureSystem.initializeFromCanvas(maps);
 
             regenerateMechs();
         }

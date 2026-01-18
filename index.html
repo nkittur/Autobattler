@@ -3905,7 +3905,7 @@
                 for (const [key, template] of Object.entries(ITEM_TEMPLATES)) {
                     TEMPLATE_MIN_LEVELS[key] = getTemplateMinLevel(template);
                 }
-                console.log('Template minimum levels:', TEMPLATE_MIN_LEVELS);
+                console.log('Template minimum levels: ' + JSON.stringify(TEMPLATE_MIN_LEVELS));
             }
             return TEMPLATE_MIN_LEVELS;
         }
@@ -10319,14 +10319,15 @@
                 textureGenerator = new MechTextureGenerator(textureSize);
                 console.log('[Main] Generator created, calling generate()');
                 const maps = textureGenerator.generate();
-                console.log('[Main] Maps: diffuse=' + !!maps.diffuse +
+                console.log('[Main] Maps: diffuse=' + !!maps.diffuse + ' normal=' + !!maps.normal +
                     ' size=' + (maps.diffuse ? maps.diffuse.width + 'x' + maps.diffuse.height : 'N/A'));
 
-                // Initialize texture system for the scene
+                // Initialize texture system for the scene with both diffuse and normal maps
                 textureSystem = new MechTextureSystem(targetScene, { textureSize });
-                textureSystem.initializeFromCanvas(maps.diffuse);
+                textureSystem.initializeFromCanvas(maps);
 
-                console.log('[Main] texSys READY: hasDiffuse=' + !!textureSystem?.textures?.diffuse);
+                console.log('[Main] texSys READY: hasDiffuse=' + !!textureSystem?.textures?.diffuse +
+                    ' hasNormal=' + !!textureSystem?.textures?.normal);
             } catch (error) {
                 console.error('[Main] initTexSys FAILED:', error);
                 textureSystem = null;
@@ -10344,9 +10345,11 @@
                     textureGenerator = new MechTextureGenerator(textureSize);
                     textureGenerator.generate();
                 } else {
-                    const canvas = textureGenerator.diffuseCanvas;
-                    console.log('[Main] Using existing textureGen: canvas=' + !!canvas +
-                        ' size=' + (canvas ? canvas.width + 'x' + canvas.height : 'N/A'));
+                    const diffuseCanvas = textureGenerator.diffuseCanvas;
+                    const normalCanvas = textureGenerator.normalCanvas;
+                    console.log('[Main] Using existing textureGen: diffuse=' + !!diffuseCanvas +
+                        ' normal=' + !!normalCanvas +
+                        ' size=' + (diffuseCanvas ? diffuseCanvas.width + 'x' + diffuseCanvas.height : 'N/A'));
                 }
 
                 const textureSize = isMobileDevice ? 512 : 1024;
@@ -10357,11 +10360,14 @@
                 });
 
                 console.log('[Main] Init battleTexSys from canvas');
-                battleTextureSystem.initializeFromCanvas(textureGenerator.diffuseCanvas);
+                battleTextureSystem.initializeFromCanvas({
+                    diffuse: textureGenerator.diffuseCanvas,
+                    normal: textureGenerator.normalCanvas
+                });
 
                 const ready = battleTextureSystem?.textures?.diffuse?.isReady();
                 console.log('[Main] battleTexSys READY: hasDiffuse=' + !!battleTextureSystem?.textures?.diffuse +
-                    ' isReady=' + ready);
+                    ' hasNormal=' + !!battleTextureSystem?.textures?.normal + ' isReady=' + ready);
             } catch (error) {
                 console.error('[Main] initBattleTexSys FAILED:', error);
                 battleTextureSystem = null;

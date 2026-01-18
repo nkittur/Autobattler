@@ -1309,6 +1309,149 @@
                 opacity: 0;
             }
         }
+
+        /* ============================================
+           MOBILE RESPONSIVE STYLES
+           ============================================ */
+        @media (max-width: 768px) {
+            /* Mech damage indicators - 50% smaller */
+            .mech-overlay {
+                padding: 4px;
+                top: 5px;
+            }
+            .player-overlay {
+                left: 5px;
+            }
+            .enemy-overlay {
+                right: 5px;
+            }
+            .mech-overlay-title {
+                font-size: 8px;
+                margin-bottom: 3px;
+                letter-spacing: 0.5px;
+            }
+            .mech-silhouette {
+                gap: 1px;
+            }
+            .mech-row {
+                gap: 1px;
+            }
+            .mech-part {
+                width: 12px;
+                height: 10px;
+                font-size: 5px;
+                border-radius: 1px;
+            }
+            .mech-part.mech-torso {
+                width: 14px;
+                height: 14px;
+                font-size: 6px;
+            }
+            .mech-row-head .mech-part {
+                width: 10px;
+                height: 8px;
+                border-radius: 2px 2px 1px 1px;
+            }
+            .mech-row-legs {
+                gap: 4px;
+            }
+            .mech-row-legs .mech-part {
+                height: 12px;
+                border-radius: 1px 1px 2px 2px;
+            }
+
+            /* Hide equipment tooltip on mobile - too intrusive */
+            #targetPanel {
+                display: none !important;
+            }
+
+            /* Smaller status panel */
+            #statusPanel {
+                padding: 4px 8px;
+                gap: 8px;
+            }
+            #statusPanel .status-item {
+                font-size: 9px;
+            }
+            #statusPanel .status-label {
+                font-size: 7px;
+            }
+
+            /* Smaller radar */
+            #radarContainer {
+                width: 100px;
+                height: 100px;
+            }
+            #radarCanvas {
+                width: 100px;
+                height: 100px;
+            }
+
+            /* Smaller zoom display */
+            #zoomDisplay {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+
+            /* Compact battle log */
+            #battleLogContainer {
+                max-height: 100px;
+                font-size: 10px;
+            }
+        }
+
+        /* Very small screens (iPhone SE, etc) */
+        @media (max-width: 480px) {
+            .mech-overlay {
+                padding: 3px;
+                top: 3px;
+            }
+            .player-overlay {
+                left: 3px;
+            }
+            .enemy-overlay {
+                right: 3px;
+            }
+            .mech-overlay-title {
+                font-size: 7px;
+                margin-bottom: 2px;
+            }
+            .mech-part {
+                width: 10px;
+                height: 8px;
+                font-size: 4px;
+            }
+            .mech-part.mech-torso {
+                width: 12px;
+                height: 12px;
+                font-size: 5px;
+            }
+            .mech-row-head .mech-part {
+                width: 8px;
+                height: 6px;
+            }
+            .mech-row-legs .mech-part {
+                height: 10px;
+            }
+            .mech-row-legs {
+                gap: 3px;
+            }
+
+            /* Even smaller radar */
+            #radarContainer {
+                width: 80px;
+                height: 80px;
+            }
+            #radarCanvas {
+                width: 80px;
+                height: 80px;
+            }
+
+            #battleLogContainer {
+                max-height: 80px;
+                font-size: 9px;
+            }
+        }
     </style>
 </head>
 <body>

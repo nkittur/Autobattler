@@ -2655,7 +2655,7 @@
         let textureSystem = null;
         let battleTextureSystem = null;
         let textureGenerator = null;
-        let isMobileDevice = false;
+        let _appIsMobile = false;
 
         // ============================================
         // MECHBUILDER DATA STRUCTURES
@@ -5453,14 +5453,14 @@
 
             // Camera - optimized for mobile
             battleCamera = new BABYLON.ArcRotateCamera('battleCam', -Math.PI/2, Math.PI/3.5,
-                isMobileDevice ? 30 : 25, // Zoom out more on mobile for better overview
+                _appIsMobile ? 30 : 25, // Zoom out more on mobile for better overview
                 new BABYLON.Vector3(0, 2, 0), battleScene);
             battleCamera.attachControl(document.getElementById('renderCanvas'), true);
-            battleCamera.lowerRadiusLimit = isMobileDevice ? 15 : 10;
-            battleCamera.upperRadiusLimit = isMobileDevice ? 40 : 50;
+            battleCamera.lowerRadiusLimit = _appIsMobile ? 15 : 10;
+            battleCamera.upperRadiusLimit = _appIsMobile ? 40 : 50;
 
             // Mobile-specific camera settings
-            if (isMobileDevice) {
+            if (_appIsMobile) {
                 battleCamera.pinchPrecision = 50; // Make pinch zoom less sensitive
                 battleCamera.angularSensibilityX = 2000; // Make rotation less sensitive
                 battleCamera.angularSensibilityY = 2000;
@@ -5469,13 +5469,13 @@
 
             // Lighting - slightly simplified on mobile
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), battleScene);
-            hemi.intensity = isMobileDevice ? 0.6 : 0.5;
+            hemi.intensity = _appIsMobile ? 0.6 : 0.5;
 
             const sun = new BABYLON.DirectionalLight('sun', new BABYLON.Vector3(-1, -2, -1), battleScene);
-            sun.intensity = isMobileDevice ? 1.0 : 1.2;
+            sun.intensity = _appIsMobile ? 1.0 : 1.2;
 
             // Disable shadows on mobile for better performance
-            if (!isMobileDevice) {
+            if (!_appIsMobile) {
                 // Shadows only on desktop
             }
 
@@ -10337,10 +10337,10 @@
         // ============================================
 
         function initializeTextureSystem(targetScene) {
-            console.log('[Main] initTexSys: mobile=' + isMobileDevice);
+            console.log('[Main] initTexSys: mobile=' + _appIsMobile);
             try {
                 // Use smaller textures on mobile for better performance
-                const textureSize = isMobileDevice ? 512 : 1024;
+                const textureSize = _appIsMobile ? 512 : 1024;
                 console.log('[Main] Creating TextureGen size=' + textureSize);
 
                 // Create texture generator and generate textures
@@ -10369,7 +10369,7 @@
                 // Create texture system for battle scene if needed
                 if (!textureGenerator) {
                     console.log('[Main] No textureGen, creating new');
-                    const textureSize = isMobileDevice ? 512 : 1024;
+                    const textureSize = _appIsMobile ? 512 : 1024;
                     textureGenerator = new MechTextureGenerator(textureSize);
                     textureGenerator.generate();
                 } else {
@@ -10380,7 +10380,7 @@
                         ' size=' + (diffuseCanvas ? diffuseCanvas.width + 'x' + diffuseCanvas.height : 'N/A'));
                 }
 
-                const textureSize = isMobileDevice ? 512 : 1024;
+                const textureSize = _appIsMobile ? 512 : 1024;
                 console.log('[Main] Creating battleTexSys size=' + textureSize);
 
                 battleTextureSystem = new MechTextureSystem(targetScene, {
@@ -10423,10 +10423,10 @@
             const canvas = document.getElementById('renderCanvas');
 
             // Detect mobile device for performance optimization
-            isMobileDevice = window.innerWidth <= 768 || 'ontouchstart' in window ||
+            _appIsMobile = window.innerWidth <= 768 || 'ontouchstart' in window ||
                 navigator.maxTouchPoints > 0;
 
-            console.log('[Main] initEngine: mobile=' + isMobileDevice +
+            console.log('[Main] initEngine: mobile=' + _appIsMobile +
                 ' width=' + window.innerWidth +
                 ' touch=' + ('ontouchstart' in window) +
                 ' touchPts=' + navigator.maxTouchPoints);
@@ -10435,14 +10435,14 @@
             const engineOptions = {
                 preserveDrawingBuffer: true,
                 stencil: true,
-                antialias: !isMobileDevice, // Disable antialiasing on mobile for performance
-                powerPreference: isMobileDevice ? 'low-power' : 'high-performance'
+                antialias: !_appIsMobile, // Disable antialiasing on mobile for performance
+                powerPreference: _appIsMobile ? 'low-power' : 'high-performance'
             };
 
             engine = new BABYLON.Engine(canvas, true, engineOptions);
 
             // Limit hardware scaling on mobile for better performance
-            if (isMobileDevice) {
+            if (_appIsMobile) {
                 engine.setHardwareScalingLevel(Math.min(window.devicePixelRatio, 2));
             }
 

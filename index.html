@@ -215,7 +215,9 @@
             /* Custom scrollbar styling */
             scrollbar-width: thin;
             scrollbar-color: #00ff88 rgba(0,20,10,0.5);
+            position: relative;
         }
+
 
         #benchScroll::-webkit-scrollbar {
             width: 8px;
@@ -237,10 +239,10 @@
 
         .bench-item-vertical {
             position: relative;
-            width: calc(100% - 15px); /* Leave space on right for scroll touch area */
+            width: 55%; /* Narrower cards leave ~45% for scroll touch area */
+            max-width: 180px;
             padding: 10px;
             margin-bottom: 8px;
-            margin-right: 15px; /* Explicit right margin for scroll touch area */
             background: rgba(0, 40, 20, 0.6);
             border: 2px solid #00aa66;
             border-radius: 6px;

@@ -12,7 +12,7 @@
 
 class MechTextureGenerator {
     constructor(size = 1024) {
-        console.log('[TextureGen] Constructor called with size:', size);
+        console.log('[TextureGen] Constructor size=' + size);
         this.size = size;
         this.cellSize = size / 4; // 4x4 grid of trim sections
 
@@ -28,14 +28,9 @@ class MechTextureGenerator {
         this.diffuseCtx = this.diffuseCanvas.getContext('2d');
         this.normalCtx = this.normalCanvas.getContext('2d');
 
-        console.log('[TextureGen] Canvas created:', {
-            diffuseCanvas: !!this.diffuseCanvas,
-            normalCanvas: !!this.normalCanvas,
-            diffuseCtx: !!this.diffuseCtx,
-            normalCtx: !!this.normalCtx,
-            canvasWidth: this.diffuseCanvas.width,
-            canvasHeight: this.diffuseCanvas.height
-        });
+        console.log('[TextureGen] Canvas: diffuse=' + !!this.diffuseCanvas +
+            ' ctx=' + !!this.diffuseCtx +
+            ' size=' + this.diffuseCanvas.width + 'x' + this.diffuseCanvas.height);
 
         // Seeded random for reproducibility
         this.seed = 12345;
@@ -84,11 +79,10 @@ class MechTextureGenerator {
             // Debug: Check if canvas has actual content
             const imageData = this.diffuseCtx.getImageData(0, 0, 10, 10);
             const hasContent = imageData.data.some((v, i) => i % 4 !== 3 && v !== 0);
-            console.log('[TextureGen] generate() complete:', {
-                hasContent,
-                samplePixel: Array.from(imageData.data.slice(0, 4)),
-                canvasSize: `${this.diffuseCanvas.width}x${this.diffuseCanvas.height}`
-            });
+            const pixel = imageData.data.slice(0, 4);
+            console.log('[TextureGen] complete: hasContent=' + hasContent +
+                ' pixel=[' + pixel[0] + ',' + pixel[1] + ',' + pixel[2] + ',' + pixel[3] + ']' +
+                ' size=' + this.diffuseCanvas.width + 'x' + this.diffuseCanvas.height);
 
             return {
                 diffuse: this.diffuseCanvas,

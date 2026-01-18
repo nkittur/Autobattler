@@ -11,10 +11,7 @@
 
 class MechTextureSystem {
     constructor(scene, options = {}) {
-        console.log('[TextureSystem] Constructor called:', {
-            hasScene: !!scene,
-            options
-        });
+        console.log('[TextureSystem] Constructor: hasScene=' + !!scene + ' size=' + (options.textureSize || 1024));
         this.scene = scene;
         this.options = {
             textureSize: options.textureSize || 1024,
@@ -35,11 +32,8 @@ class MechTextureSystem {
      * Initialize from a canvas element (for procedurally generated textures)
      */
     initializeFromCanvas(canvas) {
-        console.log('[TextureSystem] initializeFromCanvas called:', {
-            hasCanvas: !!canvas,
-            canvasWidth: canvas?.width,
-            canvasHeight: canvas?.height
-        });
+        console.log('[TextureSystem] initFromCanvas: canvas=' + !!canvas +
+            ' size=' + (canvas ? canvas.width + 'x' + canvas.height : 'N/A'));
 
         try {
             // Dispose old texture if exists
@@ -49,10 +43,7 @@ class MechTextureSystem {
 
             // Debug: Check canvas data URL generation
             const dataUrl = canvas.toDataURL('image/png');
-            console.log('[TextureSystem] DataURL generated:', {
-                length: dataUrl.length,
-                prefix: dataUrl.substring(0, 50)
-            });
+            console.log('[TextureSystem] DataURL len=' + dataUrl.length);
 
             this.textures.diffuse = BABYLON.Texture.LoadFromDataString(
                 'mechTrimSheet_' + Date.now(),
@@ -65,24 +56,21 @@ class MechTextureSystem {
             this.textures.diffuse.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
             this.textures.diffuse.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
 
-            console.log('[TextureSystem] Texture created:', {
-                hasTexture: !!this.textures.diffuse,
-                textureIsReady: this.textures.diffuse?.isReady(),
-                textureSize: this.textures.diffuse?.getSize()
-            });
+            const texSize = this.textures.diffuse.getSize();
+            console.log('[TextureSystem] Texture created: ready=' + this.textures.diffuse.isReady() +
+                ' size=' + texSize.width + 'x' + texSize.height);
 
             // Add ready callback for debugging
             this.textures.diffuse.onLoadObservable.add(() => {
-                console.log('[TextureSystem] Texture LOADED:', {
-                    isReady: this.textures.diffuse.isReady(),
-                    size: this.textures.diffuse.getSize()
-                });
+                const sz = this.textures.diffuse.getSize();
+                console.log('[TextureSystem] Texture LOADED: ready=' + this.textures.diffuse.isReady() +
+                    ' size=' + sz.width + 'x' + sz.height);
             });
 
             // Clear material cache when texture changes
             this.clearCache();
         } catch (error) {
-            console.error('[TextureSystem] initializeFromCanvas FAILED:', error);
+            console.error('[TextureSystem] initFromCanvas FAILED:', error);
             throw error;
         }
     }
@@ -114,25 +102,19 @@ class MechTextureSystem {
         const cacheKey = `${mechId}_${materialType}`;
 
         if (this.materialCache.has(cacheKey)) {
-            console.log('[TextureSystem] Using cached material:', cacheKey);
             return this.materialCache.get(cacheKey);
         }
 
-        console.log('[TextureSystem] Creating material:', {
-            cacheKey,
-            materialType,
-            hasDiffuseTexture: !!this.textures.diffuse,
-            textureIsReady: this.textures.diffuse?.isReady()
-        });
+        const hasTex = !!this.textures.diffuse;
+        console.log('[TextureSystem] createMat: ' + cacheKey + ' hasTex=' + hasTex);
 
         const mat = new BABYLON.StandardMaterial(`${mechId}_${materialType}_tex`, this.scene);
 
         // Apply texture
         if (this.textures.diffuse) {
             mat.diffuseTexture = this.textures.diffuse;
-            console.log('[TextureSystem] Diffuse texture applied to material:', cacheKey);
         } else {
-            console.warn('[TextureSystem] NO diffuse texture available for material:', cacheKey);
+            console.warn('[TextureSystem] NO texture for: ' + cacheKey);
         }
 
         // Get the base color for this material type
@@ -243,11 +225,7 @@ class MechTextureSystem {
      * Create a full material set for a mech
      */
     createMaterialSet(teamColors, mechId) {
-        console.log('[TextureSystem] createMaterialSet called:', {
-            mechId,
-            teamColors,
-            hasDiffuseTexture: !!this.textures.diffuse
-        });
+        console.log('[TextureSystem] createMatSet: ' + mechId + ' hasTex=' + !!this.textures.diffuse);
 
         const mats = {};
         const types = ['primary', 'secondary', 'accent', 'metal', 'dark', 'glow', 'missile'];
@@ -256,8 +234,8 @@ class MechTextureSystem {
             mats[type] = this.createMaterial(type, teamColors, mechId);
         });
 
-        console.log('[TextureSystem] MaterialSet created for', mechId, '- materials with textures:',
-            Object.entries(mats).map(([k, v]) => `${k}:${!!v.diffuseTexture}`).join(', '));
+        const hasTexCount = Object.values(mats).filter(m => !!m.diffuseTexture).length;
+        console.log('[TextureSystem] MatSet done: ' + mechId + ' withTex=' + hasTexCount + '/7');
 
         return mats;
     }

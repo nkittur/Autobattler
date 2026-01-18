@@ -10717,6 +10717,11 @@
         window.getMinLevelCache = getMinLevelCache;
         window.calculateTemplateBudgetBalance = calculateTemplateBudgetBalance;
 
+        // Expose functions used by onclick handlers in HTML
+        window.switchTab = switchTab;
+        window.startBattleFromMission = startBattleFromMission;
+        window.togglePilotingMode = togglePilotingMode;
+
         // Start the game
         initEngine();
     </script>

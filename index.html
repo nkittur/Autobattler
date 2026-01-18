@@ -7896,6 +7896,7 @@
         let isMobileLayout = false;
 
         function switchTab(tabName) {
+            console.log('[NAV] switchTab called with:', tabName);
             currentTab = tabName;
 
             // Update header title
@@ -7925,13 +7926,18 @@
             const allTabs = [loadoutTab, missionTab, shopTab];
             allTabs.forEach(tab => { if (tab) tab.classList.remove('active'); });
 
+            console.log('[NAV] Tab elements found:', { loadoutTab: !!loadoutTab, missionTab: !!missionTab, shopTab: !!shopTab });
+
             if (tabName === 'loadout' && loadoutTab) {
+                console.log('[NAV] Activating loadout tab');
                 loadoutTab.classList.add('active');
                 updateHeaderDisplay();
             } else if (tabName === 'mission' && missionTab) {
+                console.log('[NAV] Activating mission tab');
                 missionTab.classList.add('active');
                 renderMissionTab();
             } else if (tabName === 'shop' && shopTab) {
+                console.log('[NAV] Activating shop tab');
                 shopTab.classList.add('active');
                 renderShop();
             }
@@ -7944,15 +7950,23 @@
         }
 
         function startBattleFromMission() {
+            console.log('[BATTLE] startBattleFromMission called, selectedMission=', selectedMission);
             if (selectedMission) {
                 startBattle();
+            } else {
+                console.log('[BATTLE] No mission selected, cannot start battle');
             }
         }
 
         // Render missions for mobile tab
         function renderMissionTab() {
+            console.log('[NAV] renderMissionTab called');
             const missionTabList = document.getElementById('missionTabList');
-            if (!missionTabList) return;
+            if (!missionTabList) {
+                console.log('[NAV] missionTabList element not found!');
+                return;
+            }
+            console.log('[NAV] missionTabList found, rendering missions');
 
             missionTabList.innerHTML = '';
 
@@ -8872,10 +8886,12 @@
                     goToMissionsBtn.textContent = 'Over Limit!';
                     goToMissionsBtn.disabled = true;
                     goToMissionsBtn.classList.add('warning');
+                    console.log('[NAV] Fight button disabled: over limit');
                 } else {
                     goToMissionsBtn.textContent = 'Fight →';
                     goToMissionsBtn.disabled = !hasEquipment;
                     goToMissionsBtn.classList.remove('warning');
+                    console.log('[NAV] Fight button enabled:', hasEquipment, 'hasEquipment:', hasEquipment);
                 }
             }
 
@@ -9641,11 +9657,14 @@
         }
 
         function startBattle() {
+            console.log('[BATTLE] startBattle called, equipment=', loadoutState.equipment.length, 'mission=', selectedMission);
             if (loadoutState.equipment.length === 0 || !selectedMission) {
+                console.log('[BATTLE] Cannot start battle - no equipment or mission');
                 return;
             }
 
             const mission = MISSIONS[selectedMission];
+            console.log('[BATTLE] Mission loaded:', mission?.name);
             const playerStats = calculatePlayerStats();
 
             // Save mission info for salvage generation
@@ -9685,11 +9704,15 @@
 
             // Show and load the battle iframe with the physics simulation
             const battleFrame = document.getElementById('battleFrame');
+            console.log('[BATTLE] battleFrame element:', !!battleFrame);
             battleFrame.style.display = 'block';
             // Add cache-busting parameter and background parameter
-            battleFrame.src = `battle-arena.html?t=${Date.now()}&bg=${selectedBackground}&piloting=${userPilotingEnabled ? '1' : '0'}`;
+            const battleUrl = `battle-arena.html?t=${Date.now()}&bg=${selectedBackground}&piloting=${userPilotingEnabled ? '1' : '0'}`;
+            console.log('[BATTLE] Loading battle iframe:', battleUrl);
+            battleFrame.src = battleUrl;
 
             currentPhase = GamePhase.BATTLE;
+            console.log('[BATTLE] Battle phase started');
         }
 
         // Listen for messages from battle iframe
@@ -10446,7 +10469,12 @@
 
             // Go to Missions button
             document.getElementById('goToMissionsBtn').addEventListener('click', function() {
-                switchTab('mission');
+                try {
+                    console.log('[NAV] Fight button clicked, switching to mission tab');
+                    switchTab('mission');
+                } catch (e) {
+                    console.error('[NAV] Error in Fight button click:', e);
+                }
             });
 
             // Shop button
@@ -10505,6 +10533,10 @@
 
             // Initial mobile layout check
             checkMobileLayout();
+
+            // Log initial button state for debugging
+            const fightBtn = document.getElementById('goToMissionsBtn');
+            console.log('[NAV] Initial state - Fight button disabled:', fightBtn?.disabled, 'equipment count:', loadoutState.equipment.length);
 
             console.log('MechBuilder initialized!');
         }

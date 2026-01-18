@@ -2591,7 +2591,7 @@
                     <div>💰 Credits: +500</div>
                     <div>⭐ XP: +100</div>
                 </div>
-                <button id="returnToBuilderBtn" onclick="returnToBuilder()">Return to Loadout</button>
+                <button id="returnToBuilderBtn" onclick="returnToLoadout()">Return to Loadout</button>
             </div>
 
         </div>
@@ -8045,7 +8045,9 @@
 
                 card.addEventListener('click', () => {
                     selectMission(mission.id);
-                    renderMissionTab();
+                    // Note: selectMission already calls renderMissions() and updateStats()
+                    // which handles button state correctly. Don't call renderMissionTab() again
+                    // as it would override the proper limit checks from updateStats().
                 });
                 missionTabList.appendChild(card);
             }
@@ -10721,6 +10723,8 @@
         window.switchTab = switchTab;
         window.startBattleFromMission = startBattleFromMission;
         window.togglePilotingMode = togglePilotingMode;
+        window.handleRefreshShop = handleRefreshShop;
+        window.returnToLoadout = returnToLoadout;
 
         // Start the game
         initEngine();

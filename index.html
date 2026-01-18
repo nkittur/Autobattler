@@ -7908,13 +7908,13 @@
             const headerBtns = [goToMissionsBtn, goToShopBtn];
 
             if (tabName === 'loadout') {
-                gameTitle.textContent = 'Loadout';
+                if (gameTitle) gameTitle.textContent = 'Loadout';
                 headerBtns.forEach(btn => { if (btn) btn.style.display = ''; });
             } else if (tabName === 'mission') {
-                gameTitle.textContent = 'Missions';
+                if (gameTitle) gameTitle.textContent = 'Missions';
                 headerBtns.forEach(btn => { if (btn) btn.style.display = 'none'; });
             } else if (tabName === 'shop') {
-                gameTitle.textContent = 'Shop';
+                if (gameTitle) gameTitle.textContent = 'Shop';
                 headerBtns.forEach(btn => { if (btn) btn.style.display = 'none'; });
             }
 

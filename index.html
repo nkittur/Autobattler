@@ -2074,6 +2074,30 @@
                 font-size: 8px;
             }
 
+            /* Mobile rotate button - always visible with larger touch target */
+            .bench-item .rotate-btn,
+            .bench-item-vertical .rotate-btn {
+                opacity: 1;
+                visibility: visible;
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+                top: -12px;
+                left: -12px;
+                /* Ensure touch target is at least 44px */
+                min-width: 44px;
+                min-height: 44px;
+                /* Use padding to extend touch area without changing visual size */
+                padding: 4px;
+                box-sizing: content-box;
+            }
+
+            .bench-item .rotate-btn:active,
+            .bench-item-vertical .rotate-btn:active {
+                transform: scale(0.9);
+                background: rgba(0, 255, 136, 0.3);
+            }
+
             /* Adjust grid label size */
             .grid-label {
                 font-size: 8px;
@@ -2184,6 +2208,16 @@
                 padding-top: 3px;
             }
 
+            /* Rotate button on very small screens - keep touch target large */
+            .bench-item .rotate-btn,
+            .bench-item-vertical .rotate-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+                top: -10px;
+                left: -10px;
+            }
+
             #missionTab .mission-grid {
                 grid-template-columns: 1fr;
             }
@@ -2261,6 +2295,24 @@
                 overflow-y: auto;
                 overflow-x: hidden;
                 max-height: 100%;
+            }
+
+            /* Rotate button in landscape - always visible */
+            .bench-item .rotate-btn,
+            .bench-item-vertical .rotate-btn {
+                opacity: 1;
+                visibility: visible;
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+                top: -10px;
+                left: -10px;
+            }
+
+            .bench-item .rotate-btn:active,
+            .bench-item-vertical .rotate-btn:active {
+                transform: scale(0.9);
+                background: rgba(0, 255, 136, 0.3);
             }
         }
 

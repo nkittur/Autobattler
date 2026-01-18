@@ -1922,8 +1922,8 @@
                 right: unset;
                 bottom: unset;
                 flex: 1;
-                padding: 5px;
-                padding-bottom: calc(28vh + 5px);
+                padding: 0 5px;
+                padding-bottom: calc(28vh + 2px);
                 display: flex;
                 align-items: flex-start;
                 justify-content: center;
@@ -1958,8 +1958,8 @@
                 display: flex;
                 flex-wrap: nowrap;
                 overflow-x: auto;
-                gap: 8px;
-                padding: 6px 8px;
+                gap: 6px;
+                padding: 3px 6px;
                 background: rgba(0,15,8,0.95);
                 -webkit-overflow-scrolling: touch;
             }
@@ -1982,11 +1982,16 @@
                 font-size: 8px;
             }
 
-            /* Stats Panel (header) - Compact for mobile */
+            /* Stats Panel (header) - Compact single row for mobile */
             #statsPanel {
-                flex-wrap: wrap;
-                padding: 6px 10px;
+                flex-wrap: nowrap;
+                padding: 4px 8px;
                 gap: 6px;
+            }
+
+            .header-nav-btn {
+                padding: 6px 12px;
+                font-size: 11px;
             }
 
             .stat-group {
@@ -2143,7 +2148,7 @@
             }
 
             #mechGridArea {
-                padding-bottom: calc(25vh + 5px);
+                padding-bottom: calc(25vh + 2px);
             }
 
             #benchScroll {
@@ -8852,7 +8857,7 @@
                     goToMissionsBtn.disabled = true;
                     goToMissionsBtn.classList.add('warning');
                 } else {
-                    goToMissionsBtn.textContent = 'Go to Missions →';
+                    goToMissionsBtn.textContent = 'Fight →';
                     goToMissionsBtn.disabled = !hasEquipment;
                     goToMissionsBtn.classList.remove('warning');
                 }

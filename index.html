@@ -5429,16 +5429,25 @@
 
         // Create battle scene with physics
         async function createBattleScene() {
+            console.log('[Battle] createBattleScene called');
+
             // Initialize Havok if not done
             if (!havokInstance) {
+                console.log('[Battle] Initializing Havok physics');
                 havokInstance = await HavokPhysics();
             }
 
             battleScene = new BABYLON.Scene(engine);
             battleScene.clearColor = new BABYLON.Color3(0.5, 0.6, 0.75);
+            console.log('[Battle] Scene created');
 
             // Initialize texture system for battle scene
+            console.log('[Battle] About to initialize battle texture system');
             initializeBattleTextureSystem(battleScene);
+            console.log('[Battle] Battle texture system initialized, state:', {
+                hasBattleTextureSystem: !!battleTextureSystem,
+                hasDiffuse: !!battleTextureSystem?.textures?.diffuse
+            });
 
             // Enable physics
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
@@ -5498,11 +5507,22 @@
             const name = isPlayer ? 'player' : 'enemy';
             const teamColors = isPlayer ? TEAM_COLOR_SETS.player : TEAM_COLOR_SETS.enemy;
 
+            console.log('[Battle] createBattleMech called:', {
+                name,
+                hasBattleTextureSystem: !!battleTextureSystem,
+                hasDiffuseTexture: !!battleTextureSystem?.textures?.diffuse,
+                diffuseIsReady: battleTextureSystem?.textures?.diffuse?.isReady(),
+                isMobile: isMobileDevice
+            });
+
             // Use texture system if available, otherwise fallback to solid colors
             let mats;
             if (battleTextureSystem && battleTextureSystem.textures.diffuse) {
+                console.log('[Battle] Using texture system for', name);
                 mats = battleTextureSystem.createMaterialSet(teamColors, name);
             } else {
+                console.warn('[Battle] FALLBACK to solid colors for', name, '- no texture system');
+
                 // Fallback to simple materials if texture system not ready
                 const colors = isPlayer ?
                     { primary: BATTLE_COLORS.playerPrimary, secondary: BATTLE_COLORS.playerSecondary } :
@@ -10295,19 +10315,30 @@
         // ============================================
 
         function initializeTextureSystem(targetScene) {
+            console.log('[Main] initializeTextureSystem called, isMobile:', isMobileDevice);
             try {
                 // Use smaller textures on mobile for better performance
                 const textureSize = isMobileDevice ? 512 : 1024;
+                console.log('[Main] Creating texture generator with size:', textureSize);
 
                 // Create texture generator and generate textures
                 textureGenerator = new MechTextureGenerator(textureSize);
+                console.log('[Main] Generator created, calling generate()');
                 const maps = textureGenerator.generate();
+                console.log('[Main] Maps generated:', {
+                    hasDiffuse: !!maps.diffuse,
+                    diffuseSize: maps.diffuse ? `${maps.diffuse.width}x${maps.diffuse.height}` : 'N/A'
+                });
 
                 // Initialize texture system for the scene
                 textureSystem = new MechTextureSystem(targetScene, { textureSize });
                 textureSystem.initializeFromCanvas(maps.diffuse);
 
                 console.log(`[Texture System] Initialized with ${textureSize}px textures (mobile: ${isMobileDevice})`);
+                console.log('[Main] textureSystem ready:', {
+                    hasSystem: !!textureSystem,
+                    hasDiffuse: !!textureSystem?.textures?.diffuse
+                });
             } catch (error) {
                 console.error('[Texture System] Failed to initialize:', error);
                 textureSystem = null;
@@ -10316,22 +10347,40 @@
         }
 
         function initializeBattleTextureSystem(targetScene) {
+            console.log('[Main] initializeBattleTextureSystem called');
             try {
                 // Create texture system for battle scene if needed
                 if (!textureGenerator) {
+                    console.log('[Main] No textureGenerator, creating new one');
                     const textureSize = isMobileDevice ? 512 : 1024;
                     textureGenerator = new MechTextureGenerator(textureSize);
                     textureGenerator.generate();
+                } else {
+                    console.log('[Main] Using existing textureGenerator:', {
+                        hasDiffuseCanvas: !!textureGenerator.diffuseCanvas,
+                        canvasSize: textureGenerator.diffuseCanvas ?
+                            `${textureGenerator.diffuseCanvas.width}x${textureGenerator.diffuseCanvas.height}` : 'N/A'
+                    });
                 }
 
+                const textureSize = isMobileDevice ? 512 : 1024;
+                console.log('[Main] Creating battleTextureSystem with size:', textureSize);
+
                 battleTextureSystem = new MechTextureSystem(targetScene, {
-                    textureSize: isMobileDevice ? 512 : 1024
+                    textureSize: textureSize
                 });
+
+                console.log('[Main] Initializing battleTextureSystem from canvas');
                 battleTextureSystem.initializeFromCanvas(textureGenerator.diffuseCanvas);
 
-                console.log('[Texture System] Battle scene textures initialized');
+                console.log('[Texture System] Battle scene textures initialized:', {
+                    hasBattleTextureSystem: !!battleTextureSystem,
+                    hasDiffuse: !!battleTextureSystem?.textures?.diffuse,
+                    diffuseReady: battleTextureSystem?.textures?.diffuse?.isReady()
+                });
             } catch (error) {
                 console.error('[Texture System] Failed to initialize battle textures:', error);
+                console.error('[Texture System] Error details:', error.stack);
                 battleTextureSystem = null;
             }
         }
@@ -10359,6 +10408,14 @@
             // Detect mobile device for performance optimization
             isMobileDevice = window.innerWidth <= 768 || 'ontouchstart' in window ||
                 navigator.maxTouchPoints > 0;
+
+            console.log('[Main] initEngine called, mobile detection:', {
+                isMobileDevice,
+                windowWidth: window.innerWidth,
+                hasTouch: 'ontouchstart' in window,
+                maxTouchPoints: navigator.maxTouchPoints,
+                userAgent: navigator.userAgent.substring(0, 100)
+            });
 
             // Mobile-optimized engine options
             const engineOptions = {

@@ -211,11 +211,36 @@
             flex: 1;
             overflow-y: auto;
             padding: 10px;
+            padding-right: 20px; /* Space for scroll track */
+            /* Custom scrollbar styling */
+            scrollbar-width: thin;
+            scrollbar-color: #00ff88 rgba(0,20,10,0.5);
+            position: relative;
+        }
+
+
+        #benchScroll::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #benchScroll::-webkit-scrollbar-track {
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 4px;
+        }
+
+        #benchScroll::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 136, 0.5);
+            border-radius: 4px;
+        }
+
+        #benchScroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 136, 0.7);
         }
 
         .bench-item-vertical {
             position: relative;
-            width: 100%;
+            width: 66%; /* Cards at 2/3 width, leaving 1/3 for scroll touch area */
+            max-width: 220px;
             padding: 10px;
             margin-bottom: 8px;
             background: rgba(0, 40, 20, 0.6);
@@ -349,33 +374,56 @@
 
         .shape-grid {
             display: inline-grid;
-            gap: 2px;
+            gap: 1px;
         }
 
         .shape-cell {
             width: 10px;
             height: 10px;
-            border-radius: 2px;
+            border-radius: 1px;
         }
 
         .shape-cell.filled {
-            border: 1px solid rgba(255,255,255,0.3);
+            background: currentColor;
+            opacity: 0.8;
         }
 
         .shape-cell.empty {
             background: transparent;
         }
 
-        .bench-item-vertical.weapon { border-color: #ff6644; }
+        .bench-item-vertical.weapon { border-color: #ff6644; color: #ff6644; }
         .bench-item-vertical.weapon .item-icon { color: #ff6644; }
-        .bench-item-vertical.armor { border-color: #4488ff; }
+        .bench-item-vertical.armor { border-color: #4488ff; color: #4488ff; }
         .bench-item-vertical.armor .item-icon { color: #4488ff; }
-        .bench-item-vertical.reactor { border-color: #ffaa00; }
+        .bench-item-vertical.reactor { border-color: #ffaa00; color: #ffaa00; }
         .bench-item-vertical.reactor .item-icon { color: #ffaa00; }
-        .bench-item-vertical.system { border-color: #aa44ff; }
+        .bench-item-vertical.system { border-color: #aa44ff; color: #aa44ff; }
         .bench-item-vertical.system .item-icon { color: #aa44ff; }
-        .bench-item-vertical.cooling { border-color: #44ddff; }
+        .bench-item-vertical.cooling { border-color: #44ddff; color: #44ddff; }
         .bench-item-vertical.cooling .item-icon { color: #44ddff; }
+
+        /* Shape preview cells in vertical bench items */
+        .bench-item-vertical .shape-cell.filled {
+            background: currentColor;
+            opacity: 0.8;
+        }
+
+        #benchScrollIndicator {
+            text-align: center;
+            padding: 6px;
+            color: #00aa66;
+            font-size: 10px;
+            background: linear-gradient(0deg, rgba(0,20,10,0.95) 0%, transparent 100%);
+            pointer-events: none;
+            opacity: 0.8;
+            animation: scrollHint 2s ease-in-out infinite;
+        }
+
+        @keyframes scrollHint {
+            0%, 100% { opacity: 0.5; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(3px); }
+        }
 
         #benchEmpty {
             text-align: center;
@@ -403,8 +451,8 @@
         /* Unified Mech Grid */
         #unifiedMechGrid {
             display: grid;
-            gap: 2px;
-            padding: 10px;
+            gap: 0;
+            padding: 8px;
             background: rgba(0, 20, 10, 0.9);
             border: 2px solid rgba(0, 255, 136, 0.6);
             border-radius: 8px;
@@ -417,15 +465,15 @@
             width: 45px;
             height: 45px;
             background: rgba(0, 255, 136, 0.15);
-            border: 1px solid rgba(0, 255, 136, 0.5);
-            border-radius: 3px;
+            border: 1px solid rgba(0, 255, 136, 0.4);
             transition: all 0.2s ease;
             position: relative;
+            /* No border-radius for connected grid look */
         }
 
         .mech-cell.invalid {
-            background: transparent;
-            border-color: transparent;
+            background: rgba(0, 10, 5, 0.3);
+            border-color: rgba(0, 255, 136, 0.1);
             pointer-events: none;
         }
 
@@ -1074,7 +1122,7 @@
 
         #dragGhost .ghost-grid {
             display: grid;
-            gap: 2px;
+            gap: 0;
             padding: 4px;
             background: rgba(0, 255, 136, 0.3);
             border: 2px solid #00ff88;
@@ -1083,16 +1131,11 @@
         }
 
         #dragGhost .ghost-cell {
-            width: 38px;
-            height: 38px;
             background: rgba(0, 255, 136, 0.5);
             border: 1px solid #00ff88;
-            border-radius: 2px;
         }
 
         #dragGhost .ghost-cell-empty {
-            width: 38px;
-            height: 38px;
             background: transparent;
             border: none;
         }
@@ -1772,22 +1815,202 @@
            MOBILE RESPONSIVE STYLES
            ============================================ */
         @media (max-width: 768px) {
-            /* Stats Panel - Compact for mobile */
-            #statsPanel {
-                flex-wrap: wrap;
-                padding: 8px 12px;
+            /* Hide 3D canvas on mobile to save resources and avoid visual clutter */
+            #renderCanvas {
+                opacity: 0.3;
+            }
+
+            /* Main loadout layout - stack vertically on mobile */
+            #loadoutMain {
+                flex-direction: column;
+                position: relative;
+                overflow: hidden;
+            }
+
+            /* Bench Panel - bottom of screen on mobile, takes most of the space */
+            #benchPanel {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                min-width: unset;
+                max-height: 45vh;
+                border-right: none;
+                border-top: 2px solid #00ff88;
+                z-index: 100;
+                background: rgba(0,15,8,0.98);
+            }
+
+            #benchHeader {
+                padding: 4px 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid rgba(0,255,136,0.3);
+            }
+
+            #benchTitle {
+                font-size: 10px;
+                margin-bottom: 0;
+            }
+
+            #benchSubtitle {
+                font-size: 8px;
+            }
+
+            #benchScroll {
+                padding: 4px;
+                max-height: calc(45vh - 32px);
+                overflow-y: auto;
+            }
+
+            /* Compact bench item cards */
+            .bench-item-vertical {
+                padding: 6px 8px;
+                margin-bottom: 4px;
                 gap: 8px;
             }
 
+            .bench-item-vertical .item-icon {
+                font-size: 18px;
+            }
+
+            .bench-item-vertical .item-name {
+                font-size: 10px;
+            }
+
+            .bench-item-vertical .item-stats {
+                font-size: 8px;
+            }
+
+            .item-stat-row {
+                font-size: 8px;
+                gap: 6px;
+            }
+
+            .item-stat.damage {
+                font-size: 11px;
+            }
+
+            .item-stat.damage .item-stat-icon {
+                font-size: 11px;
+            }
+
+            .item-stat.damage .item-stat-value {
+                font-size: 10px;
+            }
+
+            .item-bottom-row {
+                margin-top: 4px;
+                padding-top: 4px;
+            }
+
+            .item-secondary-stats {
+                font-size: 10px;
+            }
+
+            .item-secondary-stats .item-stat {
+                font-size: 10px;
+            }
+
+            /* Mech Grid Area - compact, just fits the grid */
+            #mechGridArea {
+                position: relative;
+                top: unset;
+                left: unset;
+                right: unset;
+                bottom: unset;
+                flex: 0 0 auto;
+                padding: 0;
+                padding-bottom: calc(45vh);
+                display: flex;
+                align-items: flex-start;
+                justify-content: center;
+                overflow: hidden;
+            }
+
+            /* Unified Mech Grid - much smaller on mobile */
+            #unifiedMechGrid {
+                padding: 4px;
+                gap: 0;
+                transform: none;
+                margin: 0 auto;
+            }
+
+            /* Mech cells smaller on mobile */
+            .mech-cell {
+                width: 32px;
+                height: 32px;
+            }
+
+            .placed-item-unified .placed-cell {
+                width: 32px;
+                height: 32px;
+            }
+
+            .placed-item-unified .item-icon-overlay {
+                font-size: 16px;
+            }
+
+            /* Mech stats bar - compact horizontal layout */
+            #mechStats {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                gap: 6px;
+                padding: 3px 6px;
+                background: rgba(0,15,8,0.95);
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #mechStats .stat-item {
+                flex-shrink: 0;
+                min-width: 70px;
+            }
+
+            #mechStats .stat-bar {
+                width: 60px;
+                height: 12px;
+            }
+
+            #mechStats .stat-label {
+                font-size: 8px;
+            }
+
+            #mechStats .stat-text {
+                font-size: 8px;
+            }
+
+            /* Stats Panel (header) - Compact single row for mobile */
+            #statsPanel {
+                flex-wrap: nowrap;
+                padding: 4px 8px;
+                gap: 6px;
+            }
+
+            .header-nav-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+
             .stat-group {
-                gap: 15px;
+                gap: 12px;
                 order: 2;
                 flex: 1;
             }
 
             .stat-bar {
-                width: 100px;
-                height: 14px;
+                width: 80px;
+                height: 12px;
+            }
+
+            .stat-label {
+                font-size: 8px;
+            }
+
+            .stat-text {
+                font-size: 8px;
             }
 
             .stat-label {
@@ -1865,13 +2088,34 @@
             #missionTab .mission-title {
                 font-size: 20px;
             }
+
         }
 
-        /* Very small screens */
+        /* Very small screens (iPhone SE, etc) */
         @media (max-width: 480px) {
-            .grid-cell {
+            /* Even smaller mech cells */
+            .mech-cell {
                 width: 28px;
                 height: 28px;
+            }
+
+            .placed-item-unified .placed-cell {
+                width: 28px;
+                height: 28px;
+            }
+
+            .placed-item-unified .item-icon-overlay {
+                font-size: 14px;
+            }
+
+            #unifiedMechGrid {
+                padding: 3px;
+                gap: 0;
+            }
+
+            .grid-cell {
+                width: 26px;
+                height: 26px;
             }
 
             .placed-item .placed-cell {
@@ -1880,30 +2124,68 @@
             }
 
             .placed-item .item-icon-overlay {
+                font-size: 14px;
+            }
+
+            /* Smaller stats */
+            .stat-bar {
+                width: 55px;
+                height: 10px;
+            }
+
+            #mechStats .stat-bar {
+                width: 50px;
+                height: 10px;
+            }
+
+            #mechStats .stat-item {
+                min-width: 60px;
+            }
+
+            /* Larger bench on small screens */
+            #benchPanel {
+                max-height: 42vh;
+            }
+
+            #mechGridArea {
+                padding-bottom: calc(42vh);
+            }
+
+            #benchScroll {
+                max-height: calc(42vh - 30px);
+                padding: 4px;
+            }
+
+            .bench-item-vertical {
+                padding: 5px 6px;
+                margin-bottom: 3px;
+                gap: 6px;
+            }
+
+            .bench-item-vertical .item-icon {
                 font-size: 16px;
             }
 
-            .stat-bar {
-                width: 80px;
+            .bench-item-vertical .item-name {
+                font-size: 9px;
             }
 
-            .bench-item {
-                width: 55px;
-                height: 55px;
+            .item-stat-row {
+                font-size: 7px;
+                gap: 4px;
             }
 
-            .bench-item .item-icon {
-                font-size: 18px;
+            .item-stat.damage {
+                font-size: 10px;
+            }
+
+            .item-bottom-row {
+                margin-top: 3px;
+                padding-top: 3px;
             }
 
             #missionTab .mission-grid {
                 grid-template-columns: 1fr;
-            }
-
-            /* Smaller grid layout */
-            #gridOverlayContainer {
-                gap: 5px;
-                padding: 5px;
             }
         }
 
@@ -1922,6 +2204,47 @@
                 flex-direction: row;
             }
 
+            #loadoutMain {
+                flex-direction: row;
+            }
+
+            /* In landscape, bench on left side (not bottom) */
+            #benchPanel {
+                position: relative;
+                bottom: unset;
+                left: unset;
+                right: unset;
+                width: 180px;
+                min-width: 180px;
+                max-height: unset;
+                height: auto;
+                border-top: none;
+                border-right: 2px solid #00ff88;
+            }
+
+            #benchScroll {
+                max-height: calc(100vh - 180px);
+            }
+
+            #mechGridArea {
+                flex: 1;
+                padding-bottom: 20px;
+            }
+
+            #unifiedMechGrid {
+                transform: scale(0.8);
+            }
+
+            .mech-cell {
+                width: 34px;
+                height: 34px;
+            }
+
+            .placed-item-unified .placed-cell {
+                width: 34px;
+                height: 34px;
+            }
+
             #gridOverlayContainer {
                 flex: 1;
             }
@@ -1938,6 +2261,77 @@
                 overflow-y: auto;
                 overflow-x: hidden;
                 max-height: 100%;
+            }
+        }
+
+        /* Mobile Battle UI optimizations */
+        @media (max-width: 768px) {
+            #battleHeader {
+                top: 10px;
+            }
+
+            #missionTitle {
+                font-size: 16px;
+                letter-spacing: 1px;
+            }
+
+            #battleStatus {
+                top: 50px;
+                padding: 10px 15px;
+                gap: 15px;
+                flex-wrap: wrap;
+                justify-content: center;
+                max-width: 95%;
+            }
+
+            #battleVS {
+                font-size: 16px;
+                width: 100%;
+                text-align: center;
+                order: -1;
+            }
+
+            .team-status {
+                min-width: 120px;
+            }
+
+            .hp-bar {
+                width: 120px;
+                height: 14px;
+            }
+
+            #playerMechName, #enemyMechName {
+                font-size: 10px;
+            }
+
+            #battleResultOverlay .battle-result-content {
+                padding: 20px;
+            }
+
+            #battleResult {
+                font-size: 28px !important;
+            }
+        }
+
+        /* Very small mobile screens */
+        @media (max-width: 480px) {
+            #battleStatus {
+                top: 40px;
+                padding: 8px 10px;
+                gap: 10px;
+            }
+
+            .team-status {
+                min-width: 100px;
+            }
+
+            .hp-bar {
+                width: 100px;
+                height: 12px;
+            }
+
+            #missionTitle {
+                font-size: 14px;
             }
         }
     </style>
@@ -1965,14 +2359,12 @@
         <div id="mechBuilderUI">
             <!-- Header Panel -->
             <div id="statsPanel">
-                <div id="gameTitle">Loadout</div>
-                <div id="headerInfo" style="display: flex; gap: 20px; align-items: center;">
-                    <div id="roundDisplay" style="color: #00aa66; font-size: 12px;">Round <span id="roundNum">1</span></div>
+                <div id="headerInfo" style="display: flex; gap: 12px; align-items: center;">
                     <div id="goldDisplay" style="color: #ffcc00; font-size: 14px; font-weight: bold;">💰 <span id="goldAmount">10</span></div>
                 </div>
                 <div class="nav-spacer"></div>
-                <button id="goToShopBtn" class="header-nav-btn" style="margin-right: 10px;">Shop</button>
-                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Battle →</button>
+                <button id="goToShopBtn" class="header-nav-btn">Shop</button>
+                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Equip Items →</button>
             </div>
 
             <!-- Loadout Tab Content -->
@@ -2027,6 +2419,7 @@
                         <div id="benchScroll">
                             <!-- Items populated by JS -->
                         </div>
+                        <div id="benchScrollIndicator">↓ Scroll for more</div>
                         <div id="benchEmpty" style="display: none;">No items available</div>
                     </div>
 
@@ -2198,7 +2591,7 @@
                     <div>💰 Credits: +500</div>
                     <div>⭐ XP: +100</div>
                 </div>
-                <button id="returnToBuilderBtn" onclick="returnToBuilder()">Return to Loadout</button>
+                <button id="returnToBuilderBtn" onclick="returnToLoadout()">Return to Loadout</button>
             </div>
 
         </div>
@@ -2241,6 +2634,8 @@
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="assets/textures/mech-texture-generator.js"></script>
+    <script src="assets/textures/mech-texture-system.js"></script>
 
     <script>
         // ============================================
@@ -2255,6 +2650,12 @@
         let engine, scene, camera, havokInstance, havokPlugin;
         let builderCamera, battleCamera;
         let gameTime = 0;
+
+        // Texture system for mech rendering
+        let textureSystem = null;
+        let battleTextureSystem = null;
+        let textureGenerator = null;
+        let isMobileDevice = false;
 
         // ============================================
         // MECHBUILDER DATA STRUCTURES
@@ -3504,7 +3905,7 @@
                 for (const [key, template] of Object.entries(ITEM_TEMPLATES)) {
                     TEMPLATE_MIN_LEVELS[key] = getTemplateMinLevel(template);
                 }
-                console.log('Template minimum levels:', TEMPLATE_MIN_LEVELS);
+                console.log('Template minimum levels: ' + JSON.stringify(TEMPLATE_MIN_LEVELS));
             }
             return TEMPLATE_MIN_LEVELS;
         }
@@ -5028,31 +5429,55 @@
 
         // Create battle scene with physics
         async function createBattleScene() {
+            console.log('[Battle] createBattleScene');
+
             // Initialize Havok if not done
             if (!havokInstance) {
+                console.log('[Battle] Init Havok');
                 havokInstance = await HavokPhysics();
             }
 
             battleScene = new BABYLON.Scene(engine);
             battleScene.clearColor = new BABYLON.Color3(0.5, 0.6, 0.75);
+            console.log('[Battle] Scene created');
+
+            // Initialize texture system for battle scene
+            console.log('[Battle] Init battle tex sys');
+            initializeBattleTextureSystem(battleScene);
+            console.log('[Battle] battleTexSys state: has=' + !!battleTextureSystem +
+                ' diffuse=' + !!battleTextureSystem?.textures?.diffuse);
 
             // Enable physics
             havokPlugin = new BABYLON.HavokPlugin(true, havokInstance);
             battleScene.enablePhysics(new BABYLON.Vector3(0, -18, 0), havokPlugin);
 
-            // Camera
-            battleCamera = new BABYLON.ArcRotateCamera('battleCam', -Math.PI/2, Math.PI/3.5, 25,
+            // Camera - optimized for mobile
+            battleCamera = new BABYLON.ArcRotateCamera('battleCam', -Math.PI/2, Math.PI/3.5,
+                isMobileDevice ? 30 : 25, // Zoom out more on mobile for better overview
                 new BABYLON.Vector3(0, 2, 0), battleScene);
             battleCamera.attachControl(document.getElementById('renderCanvas'), true);
-            battleCamera.lowerRadiusLimit = 10;
-            battleCamera.upperRadiusLimit = 50;
+            battleCamera.lowerRadiusLimit = isMobileDevice ? 15 : 10;
+            battleCamera.upperRadiusLimit = isMobileDevice ? 40 : 50;
 
-            // Lighting
+            // Mobile-specific camera settings
+            if (isMobileDevice) {
+                battleCamera.pinchPrecision = 50; // Make pinch zoom less sensitive
+                battleCamera.angularSensibilityX = 2000; // Make rotation less sensitive
+                battleCamera.angularSensibilityY = 2000;
+                battleCamera.panningSensibility = 100; // Make panning less sensitive
+            }
+
+            // Lighting - slightly simplified on mobile
             const hemi = new BABYLON.HemisphericLight('hemi', new BABYLON.Vector3(0, 1, 0), battleScene);
-            hemi.intensity = 0.5;
+            hemi.intensity = isMobileDevice ? 0.6 : 0.5;
 
             const sun = new BABYLON.DirectionalLight('sun', new BABYLON.Vector3(-1, -2, -1), battleScene);
-            sun.intensity = 1.2;
+            sun.intensity = isMobileDevice ? 1.0 : 1.2;
+
+            // Disable shadows on mobile for better performance
+            if (!isMobileDevice) {
+                // Shadows only on desktop
+            }
 
             // Ground
             battleGround = BABYLON.MeshBuilder.CreateGround('ground', { width: 40, height: 30 }, battleScene);
@@ -5078,29 +5503,54 @@
         // Matches the proportions of the builder mech for consistency
         function createBattleMech(scene, xPos, zPos, isPlayer, weapons, maxHP) {
             const name = isPlayer ? 'player' : 'enemy';
-            const colors = isPlayer ?
-                { primary: BATTLE_COLORS.playerPrimary, secondary: BATTLE_COLORS.playerSecondary } :
-                { primary: BATTLE_COLORS.enemyPrimary, secondary: BATTLE_COLORS.enemySecondary };
+            const teamColors = isPlayer ? TEAM_COLOR_SETS.player : TEAM_COLOR_SETS.enemy;
 
-            // Materials - match builder holographic style but solid
-            const primaryMat = new BABYLON.StandardMaterial(name + '_primary', scene);
-            primaryMat.diffuseColor = colors.primary;
-            primaryMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            const hasTex = !!battleTextureSystem?.textures?.diffuse;
+            const texReady = battleTextureSystem?.textures?.diffuse?.isReady();
+            console.log('[Battle] createMech: ' + name + ' hasTex=' + hasTex + ' ready=' + texReady);
 
-            const secondaryMat = new BABYLON.StandardMaterial(name + '_secondary', scene);
-            secondaryMat.diffuseColor = colors.secondary;
+            // Use texture system if available, otherwise fallback to solid colors
+            let mats;
+            if (battleTextureSystem && battleTextureSystem.textures.diffuse) {
+                console.log('[Battle] Using textures for ' + name);
+                mats = battleTextureSystem.createMaterialSet(teamColors, name);
+            } else {
+                console.warn('[Battle] FALLBACK solid colors for ' + name);
 
-            const metalMat = new BABYLON.StandardMaterial(name + '_metal', scene);
-            metalMat.diffuseColor = BATTLE_COLORS.metal;
-            metalMat.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+                // Fallback to simple materials if texture system not ready
+                const colors = isPlayer ?
+                    { primary: BATTLE_COLORS.playerPrimary, secondary: BATTLE_COLORS.playerSecondary } :
+                    { primary: BATTLE_COLORS.enemyPrimary, secondary: BATTLE_COLORS.enemySecondary };
 
-            const darkMat = new BABYLON.StandardMaterial(name + '_dark', scene);
-            darkMat.diffuseColor = BATTLE_COLORS.darkMetal;
+                mats = {
+                    primary: new BABYLON.StandardMaterial(name + '_primary', scene),
+                    secondary: new BABYLON.StandardMaterial(name + '_secondary', scene),
+                    metal: new BABYLON.StandardMaterial(name + '_metal', scene),
+                    dark: new BABYLON.StandardMaterial(name + '_dark', scene),
+                    glow: new BABYLON.StandardMaterial(name + '_glow', scene)
+                };
+                mats.primary.diffuseColor = colors.primary;
+                mats.primary.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                mats.secondary.diffuseColor = colors.secondary;
+                mats.metal.diffuseColor = BATTLE_COLORS.metal;
+                mats.metal.specularColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+                mats.dark.diffuseColor = BATTLE_COLORS.darkMetal;
+                mats.glow.diffuseColor = isPlayer ? new BABYLON.Color3(0, 0.5, 0.5) : new BABYLON.Color3(0.5, 0.2, 0.2);
+                mats.glow.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 0.9) : new BABYLON.Color3(0.9, 0.3, 0.2);
+            }
+
+            // Aliases for compatibility with existing code
+            const primaryMat = mats.primary;
+            const secondaryMat = mats.secondary;
+            const metalMat = mats.metal;
+            const darkMat = mats.dark;
 
             // Cockpit material (glowing)
-            const cockpitMat = new BABYLON.StandardMaterial(name + '_cockpit', scene);
-            cockpitMat.diffuseColor = isPlayer ? new BABYLON.Color3(0, 0.5, 0.5) : new BABYLON.Color3(0.5, 0.2, 0.2);
-            cockpitMat.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 0.9) : new BABYLON.Color3(0.9, 0.3, 0.2);
+            const cockpitMat = mats.glow || new BABYLON.StandardMaterial(name + '_cockpit', scene);
+            if (!mats.glow) {
+                cockpitMat.diffuseColor = isPlayer ? new BABYLON.Color3(0, 0.5, 0.5) : new BABYLON.Color3(0.5, 0.2, 0.2);
+                cockpitMat.emissiveColor = isPlayer ? new BABYLON.Color3(0, 0.8, 0.9) : new BABYLON.Color3(0.9, 0.3, 0.2);
+            }
             cockpitMat.alpha = 0.9;
 
             // Pelvis (physics body) - matches builder: width: 0.9, height: 0.4, depth: 0.6
@@ -6429,20 +6879,21 @@
             const shape = item.gridShape;
             const h = shape.length;
             const w = shape[0].length;
+            const cellSize = getMechCellSize();
 
             let cellsHTML = '';
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
                     if (shape[y][x] === 1) {
-                        cellsHTML += '<div class="ghost-cell"></div>';
+                        cellsHTML += `<div class="ghost-cell" style="width:${cellSize}px;height:${cellSize}px;"></div>`;
                     } else {
                         // Add empty placeholder cell for proper grid layout
-                        cellsHTML += '<div class="ghost-cell-empty"></div>';
+                        cellsHTML += `<div class="ghost-cell-empty" style="width:${cellSize}px;height:${cellSize}px;"></div>`;
                     }
                 }
             }
 
-            return `<div class="ghost-grid" style="grid-template-columns: repeat(${w}, 38px);">${cellsHTML}</div>`;
+            return `<div class="ghost-grid" style="grid-template-columns: repeat(${w}, ${cellSize}px); gap: 0;">${cellsHTML}</div>`;
         }
 
         function handleDragMove(e) {
@@ -6565,9 +7016,9 @@
             if (clientX >= rect.left && clientX <= rect.right &&
                 clientY >= rect.top && clientY <= rect.bottom) {
 
-                // Calculate grid cell position
-                const cellSize = 47;  // 45px + 2px gap
-                const padding = 10;
+                // Calculate grid cell position using dynamic sizes for mobile responsiveness
+                const cellSize = getMechCellSize();
+                const padding = getMechGridPadding();
                 const localX = clientX - rect.left - padding;
                 const localY = clientY - rect.top - padding;
 
@@ -6800,6 +7251,42 @@
 
                 benchScroll.appendChild(el);
             });
+
+            // Update scroll indicator visibility
+            updateScrollIndicator();
+        }
+
+        // Update scroll indicator based on scroll position and content
+        function updateScrollIndicator() {
+            const benchScroll = document.getElementById('benchScroll');
+            const indicator = document.getElementById('benchScrollIndicator');
+            if (!benchScroll || !indicator) return;
+
+            // Check if there's content to scroll
+            const hasScrollableContent = benchScroll.scrollHeight > benchScroll.clientHeight + 20;
+            const isAtBottom = benchScroll.scrollTop + benchScroll.clientHeight >= benchScroll.scrollHeight - 10;
+
+            if (!hasScrollableContent || isAtBottom) {
+                indicator.style.display = 'none';
+            } else {
+                indicator.style.display = 'block';
+            }
+        }
+
+        // Add scroll listener for indicator (initialized once)
+        function initScrollIndicator() {
+            const benchScroll = document.getElementById('benchScroll');
+            if (benchScroll) {
+                benchScroll.addEventListener('scroll', updateScrollIndicator);
+            }
+        }
+
+        // Get current cell size based on screen width
+        function getMechCellSize() {
+            const width = window.innerWidth;
+            if (width <= 480) return 22;  // 20% smaller (was 28)
+            if (width <= 768) return 26;  // 20% smaller (was 32)
+            return 36;  // 20% smaller (was 45)
         }
 
         // Render the unified mech-shaped grid
@@ -6807,8 +7294,9 @@
             const container = document.getElementById('unifiedMechGrid');
             if (!container) return;
 
+            const cellSize = getMechCellSize();
             container.innerHTML = '';
-            container.style.gridTemplateColumns = `repeat(${MECH_CHASSIS.gridCols}, 45px)`;
+            container.style.gridTemplateColumns = `repeat(${MECH_CHASSIS.gridCols}, ${cellSize}px)`;
 
             // Create cells for the mech grid
             for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
@@ -6817,6 +7305,8 @@
                     cell.className = 'mech-cell';
                     cell.dataset.x = x;
                     cell.dataset.y = y;
+                    cell.style.width = cellSize + 'px';
+                    cell.style.height = cellSize + 'px';
 
                     // Mark invalid cells (not part of mech shape)
                     if (MECH_CHASSIS.gridShape[y][x] === 0) {
@@ -6831,6 +7321,14 @@
             gridElements.unified = container;
         }
 
+        // Get grid padding based on screen width
+        function getMechGridPadding() {
+            const width = window.innerWidth;
+            if (width <= 480) return 2;  // Smaller padding for smaller grid
+            if (width <= 768) return 3;
+            return 6;
+        }
+
         // Render placed items on the unified grid
         function renderUnifiedGridItems() {
             // Remove old placed items
@@ -6839,8 +7337,9 @@
             const container = document.getElementById('unifiedMechGrid');
             if (!container || !unifiedGridOccupation) return;
 
-            const cellSize = 45;
-            const gap = 2;
+            const cellSize = getMechCellSize();
+            const gap = 0;  // No gap between cells
+            const padding = getMechGridPadding();
 
             // Update cell states (occupied highlighting)
             const cells = container.querySelectorAll('.mech-cell');
@@ -6877,8 +7376,8 @@
 
                 // Position based on grid cell
                 placedEl.style.position = 'absolute';
-                placedEl.style.left = `${10 + eq.position.x * (cellSize + gap)}px`;
-                placedEl.style.top = `${10 + eq.position.y * (cellSize + gap)}px`;
+                placedEl.style.left = `${padding + eq.position.x * (cellSize + gap)}px`;
+                placedEl.style.top = `${padding + eq.position.y * (cellSize + gap)}px`;
                 placedEl.style.width = `${w * cellSize + (w - 1) * gap}px`;
                 placedEl.style.height = `${h * cellSize + (h - 1) * gap}px`;
                 placedEl.style.background = 'transparent';
@@ -6906,7 +7405,6 @@
                                 height: ${cellSize}px;
                                 background: var(--item-bg);
                                 border: 2px solid var(--item-border);
-                                border-radius: 4px;
                                 box-sizing: border-box;
                                 ${bonusBorder}
                             "></div>`;
@@ -7398,6 +7896,7 @@
         let isMobileLayout = false;
 
         function switchTab(tabName) {
+            console.log('[NAV] switchTab called with:', tabName);
             currentTab = tabName;
 
             // Update header title
@@ -7409,13 +7908,13 @@
             const headerBtns = [goToMissionsBtn, goToShopBtn];
 
             if (tabName === 'loadout') {
-                gameTitle.textContent = 'Loadout';
+                if (gameTitle) gameTitle.textContent = 'Loadout';
                 headerBtns.forEach(btn => { if (btn) btn.style.display = ''; });
             } else if (tabName === 'mission') {
-                gameTitle.textContent = 'Missions';
+                if (gameTitle) gameTitle.textContent = 'Missions';
                 headerBtns.forEach(btn => { if (btn) btn.style.display = 'none'; });
             } else if (tabName === 'shop') {
-                gameTitle.textContent = 'Shop';
+                if (gameTitle) gameTitle.textContent = 'Shop';
                 headerBtns.forEach(btn => { if (btn) btn.style.display = 'none'; });
             }
 
@@ -7427,13 +7926,18 @@
             const allTabs = [loadoutTab, missionTab, shopTab];
             allTabs.forEach(tab => { if (tab) tab.classList.remove('active'); });
 
+            console.log('[NAV] Tab elements found:', { loadoutTab: !!loadoutTab, missionTab: !!missionTab, shopTab: !!shopTab });
+
             if (tabName === 'loadout' && loadoutTab) {
+                console.log('[NAV] Activating loadout tab');
                 loadoutTab.classList.add('active');
                 updateHeaderDisplay();
             } else if (tabName === 'mission' && missionTab) {
+                console.log('[NAV] Activating mission tab');
                 missionTab.classList.add('active');
                 renderMissionTab();
             } else if (tabName === 'shop' && shopTab) {
+                console.log('[NAV] Activating shop tab');
                 shopTab.classList.add('active');
                 renderShop();
             }
@@ -7446,15 +7950,23 @@
         }
 
         function startBattleFromMission() {
+            console.log('[BATTLE] startBattleFromMission called, selectedMission=', selectedMission);
             if (selectedMission) {
                 startBattle();
+            } else {
+                console.log('[BATTLE] No mission selected, cannot start battle');
             }
         }
 
         // Render missions for mobile tab
         function renderMissionTab() {
+            console.log('[NAV] renderMissionTab called');
             const missionTabList = document.getElementById('missionTabList');
-            if (!missionTabList) return;
+            if (!missionTabList) {
+                console.log('[NAV] missionTabList element not found!');
+                return;
+            }
+            console.log('[NAV] missionTabList found, rendering missions');
 
             missionTabList.innerHTML = '';
 
@@ -7561,7 +8073,9 @@
 
                 card.addEventListener('click', () => {
                     selectMission(mission.id);
-                    renderMissionTab();
+                    // Note: selectMission already calls renderMissions() and updateStats()
+                    // which handles button state correctly. Don't call renderMissionTab() again
+                    // as it would override the proper limit checks from updateStats().
                 });
                 missionTabList.appendChild(card);
             }
@@ -8372,10 +8886,17 @@
                     goToMissionsBtn.textContent = 'Over Limit!';
                     goToMissionsBtn.disabled = true;
                     goToMissionsBtn.classList.add('warning');
-                } else {
-                    goToMissionsBtn.textContent = 'Go to Missions →';
-                    goToMissionsBtn.disabled = !hasEquipment;
+                    console.log('[NAV] Fight button disabled: over limit');
+                } else if (!hasEquipment) {
+                    goToMissionsBtn.textContent = 'Equip Items →';
+                    goToMissionsBtn.disabled = true;
                     goToMissionsBtn.classList.remove('warning');
+                    console.log('[NAV] Fight button disabled: no equipment');
+                } else {
+                    goToMissionsBtn.textContent = 'Fight →';
+                    goToMissionsBtn.disabled = false;
+                    goToMissionsBtn.classList.remove('warning');
+                    console.log('[NAV] Fight button enabled');
                 }
             }
 
@@ -9141,11 +9662,14 @@
         }
 
         function startBattle() {
+            console.log('[BATTLE] startBattle called, equipment=', loadoutState.equipment.length, 'mission=', selectedMission);
             if (loadoutState.equipment.length === 0 || !selectedMission) {
+                console.log('[BATTLE] Cannot start battle - no equipment or mission');
                 return;
             }
 
             const mission = MISSIONS[selectedMission];
+            console.log('[BATTLE] Mission loaded:', mission?.name);
             const playerStats = calculatePlayerStats();
 
             // Save mission info for salvage generation
@@ -9185,11 +9709,15 @@
 
             // Show and load the battle iframe with the physics simulation
             const battleFrame = document.getElementById('battleFrame');
+            console.log('[BATTLE] battleFrame element:', !!battleFrame);
             battleFrame.style.display = 'block';
             // Add cache-busting parameter and background parameter
-            battleFrame.src = `battle-arena.html?t=${Date.now()}&bg=${selectedBackground}&piloting=${userPilotingEnabled ? '1' : '0'}`;
+            const battleUrl = `battle-arena.html?t=${Date.now()}&bg=${selectedBackground}&piloting=${userPilotingEnabled ? '1' : '0'}`;
+            console.log('[BATTLE] Loading battle iframe:', battleUrl);
+            battleFrame.src = battleUrl;
 
             currentPhase = GamePhase.BATTLE;
+            console.log('[BATTLE] Battle phase started');
         }
 
         // Listen for messages from battle iframe
@@ -9759,6 +10287,25 @@
             // Clear localStorage
             localStorage.removeItem('battleConfig');
 
+            // Clean up battle texture system to free resources
+            if (battleTextureSystem) {
+                battleTextureSystem.dispose();
+                battleTextureSystem = null;
+            }
+
+            // Dispose battle scene
+            if (battleScene) {
+                battleScene.dispose();
+                battleScene = null;
+            }
+
+            // Clear battle state
+            battleMechs = [];
+            projectiles = [];
+            beams = [];
+            playerBattleMech = null;
+            enemyBattleMech = null;
+
             // Keep equipped items on mech - don't return to bench
             // Equipment persists between battles
 
@@ -9786,18 +10333,124 @@
         }
 
         // ============================================
+        // TEXTURE SYSTEM INITIALIZATION
+        // ============================================
+
+        function initializeTextureSystem(targetScene) {
+            console.log('[Main] initTexSys: mobile=' + isMobileDevice);
+            try {
+                // Use smaller textures on mobile for better performance
+                const textureSize = isMobileDevice ? 512 : 1024;
+                console.log('[Main] Creating TextureGen size=' + textureSize);
+
+                // Create texture generator and generate textures
+                textureGenerator = new MechTextureGenerator(textureSize);
+                console.log('[Main] Generator created, calling generate()');
+                const maps = textureGenerator.generate();
+                console.log('[Main] Maps: diffuse=' + !!maps.diffuse + ' normal=' + !!maps.normal +
+                    ' size=' + (maps.diffuse ? maps.diffuse.width + 'x' + maps.diffuse.height : 'N/A'));
+
+                // Initialize texture system for the scene with both diffuse and normal maps
+                textureSystem = new MechTextureSystem(targetScene, { textureSize });
+                textureSystem.initializeFromCanvas(maps);
+
+                console.log('[Main] texSys READY: hasDiffuse=' + !!textureSystem?.textures?.diffuse +
+                    ' hasNormal=' + !!textureSystem?.textures?.normal);
+            } catch (error) {
+                console.error('[Main] initTexSys FAILED:', error);
+                textureSystem = null;
+                textureGenerator = null;
+            }
+        }
+
+        function initializeBattleTextureSystem(targetScene) {
+            console.log('[Main] initBattleTexSys');
+            try {
+                // Create texture system for battle scene if needed
+                if (!textureGenerator) {
+                    console.log('[Main] No textureGen, creating new');
+                    const textureSize = isMobileDevice ? 512 : 1024;
+                    textureGenerator = new MechTextureGenerator(textureSize);
+                    textureGenerator.generate();
+                } else {
+                    const diffuseCanvas = textureGenerator.diffuseCanvas;
+                    const normalCanvas = textureGenerator.normalCanvas;
+                    console.log('[Main] Using existing textureGen: diffuse=' + !!diffuseCanvas +
+                        ' normal=' + !!normalCanvas +
+                        ' size=' + (diffuseCanvas ? diffuseCanvas.width + 'x' + diffuseCanvas.height : 'N/A'));
+                }
+
+                const textureSize = isMobileDevice ? 512 : 1024;
+                console.log('[Main] Creating battleTexSys size=' + textureSize);
+
+                battleTextureSystem = new MechTextureSystem(targetScene, {
+                    textureSize: textureSize
+                });
+
+                console.log('[Main] Init battleTexSys from canvas');
+                battleTextureSystem.initializeFromCanvas({
+                    diffuse: textureGenerator.diffuseCanvas,
+                    normal: textureGenerator.normalCanvas
+                });
+
+                const ready = battleTextureSystem?.textures?.diffuse?.isReady();
+                console.log('[Main] battleTexSys READY: hasDiffuse=' + !!battleTextureSystem?.textures?.diffuse +
+                    ' hasNormal=' + !!battleTextureSystem?.textures?.normal + ' isReady=' + ready);
+            } catch (error) {
+                console.error('[Main] initBattleTexSys FAILED:', error);
+                battleTextureSystem = null;
+            }
+        }
+
+        // Team color definitions for textured mechs
+        const TEAM_COLOR_SETS = {
+            player: {
+                primary: [0.15, 0.35, 0.2],    // Forest green
+                secondary: [0.25, 0.45, 0.3],  // Lighter green
+                accent: [0.0, 0.9, 0.6]        // Bright cyan-green glow
+            },
+            enemy: {
+                primary: [0.45, 0.12, 0.12],   // Deep red
+                secondary: [0.55, 0.18, 0.18], // Lighter red
+                accent: [1.0, 0.4, 0.2]        // Orange glow
+            }
+        };
+
+        // ============================================
         // ENGINE INITIALIZATION
         // ============================================
         async function initEngine() {
             const canvas = document.getElementById('renderCanvas');
-            engine = new BABYLON.Engine(canvas, true, {
+
+            // Detect mobile device for performance optimization
+            isMobileDevice = window.innerWidth <= 768 || 'ontouchstart' in window ||
+                navigator.maxTouchPoints > 0;
+
+            console.log('[Main] initEngine: mobile=' + isMobileDevice +
+                ' width=' + window.innerWidth +
+                ' touch=' + ('ontouchstart' in window) +
+                ' touchPts=' + navigator.maxTouchPoints);
+
+            // Mobile-optimized engine options
+            const engineOptions = {
                 preserveDrawingBuffer: true,
                 stencil: true,
-                antialias: true
-            });
+                antialias: !isMobileDevice, // Disable antialiasing on mobile for performance
+                powerPreference: isMobileDevice ? 'low-power' : 'high-performance'
+            };
+
+            engine = new BABYLON.Engine(canvas, true, engineOptions);
+
+            // Limit hardware scaling on mobile for better performance
+            if (isMobileDevice) {
+                engine.setHardwareScalingLevel(Math.min(window.devicePixelRatio, 2));
+            }
 
             scene = new BABYLON.Scene(engine);
             scene.clearColor = new BABYLON.Color4(0.02, 0.04, 0.03, 1);
+
+            // Initialize texture system for builder scene
+            initializeTextureSystem(scene);
 
             // Initialize MechBuilder
             createBuilderScene();
@@ -9813,12 +10466,20 @@
             renderUnifiedGridItems();
             updateStats();
 
+            // Initialize scroll indicator for equipment list
+            initScrollIndicator();
+
             // Initialize drag and drop
             initDragAndDrop();
 
             // Go to Missions button
             document.getElementById('goToMissionsBtn').addEventListener('click', function() {
-                switchTab('mission');
+                try {
+                    console.log('[NAV] Fight button clicked, switching to mission tab');
+                    switchTab('mission');
+                } catch (e) {
+                    console.error('[NAV] Error in Fight button click:', e);
+                }
             });
 
             // Shop button
@@ -9877,6 +10538,10 @@
 
             // Initial mobile layout check
             checkMobileLayout();
+
+            // Log initial button state for debugging
+            const fightBtn = document.getElementById('goToMissionsBtn');
+            console.log('[NAV] Initial state - Fight button disabled:', fightBtn?.disabled, 'equipment count:', loadoutState.equipment.length);
 
             console.log('MechBuilder initialized!');
         }
@@ -10133,6 +10798,13 @@
         window.showAllTemplateBudgets = showAllTemplateBudgets;
         window.getMinLevelCache = getMinLevelCache;
         window.calculateTemplateBudgetBalance = calculateTemplateBudgetBalance;
+
+        // Expose functions used by onclick handlers in HTML
+        window.switchTab = switchTab;
+        window.startBattleFromMission = startBattleFromMission;
+        window.togglePilotingMode = togglePilotingMode;
+        window.handleRefreshShop = handleRefreshShop;
+        window.returnToLoadout = returnToLoadout;
 
         // Start the game
         initEngine();

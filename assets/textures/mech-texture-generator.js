@@ -12,6 +12,7 @@
 
 class MechTextureGenerator {
     constructor(size = 1024) {
+        console.log('[TextureGen] Constructor size=' + size);
         this.size = size;
         this.cellSize = size / 4; // 4x4 grid of trim sections
 
@@ -26,6 +27,10 @@ class MechTextureGenerator {
 
         this.diffuseCtx = this.diffuseCanvas.getContext('2d');
         this.normalCtx = this.normalCanvas.getContext('2d');
+
+        console.log('[TextureGen] Canvas: diffuse=' + !!this.diffuseCanvas +
+            ' ctx=' + !!this.diffuseCtx +
+            ' size=' + this.diffuseCanvas.width + 'x' + this.diffuseCanvas.height);
 
         // Seeded random for reproducibility
         this.seed = 12345;
@@ -42,37 +47,51 @@ class MechTextureGenerator {
 
     // Generate all texture maps
     generate() {
-        this.resetSeed();
-        this.fillBase();
+        console.log('[TextureGen] generate() called');
+        try {
+            this.resetSeed();
+            this.fillBase();
 
-        // Row 0: Clean armor panels
-        this.drawCleanArmorPanel(0, 0, 'standard');
-        this.drawCleanArmorPanel(1, 0, 'beveled');
-        this.drawCleanArmorPanel(2, 0, 'segmented');
-        this.drawCleanArmorPanel(3, 0, 'angular');
+            // Row 0: Clean armor panels
+            this.drawCleanArmorPanel(0, 0, 'standard');
+            this.drawCleanArmorPanel(1, 0, 'beveled');
+            this.drawCleanArmorPanel(2, 0, 'segmented');
+            this.drawCleanArmorPanel(3, 0, 'angular');
 
-        // Row 1: Hexagonal and geometric patterns
-        this.drawHexArmorPanel(0, 1);
-        this.drawDiamondPlate(1, 1);
-        this.drawTechLines(2, 1);
-        this.drawVentSlats(3, 1);
+            // Row 1: Hexagonal and geometric patterns
+            this.drawHexArmorPanel(0, 1);
+            this.drawDiamondPlate(1, 1);
+            this.drawTechLines(2, 1);
+            this.drawVentSlats(3, 1);
 
-        // Row 2: Mechanical details
-        this.drawJointTexture(0, 2);
-        this.drawPistonHousing(1, 2);
-        this.drawCableChannel(2, 2);
-        this.drawThrusterNozzle(3, 2);
+            // Row 2: Mechanical details
+            this.drawJointTexture(0, 2);
+            this.drawPistonHousing(1, 2);
+            this.drawCableChannel(2, 2);
+            this.drawThrusterNozzle(3, 2);
 
-        // Row 3: Accent and detail panels
-        this.drawAccentStripe(0, 3);
-        this.drawStatusPanel(1, 3);
-        this.drawEdgeWear(2, 3);
-        this.drawMetallicPlain(3, 3);
+            // Row 3: Accent and detail panels
+            this.drawAccentStripe(0, 3);
+            this.drawStatusPanel(1, 3);
+            this.drawEdgeWear(2, 3);
+            this.drawMetallicPlain(3, 3);
 
-        return {
-            diffuse: this.diffuseCanvas,
-            normal: this.normalCanvas
-        };
+            // Debug: Check if canvas has actual content
+            const imageData = this.diffuseCtx.getImageData(0, 0, 10, 10);
+            const hasContent = imageData.data.some((v, i) => i % 4 !== 3 && v !== 0);
+            const pixel = imageData.data.slice(0, 4);
+            console.log('[TextureGen] complete: hasContent=' + hasContent +
+                ' pixel=[' + pixel[0] + ',' + pixel[1] + ',' + pixel[2] + ',' + pixel[3] + ']' +
+                ' size=' + this.diffuseCanvas.width + 'x' + this.diffuseCanvas.height);
+
+            return {
+                diffuse: this.diffuseCanvas,
+                normal: this.normalCanvas
+            };
+        } catch (error) {
+            console.error('[TextureGen] generate() FAILED:', error);
+            throw error;
+        }
     }
 
     fillBase() {

@@ -2526,9 +2526,9 @@
             }
             const generator = new MechTextureGenerator(1024);
             const maps = generator.generate();
-            textureSystem.initializeFromCanvas(maps.diffuse);
+            textureSystem.initializeFromCanvas(maps);
             textureLoaded = true;
-            console.log('Procedural texture generated');
+            console.log('Procedural texture generated with normal map');
         }
 
         function updateUI() {

@@ -11,6 +11,7 @@
 
 class MechTextureSystem {
     constructor(scene, options = {}) {
+        console.log('[TextureSystem] Constructor: hasScene=' + !!scene + ' size=' + (options.textureSize || 1024));
         this.scene = scene;
         this.options = {
             textureSize: options.textureSize || 1024,
@@ -28,27 +29,93 @@ class MechTextureSystem {
     }
 
     /**
-     * Initialize from a canvas element (for procedurally generated textures)
+     * Initialize from canvas element(s) (for procedurally generated textures)
+     * @param {HTMLCanvasElement|Object} canvasOrMaps - Either a canvas (diffuse only) or { diffuse, normal }
+     * @param {HTMLCanvasElement} normalCanvas - Optional normal map canvas (deprecated, use object form)
      */
-    initializeFromCanvas(canvas) {
-        // Dispose old texture if exists
-        if (this.textures.diffuse) {
-            this.textures.diffuse.dispose();
+    initializeFromCanvas(canvasOrMaps, normalCanvas) {
+        // Support both old API (single canvas) and new API (object with diffuse/normal)
+        let diffuseCanvas, normalMap;
+        if (canvasOrMaps && canvasOrMaps.diffuse) {
+            diffuseCanvas = canvasOrMaps.diffuse;
+            normalMap = canvasOrMaps.normal;
+        } else {
+            diffuseCanvas = canvasOrMaps;
+            normalMap = normalCanvas;
         }
 
-        this.textures.diffuse = BABYLON.Texture.LoadFromDataString(
-            'mechTrimSheet_' + Date.now(),
-            canvas.toDataURL('image/png'),
-            this.scene,
-            false, // noMipmap
-            true,  // invertY
-            BABYLON.Texture.TRILINEAR_SAMPLINGMODE
-        );
-        this.textures.diffuse.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
-        this.textures.diffuse.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+        console.log('[TextureSystem] initFromCanvas: diffuse=' + !!diffuseCanvas +
+            ' normal=' + !!normalMap +
+            ' size=' + (diffuseCanvas ? diffuseCanvas.width + 'x' + diffuseCanvas.height : 'N/A'));
 
-        // Clear material cache when texture changes
-        this.clearCache();
+        try {
+            // Dispose old textures if they exist
+            if (this.textures.diffuse) {
+                this.textures.diffuse.dispose();
+            }
+            if (this.textures.normal) {
+                this.textures.normal.dispose();
+            }
+
+            // Load diffuse texture
+            const diffuseDataUrl = diffuseCanvas.toDataURL('image/png');
+            console.log('[TextureSystem] Diffuse DataURL len=' + diffuseDataUrl.length);
+
+            this.textures.diffuse = BABYLON.Texture.LoadFromDataString(
+                'mechTrimSheet_' + Date.now(),
+                diffuseDataUrl,
+                this.scene,
+                false, // noMipmap
+                true,  // invertY
+                BABYLON.Texture.TRILINEAR_SAMPLINGMODE
+            );
+            this.textures.diffuse.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+            this.textures.diffuse.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+
+            const texSize = this.textures.diffuse.getSize();
+            console.log('[TextureSystem] Diffuse created: ready=' + this.textures.diffuse.isReady() +
+                ' size=' + texSize.width + 'x' + texSize.height);
+
+            // Add ready callback for debugging
+            this.textures.diffuse.onLoadObservable.add(() => {
+                const sz = this.textures.diffuse.getSize();
+                console.log('[TextureSystem] Diffuse LOADED: ready=' + this.textures.diffuse.isReady() +
+                    ' size=' + sz.width + 'x' + sz.height);
+            });
+
+            // Load normal map texture if provided
+            if (normalMap) {
+                const normalDataUrl = normalMap.toDataURL('image/png');
+                console.log('[TextureSystem] Normal DataURL len=' + normalDataUrl.length);
+
+                this.textures.normal = BABYLON.Texture.LoadFromDataString(
+                    'mechNormalMap_' + Date.now(),
+                    normalDataUrl,
+                    this.scene,
+                    false, // noMipmap
+                    true,  // invertY
+                    BABYLON.Texture.TRILINEAR_SAMPLINGMODE
+                );
+                this.textures.normal.wrapU = BABYLON.Texture.WRAP_ADDRESSMODE;
+                this.textures.normal.wrapV = BABYLON.Texture.WRAP_ADDRESSMODE;
+
+                const normalSize = this.textures.normal.getSize();
+                console.log('[TextureSystem] Normal created: ready=' + this.textures.normal.isReady() +
+                    ' size=' + normalSize.width + 'x' + normalSize.height);
+
+                this.textures.normal.onLoadObservable.add(() => {
+                    const sz = this.textures.normal.getSize();
+                    console.log('[TextureSystem] Normal LOADED: ready=' + this.textures.normal.isReady() +
+                        ' size=' + sz.width + 'x' + sz.height);
+                });
+            }
+
+            // Clear material cache when texture changes
+            this.clearCache();
+        } catch (error) {
+            console.error('[TextureSystem] initFromCanvas FAILED:', error);
+            throw error;
+        }
     }
 
     /**
@@ -81,11 +148,24 @@ class MechTextureSystem {
             return this.materialCache.get(cacheKey);
         }
 
+        const hasDiffuse = !!this.textures.diffuse;
+        const hasNormal = !!this.textures.normal;
+        console.log('[TextureSystem] createMat: ' + cacheKey + ' diffuse=' + hasDiffuse + ' normal=' + hasNormal);
+
         const mat = new BABYLON.StandardMaterial(`${mechId}_${materialType}_tex`, this.scene);
 
-        // Apply texture
+        // Apply diffuse texture
         if (this.textures.diffuse) {
             mat.diffuseTexture = this.textures.diffuse;
+        } else {
+            console.warn('[TextureSystem] NO diffuse texture for: ' + cacheKey);
+        }
+
+        // Apply normal map for surface detail (skip for glow materials)
+        if (this.textures.normal && materialType !== 'glow') {
+            mat.bumpTexture = this.textures.normal;
+            // Adjust bump intensity based on material type
+            mat.bumpTexture.level = this.getNormalIntensity(materialType);
         }
 
         // Get the base color for this material type
@@ -193,15 +273,36 @@ class MechTextureSystem {
     }
 
     /**
+     * Normal map intensity per material type
+     * Higher values = more pronounced surface detail
+     */
+    getNormalIntensity(materialType) {
+        const intensities = {
+            primary: 1.0,    // Full detail on main armor
+            secondary: 0.8,  // Slightly less on secondary
+            accent: 0.6,     // Subtle on accent pieces
+            metal: 1.2,      // Strong on metallic parts
+            dark: 0.5,       // Subtle in dark areas
+            missile: 0.7     // Medium on weapons
+        };
+        return intensities[materialType] || 1.0;
+    }
+
+    /**
      * Create a full material set for a mech
      */
     createMaterialSet(teamColors, mechId) {
+        console.log('[TextureSystem] createMatSet: ' + mechId + ' hasTex=' + !!this.textures.diffuse);
+
         const mats = {};
         const types = ['primary', 'secondary', 'accent', 'metal', 'dark', 'glow', 'missile'];
 
         types.forEach(type => {
             mats[type] = this.createMaterial(type, teamColors, mechId);
         });
+
+        const hasTexCount = Object.values(mats).filter(m => !!m.diffuseTexture).length;
+        console.log('[TextureSystem] MatSet done: ' + mechId + ' withTex=' + hasTexCount + '/7');
 
         return mats;
     }

@@ -1827,7 +1827,7 @@
                 overflow: hidden;
             }
 
-            /* Bench Panel - bottom of screen on mobile, compact */
+            /* Bench Panel - bottom of screen on mobile, takes most of the space */
             #benchPanel {
                 position: fixed;
                 bottom: 0;
@@ -1835,7 +1835,7 @@
                 right: 0;
                 width: 100%;
                 min-width: unset;
-                max-height: 26vh;
+                max-height: 45vh;
                 border-right: none;
                 border-top: 2px solid #00ff88;
                 z-index: 100;
@@ -1861,7 +1861,7 @@
 
             #benchScroll {
                 padding: 4px;
-                max-height: calc(26vh - 32px);
+                max-height: calc(45vh - 32px);
                 overflow-y: auto;
             }
 
@@ -1914,18 +1914,18 @@
                 font-size: 10px;
             }
 
-            /* Mech Grid Area - takes remaining space above bench */
+            /* Mech Grid Area - compact, just fits the grid */
             #mechGridArea {
                 position: relative;
                 top: unset;
                 left: unset;
                 right: unset;
                 bottom: unset;
-                flex: 1;
+                flex: 0 0 auto;
                 padding: 0;
-                padding-bottom: calc(26vh);
+                padding-bottom: calc(45vh);
                 display: flex;
-                align-items: center;
+                align-items: flex-start;
                 justify-content: center;
                 overflow: hidden;
             }
@@ -2142,17 +2142,17 @@
                 min-width: 60px;
             }
 
-            /* Smaller bench */
+            /* Larger bench on small screens */
             #benchPanel {
-                max-height: 24vh;
+                max-height: 42vh;
             }
 
             #mechGridArea {
-                padding-bottom: calc(24vh);
+                padding-bottom: calc(42vh);
             }
 
             #benchScroll {
-                max-height: calc(24vh - 30px);
+                max-height: calc(42vh - 30px);
                 padding: 4px;
             }
 

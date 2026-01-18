@@ -2186,14 +2186,69 @@
             /* Shop content (items for sale) - main area like mech grid */
             #shopTab .shop-content {
                 flex: 1 !important;
-                padding: 10px !important;
-                padding-bottom: calc(40vh + 10px) !important;
+                padding: 8px !important;
+                padding-bottom: calc(35vh + 10px) !important;
                 overflow-y: auto !important;
             }
 
             /* Shop title smaller on mobile */
+            #shopTab .shop-content > div:first-child {
+                margin-bottom: 10px !important;
+            }
             #shopTab .shop-content > div:first-child > div:first-child {
-                font-size: 18px !important;
+                font-size: 16px !important;
+                letter-spacing: 2px !important;
+            }
+            #shopTab .shop-content > div:first-child > div:last-child {
+                font-size: 10px !important;
+            }
+
+            /* Section headers smaller */
+            #shopTab .shop-content > div > div[style*="font-size: 14px"] {
+                font-size: 11px !important;
+                margin-bottom: 8px !important;
+                padding-bottom: 4px !important;
+            }
+
+            /* Shop mechs/weapons grid - 2 columns, smaller cards */
+            #shopMechsContainer,
+            #shopWeaponsContainer,
+            #ownedMechsContainer {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 6px !important;
+                justify-content: center !important;
+            }
+
+            /* Smaller shop cards */
+            #shopMechsContainer > div,
+            #shopWeaponsContainer > div,
+            #ownedMechsContainer > div {
+                width: auto !important;
+                min-width: 0 !important;
+                padding: 8px !important;
+                font-size: 10px !important;
+            }
+
+            /* Smaller icons in shop cards */
+            #shopMechsContainer > div > div:first-child,
+            #shopWeaponsContainer > div > div:first-child,
+            #ownedMechsContainer > div > div:first-child {
+                font-size: 24px !important;
+            }
+
+            /* Smaller item names */
+            #shopMechsContainer > div > div:nth-child(2),
+            #shopWeaponsContainer > div > div:nth-child(2),
+            #ownedMechsContainer > div > div:nth-child(2) {
+                font-size: 10px !important;
+            }
+
+            /* Price styling */
+            #shopMechsContainer > div > div[style*="color: #ffcc00"],
+            #shopWeaponsContainer > div > div[style*="color: #ffcc00"],
+            #ownedMechsContainer > div > div[style*="color: #ffcc00"] {
+                font-size: 12px !important;
             }
 
             /* Inventory panel - bottom like bench panel */
@@ -2204,66 +2259,82 @@
                 right: 0 !important;
                 width: 100% !important;
                 min-width: unset !important;
-                max-height: 40vh !important;
+                height: 35vh !important;
+                max-height: 35vh !important;
                 border-right: none !important;
                 border-top: 2px solid #00aa66 !important;
                 z-index: 100 !important;
+                background: rgba(0,20,10,0.98) !important;
             }
 
             #shopTab .shop-inventory-panel > div:first-child {
-                padding: 6px 10px !important;
+                padding: 4px 10px !important;
             }
 
             #shopTab .shop-inventory-panel > div:first-child > div:first-child {
-                font-size: 11px !important;
+                font-size: 10px !important;
+            }
+
+            #shopTab .shop-inventory-panel > div:first-child > div:last-child {
+                font-size: 8px !important;
+                margin-top: 2px !important;
             }
 
             #shopInventoryScroll {
-                max-height: calc(40vh - 40px) !important;
-                padding: 6px !important;
+                height: calc(35vh - 35px) !important;
+                max-height: calc(35vh - 35px) !important;
+                padding: 4px 6px !important;
                 display: flex;
                 flex-direction: row;
-                flex-wrap: wrap;
-                gap: 6px;
+                flex-wrap: nowrap;
+                gap: 8px;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            /* Make inventory sections as columns */
+            #shopInventoryScroll > div {
+                flex: 1;
+                min-width: 0;
+                max-width: 33%;
+                margin-bottom: 0 !important;
                 overflow-y: auto;
             }
 
-            /* Make inventory sections horizontal */
-            #shopInventoryScroll > div {
-                flex: 1;
-                min-width: 100px;
-                margin-bottom: 0 !important;
+            /* Section labels smaller */
+            #shopInventoryScroll > div > div:first-child {
+                font-size: 9px !important;
+                margin-bottom: 4px !important;
             }
 
             /* Compact shop sell items */
             .shop-sell-item {
-                padding: 6px 8px;
-                margin-bottom: 4px;
-                gap: 6px;
+                padding: 4px 6px;
+                margin-bottom: 3px;
+                gap: 4px;
             }
 
             .shop-sell-item .item-icon {
-                font-size: 16px;
+                font-size: 14px;
             }
 
             .shop-sell-item .item-name {
-                font-size: 9px;
+                font-size: 8px;
             }
 
             .shop-sell-item .item-sell-price {
-                font-size: 9px;
-            }
-
-            /* Shop mechs/weapons grid - smaller cards */
-            #shopMechsContainer,
-            #shopWeaponsContainer,
-            #ownedMechsContainer {
-                gap: 8px !important;
+                font-size: 8px;
             }
 
             #shopTab .nav-btn {
-                padding: 8px 12px;
-                font-size: 11px;
+                padding: 6px 10px;
+                font-size: 10px;
+            }
+
+            /* Refresh button smaller */
+            #refreshShopBtn {
+                padding: 4px 8px !important;
+                font-size: 9px !important;
             }
 
         }

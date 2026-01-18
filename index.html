@@ -1081,7 +1081,7 @@
 
         #dragGhost .ghost-grid {
             display: grid;
-            gap: 2px;
+            gap: 0;
             padding: 4px;
             background: rgba(0, 255, 136, 0.3);
             border: 2px solid #00ff88;
@@ -1090,16 +1090,11 @@
         }
 
         #dragGhost .ghost-cell {
-            width: 38px;
-            height: 38px;
             background: rgba(0, 255, 136, 0.5);
             border: 1px solid #00ff88;
-            border-radius: 2px;
         }
 
         #dragGhost .ghost-cell-empty {
-            width: 38px;
-            height: 38px;
             background: transparent;
             border: none;
         }
@@ -2048,16 +2043,6 @@
                 font-size: 20px;
             }
 
-            /* Drag ghost smaller on mobile */
-            #dragGhost .ghost-cell {
-                width: 32px;
-                height: 32px;
-            }
-
-            #dragGhost .ghost-cell-empty {
-                width: 32px;
-                height: 32px;
-            }
         }
 
         /* Very small screens (iPhone SE, etc) */
@@ -2151,17 +2136,6 @@
             .item-bottom-row {
                 margin-top: 3px;
                 padding-top: 3px;
-            }
-
-            /* Smaller drag ghost */
-            #dragGhost .ghost-cell {
-                width: 26px;
-                height: 26px;
-            }
-
-            #dragGhost .ghost-cell-empty {
-                width: 26px;
-                height: 26px;
             }
 
             #missionTab .mission-grid {
@@ -6846,20 +6820,21 @@
             const shape = item.gridShape;
             const h = shape.length;
             const w = shape[0].length;
+            const cellSize = getMechCellSize();
 
             let cellsHTML = '';
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
                     if (shape[y][x] === 1) {
-                        cellsHTML += '<div class="ghost-cell"></div>';
+                        cellsHTML += `<div class="ghost-cell" style="width:${cellSize}px;height:${cellSize}px;"></div>`;
                     } else {
                         // Add empty placeholder cell for proper grid layout
-                        cellsHTML += '<div class="ghost-cell-empty"></div>';
+                        cellsHTML += `<div class="ghost-cell-empty" style="width:${cellSize}px;height:${cellSize}px;"></div>`;
                     }
                 }
             }
 
-            return `<div class="ghost-grid" style="grid-template-columns: repeat(${w}, 38px);">${cellsHTML}</div>`;
+            return `<div class="ghost-grid" style="grid-template-columns: repeat(${w}, ${cellSize}px); gap: 0;">${cellsHTML}</div>`;
         }
 
         function handleDragMove(e) {
@@ -7219,13 +7194,22 @@
             });
         }
 
+        // Get current cell size based on screen width
+        function getMechCellSize() {
+            const width = window.innerWidth;
+            if (width <= 480) return 28;
+            if (width <= 768) return 32;
+            return 45;
+        }
+
         // Render the unified mech-shaped grid
         function renderUnifiedMechGrid() {
             const container = document.getElementById('unifiedMechGrid');
             if (!container) return;
 
+            const cellSize = getMechCellSize();
             container.innerHTML = '';
-            container.style.gridTemplateColumns = `repeat(${MECH_CHASSIS.gridCols}, 45px)`;
+            container.style.gridTemplateColumns = `repeat(${MECH_CHASSIS.gridCols}, ${cellSize}px)`;
 
             // Create cells for the mech grid
             for (let y = 0; y < MECH_CHASSIS.gridRows; y++) {
@@ -7234,6 +7218,8 @@
                     cell.className = 'mech-cell';
                     cell.dataset.x = x;
                     cell.dataset.y = y;
+                    cell.style.width = cellSize + 'px';
+                    cell.style.height = cellSize + 'px';
 
                     // Mark invalid cells (not part of mech shape)
                     if (MECH_CHASSIS.gridShape[y][x] === 0) {
@@ -7248,6 +7234,14 @@
             gridElements.unified = container;
         }
 
+        // Get grid padding based on screen width
+        function getMechGridPadding() {
+            const width = window.innerWidth;
+            if (width <= 480) return 3;
+            if (width <= 768) return 4;
+            return 8;
+        }
+
         // Render placed items on the unified grid
         function renderUnifiedGridItems() {
             // Remove old placed items
@@ -7256,8 +7250,9 @@
             const container = document.getElementById('unifiedMechGrid');
             if (!container || !unifiedGridOccupation) return;
 
-            const cellSize = 45;
-            const gap = 2;
+            const cellSize = getMechCellSize();
+            const gap = 0;  // No gap between cells
+            const padding = getMechGridPadding();
 
             // Update cell states (occupied highlighting)
             const cells = container.querySelectorAll('.mech-cell');
@@ -7294,8 +7289,8 @@
 
                 // Position based on grid cell
                 placedEl.style.position = 'absolute';
-                placedEl.style.left = `${10 + eq.position.x * (cellSize + gap)}px`;
-                placedEl.style.top = `${10 + eq.position.y * (cellSize + gap)}px`;
+                placedEl.style.left = `${padding + eq.position.x * (cellSize + gap)}px`;
+                placedEl.style.top = `${padding + eq.position.y * (cellSize + gap)}px`;
                 placedEl.style.width = `${w * cellSize + (w - 1) * gap}px`;
                 placedEl.style.height = `${h * cellSize + (h - 1) * gap}px`;
                 placedEl.style.background = 'transparent';
@@ -7323,7 +7318,6 @@
                                 height: ${cellSize}px;
                                 background: var(--item-bg);
                                 border: 2px solid var(--item-border);
-                                border-radius: 4px;
                                 box-sizing: border-box;
                                 ${bonusBorder}
                             "></div>`;

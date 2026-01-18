@@ -2123,6 +2123,149 @@
                 font-size: 20px;
             }
 
+            /* Mobile tooltips - hide hover tooltips, use tap-to-show modal */
+            .placed-item-unified:hover .item-tooltip,
+            .placed-item:hover .item-tooltip,
+            .bench-item:hover .bench-tooltip {
+                opacity: 0 !important;
+                visibility: hidden !important;
+            }
+
+            /* Mobile tooltip modal - centered overlay */
+            #mobileTooltip {
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 10001;
+                background: rgba(0, 15, 8, 0.98);
+                border: 2px solid #00ff88;
+                border-radius: 10px;
+                padding: 16px;
+                max-width: 85vw;
+                max-height: 70vh;
+                overflow-y: auto;
+                font-size: 12px;
+                color: #00ff88;
+                box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+            }
+
+            #mobileTooltip.active {
+                display: block;
+            }
+
+            #mobileTooltipBackdrop {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 10000;
+            }
+
+            #mobileTooltipBackdrop.active {
+                display: block;
+            }
+
+            /* Hide desktop floating tooltip on mobile */
+            #itemTooltip {
+                display: none !important;
+            }
+
+            /* ============================================
+               SHOP MOBILE LAYOUT - Match Loadout Structure
+               ============================================ */
+            #shopTab .shop-layout {
+                flex-direction: column !important;
+                position: relative;
+            }
+
+            /* Shop content (items for sale) - main area like mech grid */
+            #shopTab .shop-content {
+                flex: 1 !important;
+                padding: 10px !important;
+                padding-bottom: calc(40vh + 10px) !important;
+                overflow-y: auto !important;
+            }
+
+            /* Shop title smaller on mobile */
+            #shopTab .shop-content > div:first-child > div:first-child {
+                font-size: 18px !important;
+            }
+
+            /* Inventory panel - bottom like bench panel */
+            #shopTab .shop-inventory-panel {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                min-width: unset !important;
+                max-height: 40vh !important;
+                border-right: none !important;
+                border-top: 2px solid #00aa66 !important;
+                z-index: 100 !important;
+            }
+
+            #shopTab .shop-inventory-panel > div:first-child {
+                padding: 6px 10px !important;
+            }
+
+            #shopTab .shop-inventory-panel > div:first-child > div:first-child {
+                font-size: 11px !important;
+            }
+
+            #shopInventoryScroll {
+                max-height: calc(40vh - 40px) !important;
+                padding: 6px !important;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 6px;
+                overflow-y: auto;
+            }
+
+            /* Make inventory sections horizontal */
+            #shopInventoryScroll > div {
+                flex: 1;
+                min-width: 100px;
+                margin-bottom: 0 !important;
+            }
+
+            /* Compact shop sell items */
+            .shop-sell-item {
+                padding: 6px 8px;
+                margin-bottom: 4px;
+                gap: 6px;
+            }
+
+            .shop-sell-item .item-icon {
+                font-size: 16px;
+            }
+
+            .shop-sell-item .item-name {
+                font-size: 9px;
+            }
+
+            .shop-sell-item .item-sell-price {
+                font-size: 9px;
+            }
+
+            /* Shop mechs/weapons grid - smaller cards */
+            #shopMechsContainer,
+            #shopWeaponsContainer,
+            #ownedMechsContainer {
+                gap: 8px !important;
+            }
+
+            #shopTab .nav-btn {
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+
         }
 
         /* Very small screens (iPhone SE, etc) */
@@ -2429,6 +2572,11 @@
         pointer-events: none;
         box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
     "></div>
+
+    <!-- Mobile tooltip modal (tap to show, tap backdrop to dismiss) -->
+    <div id="mobileTooltipBackdrop"></div>
+    <div id="mobileTooltip"></div>
+
     <div id="gameContainer">
         <canvas id="renderCanvas"></canvas>
 
@@ -7317,14 +7465,20 @@
                     rotateItemShape(item);
                 });
 
-                // Add hover tooltip
+                // Add hover tooltip (desktop only)
                 el.addEventListener('mouseenter', (e) => showItemTooltip(item, e));
                 el.addEventListener('mousemove', moveItemTooltip);
                 el.addEventListener('mouseleave', hideItemTooltip);
 
                 // Make draggable
                 el.addEventListener('mousedown', (e) => handleDragStart(e, item, 'bench'));
-                el.addEventListener('touchstart', (e) => handleDragStart(e, item, 'bench'), { passive: false });
+                el.addEventListener('touchstart', (e) => {
+                    // Start mobile tooltip timer on touch
+                    startMobileTooltipTimer(item, false);
+                    handleDragStart(e, item, 'bench');
+                }, { passive: false });
+                el.addEventListener('touchend', () => clearMobileTooltipTimer());
+                el.addEventListener('touchmove', () => clearMobileTooltipTimer());
 
                 benchScroll.appendChild(el);
             });
@@ -7590,15 +7744,19 @@
                     clickStartTime = Date.now();
                     const touch = e.touches[0];
                     clickStartPos = { x: touch.clientX, y: touch.clientY };
+                    // Start mobile tooltip timer (with bonus info for grid items)
+                    startMobileTooltipTimer(item, true);
                     handleDragStart(e, { ...item, instanceId: eq.instanceId }, 'grid');
                 }, { passive: false });
                 placedEl.addEventListener('touchend', (e) => {
+                    clearMobileTooltipTimer();
                     const elapsed = Date.now() - clickStartTime;
                     // For touch, we can't easily get end position from touchend, so just check time
                     if (elapsed < 200 && !dragState.isDragging) {
                         rotateItemOnGrid(eq.instanceId, placedEl);
                     }
                 });
+                placedEl.addEventListener('touchmove', () => clearMobileTooltipTimer());
 
                 container.appendChild(placedEl);
             });
@@ -7964,6 +8122,69 @@
 
             tooltip.style.left = Math.min(x, maxX) + 'px';
             tooltip.style.top = Math.min(y, maxY) + 'px';
+        }
+
+        // ============================================
+        // MOBILE TOOLTIP SYSTEM (tap to show, tap to dismiss)
+        // ============================================
+        let mobileTooltipTimer = null;
+        let mobileTooltipItem = null;
+        const MOBILE_TOOLTIP_DELAY = 400; // ms to hold before showing tooltip
+
+        function isMobileDevice() {
+            return window.innerWidth <= 768 || 'ontouchstart' in window;
+        }
+
+        function showMobileTooltip(item, hasBonus = false) {
+            if (!isMobileDevice()) return;
+
+            const tooltip = document.getElementById('mobileTooltip');
+            const backdrop = document.getElementById('mobileTooltipBackdrop');
+            if (!tooltip || !backdrop || !item) return;
+
+            // Build tooltip content
+            const html = hasBonus ? buildItemTooltipHtmlWithBonus(item) : buildItemTooltipHtml(item);
+            tooltip.innerHTML = html + '<div style="margin-top: 12px; text-align: center; color: #666; font-size: 10px;">Tap outside to close</div>';
+
+            tooltip.classList.add('active');
+            backdrop.classList.add('active');
+            mobileTooltipItem = item;
+        }
+
+        function hideMobileTooltip() {
+            const tooltip = document.getElementById('mobileTooltip');
+            const backdrop = document.getElementById('mobileTooltipBackdrop');
+            if (tooltip) tooltip.classList.remove('active');
+            if (backdrop) backdrop.classList.remove('active');
+            mobileTooltipItem = null;
+            clearMobileTooltipTimer();
+        }
+
+        function clearMobileTooltipTimer() {
+            if (mobileTooltipTimer) {
+                clearTimeout(mobileTooltipTimer);
+                mobileTooltipTimer = null;
+            }
+        }
+
+        function startMobileTooltipTimer(item, hasBonus = false) {
+            if (!isMobileDevice()) return;
+            clearMobileTooltipTimer();
+            mobileTooltipTimer = setTimeout(() => {
+                showMobileTooltip(item, hasBonus);
+            }, MOBILE_TOOLTIP_DELAY);
+        }
+
+        // Initialize mobile tooltip backdrop click handler
+        function initMobileTooltip() {
+            const backdrop = document.getElementById('mobileTooltipBackdrop');
+            if (backdrop) {
+                backdrop.addEventListener('click', hideMobileTooltip);
+                backdrop.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    hideMobileTooltip();
+                }, { passive: false });
+            }
         }
 
         // ============================================
@@ -10545,6 +10766,9 @@
 
             // Initialize scroll indicator for equipment list
             initScrollIndicator();
+
+            // Initialize mobile tooltip system
+            initMobileTooltip();
 
             // Initialize drag and drop
             initDragAndDrop();

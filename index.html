@@ -2364,7 +2364,7 @@
                 </div>
                 <div class="nav-spacer"></div>
                 <button id="goToShopBtn" class="header-nav-btn">Shop</button>
-                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Battle →</button>
+                <button id="goToMissionsBtn" class="header-nav-btn" disabled>Equip Items →</button>
             </div>
 
             <!-- Loadout Tab Content -->
@@ -8887,11 +8887,16 @@
                     goToMissionsBtn.disabled = true;
                     goToMissionsBtn.classList.add('warning');
                     console.log('[NAV] Fight button disabled: over limit');
+                } else if (!hasEquipment) {
+                    goToMissionsBtn.textContent = 'Equip Items →';
+                    goToMissionsBtn.disabled = true;
+                    goToMissionsBtn.classList.remove('warning');
+                    console.log('[NAV] Fight button disabled: no equipment');
                 } else {
                     goToMissionsBtn.textContent = 'Fight →';
-                    goToMissionsBtn.disabled = !hasEquipment;
+                    goToMissionsBtn.disabled = false;
                     goToMissionsBtn.classList.remove('warning');
-                    console.log('[NAV] Fight button enabled:', hasEquipment, 'hasEquipment:', hasEquipment);
+                    console.log('[NAV] Fight button enabled');
                 }
             }
 
